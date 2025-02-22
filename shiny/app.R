@@ -2,7 +2,7 @@ library(shiny)
 library(bslib)
 library(magrittr)
 library(markdown)
-library(DT)  # Add this line to load the DT package
+library(DT)
 
 # Define UI for app that draws a histogram ----
 ui <- page_navbar(
@@ -96,7 +96,7 @@ server <- function(input, output) {
     }
   })
 
-  output$cardView <- renderUI({ NULL })  # Initially hide the card view
+  output$cardView <- renderUI(({ NULL }))  # Initially hide the card view
 
   output$map <- leaflet::renderLeaflet({
     leaflet::leaflet() %>%
