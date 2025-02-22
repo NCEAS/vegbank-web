@@ -1,7 +1,8 @@
 library(shiny)
 library(bslib)
-library(magrittr)  # Add this line to load the magrittr package
-library(markdown)  # Add this line to load the markdown package
+library(magrittr)
+library(markdown)
+library(DT)  # Add this line to load the DT package
 
 # Define UI for app that draws a histogram ----
 ui <- page_navbar(
@@ -32,7 +33,10 @@ ui <- page_navbar(
   # Second page: Searchable Table ----
   nav_panel(
     title = "Table",
-    DT::dataTableOutput(outputId = "dataTable")
+    fluidRow(
+      column(6, DT::dataTableOutput(outputId = "dataTable")),  # Table on the left
+      column(6, uiOutput(outputId = "cardView"))  # Card view on the right
+    )
   ),
   
   # Third page: Map ----
@@ -71,8 +75,28 @@ server <- function(input, output) {
     })
 
   output$dataTable <- DT::renderDataTable({
-    DT::datatable(faithful)
+    DT::datatable(faithful, selection = 'single')  # Enable single row selection
   })
+
+  observeEvent(input$dataTable_rows_selected, {
+    selected_row <- input$dataTable_rows_selected
+    if (length(selected_row) > 0) {
+      selected_data <- faithful[selected_row, ]
+      output$cardView <- renderUI({
+        fluidRow(
+          column(12,
+            h3("Eruption Details"),
+            p(paste("Eruption duration:", selected_data$eruptions, "minutes")),
+            p(paste("Waiting time to next eruption:", selected_data$waiting, "minutes"))
+          )
+        )
+      })
+    } else {
+      output$cardView <- renderUI({ NULL })  # Hide the card view when no row is selected
+    }
+  })
+
+  output$cardView <- renderUI({ NULL })  # Initially hide the card view
 
   output$map <- leaflet::renderLeaflet({
     leaflet::leaflet() %>%
