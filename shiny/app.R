@@ -1,6 +1,7 @@
 library(shiny)
 library(bslib)
 library(magrittr)  # Add this line to load the magrittr package
+library(markdown)  # Add this line to load the markdown package
 
 # Define UI for app that draws a histogram ----
 ui <- page_navbar(
@@ -38,6 +39,12 @@ ui <- page_navbar(
   nav_panel(
     title = "Map",
     leaflet::leafletOutput(outputId = "map")
+  ),
+  
+  # Fourth page: Static Content ----
+  nav_panel(
+    title = "About Old Faithful",
+    shiny::htmlOutput(outputId = "staticContent")
   )
 )
 
@@ -73,6 +80,10 @@ server <- function(input, output) {
       leaflet::setView(lng = -110.8281, lat = 44.4605, zoom = 10) %>%
       leaflet::addMarkers(lng = -110.8281, lat = 44.4605,
                           popup = "Old Faithful!")
+  })
+  
+  output$staticContent <- shiny::renderUI({
+    HTML(markdown::renderMarkdown("/Users/dariangill/git/vegbank-web/shiny/static_content.md"))
   })
 }
 
