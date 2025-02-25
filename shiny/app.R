@@ -6,6 +6,8 @@ library(DT)
 
 # Define UI for app that draws a histogram ----
 ui <- page_navbar(
+  id = 'page',
+  
   # App title ----
   title = "Ole Faithful!",
   
@@ -83,12 +85,10 @@ server <- function(input, output) {
     if (length(selected_row) > 0) {
       selected_data <- faithful[selected_row, ]
       output$cardView <- renderUI({
-        fluidRow(
-          column(12,
+        card(
             h3("Eruption Details"),
             p(paste("Eruption duration:", selected_data$eruptions, "minutes")),
             p(paste("Waiting time to next eruption:", selected_data$waiting, "minutes"))
-          )
         )
       })
     } else {
