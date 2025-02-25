@@ -6,11 +6,11 @@ library(DT)
 
 # Define UI for app that draws a histogram ----
 ui <- page_navbar(
-  id = 'page',
-  
+  id = "page",
+
   # App title ----
   title = "Ole Faithful!",
-  
+
   # First page: Histogram ----
   nav_panel(
     title = "Histogram",
@@ -31,26 +31,38 @@ ui <- page_navbar(
       )
     )
   ),
-  
+
   # Second page: Searchable Table ----
   nav_panel(
     title = "Table",
     fluidRow(
-      column(6, DT::dataTableOutput(outputId = "dataTable")),  # Table on the left
-      column(6, uiOutput(outputId = "cardView"))  # Card view on the right
+      column(6, DT::dataTableOutput(outputId = "dataTable")),  # Table on left
+      column(6, uiOutput(outputId = "cardView"))  # Card view on right
     )
   ),
-  
+
   # Third page: Map ----
   nav_panel(
     title = "Map",
     leaflet::leafletOutput(outputId = "map")
   ),
-  
-  # Fourth page: Static Content ----
-  nav_panel(
-    title = "About Old Faithful",
-    shiny::htmlOutput(outputId = "staticContent")
+
+  nav_spacer(),
+  nav_menu(
+    title = "About",
+    align = "right",
+    nav_panel(
+      title = "Old Faithful",
+      includeMarkdown(
+        "/Users/dariangill/git/vegbank-web/shiny/static_content/old_faithful.md"
+      )
+    ),
+    nav_panel(
+      title = "Geysers",
+      includeMarkdown(
+        "/Users/dariangill/git/vegbank-web/shiny/static_content/geysers.md"
+      )
+    )
   )
 )
 
@@ -64,9 +76,10 @@ server <- function(input, output) {
   #
   # 1. It is "reactive" and therefore should be automatically
   #    re-executed when inputs (input$bins) change
-  # 2. Its output type is a plot  
+  # 2. Its output type is a plot
+
   output$distPlot <- renderPlot({
-        
+
     x    <- faithful$waiting
     bins <- seq(min(x), max(x), length.out = input$bins + 1)
 
@@ -74,10 +87,10 @@ server <- function(input, output) {
          xlab = "Waiting time to next eruption (in mins)",
          main = "Histogram of waiting times")
 
-    })
+  })
 
   output$dataTable <- DT::renderDataTable({
-    DT::datatable(faithful, selection = 'single')  # Enable single row selection
+    DT::datatable(faithful, selection = "single")  # Enable single row selection
   })
 
   observeEvent(input$dataTable_rows_selected, {
@@ -86,13 +99,20 @@ server <- function(input, output) {
       selected_data <- faithful[selected_row, ]
       output$cardView <- renderUI({
         card(
-            h3("Eruption Details"),
-            p(paste("Eruption duration:", selected_data$eruptions, "minutes")),
-            p(paste("Waiting time to next eruption:", selected_data$waiting, "minutes"))
+          card_header("Old Faithful Geyser Data"),
+          card_body(
+            h3(paste("Row ", selected_row)),
+            p(paste("Duration of eruption:",
+                    selected_data$eruptions,
+                    "minutes")),
+            p(paste("Waiting time to next eruption:",
+                    selected_data$waiting,
+                    "minutes"))
+          )
         )
       })
     } else {
-      output$cardView <- renderUI({ NULL })  # Hide the card view when no row is selected
+      output$cardView <- renderUI({ NULL })  # Hide the card when no selection
     }
   })
 
@@ -104,10 +124,6 @@ server <- function(input, output) {
       leaflet::setView(lng = -110.8281, lat = 44.4605, zoom = 10) %>%
       leaflet::addMarkers(lng = -110.8281, lat = 44.4605,
                           popup = "Old Faithful!")
-  })
-  
-  output$staticContent <- shiny::renderUI({
-    HTML(markdown::renderMarkdown("/Users/dariangill/git/vegbank-web/shiny/static_content.md"))
   })
 }
 
