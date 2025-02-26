@@ -3,10 +3,22 @@ library(bslib)
 library(magrittr)
 library(markdown)
 library(DT)
+library(leaflet)
+
+# Define custom theme using bslib
+custom_theme <- bs_theme(
+  bg = "#FFFFFF",        # Background color
+  fg = "#19201d",        # Foreground color
+  primary = "#72b9a2",   # Primary color
+  secondary = "#d8fb5a", # Secondary color
+  base_font = font_google("Inter"),
+  heading_font = font_google("Inter")
+)
 
 # Define UI for app that draws a histogram ----
 ui <- page_navbar(
   id = "page",
+  theme = custom_theme,  # Apply the custom theme
 
   # App title ----
   title = "Ole Faithful!",
@@ -83,7 +95,7 @@ server <- function(input, output) {
     x    <- faithful$waiting
     bins <- seq(min(x), max(x), length.out = input$bins + 1)
 
-    hist(x, breaks = bins, col = "#007bc2", border = "white",
+    hist(x, breaks = bins, col = "#3b8a71", border = "white",
          xlab = "Waiting time to next eruption (in mins)",
          main = "Histogram of waiting times")
 
