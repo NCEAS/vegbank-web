@@ -7,10 +7,10 @@ library(leaflet)
 
 # Define custom theme using bslib
 custom_theme <- bs_theme(
-  bg = "#FFFFFF",        # Background color
-  fg = "#19201d",        # Foreground color
-  primary = "#72b9a2",   # Primary color
-  secondary = "#d8fb5a", # Secondary color
+  bg = "#FFFFFF",
+  fg = "#19201d",
+  primary = "#72b9a2",
+  secondary = "#d8fb5a",
   base_font = font_google("Inter"),
   heading_font = font_google("Inter")
 )
@@ -21,6 +21,14 @@ ui <- function(req) {
     id = "page",
     theme = custom_theme,  # Apply the custom theme
     title = "Ole Faithful!",
+
+    # Add a search bar to the navbar (aligned to right)
+    nav_spacer(),
+    div(class = "navbar-form navbar-right",
+      style = "display: inline-flex; align-items: center;",
+      textInput("search", label = NULL, placeholder = "Search..."),
+      actionButton("search_btn", "Search")
+    ),
 
     # First page: Histogram
     nav_panel(
@@ -74,6 +82,9 @@ ui <- function(req) {
 
 server <- function(input, output, session) {
 
+  # Reactive value to hold table data; starts with full faithful dataset
+  rv_data <- reactiveVal(faithful)
+
   # Render histogram based on the 'bins' input
   output$distPlot <- renderPlot({
     x <- faithful$waiting
@@ -103,21 +114,28 @@ server <- function(input, output, session) {
     }
   })
 
-  # Render the data table
+  # Render the data table from reactive data rt
   output$dataTable <- DT::renderDataTable({
-    DT::datatable(faithful, selection = "single")
+    DT::datatable(rv_data(), selection = "single")
   })
 
   # Update cardView when a row is selected
   observeEvent(input$dataTable_rows_selected, {
     selected_row <- input$dataTable_rows_selected
     if (length(selected_row) > 0) {
-      selected_data <- faithful[selected_row, ]
+      selected_data <- rv_data()[selected_row, ]
       output$cardView <- renderUI({
-        tagList(
-          h3(paste("Row", selected_row)),
-          p(paste("Duration of eruption:", selected_data$eruptions, "minutes")),
-          p(paste("Waiting time to next eruption:", selected_data$waiting, "minutes"))
+        card(
+          card_header("Old Faithful Geyser Data"),
+          card_body(
+            h3(paste("Row ", selected_row)),
+            p(paste("Duration of eruption:",
+                    selected_data$eruptions,
+                    "minutes")),
+            p(paste("Waiting time to next eruption:",
+                    selected_data$waiting,
+                    "minutes"))
+          )
         )
       })
     } else {
@@ -134,6 +152,23 @@ server <- function(input, output, session) {
       addTiles() %>%
       setView(lng = -110.8281, lat = 44.4605, zoom = 10) %>%
       addMarkers(lng = -110.8281, lat = 44.4605, popup = "Old Faithful!")
+  })
+
+  # Search button observer to filter the table and navigate to "Table" page
+  observeEvent(input$search_btn, {
+    # Use updateNavbarPage to switch to the "Table" tab (page id "page" and title "Table")
+    updateNavbarPage(session, "page", selected = "Table")
+    
+    # Filter faithful by matching the search term against character versions of eruptions or waiting
+    search_term <- tolower(input$search)
+    filtered <- faithful[
+      grepl(search_term, as.character(faithful$eruptions)) |
+      grepl(search_term, as.character(faithful$waiting)), ]
+    
+    # Update the reactive data and then update the table via DT proxy
+    rv_data(filtered)
+    dt_proxy <- dataTableProxy("dataTable")
+    replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
   })
 
   # Automatically trigger bookmarking on any input change
