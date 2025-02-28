@@ -4,6 +4,7 @@ library(magrittr)
 library(markdown)
 library(DT)
 library(leaflet)
+library(htmltools)
 
 # Define custom theme using bslib
 custom_theme <- bs_theme(
@@ -17,18 +18,32 @@ custom_theme <- bs_theme(
 
 # Wrap UI in a function(req) for bookmarking support
 ui <- function(req) {
-  page_navbar(
-    id = "page",
-    theme = custom_theme,  # Apply the custom theme
-    title = "Ole Faithful!",
+  # Define the search <li> to be appended
+  search_div <- tags$li(
+    class = "nav-item",
+    tags$div(
+      class = "navbar-form",
+      textInput(
+        inputId = "search",
+        placeholder = "Search...",
+        label = NULL
+      ),
+      # JavaScript to trigger search_enter when Enter is pressed in the text input
+      tags$script(HTML(
+        "$(document).on('keypress', '#search', function(e) {
+            if(e.which == 13) {
+              Shiny.setInputValue('search_enter', $(this).val(), {priority: 'event'});
+            }
+         });"
+      ))
+    )
+  )
 
-    # Add a search bar to the navbar (aligned to right)
-    nav_spacer(),
-    div(class = "navbar-form navbar-right",
-      style = "display: inline-flex; align-items: center;",
-      textInput("search", label = NULL, placeholder = "Search..."),
-      actionButton("search_btn", "Search")
-    ),
+  # Build the UI using page_navbar normally...
+  navbar <- page_navbar(
+    id = "page",
+    theme = custom_theme, # Apply the custom theme
+    title = "Ole Faithful!",
 
     # First page: Histogram
     nav_panel(
@@ -63,8 +78,6 @@ ui <- function(req) {
       title = "Map",
       leafletOutput("map")
     ),
-
-    nav_spacer(),
     nav_menu(
       title = "About",
       align = "right",
@@ -76,12 +89,13 @@ ui <- function(req) {
         title = "Geysers",
         includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/static_content/geysers.md")
       )
-    )
+    ),
   )
+  navbar_with_search <- tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
+  navbar_with_search
 }
 
 server <- function(input, output, session) {
-
   # Reactive value to hold table data; starts with full faithful dataset
   rv_data <- reactiveVal(faithful)
 
@@ -89,16 +103,18 @@ server <- function(input, output, session) {
   output$distPlot <- renderPlot({
     x <- faithful$waiting
     bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    hist(x, breaks = bins, col = "#3b8a71", border = "white",
-         xlab = "Waiting time to next eruption (in mins)",
-         main = "Histogram of waiting times")
+    hist(x,
+      breaks = bins, col = "#3b8a71", border = "white",
+      xlab = "Waiting time to next eruption (in mins)",
+      main = "Histogram of waiting times"
+    )
   })
 
   # Restore state for 'bins' and datatable row selection
   onRestore(function(state) {
     updateSliderInput(session, "bins", value = state$input$bins)
     if (!is.null(state$input$dataTable_rows_selected) &&
-        length(state$input$dataTable_rows_selected) > 0) {
+      length(state$input$dataTable_rows_selected) > 0) {
       selected_row <- state$input$dataTable_rows_selected
       selected_data <- faithful[selected_row, ]
       output$cardView <- renderUI({
@@ -129,22 +145,30 @@ server <- function(input, output, session) {
           card_header("Old Faithful Geyser Data"),
           card_body(
             h3(paste("Row ", selected_row)),
-            p(paste("Duration of eruption:",
-                    selected_data$eruptions,
-                    "minutes")),
-            p(paste("Waiting time to next eruption:",
-                    selected_data$waiting,
-                    "minutes"))
+            p(paste(
+              "Duration of eruption:",
+              selected_data$eruptions,
+              "minutes"
+            )),
+            p(paste(
+              "Waiting time to next eruption:",
+              selected_data$waiting,
+              "minutes"
+            ))
           )
         )
       })
     } else {
-      output$cardView <- renderUI({ NULL })
+      output$cardView <- renderUI({
+        NULL
+      })
     }
   })
 
   # Initially hide the card view (in case no row is selected at start)
-  output$cardView <- renderUI({ NULL })
+  output$cardView <- renderUI({
+    NULL
+  })
 
   # Render the map
   output$map <- leaflet::renderLeaflet({
@@ -154,17 +178,18 @@ server <- function(input, output, session) {
       addMarkers(lng = -110.8281, lat = 44.4605, popup = "Old Faithful!")
   })
 
-  # Search button observer to filter the table and navigate to "Table" page
-  observeEvent(input$search_btn, {
-    # Use updateNavbarPage to switch to the "Table" tab (page id "page" and title "Table")
+  # Search observer triggered when the user presses Enter in the search bar.
+  observeEvent(input$search_enter, {
+    # Switch to the "Table" page
     updateNavbarPage(session, "page", selected = "Table")
-    
+
     # Filter faithful by matching the search term against character versions of eruptions or waiting
-    search_term <- tolower(input$search)
+    search_term <- tolower(input$search_enter)
     filtered <- faithful[
       grepl(search_term, as.character(faithful$eruptions)) |
-      grepl(search_term, as.character(faithful$waiting)), ]
-    
+        grepl(search_term, as.character(faithful$waiting)),
+    ]
+
     # Update the reactive data and then update the table via DT proxy
     rv_data(filtered)
     dt_proxy <- dataTableProxy("dataTable")
