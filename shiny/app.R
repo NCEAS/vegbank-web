@@ -51,16 +51,19 @@ ui <- function(req) {
       title = "Overview",
     ),
 
-    # Second page: Searchable Table
+    # Second page: Table (only datatable here)
     nav_panel(
       title = "Table",
-      fluidRow(
-        column(6, DT::dataTableOutput("dataTable")),
-        column(6, uiOutput("cardView"))
-      )
+      DT::dataTableOutput("dataTable")
     ),
 
-    # Third page: Map
+    # New Third page: Details (card view)
+    nav_panel(
+      title = "Details",
+      uiOutput("cardView")
+    ),
+
+    # Fourth page: Map
     nav_panel(
       title = "Map",
       leafletOutput("map")
@@ -68,10 +71,6 @@ ui <- function(req) {
     nav_menu(
       title = "About",
       align = "right",
-      nav_panel(
-        title = "Old Faithful",
-        includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/static_content/old_faithful.md")
-      ),
       nav_panel(
         title = "Frequently Asked Questions",
         includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/static_content/faq.md")
@@ -83,10 +82,10 @@ ui <- function(req) {
 }
 
 server <- function(input, output, session) {
-  # Reactive value to hold table data; starts with full faithful dataset
+  # Reactive value to hold table data from the JSON file
   rv_data <- reactiveVal(jsonlite::fromJSON("/Users/dariangill/git/vegbank-web/shiny/100_plot_obs.json"))
 
-  # Render histogram based on the 'bins' input
+  # Render histogram based on the 'bins' input remains unchanged
   output$distPlot <- renderPlot({
     x <- faithful$waiting
     bins <- seq(min(x), max(x), length.out = input$bins + 1)
@@ -103,52 +102,47 @@ server <- function(input, output, session) {
     if (!is.null(state$input$dataTable_rows_selected) &&
       length(state$input$dataTable_rows_selected) > 0) {
       selected_row <- state$input$dataTable_rows_selected
-      selected_data <- faithful[selected_row, ]
+      selected_data <- rv_data()[selected_row, ]
       output$cardView <- renderUI({
-        tagList(
-          h3(paste("Row", selected_row)),
-          p(paste("Duration of eruption:", selected_data$eruptions, "minutes")),
-          p(paste("Waiting time to next eruption:", selected_data$waiting, "minutes"))
+        # Display all non NULL/NA fields from the selected row
+        valid_data <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
+        details <- lapply(names(valid_data), function(n) {
+          tags$p(tags$strong(paste0(n, ": ")), valid_data[[n]])
+        })
+        card(
+          card_header("Row Details"),
+          card_body(details)
         )
       })
-      # Use the DT proxy to update the highlighted row in the datatable
+      # Update the highlighted row in the datatable
       dt_proxy <- dataTableProxy("dataTable")
       selectRows(dt_proxy, selected_row)
     }
   })
 
-  # Render the data table from reactive data rt
+  # Render datatable using rv_data()
   output$dataTable <- DT::renderDataTable({
     DT::datatable(rv_data(), selection = "single")
   })
 
-  # Update cardView when a row is selected
+  # Update Details panel when a row is selected in the table
   observeEvent(input$dataTable_rows_selected, {
     selected_row <- input$dataTable_rows_selected
     if (length(selected_row) > 0) {
       selected_data <- rv_data()[selected_row, ]
       output$cardView <- renderUI({
+        # Build a card displaying each non-null field from the selected row
+        valid_data <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
+        details <- lapply(names(valid_data), function(n) {
+          tags$p(tags$strong(paste0(n, ": ")), valid_data[[n]])
+        })
         card(
-          card_header("Old Faithful Geyser Data"),
-          card_body(
-            h3(paste("Row ", selected_row)),
-            p(paste(
-              "Duration of eruption:",
-              selected_data$eruptions,
-              "minutes"
-            )),
-            p(paste(
-              "Waiting time to next eruption:",
-              selected_data$waiting,
-              "minutes"
-            ))
-          )
+          card_header("Row Details"),
+          card_body(details)
         )
       })
-    } else {
-      output$cardView <- renderUI({
-        NULL
-      })
+      # Switch to the "Details" nav panel
+      updateNavbarPage(session, "page", selected = "Details")
     }
   })
 
@@ -157,7 +151,7 @@ server <- function(input, output, session) {
     NULL
   })
 
-  # Render the map
+  # Render the leaflet map using fields "longitude" and "latitude"
   output$map <- leaflet::renderLeaflet({
     df <- rv_data()
     leaflet(data = df) %>%
@@ -170,14 +164,14 @@ server <- function(input, output, session) {
     # Switch to the "Table" page
     updateNavbarPage(session, "page", selected = "Table")
 
-    # Filter faithful by matching the search term against character versions of eruptions or waiting
+    # Filter by matching the search term against character versions of fields (example uses faithful)
     search_term <- tolower(input$search_enter)
     filtered <- faithful[
       grepl(search_term, as.character(faithful$eruptions)) |
         grepl(search_term, as.character(faithful$waiting)),
     ]
 
-    # Update the reactive data and then update the table via DT proxy
+    # Update the reactive data and then update the datatable via DT proxy
     rv_data(filtered)
     dt_proxy <- dataTableProxy("dataTable")
     replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
