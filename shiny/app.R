@@ -160,22 +160,24 @@ server <- function(input, output, session) {
   })
 
   # Search observer triggered when the user presses Enter in the search bar.
-  observeEvent(input$search_enter, {
-    # Switch to the "Table" page
-    updateNavbarPage(session, "page", selected = "Table")
+observeEvent(input$search_enter, {
+  # Switch to the "Table" page
+  updateNavbarPage(session, "page", selected = "Table")
 
-    # Filter by matching the search term against character versions of fields (example uses faithful)
-    search_term <- tolower(input$search_enter)
-    filtered <- faithful[
-      grepl(search_term, as.character(faithful$eruptions)) |
-        grepl(search_term, as.character(faithful$waiting)),
-    ]
+  # Get the search term and the current JSON table data
+  search_term <- input$search_enter
+  data <- rv_data()
 
-    # Update the reactive data and then update the datatable via DT proxy
-    rv_data(filtered)
-    dt_proxy <- dataTableProxy("dataTable")
-    replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
-  })
+  # Filter rows: check across all fields in each row for a match with the search term
+  filtered <- data[apply(data, 1, function(row) {
+    any(grepl(search_term, as.character(row)))
+  }), ]
+
+  # Update the reactive data and then update the datatable via DT proxy
+  rv_data(filtered)
+  dt_proxy <- dataTableProxy("dataTable")
+  replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
+})
 
   # Automatically trigger bookmarking on any input change
   observe({
