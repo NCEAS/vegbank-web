@@ -5,6 +5,7 @@ library(markdown)
 library(DT)
 library(leaflet)
 library(htmltools)
+library(jsonlite)
 
 # Define custom theme using bslib
 custom_theme <- bs_theme(
@@ -43,7 +44,7 @@ ui <- function(req) {
   navbar <- page_navbar(
     id = "page",
     theme = custom_theme, # Apply the custom theme
-    title = "Ole Faithful!",
+    title = "Vegbank",
 
     # First page: Histogram
     nav_panel(
@@ -97,7 +98,7 @@ ui <- function(req) {
 
 server <- function(input, output, session) {
   # Reactive value to hold table data; starts with full faithful dataset
-  rv_data <- reactiveVal(faithful)
+  rv_data <- reactiveVal(jsonlite::fromJSON("/Users/dariangill/git/vegbank-web/shiny/100_plot_obs.json"))
 
   # Render histogram based on the 'bins' input
   output$distPlot <- renderPlot({
