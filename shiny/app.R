@@ -46,23 +46,9 @@ ui <- function(req) {
     theme = custom_theme, # Apply the custom theme
     title = "Vegbank",
 
-    # First page: Histogram
+    # First page: Overview
     nav_panel(
-      title = "Histogram",
-      sidebarLayout(
-        sidebarPanel(
-          sliderInput(
-            inputId = "bins",
-            label = "Number of bins:",
-            min = 1,
-            max = 50,
-            value = 30
-          )
-        ),
-        mainPanel(
-          plotOutput("distPlot")
-        )
-      )
+      title = "Overview",
     ),
 
     # Second page: Searchable Table
@@ -87,8 +73,8 @@ ui <- function(req) {
         includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/static_content/old_faithful.md")
       ),
       nav_panel(
-        title = "Geysers",
-        includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/static_content/geysers.md")
+        title = "Frequently Asked Questions",
+        includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/static_content/faq.md")
       )
     ),
   )
@@ -173,10 +159,10 @@ server <- function(input, output, session) {
 
   # Render the map
   output$map <- leaflet::renderLeaflet({
-    leaflet() %>%
+    df <- rv_data()
+    leaflet(data = df) %>%
       addTiles() %>%
-      setView(lng = -110.8281, lat = 44.4605, zoom = 10) %>%
-      addMarkers(lng = -110.8281, lat = 44.4605, popup = "Old Faithful!")
+      addMarkers(lng = ~longitude, lat = ~latitude, popup = ~accessioncode)
   })
 
   # Search observer triggered when the user presses Enter in the search bar.
