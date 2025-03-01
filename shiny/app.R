@@ -47,6 +47,7 @@ ui <- function(req) {
     title = "Vegbank",
 
     # First page: Overview
+    # First page: Overview
     nav_panel(
       title = "Overview",
       fluidPage(
@@ -55,28 +56,36 @@ ui <- function(req) {
             width = 3,
             card(
               card_header("Top Places"),
-              card_body()
+              card_body(
+                uiOutput("topPlaces")
+              )
             )
           ),
           column(
             width = 3,
             card(
               card_header("Top Species"),
-              card_body(),
+              card_body(
+                uiOutput("topSpecies")
+              )
             )
           ),
           column(
             width = 3,
             card(
               card_header("Top Observers"),
-              card_body()
+              card_body(
+                uiOutput("topObservers")
+              )
             )
           ),
           column(
             width = 3,
             card(
               card_header("Top Years"),
-              card_body()
+              card_body(
+                uiOutput("topYears")
+              )
             )
           )
         )
@@ -117,15 +126,58 @@ server <- function(input, output, session) {
   # Reactive value to hold table data from the JSON file
   rv_data <- reactiveVal(jsonlite::fromJSON("/Users/dariangill/git/vegbank-web/shiny/100_plot_obs.json"))
 
-  # Render histogram based on the 'bins' input remains unchanged
-  output$distPlot <- renderPlot({
-    x <- faithful$waiting
-    bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    hist(x,
-      breaks = bins, col = "#3b8a71", border = "white",
-      xlab = "Waiting time to next eruption (in mins)",
-      main = "Histogram of waiting times"
-    )
+  # Add outputs for each card in the overview
+  output$topPlaces <- renderUI({
+    data <- rv_data()
+    # Get top 5 states
+    state_counts <- table(data$state)
+    top_states <- head(sort(state_counts, decreasing = TRUE), 5)
+
+    # Create bullet list of states and counts
+    items <- lapply(names(top_states), function(state) {
+      tags$li(HTML(sprintf("<strong>%s</strong>: %d plots", state, top_states[state])))
+    })
+
+    tags$ul(class = "list-unstyled", items)
+  })
+
+  output$topSpecies <- renderUI({
+    data <- rv_data()
+    # Get top 5 species
+    species_counts <- table(data$toptaxon1name)
+    top_species <- head(sort(species_counts, decreasing = TRUE), 5)
+
+    items <- lapply(names(top_species), function(species) {
+      tags$li(HTML(sprintf("<strong>%s</strong>: %d occurrences", species, top_species[species])))
+    })
+
+    tags$ul(class = "list-unstyled", items)
+  })
+
+  output$topObservers <- renderUI({
+    data <- rv_data()
+    # Get top 5 authors
+    interpreter_counts <- table(data$interp_current_partyname)
+    top_interpreters <- head(sort(interpreter_counts, decreasing = TRUE), 5)
+
+    items <- lapply(names(top_interpreters), function(interpreter) {
+      tags$li(HTML(sprintf("<strong>%s</strong>: %d plots", interpreter, top_interpreters[interpreter])))
+    })
+
+    tags$ul(class = "list-unstyled", items)
+  })
+
+  output$topYears <- renderUI({
+    data <- rv_data()
+    # Get top 5 years
+    year_counts <- table(data$dateentered)
+    top_years <- head(sort(year_counts, decreasing = TRUE), 5)
+
+    items <- lapply(names(top_years), function(year) {
+      tags$li(HTML(sprintf("<strong>%s</strong>: %d plots", year, top_years[year])))
+    })
+
+    tags$ul(class = "list-unstyled", items)
   })
 
   # Restore state for 'bins' and datatable row selection
