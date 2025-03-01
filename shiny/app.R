@@ -49,6 +49,38 @@ ui <- function(req) {
     # First page: Overview
     nav_panel(
       title = "Overview",
+      fluidPage(
+        fluidRow(
+          column(
+            width = 3,
+            card(
+              card_header("Top Places"),
+              card_body()
+            )
+          ),
+          column(
+            width = 3,
+            card(
+              card_header("Top Species"),
+              card_body(),
+            )
+          ),
+          column(
+            width = 3,
+            card(
+              card_header("Top Observers"),
+              card_body()
+            )
+          ),
+          column(
+            width = 3,
+            card(
+              card_header("Top Years"),
+              card_body()
+            )
+          )
+        )
+      )
     ),
 
     # Second page: Table (only datatable here)
@@ -57,16 +89,16 @@ ui <- function(req) {
       DT::dataTableOutput("dataTable")
     ),
 
-    # New Third page: Details (card view)
-    nav_panel(
-      title = "Details",
-      uiOutput("cardView")
-    ),
-
-    # Fourth page: Map
+    # Third page: Map
     nav_panel(
       title = "Map",
       leafletOutput("map")
+    ),
+
+    # Fourth page: Details (card view)
+    nav_panel(
+      title = "Details",
+      uiOutput("cardView")
     ),
     nav_menu(
       title = "About",
@@ -165,7 +197,37 @@ server <- function(input, output, session) {
     df <- rv_data()
     leaflet(data = df) %>%
       addTiles() %>%
-      addMarkers(lng = ~longitude, lat = ~latitude, popup = ~accessioncode)
+      addMarkers(
+        lng = ~longitude,
+        lat = ~latitude,
+        popup = ~ sprintf(
+          '<a href="#" onclick="Shiny.setInputValue(\'marker_click\', \'%s\', {priority: \'event\'})">%s</a>',
+          accessioncode, accessioncode
+        )
+      )
+  })
+
+  # Listener for marker popup link clicks
+  observeEvent(input$marker_click, {
+    code_clicked <- input$marker_click
+    data <- rv_data()
+    sel <- which(data$accessioncode == code_clicked)
+    if (length(sel) > 0) {
+      selected_data <- data[sel, ]
+      output$cardView <- renderUI({
+        valid_data <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
+        details <- lapply(names(valid_data), function(n) {
+          tags$p(tags$strong(paste0(n, ": ")), valid_data[[n]])
+        })
+        card(
+          card_header("Row Details"),
+          card_body(details)
+        )
+      })
+      dt_proxy <- dataTableProxy("dataTable")
+      selectRows(dt_proxy, sel)
+      updateNavbarPage(session, "page", selected = "Details")
+    }
   })
 
   # Search observer triggered when the user presses Enter in the search bar.
