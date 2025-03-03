@@ -60,14 +60,36 @@ create_details_view <- function(selected_data) {
       "stateprovince",
       "country"
     )
+        # Create dictionary for human-readable names
+    column_names <- list(
+      "confidentialitystatus" = "Confidentiality Status",
+      "latitude" = "Latitude",
+      "longitude" = "Longitude",
+      "locationnarrative" = "Location Description",
+      "stateprovince" = "State/Province",
+      "country" = "Country"
+    )
     location_list <- selected_data[location_columns]
-    location_list <- location_list[!is.na(location_list)]
+    location_list <- location_list[!sapply(location_list, function(x) is.null(x) || all(is.na(x)))]
 
-    location_details <- lapply(seq_along(location_list), function(i) {
-      tags$p(class = "list-unstyled", tags$strong(paste0(i, ". ")), location_list[[i]])
-    })
-    location_details
-  })
+    # Create table rows for each field
+    location_details <- Map(function(name, value) {
+      tags$tr(
+        tags$td(tags$strong(column_names[name])),
+        tags$td(
+          style = if(is.numeric(value)) "text-align: right;" else "",
+          value
+        )
+            )
+          }, names(location_list), location_list)
+
+          # Wrap in table tags
+          tags$table(
+            class = "table table-sm",
+            do.call(tags$tbody, location_details)
+          )
+          location_details
+        })
 
   list(row_details = row_details, taxa_details = taxa_details, location_details = location_details)
 }
@@ -190,14 +212,14 @@ ui <- function(req) {
       # uiOutput("cardView")
       fluidRow(
         column(
-          width = 6,
+          width = 5,
           card(
             card_header("Row Details"),
             uiOutput("rowDetails")
           ),
         ),
         column(
-          width = 3,
+          width = 4,
           card(
             card_header("Location Details"),
             uiOutput("locationDetails")
