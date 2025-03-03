@@ -40,13 +40,11 @@ ui <- function(req) {
     )
   )
 
-  # Build the UI using page_navbar normally...
   navbar <- page_navbar(
     id = "page",
-    theme = custom_theme, # Apply the custom theme
+    theme = custom_theme,
     title = "Vegbank",
 
-    # First page: Overview
     # First page: Overview
     nav_panel(
       title = "Overview",
@@ -92,7 +90,7 @@ ui <- function(req) {
       )
     ),
 
-    # Second page: Table (only datatable here)
+    # Second page: Table
     nav_panel(
       title = "Table",
       DT::dataTableOutput("dataTable")
@@ -104,7 +102,7 @@ ui <- function(req) {
       leafletOutput("map")
     ),
 
-    # Fourth page: Details (card view)
+    # Fourth page: Detailed card view
     nav_panel(
       title = "Details",
       uiOutput("cardView")
@@ -118,7 +116,9 @@ ui <- function(req) {
       )
     ),
   )
+
   navbar_with_search <- tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
+
   navbar_with_search
 }
 
