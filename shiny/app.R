@@ -17,6 +17,16 @@ custom_theme <- bs_theme(
   heading_font = font_google("Inter")
 )
 
+create_popup_link <- function(accessioncode) {
+  paste0(
+    '<a href="#" onclick="Shiny.setInputValue(\'marker_click\', \'',
+    accessioncode,
+    '\', {priority: \'event\'})">',
+    accessioncode,
+    "</a>"
+  )
+}
+
 # Wrap UI in a function(req) for bookmarking support
 ui <- function(req) {
   # Define the search <li> to be appended
@@ -49,6 +59,33 @@ ui <- function(req) {
     nav_panel(
       title = "Overview",
       fluidPage(
+        fluidRow(
+          column(
+            width = 12,
+            card(
+              card_header("App Overview"),
+              card_body(
+                "Vegbank is a database of vegetation plot data. The data displayed in this app is a
+                subset of the full dataset, containing 100 randomly selected plots. Each row in the
+                table represents a plot, and the columns contain information about the plot
+                location, species observed, and observer details. This is a simple Shiny app that
+                demonstrates how to use bookmarking to save the state of the app in the URL. The
+                app displays a table of data, a map, and a detailed view of each row in the table.
+                You can search for specific rows using the search bar in the navbar or on the table
+                page."
+              )
+            )
+          )
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            card(
+              card_header("Data in Vegbank"),
+              card_body(uiOutput("dataSummary"))
+            )
+          )
+        ),
         fluidRow(
           column(
             width = 3,
@@ -124,7 +161,15 @@ ui <- function(req) {
 
 server <- function(input, output, session) {
   # Reactive value to hold table data from the JSON file
-  rv_data <- reactiveVal(jsonlite::fromJSON("/Users/dariangill/git/vegbank-web/shiny/100_plot_obs.json"))
+  rv_data <- reactiveVal(
+    jsonlite::fromJSON("/Users/dariangill/git/vegbank-web/shiny/100_plot_obs.json")
+  )
+
+  output$dataSummary <- renderUI({
+    data <- rv_data()
+    summary <- paste0("This dataset contains ", nrow(data), " plots.")
+    tags$p(summary)
+  })
 
   # Add outputs for each card in the overview
   output$topPlaces <- renderUI({
@@ -135,7 +180,7 @@ server <- function(input, output, session) {
 
     # Create bullet list of states and counts
     items <- lapply(names(top_states), function(state) {
-      tags$li(HTML(sprintf("<strong>%s</strong>: %d plots", state, top_states[state])))
+      tags$li(tags$strong(paste0(state, ": ")), top_states[state])
     })
 
     tags$ul(class = "list-unstyled", items)
@@ -148,7 +193,7 @@ server <- function(input, output, session) {
     top_species <- head(sort(species_counts, decreasing = TRUE), 5)
 
     items <- lapply(names(top_species), function(species) {
-      tags$li(HTML(sprintf("<strong>%s</strong>: %d occurrences", species, top_species[species])))
+      tags$li(tags$strong(paste0(species, ": ")), paste(top_species[species], "occurrences"))
     })
 
     tags$ul(class = "list-unstyled", items)
@@ -161,7 +206,7 @@ server <- function(input, output, session) {
     top_interpreters <- head(sort(interpreter_counts, decreasing = TRUE), 5)
 
     items <- lapply(names(top_interpreters), function(interpreter) {
-      tags$li(HTML(sprintf("<strong>%s</strong>: %d plots", interpreter, top_interpreters[interpreter])))
+      tags$li(tags$strong(paste0(interpreter, ": ")), paste(top_interpreters[interpreter], "plots"))
     })
 
     tags$ul(class = "list-unstyled", items)
@@ -174,7 +219,7 @@ server <- function(input, output, session) {
     top_years <- head(sort(year_counts, decreasing = TRUE), 5)
 
     items <- lapply(names(top_years), function(year) {
-      tags$li(HTML(sprintf("<strong>%s</strong>: %d plots", year, top_years[year])))
+      tags$li(tags$strong(paste0(year, ": ")), paste(top_years[year], "plots"))
     })
 
     tags$ul(class = "list-unstyled", items)
@@ -252,10 +297,7 @@ server <- function(input, output, session) {
       addMarkers(
         lng = ~longitude,
         lat = ~latitude,
-        popup = ~ sprintf(
-          '<a href="#" onclick="Shiny.setInputValue(\'marker_click\', \'%s\', {priority: \'event\'})">%s</a>',
-          accessioncode, accessioncode
-        )
+        popup = ~ create_popup_link(accessioncode)
       )
   })
 
