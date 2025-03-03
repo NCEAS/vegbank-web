@@ -27,6 +27,51 @@ create_popup_link <- function(accessioncode) {
   )
 }
 
+# Add this function before the server function
+create_details_view <- function(selected_data) {
+  # Create row details
+  row_details <- renderUI({
+    valid_data <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
+    details <- lapply(names(valid_data), function(n) {
+      tags$p(tags$strong(paste0(n, ": ")), valid_data[[n]])
+    })
+    details
+  })
+
+  # Create taxa details
+  taxa_details <- renderUI({
+    taxa_columns <- grep("^toptaxon[0-9]+name$", names(selected_data), value = TRUE)
+    taxa_list <- selected_data[taxa_columns]
+    taxa_list <- taxa_list[!is.na(taxa_list)]
+
+    taxa_details <- lapply(seq_along(taxa_list), function(i) {
+      tags$p(class = "list-unstyled", tags$strong(paste0(i, ". ")), taxa_list[[i]])
+    })
+    taxa_details
+  })
+
+  # Create location details
+  location_details <- renderUI({
+    location_columns <- c(
+      "confidentialitystatus",
+      "latitude",
+      "longitude",
+      "locationnarrative",
+      "stateprovince",
+      "country"
+    )
+    location_list <- selected_data[location_columns]
+    location_list <- location_list[!is.na(location_list)]
+
+    location_details <- lapply(seq_along(location_list), function(i) {
+      tags$p(class = "list-unstyled", tags$strong(paste0(i, ". ")), location_list[[i]])
+    })
+    location_details
+  })
+
+  list(row_details = row_details, taxa_details = taxa_details, location_details = location_details)
+}
+
 # Wrap UI in a function(req) for bookmarking support
 ui <- function(req) {
   # Define the search <li> to be appended
@@ -142,7 +187,30 @@ ui <- function(req) {
     # Fourth page: Detailed card view
     nav_panel(
       title = "Details",
-      uiOutput("cardView")
+      # uiOutput("cardView")
+      fluidRow(
+        column(
+          width = 6,
+          card(
+            card_header("Row Details"),
+            uiOutput("rowDetails")
+          ),
+        ),
+        column(
+          width = 3,
+          card(
+            card_header("Location Details"),
+            uiOutput("locationDetails")
+          )
+        ),
+        column(
+          width = 3,
+          card(
+            card_header("Top Taxa"),
+            uiOutput("taxaDetails")
+          )
+        ),
+      )
     ),
     nav_menu(
       title = "About",
@@ -165,20 +233,21 @@ server <- function(input, output, session) {
     jsonlite::fromJSON("/Users/dariangill/git/vegbank-web/shiny/100_plot_obs.json")
   )
 
+  # Make outputs... ____________________________________________________________
+
+  # Get number of plots
   output$dataSummary <- renderUI({
     data <- rv_data()
     summary <- paste0("This dataset contains ", nrow(data), " plots.")
     tags$p(summary)
   })
 
-  # Add outputs for each card in the overview
+  # Get top 5 states
   output$topPlaces <- renderUI({
     data <- rv_data()
-    # Get top 5 states
     state_counts <- table(data$state)
     top_states <- head(sort(state_counts, decreasing = TRUE), 5)
 
-    # Create bullet list of states and counts
     items <- lapply(names(top_states), function(state) {
       tags$li(tags$strong(paste0(state, ": ")), top_states[state])
     })
@@ -186,9 +255,9 @@ server <- function(input, output, session) {
     tags$ul(class = "list-unstyled", items)
   })
 
+  # Get top 5 species
   output$topSpecies <- renderUI({
     data <- rv_data()
-    # Get top 5 species
     species_counts <- table(data$toptaxon1name)
     top_species <- head(sort(species_counts, decreasing = TRUE), 5)
 
@@ -199,9 +268,9 @@ server <- function(input, output, session) {
     tags$ul(class = "list-unstyled", items)
   })
 
+  # Get top 5 authors
   output$topObservers <- renderUI({
     data <- rv_data()
-    # Get top 5 authors
     interpreter_counts <- table(data$interp_current_partyname)
     top_interpreters <- head(sort(interpreter_counts, decreasing = TRUE), 5)
 
@@ -212,9 +281,9 @@ server <- function(input, output, session) {
     tags$ul(class = "list-unstyled", items)
   })
 
+  # Get top 5 years
   output$topYears <- renderUI({
     data <- rv_data()
-    # Get top 5 years
     year_counts <- table(data$dateentered)
     top_years <- head(sort(year_counts, decreasing = TRUE), 5)
 
@@ -223,30 +292,6 @@ server <- function(input, output, session) {
     })
 
     tags$ul(class = "list-unstyled", items)
-  })
-
-  # Restore state for 'bins' and datatable row selection
-  onRestore(function(state) {
-    updateSliderInput(session, "bins", value = state$input$bins)
-    if (!is.null(state$input$dataTable_rows_selected) &&
-      length(state$input$dataTable_rows_selected) > 0) {
-      selected_row <- state$input$dataTable_rows_selected
-      selected_data <- rv_data()[selected_row, ]
-      output$cardView <- renderUI({
-        # Display all non NULL/NA fields from the selected row
-        valid_data <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
-        details <- lapply(names(valid_data), function(n) {
-          tags$p(tags$strong(paste0(n, ": ")), valid_data[[n]])
-        })
-        card(
-          card_header("Row Details"),
-          card_body(details)
-        )
-      })
-      # Update the highlighted row in the datatable
-      dt_proxy <- dataTableProxy("dataTable")
-      selectRows(dt_proxy, selected_row)
-    }
   })
 
   # Render datatable using rv_data()
@@ -263,31 +308,6 @@ server <- function(input, output, session) {
     )
   })
 
-  # Update Details panel when a row is selected in the table
-  observeEvent(input$dataTable_rows_selected, {
-    selected_row <- input$dataTable_rows_selected
-    if (length(selected_row) > 0) {
-      selected_data <- rv_data()[selected_row, ]
-      output$cardView <- renderUI({
-        # Build a card displaying each non-null field from the selected row
-        valid_data <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
-        details <- lapply(names(valid_data), function(n) {
-          tags$p(tags$strong(paste0(n, ": ")), valid_data[[n]])
-        })
-        card(
-          card_header("Row Details"),
-          card_body(details)
-        )
-      })
-      # Switch to the "Details" nav panel
-      updateNavbarPage(session, "page", selected = "Details")
-    }
-  })
-
-  # Initially hide the card view (in case no row is selected at start)
-  output$cardView <- renderUI({
-    NULL
-  })
 
   # Render the leaflet map using fields "longitude" and "latitude"
   output$map <- leaflet::renderLeaflet({
@@ -301,6 +321,45 @@ server <- function(input, output, session) {
       )
   })
 
+  # Initially hide the detailed view (in case no row/pin is selected at start)
+  output$rowDetails <- renderUI({
+    NULL
+  })
+  output$taxaDetails <- renderUI({
+    NULL
+  })
+
+
+  # Hanlde Events... _________________________________________________________
+
+  # Restore the selected row when the app is restored from a bookmark or refreshed
+  onRestore(function(state) {
+    if (!is.null(state$input$dataTable_rows_selected) &&
+      length(state$input$dataTable_rows_selected) > 0) {
+      selected_row <- state$input$dataTable_rows_selected
+      selected_data <- rv_data()[selected_row, ]
+      details <- create_details_view(selected_data)
+      output$rowDetails <- details$row_details
+      output$locationDetails <- details$location_details
+      output$taxaDetails <- details$taxa_details
+      dt_proxy <- dataTableProxy("dataTable")
+      selectRows(dt_proxy, selected_row)
+    }
+  })
+
+  # Update and navigate to details panel when a row is selected in the table
+  observeEvent(input$dataTable_rows_selected, {
+    selected_row <- input$dataTable_rows_selected
+    if (length(selected_row) > 0) {
+      selected_data <- rv_data()[selected_row, ]
+      details <- create_details_view(selected_data)
+      output$rowDetails <- details$row_details
+      output$locationDetails <- details$location_details
+      output$taxaDetails <- details$taxa_details
+      updateNavbarPage(session, "page", selected = "Details")
+    }
+  })
+
   # Listener for marker popup link clicks
   observeEvent(input$marker_click, {
     code_clicked <- input$marker_click
@@ -308,16 +367,10 @@ server <- function(input, output, session) {
     sel <- which(data$accessioncode == code_clicked)
     if (length(sel) > 0) {
       selected_data <- data[sel, ]
-      output$cardView <- renderUI({
-        valid_data <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
-        details <- lapply(names(valid_data), function(n) {
-          tags$p(tags$strong(paste0(n, ": ")), valid_data[[n]])
-        })
-        card(
-          card_header("Row Details"),
-          card_body(details)
-        )
-      })
+      details <- create_details_view(selected_data)
+      output$rowDetails <- details$row_details
+      output$locationDetails <- details$location_details
+      output$taxaDetails <- details$taxa_details
       dt_proxy <- dataTableProxy("dataTable")
       selectRows(dt_proxy, sel)
       updateNavbarPage(session, "page", selected = "Details")
