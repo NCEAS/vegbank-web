@@ -15,7 +15,18 @@ custom_theme <- bs_theme(
   secondary = "#d8fb5a",
   base_font = font_google("Inter"),
   heading_font = font_google("Inter")
-)
+) %>%
+  bs_add_rules(
+    ".card-header {
+      background-color: #2c5443;
+      color: #FFFFFF;
+      font-weight: bold;
+    }
+    .navbar-brand {
+      color: #2c5443 !important;
+      font-weight: bold;
+    }"
+  )
 
 create_popup_link <- function(accessioncode) {
   paste0(
