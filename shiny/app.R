@@ -72,7 +72,7 @@ create_details_view <- function(selected_data) {
     "taxonobservationarea" = "Taxon Observation Area",
     "autotaxoncover" = "Taxon Cover Automatically Calculated",
     "plotvalidationlevel" = "Plot Validation Level",
-    "permance" = "Permanence"
+    "permanence" = "Permanent"
   )
 
   # Create plot ID details
@@ -318,13 +318,10 @@ ui <- function(req) {
       fluidRow(
         column(
           width = 5,
-          card(
-            card_header("Row Details"),
-            uiOutput("rowDetails")
-          ),
-        ),
-        column(
-          width = 4,
+          # card(
+          #   card_header("Row Details"),
+          #   uiOutput("rowDetails")
+          # ),
           card(
             card_header("Plot IDs"),
             uiOutput("plot_id_details")
@@ -337,6 +334,9 @@ ui <- function(req) {
             card_header("Layout"),
             uiOutput("layout_details")
           ),
+        ),
+        column(
+          width = 4,
           card(
             card_header("Environment"),
             uiOutput("environmental_details")
@@ -358,7 +358,6 @@ ui <- function(req) {
           )
         ),
       ),
-
     ),
     nav_menu(
       title = "About",
