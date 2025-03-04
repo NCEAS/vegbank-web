@@ -29,7 +29,7 @@ create_popup_link <- function(accessioncode) {
 
 # Add this function before the server function
 create_details_view <- function(selected_data) {
-  # Create row details
+  # Create row details (unchanged)
   row_details <- renderUI({
     valid_data <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
     details <- lapply(names(valid_data), function(n) {
@@ -38,7 +38,7 @@ create_details_view <- function(selected_data) {
     details
   })
 
-  # Create taxa details
+  # Create taxa details (unchanged)
   taxa_details <- renderUI({
     taxa_columns <- grep("^toptaxon[0-9]+name$", names(selected_data), value = TRUE)
     taxa_list <- selected_data[taxa_columns]
@@ -50,7 +50,7 @@ create_details_view <- function(selected_data) {
     taxa_details
   })
 
-  # Create dictionary for human-readable names
+  # Dictionary for human-readable names (unchanged)
   column_names <- list(
     "authorplotcode" = "Author Plot Code",
     "authorobscode" = "Author Observation Code",
@@ -75,83 +75,55 @@ create_details_view <- function(selected_data) {
     "permanence" = "Permanent"
   )
 
-  # Create plot ID details
+  # Modified create_table function to properly create table rows
+  create_table <- function(data_list) {
+    tbody_contents <- lapply(names(data_list), function(name) {
+      tags$tr(
+        tags$td(tags$strong(column_names[[name]] %||% name)), # Use %||% for NULL fallback
+        tags$td(class = "text-end", data_list[[name]])
+      )
+    })
+
+    tags$table(
+      class = "table table-sm table-striped table-hover",
+      tags$tbody(
+        tbody_contents
+      )
+    )
+  }
+
+  # Create all detail sections using the helper function
   plot_id_details <- renderUI({
     plot_id_columns <- c("authorobscode", "authorplotcode")
     plot_id_list <- selected_data[plot_id_columns]
     plot_id_list <- plot_id_list[!sapply(plot_id_list, function(x) is.null(x) || all(is.na(x)))]
-
-    plot_id_details <- Map(function(name, value) {
-      tags$tr(
-        tags$td(tags$strong(column_names[name])),
-        tags$td(value)
-      )
-    }, names(plot_id_list), plot_id_list)
-
-    tags$table(class = "table table-sm", do.call(tags$tbody, plot_id_details))
-    plot_id_details
+    create_table(plot_id_list)
   })
 
-  # Create location details
   location_details <- renderUI({
     location_columns <- c(
-      "confidentialitystatus",
-      "latitude",
-      "longitude",
-      "locationnarrative",
-      "stateprovince",
-      "country"
+      "confidentialitystatus", "latitude", "longitude",
+      "locationnarrative", "stateprovince", "country"
     )
-
     location_list <- selected_data[location_columns]
     location_list <- location_list[!sapply(location_list, function(x) is.null(x) || all(is.na(x)))]
-
-    location_details <- Map(function(name, value) {
-      tags$tr(
-        tags$td(tags$strong(column_names[name])),
-        tags$td(style = if (is.numeric(value)) "text-align: right;" else "", value)
-      )
-    }, names(location_list), location_list)
-
-    tags$table(class = "table table-sm", do.call(tags$tbody, location_details))
-    location_details
+    create_table(location_list)
   })
 
-  # Create layout details
   layout_details <- renderUI({
     layout_columns <- c("area", "permanence")
     layout_list <- selected_data[layout_columns]
     layout_list <- layout_list[!sapply(layout_list, function(x) is.null(x) || all(is.na(x)))]
-
-    layout_details <- Map(function(name, value) {
-      tags$tr(
-        tags$td(tags$strong(column_names[name])),
-        tags$td(style = if (is.numeric(value)) "text-align: right;" else "", value)
-      )
-    }, names(layout_list), layout_list)
-
-    tags$table(class = "table table-sm", do.call(tags$tbody, layout_details))
-    layout_details
+    create_table(layout_list)
   })
 
-  # Create environmental details
   environmental_details <- renderUI({
     environmental_columns <- c("elevation", "slopeaspect", "slopegradient")
     environmental_list <- selected_data[environmental_columns]
     environmental_list <- environmental_list[!sapply(environmental_list, function(x) is.null(x) || all(is.na(x)))]
-
-    environmental_details <- Map(function(name, value) {
-      tags$tr(
-        tags$td(tags$strong(column_names[name])),
-        tags$td(style = if (is.numeric(value)) "text-align: right;" else "", value)
-      )
-    }, names(environmental_list), environmental_list)
-
-    tags$table(class = "table table-sm", do.call(tags$tbody, environmental_details))
-    environmental_details
+    create_table(environmental_list)
   })
 
-  # Create methods details
   methods_details <- renderUI({
     methods_columns <- c(
       "obsstartdate", "project_id", "covermethod_id",
@@ -159,33 +131,14 @@ create_details_view <- function(selected_data) {
     )
     methods_list <- selected_data[methods_columns]
     methods_list <- methods_list[!sapply(methods_list, function(x) is.null(x) || all(is.na(x)))]
-
-    methods_details <- Map(function(name, value) {
-      tags$tr(
-        tags$td(tags$strong(column_names[name])),
-        tags$td(style = if (is.numeric(value)) "text-align: right;" else "", value)
-      )
-    }, names(methods_list), methods_list)
-
-    tags$table(class = "table table-sm", do.call(tags$tbody, methods_details))
-    methods_details
+    create_table(methods_list)
   })
 
-  # Create plot quality details
   plot_quality_details <- renderUI({
     plot_quality_columns <- c("plotvalidationlevel")
     plot_quality_list <- selected_data[plot_quality_columns]
     plot_quality_list <- plot_quality_list[!sapply(plot_quality_list, function(x) is.null(x) || all(is.na(x)))]
-
-    plot_quality_details <- Map(function(name, value) {
-      tags$tr(
-        tags$td(tags$strong(column_names[name])),
-        tags$td(value)
-      )
-    }, names(plot_quality_list), plot_quality_list)
-
-    tags$table(class = "table table-sm", do.call(tags$tbody, plot_quality_details))
-    plot_quality_details
+    create_table(plot_quality_list)
   })
 
   list(
@@ -479,12 +432,20 @@ server <- function(input, output, session) {
 
   # Hanlde Events... _________________________________________________________
 
+  # Store the selected row in a reactiveVal for persistence
+  selected_row <- reactiveVal(NULL)
+
+  # Update selected_row when table selection changes
+  observeEvent(input$dataTable_rows_selected, {
+    selected_row(input$dataTable_rows_selected)
+  })
+
   # Restore the selected row when the app is restored from a bookmark or refreshed
   onRestore(function(state) {
-    if (!is.null(state$input$dataTable_rows_selected) &&
-      length(state$input$dataTable_rows_selected) > 0) {
-      selected_row <- state$input$dataTable_rows_selected
-      selected_data <- rv_data()[selected_row, ]
+    # First restore the selected row from bookmarked state
+    if (!is.null(state$values$selected_row)) {
+      selected_row(state$values$selected_row)
+      selected_data <- rv_data()[state$values$selected_row, ]
       details <- create_details_view(selected_data)
       output$rowDetails <- details$row_details
       output$locationDetails <- details$location_details
@@ -495,8 +456,14 @@ server <- function(input, output, session) {
       output$plot_quality_details <- details$plot_quality_details
       output$taxaDetails <- details$taxa_details
       dt_proxy <- dataTableProxy("dataTable")
-      selectRows(dt_proxy, selected_row)
+      selectRows(dt_proxy, state$values$selected_row)
     }
+  })
+
+  # Add selected row to bookmark
+  onBookmark(function(state) {
+    state$values$selected_row <- selected_row()
+    state
   })
 
   # Update and navigate to details panel when a row is selected in the table
