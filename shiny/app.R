@@ -50,6 +50,48 @@ create_details_view <- function(selected_data) {
     taxa_details
   })
 
+  # Create dictionary for human-readable names
+  column_names <- list(
+    "authorplotcode" = "Author Plot Code",
+    "authorobscode" = "Author Observation Code",
+    "area" = "Area",
+    "permenance" = "Permenance",
+    "elevation" = "Elevation",
+    "slopeaspect" = "Slope Aspect",
+    "slopegradient" = "Slope Gradient",
+    "confidentialitystatus" = "Confidentiality Status",
+    "latitude" = "Latitude",
+    "longitude" = "Longitude",
+    "locationnarrative" = "Location Description",
+    "stateprovince" = "State/Province",
+    "country" = "Country",
+    "obsstartdate" = "Observation Start Date",
+    "project_id" = "Project ID",
+    "covermethod_id" = "Cover Method ID",
+    "stratummethod_id" = "Stratum Method ID",
+    "taxonobservationarea" = "Taxon Observation Area",
+    "autotaxoncover" = "Taxon Cover Automatically Calculated",
+    "plotvalidationlevel" = "Plot Validation Level",
+    "permance" = "Permanence"
+  )
+
+  # Create plot ID details
+  plot_id_details <- renderUI({
+    plot_id_columns <- c("authorobscode", "authorplotcode")
+    plot_id_list <- selected_data[plot_id_columns]
+    plot_id_list <- plot_id_list[!sapply(plot_id_list, function(x) is.null(x) || all(is.na(x)))]
+
+    plot_id_details <- Map(function(name, value) {
+      tags$tr(
+        tags$td(tags$strong(column_names[name])),
+        tags$td(value)
+      )
+    }, names(plot_id_list), plot_id_list)
+
+    tags$table(class = "table table-sm", do.call(tags$tbody, plot_id_details))
+    plot_id_details
+  })
+
   # Create location details
   location_details <- renderUI({
     location_columns <- c(
@@ -60,38 +102,102 @@ create_details_view <- function(selected_data) {
       "stateprovince",
       "country"
     )
-        # Create dictionary for human-readable names
-    column_names <- list(
-      "confidentialitystatus" = "Confidentiality Status",
-      "latitude" = "Latitude",
-      "longitude" = "Longitude",
-      "locationnarrative" = "Location Description",
-      "stateprovince" = "State/Province",
-      "country" = "Country"
-    )
+
     location_list <- selected_data[location_columns]
     location_list <- location_list[!sapply(location_list, function(x) is.null(x) || all(is.na(x)))]
 
-    # Create table rows for each field
     location_details <- Map(function(name, value) {
       tags$tr(
         tags$td(tags$strong(column_names[name])),
-        tags$td(
-          style = if(is.numeric(value)) "text-align: right;" else "",
-          value
-        )
-            )
-          }, names(location_list), location_list)
+        tags$td(style = if (is.numeric(value)) "text-align: right;" else "", value)
+      )
+    }, names(location_list), location_list)
 
-          # Wrap in table tags
-          tags$table(
-            class = "table table-sm",
-            do.call(tags$tbody, location_details)
-          )
-          location_details
-        })
+    tags$table(class = "table table-sm", do.call(tags$tbody, location_details))
+    location_details
+  })
 
-  list(row_details = row_details, taxa_details = taxa_details, location_details = location_details)
+  # Create layout details
+  layout_details <- renderUI({
+    layout_columns <- c("area", "permanence")
+    layout_list <- selected_data[layout_columns]
+    layout_list <- layout_list[!sapply(layout_list, function(x) is.null(x) || all(is.na(x)))]
+
+    layout_details <- Map(function(name, value) {
+      tags$tr(
+        tags$td(tags$strong(column_names[name])),
+        tags$td(style = if (is.numeric(value)) "text-align: right;" else "", value)
+      )
+    }, names(layout_list), layout_list)
+
+    tags$table(class = "table table-sm", do.call(tags$tbody, layout_details))
+    layout_details
+  })
+
+  # Create environmental details
+  environmental_details <- renderUI({
+    environmental_columns <- c("elevation", "slopeaspect", "slopegradient")
+    environmental_list <- selected_data[environmental_columns]
+    environmental_list <- environmental_list[!sapply(environmental_list, function(x) is.null(x) || all(is.na(x)))]
+
+    environmental_details <- Map(function(name, value) {
+      tags$tr(
+        tags$td(tags$strong(column_names[name])),
+        tags$td(style = if (is.numeric(value)) "text-align: right;" else "", value)
+      )
+    }, names(environmental_list), environmental_list)
+
+    tags$table(class = "table table-sm", do.call(tags$tbody, environmental_details))
+    environmental_details
+  })
+
+  # Create methods details
+  methods_details <- renderUI({
+    methods_columns <- c(
+      "obsstartdate", "project_id", "covermethod_id",
+      "stratummethod_id", "taxonobservationarea", "autotaxoncover"
+    )
+    methods_list <- selected_data[methods_columns]
+    methods_list <- methods_list[!sapply(methods_list, function(x) is.null(x) || all(is.na(x)))]
+
+    methods_details <- Map(function(name, value) {
+      tags$tr(
+        tags$td(tags$strong(column_names[name])),
+        tags$td(style = if (is.numeric(value)) "text-align: right;" else "", value)
+      )
+    }, names(methods_list), methods_list)
+
+    tags$table(class = "table table-sm", do.call(tags$tbody, methods_details))
+    methods_details
+  })
+
+  # Create plot quality details
+  plot_quality_details <- renderUI({
+    plot_quality_columns <- c("plotvalidationlevel")
+    plot_quality_list <- selected_data[plot_quality_columns]
+    plot_quality_list <- plot_quality_list[!sapply(plot_quality_list, function(x) is.null(x) || all(is.na(x)))]
+
+    plot_quality_details <- Map(function(name, value) {
+      tags$tr(
+        tags$td(tags$strong(column_names[name])),
+        tags$td(value)
+      )
+    }, names(plot_quality_list), plot_quality_list)
+
+    tags$table(class = "table table-sm", do.call(tags$tbody, plot_quality_details))
+    plot_quality_details
+  })
+
+  list(
+    row_details = row_details,
+    taxa_details = taxa_details,
+    location_details = location_details,
+    plot_id_details = plot_id_details,
+    layout_details = layout_details,
+    environmental_details = environmental_details,
+    methods_details = methods_details,
+    plot_quality_details = plot_quality_details
+  )
 }
 
 # Wrap UI in a function(req) for bookmarking support
@@ -209,7 +315,6 @@ ui <- function(req) {
     # Fourth page: Detailed card view
     nav_panel(
       title = "Details",
-      # uiOutput("cardView")
       fluidRow(
         column(
           width = 5,
@@ -221,8 +326,28 @@ ui <- function(req) {
         column(
           width = 4,
           card(
-            card_header("Location Details"),
+            card_header("Plot IDs"),
+            uiOutput("plot_id_details")
+          ),
+          card(
+            card_header("Location"),
             uiOutput("locationDetails")
+          ),
+          card(
+            card_header("Layout"),
+            uiOutput("layout_details")
+          ),
+          card(
+            card_header("Environment"),
+            uiOutput("environmental_details")
+          ),
+          card(
+            card_header("Methods"),
+            uiOutput("methods_details")
+          ),
+          card(
+            card_header("Plot Quality"),
+            uiOutput("plot_quality_details")
           )
         ),
         column(
@@ -232,7 +357,8 @@ ui <- function(req) {
             uiOutput("taxaDetails")
           )
         ),
-      )
+      ),
+
     ),
     nav_menu(
       title = "About",
@@ -363,6 +489,11 @@ server <- function(input, output, session) {
       details <- create_details_view(selected_data)
       output$rowDetails <- details$row_details
       output$locationDetails <- details$location_details
+      output$plot_id_details <- details$plot_id_details
+      output$layout_details <- details$layout_details
+      output$environmental_details <- details$environmental_details
+      output$methods_details <- details$methods_details
+      output$plot_quality_details <- details$plot_quality_details
       output$taxaDetails <- details$taxa_details
       dt_proxy <- dataTableProxy("dataTable")
       selectRows(dt_proxy, selected_row)
@@ -377,6 +508,11 @@ server <- function(input, output, session) {
       details <- create_details_view(selected_data)
       output$rowDetails <- details$row_details
       output$locationDetails <- details$location_details
+      output$plot_id_details <- details$plot_id_details
+      output$layout_details <- details$layout_details
+      output$environmental_details <- details$environmental_details
+      output$methods_details <- details$methods_details
+      output$plot_quality_details <- details$plot_quality_details
       output$taxaDetails <- details$taxa_details
       updateNavbarPage(session, "page", selected = "Details")
     }
@@ -392,6 +528,11 @@ server <- function(input, output, session) {
       details <- create_details_view(selected_data)
       output$rowDetails <- details$row_details
       output$locationDetails <- details$location_details
+      output$plot_id_details <- details$plot_id_details
+      output$layout_details <- details$layout_details
+      output$environmental_details <- details$environmental_details
+      output$methods_details <- details$methods_details
+      output$plot_quality_details <- details$plot_quality_details
       output$taxaDetails <- details$taxa_details
       dt_proxy <- dataTableProxy("dataTable")
       selectRows(dt_proxy, sel)
