@@ -26,11 +26,11 @@ custom_theme <- bs_theme(
     .navbar-brand {
       color: #2c5443 !important;
       font-weight: bold;
+    }
+    .navbar-brand img {
+      height: 30px;
+      margin-right: 10px;
     }"
-    # .navbar-brand img {
-    #   height: 30px;
-    #   margin-right: 10px;
-    # }"
   )
 
 create_popup_link <- function(accessioncode) {
@@ -194,11 +194,10 @@ ui <- function(req) {
   navbar <- page_navbar(
     id = "page",
     theme = custom_theme,
-    title = "Vegbank",
-    # title = tags$span(
-    #   tags$img(src = "static_content/logo_vegbank_leaves.svg"),
-    #   "Vegbank"
-    # ),
+    title = tags$span(
+      tags$img(src = "logo_vegbank_leaves.svg"),
+      "Vegbank"
+    ),
 
     # First page: Overview
     nav_panel(
@@ -327,7 +326,7 @@ ui <- function(req) {
       align = "right",
       nav_panel(
         title = "Frequently Asked Questions",
-        includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/static_content/faq.md")
+        includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/www/faq.md")
       )
     ),
   )
@@ -550,8 +549,8 @@ server <- function(input, output, session) {
   })
 
   # Restore state from bookmark
-  onRestore(function(state) {
-    if (!is.null(state$values$selected_row)) {
+  onRestore(function(state) 
+  { if (!is.null(state$values$selected_row)) {
       selected_row(state$values$selected_row)
       selected_data <- rv_data()[state$values$selected_row, ]
       update_details_view(selected_data)
