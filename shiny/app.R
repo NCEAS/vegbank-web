@@ -26,6 +26,10 @@ custom_theme <- bs_theme(
       color: #2c5443 !important;
       font-weight: bold;
     }"
+    # .navbar-brand img {
+    #   height: 30px;
+    #   margin-right: 10px;
+    # }"
   )
 
 create_popup_link <- function(accessioncode) {
@@ -191,6 +195,10 @@ ui <- function(req) {
     id = "page",
     theme = custom_theme,
     title = "Vegbank",
+    # title = tags$span(
+    #   tags$img(src = "static_content/logo_vegbank_leaves.svg"),
+    #   "Vegbank"
+    # ),
 
     # First page: Overview
     nav_panel(
@@ -340,9 +348,15 @@ ui <- function(req) {
 
 server <- function(input, output, session) {
   # Reactive value to hold table data from the JSON file
-  rv_data <- reactiveVal(
-    jsonlite::fromJSON("/Users/dariangill/git/vegbank-web/shiny/100_plot_obs.json")
-  )
+  rv_data <- reactiveVal(NULL)
+
+  observe({
+    # Reading local file
+    # data <- jsonlite::fromJSON("/Users/dariangill/git/vegbank-web/shiny/100_plot_obs.json")
+    # Hit api for same data
+    data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_test_data")
+    rv_data(data)
+  })
 
   # Make outputs... ____________________________________________________________
 
