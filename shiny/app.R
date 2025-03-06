@@ -301,7 +301,7 @@ ui <- function(req) {
   overlay <- tags$div(
     id = "detail-overlay",
     style = "position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; overflow-y: auto;
-             background: #fff; border-left: 1px solid #ccc; z-index: 1050; padding:20px; 
+             background: #fff; border-left: 1px solid #ccc; z-index: 1050; padding:20px;
              transition: right 0.4s;",
     # Close button
     tags$button("Close",
@@ -351,7 +351,15 @@ ui <- function(req) {
      });"
   ))
 
-  tagList(navbar_with_search, overlay, script)
+  # Add JS binding for "see details" buttons so they trigger input$see_details
+  btn_script <- tags$script(HTML(
+    '$(document).on("click", ".details-btn", function() {
+         var idx = $(this).data("row");
+         Shiny.setInputValue("see_details", idx, {priority:"event"});
+    });'
+  ))
+
+  tagList(navbar_with_search, overlay, script, btn_script)
 }
 
 server <- function(input, output, session) {
@@ -429,9 +437,18 @@ server <- function(input, output, session) {
 
   # Render datatable using rv_data()
   output$dataTable <- DT::renderDataTable({
+    data <- rv_data()
+    # Create "Details" button for each row
+    details_col <- sapply(seq_len(nrow(data)), function(i) {
+      sprintf('<button class="btn btn-info details-btn" data-row="%d">See Details</button>', i)
+    })
+    # Insert the Details column as the first column (after row names)
+    data <- cbind(Details = details_col, data)
+
     DT::datatable(
-      rv_data(),
-      selection = "single",
+      data,
+      escape = FALSE,
+      selection = "none",
       options = list(
         pageLength = 100,
         scrollY = "calc(100vh - 300px)",
@@ -482,13 +499,14 @@ server <- function(input, output, session) {
     output$taxaDetails <- details$taxa_details
   }
 
-  # Update selected_row when table selection changes
-  observeEvent(input$dataTable_rows_selected, {
-    selected_row(input$dataTable_rows_selected)
-    if (length(input$dataTable_rows_selected) > 0) {
-      selected_data <- rv_data()[input$dataTable_rows_selected, ]
+  # Add new observer for "see details" button clicks
+  observeEvent(input$see_details, {
+    idx <- as.numeric(input$see_details)
+    if (!is.na(idx) && idx > 0) {
+      selected_row <- idx
+      selected_data <- rv_data()[idx, ]
       update_details_view(selected_data)
-      # Open sliding overlay
+      print("clicked")
       session$sendCustomMessage("openOverlay", list())
     }
   })
