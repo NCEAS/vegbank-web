@@ -34,11 +34,10 @@ custom_theme <- bs_theme(
 
 create_popup_link <- function(accessioncode) {
   paste0(
-    '<a href="#" onclick="Shiny.setInputValue(\'marker_click\', \'',
     accessioncode,
-    '\', {priority: \'event\'})">',
+    '\n<a href="#" onclick="Shiny.setInputValue(\'marker_click\', \'',
     accessioncode,
-    "</a>"
+    '\', {priority: \'event\'})">See Details</a>'
   )
 }
 
