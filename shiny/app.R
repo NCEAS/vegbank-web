@@ -11,6 +11,7 @@ library(jsonlite)
 custom_theme <- bs_theme(
   bg = "#FFFFFF",
   fg = "#19201d",
+  info = "#2c5443",
   primary = "#72b9a2",
   secondary = "#d8fb5a",
   base_font = font_google("Inter"),
@@ -271,16 +272,53 @@ ui <- function(req) {
       )
     ),
 
-    # Second page: Table
-    nav_panel(
-      title = "Table",
-      DT::dataTableOutput("dataTable")
+    nav_menu(
+      title = "Plots",
+      nav_panel(
+        title = "Table",
+        DT::dataTableOutput("dataTable")
+      ),
+      nav_panel(
+        title = "Map",
+        leafletOutput("map")
+      )
     ),
 
-    # Third page: Map
-    nav_panel(
-      title = "Map",
-      leafletOutput("map")
+    nav_menu(
+      title = "Plants",
+      nav_panel(
+        title = "Table",
+      ),
+      nav_panel(
+        title = "Map",
+      )
+    ),
+    nav_menu(
+      title = "Commuinties",
+      nav_panel(
+        title = "Table",
+      ),
+      nav_panel(
+        title = "Map",
+      )
+    ),
+    nav_menu(
+      title = "Places",
+      nav_panel(
+        title = "Table",
+      ),
+      nav_panel(
+        title = "Map",
+      )
+    ),
+    nav_menu(
+      title = "People",
+      nav_panel(
+        title = "Table",
+      ),
+      nav_panel(
+        title = "Map",
+      )
     ),
 
     # Removed Details nav panel
@@ -303,8 +341,9 @@ ui <- function(req) {
              background: #fff; border-left: 1px solid #ccc; z-index: 1050; padding:20px;
              transition: right 0.4s;",
     # Close button
-    tags$button("Close",
+    actionButton("close_overlay", "",
       onclick = "document.getElementById('detail-overlay').style.right='-400px';",
+      class = "btn-close",
       style = "float:right; margin-bottom:10px;"
     ),
     # Details content (same as previous details nav panel)
