@@ -460,26 +460,37 @@ server <- function(input, output, session) {
   # Store the selected row in a reactiveVal for persistence
   selected_row <- reactiveVal(NULL)
 
+  # Helper function to update details view
+  update_details_view <- function(selected_data) {
+    details <- create_details_view(selected_data)
+    # Update all output elements with details
+    output$rowDetails <- details$row_details
+    output$locationDetails <- details$location_details
+    output$plot_id_details <- details$plot_id_details
+    output$layout_details <- details$layout_details
+    output$environmental_details <- details$environmental_details
+    output$methods_details <- details$methods_details
+    output$plot_quality_details <- details$plot_quality_details
+    output$taxaDetails <- details$taxa_details
+  }
+
   # Update selected_row when table selection changes
   observeEvent(input$dataTable_rows_selected, {
     selected_row(input$dataTable_rows_selected)
+    if (length(input$dataTable_rows_selected) > 0) {
+      selected_data <- rv_data()[input$dataTable_rows_selected, ]
+      update_details_view(selected_data)
+      # Navigate to details page
+      updateNavbarPage(session, "page", selected = "Details")
+    }
   })
 
-  # Restore the selected row when the app is restored from a bookmark or refreshed
+  # Restore state from bookmark
   onRestore(function(state) {
-    # First restore the selected row from bookmarked state
     if (!is.null(state$values$selected_row)) {
       selected_row(state$values$selected_row)
       selected_data <- rv_data()[state$values$selected_row, ]
-      details <- create_details_view(selected_data)
-      output$rowDetails <- details$row_details
-      output$locationDetails <- details$location_details
-      output$plot_id_details <- details$plot_id_details
-      output$layout_details <- details$layout_details
-      output$environmental_details <- details$environmental_details
-      output$methods_details <- details$methods_details
-      output$plot_quality_details <- details$plot_quality_details
-      output$taxaDetails <- details$taxa_details
+      update_details_view(selected_data)
       dt_proxy <- dataTableProxy("dataTable")
       selectRows(dt_proxy, state$values$selected_row)
     }
@@ -491,42 +502,18 @@ server <- function(input, output, session) {
     state
   })
 
-  # Update and navigate to details panel when a row is selected in the table
-  observeEvent(input$dataTable_rows_selected, {
-    selected_row <- input$dataTable_rows_selected
-    if (length(selected_row) > 0) {
-      selected_data <- rv_data()[selected_row, ]
-      details <- create_details_view(selected_data)
-      output$rowDetails <- details$row_details
-      output$locationDetails <- details$location_details
-      output$plot_id_details <- details$plot_id_details
-      output$layout_details <- details$layout_details
-      output$environmental_details <- details$environmental_details
-      output$methods_details <- details$methods_details
-      output$plot_quality_details <- details$plot_quality_details
-      output$taxaDetails <- details$taxa_details
-      updateNavbarPage(session, "page", selected = "Details")
-    }
-  })
-
-  # Listener for marker popup link clicks
+  # Handle map marker clicks
   observeEvent(input$marker_click, {
     code_clicked <- input$marker_click
     data <- rv_data()
     sel <- which(data$accessioncode == code_clicked)
     if (length(sel) > 0) {
+      selected_row(sel)
       selected_data <- data[sel, ]
-      details <- create_details_view(selected_data)
-      output$rowDetails <- details$row_details
-      output$locationDetails <- details$location_details
-      output$plot_id_details <- details$plot_id_details
-      output$layout_details <- details$layout_details
-      output$environmental_details <- details$environmental_details
-      output$methods_details <- details$methods_details
-      output$plot_quality_details <- details$plot_quality_details
-      output$taxaDetails <- details$taxa_details
+      update_details_view(selected_data)
       dt_proxy <- dataTableProxy("dataTable")
       selectRows(dt_proxy, sel)
+      # Navigate to details page
       updateNavbarPage(session, "page", selected = "Details")
     }
   })
