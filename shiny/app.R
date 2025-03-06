@@ -284,53 +284,7 @@ ui <- function(req) {
       leafletOutput("map")
     ),
 
-    # Fourth page: Detailed card view
-    nav_panel(
-      title = "Details",
-      fluidRow(
-        column(
-          width = 5,
-          # card(
-          #   card_header("Row Details"),
-          #   uiOutput("rowDetails")
-          # ),
-          card(
-            card_header("Plot IDs"),
-            uiOutput("plot_id_details")
-          ),
-          card(
-            card_header("Location"),
-            uiOutput("locationDetails")
-          ),
-          card(
-            card_header("Layout"),
-            uiOutput("layout_details")
-          ),
-        ),
-        column(
-          width = 4,
-          card(
-            card_header("Environment"),
-            uiOutput("environmental_details")
-          ),
-          card(
-            card_header("Methods"),
-            uiOutput("methods_details")
-          ),
-          card(
-            card_header("Plot Quality"),
-            uiOutput("plot_quality_details")
-          )
-        ),
-        column(
-          width = 3,
-          card(
-            card_header("Top Taxa"),
-            uiOutput("taxaDetails")
-          )
-        ),
-      ),
-    ),
+    # Removed Details nav panel
     nav_menu(
       title = "About",
       align = "right",
@@ -343,7 +297,61 @@ ui <- function(req) {
 
   navbar_with_search <- tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
 
-  navbar_with_search
+  # Add sliding overlay panel for details
+  overlay <- tags$div(
+    id = "detail-overlay",
+    style = "position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; overflow-y: auto;
+             background: #fff; border-left: 1px solid #ccc; z-index: 1050; padding:20px; 
+             transition: right 0.4s;",
+    # Close button
+    tags$button("Close",
+      onclick = "document.getElementById('detail-overlay').style.right='-400px';",
+      style = "float:right; margin-bottom:10px;"
+    ),
+    # Details content (same as previous details nav panel)
+    fluidRow(
+      column(
+        width = 12,
+        card(
+          card_header("Plot IDs"),
+          uiOutput("plot_id_details")
+        ),
+        card(
+          card_header("Location"),
+          uiOutput("locationDetails")
+        ),
+        card(
+          card_header("Layout"),
+          uiOutput("layout_details")
+        ),
+        card(
+          card_header("Environment"),
+          uiOutput("environmental_details")
+        ),
+        card(
+          card_header("Methods"),
+          uiOutput("methods_details")
+        ),
+        card(
+          card_header("Plot Quality"),
+          uiOutput("plot_quality_details")
+        ),
+        card(
+          card_header("Top Taxa"),
+          uiOutput("taxaDetails")
+        )
+      )
+    )
+  )
+
+  # Custom JS to open overlay from server message.
+  script <- tags$script(HTML(
+    "Shiny.addCustomMessageHandler('openOverlay', function(message) {
+         document.getElementById('detail-overlay').style.right = '0px';
+     });"
+  ))
+
+  tagList(navbar_with_search, overlay, script)
 }
 
 server <- function(input, output, session) {
@@ -480,8 +488,8 @@ server <- function(input, output, session) {
     if (length(input$dataTable_rows_selected) > 0) {
       selected_data <- rv_data()[input$dataTable_rows_selected, ]
       update_details_view(selected_data)
-      # Navigate to details page
-      updateNavbarPage(session, "page", selected = "Details")
+      # Open sliding overlay
+      session$sendCustomMessage("openOverlay", list())
     }
   })
 
@@ -513,8 +521,7 @@ server <- function(input, output, session) {
       update_details_view(selected_data)
       dt_proxy <- dataTableProxy("dataTable")
       selectRows(dt_proxy, sel)
-      # Navigate to details page
-      updateNavbarPage(session, "page", selected = "Details")
+      session$sendCustomMessage("openOverlay", list())
     }
   })
 
