@@ -7,7 +7,7 @@ library(leaflet)
 library(htmltools)
 library(jsonlite)
 
-# Define custom theme using bslib
+# Define custom theme and common rules
 custom_theme <- bs_theme(
   bg = "#FFFFFF",
   fg = "#19201d",
@@ -18,19 +18,9 @@ custom_theme <- bs_theme(
   heading_font = font_google("Inter")
 ) %>%
   bs_add_rules(
-    ".card-header {
-      background-color: #2c5443;
-      color: #FFFFFF;
-      font-weight: bold;
-    }
-    .navbar-brand {
-      color: #2c5443 !important;
-      font-weight: bold;
-    }
-    .navbar-brand img {
-      height: 30px;
-      margin-right: 10px;
-    }"
+    ".card-header { background-color: #2c5443; color: #FFFFFF; font-weight: bold; }
+     .navbar-brand { color: #2c5443 !important; font-weight: bold; }
+     .navbar-brand img { height: 30px; margin-right: 10px; }"
   )
 
 create_popup_link <- function(accessioncode) {
@@ -42,30 +32,22 @@ create_popup_link <- function(accessioncode) {
   )
 }
 
-# Add this function before the server function
+# Details view helper
 create_details_view <- function(selected_data) {
-  # Create row details (unchanged)
   row_details <- renderUI({
-    valid_data <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
-    details <- lapply(names(valid_data), function(n) {
-      tags$p(tags$strong(paste0(n, ": ")), valid_data[[n]])
+    valid <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
+    lapply(names(valid), function(n) {
+      tags$p(tags$strong(paste0(n, ": ")), valid[[n]])
     })
-    details
   })
-
-  # Create taxa details (unchanged)
   taxa_details <- renderUI({
-    taxa_columns <- grep("^toptaxon[0-9]+name$", names(selected_data), value = TRUE)
-    taxa_list <- selected_data[taxa_columns]
-    taxa_list <- taxa_list[!is.na(taxa_list)]
-
-    taxa_details <- lapply(seq_along(taxa_list), function(i) {
-      tags$p(class = "list-unstyled", tags$strong(paste0(i, ". ")), taxa_list[[i]])
+    cols <- grep("^toptaxon[0-9]+name$", names(selected_data), value = TRUE)
+    list_data <- selected_data[cols]
+    list_data <- list_data[!is.na(list_data)]
+    lapply(seq_along(list_data), function(i) {
+      tags$p(class = "list-unstyled", tags$strong(paste0(i, ". ")), list_data[[i]])
     })
-    taxa_details
   })
-
-  # Dictionary for human-readable names (unchanged)
   column_names <- list(
     "authorplotcode" = "Author Plot Code",
     "authorobscode" = "Author Observation Code",
@@ -89,73 +71,60 @@ create_details_view <- function(selected_data) {
     "plotvalidationlevel" = "Plot Validation Level",
     "permanence" = "Permanent"
   )
-
-  # Modified create_table function to properly create table rows
-  create_table <- function(data_list) {
-    tbody_contents <- lapply(names(data_list), function(name) {
+  create_table <- function(dl) {
+    tbody <- lapply(names(dl), function(name) {
       tags$tr(
-        tags$td(tags$strong(column_names[[name]] %||% name)), # Use %||% for NULL fallback
-        tags$td(class = "text-end", data_list[[name]])
+        tags$td(tags$strong(column_names[[name]] %||% name)),
+        tags$td(class = "text-end", dl[[name]])
       )
     })
-
     tags$table(
       class = "table table-sm table-striped table-hover",
-      tags$tbody(
-        tbody_contents
-      )
+      tags$tbody(tbody)
     )
   }
-
-  # Create all detail sections using the helper function
   plot_id_details <- renderUI({
-    plot_id_columns <- c("authorobscode", "authorplotcode")
-    plot_id_list <- selected_data[plot_id_columns]
-    plot_id_list <- plot_id_list[!sapply(plot_id_list, function(x) is.null(x) || all(is.na(x)))]
-    create_table(plot_id_list)
+    cols <- c("authorobscode", "authorplotcode")
+    dt <- selected_data[cols]
+    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
+    create_table(dt)
   })
-
   location_details <- renderUI({
-    location_columns <- c(
+    cols <- c(
       "confidentialitystatus", "latitude", "longitude",
       "locationnarrative", "stateprovince", "country"
     )
-    location_list <- selected_data[location_columns]
-    location_list <- location_list[!sapply(location_list, function(x) is.null(x) || all(is.na(x)))]
-    create_table(location_list)
+    dt <- selected_data[cols]
+    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
+    create_table(dt)
   })
-
   layout_details <- renderUI({
-    layout_columns <- c("area", "permanence")
-    layout_list <- selected_data[layout_columns]
-    layout_list <- layout_list[!sapply(layout_list, function(x) is.null(x) || all(is.na(x)))]
-    create_table(layout_list)
+    cols <- c("area", "permanence")
+    dt <- selected_data[cols]
+    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
+    create_table(dt)
   })
-
   environmental_details <- renderUI({
-    environmental_columns <- c("elevation", "slopeaspect", "slopegradient")
-    environmental_list <- selected_data[environmental_columns]
-    environmental_list <- environmental_list[!sapply(environmental_list, function(x) is.null(x) || all(is.na(x)))]
-    create_table(environmental_list)
+    cols <- c("elevation", "slopeaspect", "slopegradient")
+    dt <- selected_data[cols]
+    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
+    create_table(dt)
   })
-
   methods_details <- renderUI({
-    methods_columns <- c(
+    cols <- c(
       "obsstartdate", "project_id", "covermethod_id",
       "stratummethod_id", "taxonobservationarea", "autotaxoncover"
     )
-    methods_list <- selected_data[methods_columns]
-    methods_list <- methods_list[!sapply(methods_list, function(x) is.null(x) || all(is.na(x)))]
-    create_table(methods_list)
+    dt <- selected_data[cols]
+    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
+    create_table(dt)
   })
-
   plot_quality_details <- renderUI({
-    plot_quality_columns <- c("plotvalidationlevel")
-    plot_quality_list <- selected_data[plot_quality_columns]
-    plot_quality_list <- plot_quality_list[!sapply(plot_quality_list, function(x) is.null(x) || all(is.na(x)))]
-    create_table(plot_quality_list)
+    cols <- c("plotvalidationlevel")
+    dt <- selected_data[cols]
+    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
+    create_table(dt)
   })
-
   list(
     row_details = row_details,
     taxa_details = taxa_details,
@@ -168,38 +137,24 @@ create_details_view <- function(selected_data) {
   )
 }
 
-# Wrap UI in a function(req) for bookmarking support
-ui <- function(req) {
-  # Define the search <li> to be appended
+# Helper to build navbar and overlay (minimal duplication)
+build_navbar <- function() {
   search_div <- tags$li(
     class = "nav-item",
     tags$div(
       class = "navbar-form",
-      textInput(
-        inputId = "search",
-        placeholder = "Search...",
-        label = NULL
-      ),
-      # JavaScript to trigger search_enter when Enter is pressed in the text input
+      textInput("search", "", "Search..."),
       tags$script(HTML(
         "$(document).on('keypress', '#search', function(e) {
-            if(e.which == 13) {
-              Shiny.setInputValue('search_enter', $(this).val(), {priority: 'event'});
-            }
+           if(e.which == 13){ Shiny.setInputValue('search_enter', $(this).val(), {priority:'event'}); }
          });"
       ))
     )
   )
-
   navbar <- page_navbar(
     id = "page",
     theme = custom_theme,
-    title = tags$span(
-      tags$img(src = "logo_vegbank_leaves.svg"),
-      "Vegbank"
-    ),
-
-    # First page: Overview
+    title = tags$span(tags$img(src = "logo_vegbank_leaves.svg"), "Vegbank"),
     nav_panel(
       title = "Overview",
       fluidPage(
@@ -223,67 +178,24 @@ ui <- function(req) {
         ),
         fluidRow(
           column(
-            width = 12,
-            card(
-              card_header("Data in Vegbank"),
-              card_body(uiOutput("dataSummary"))
-            )
+            12,
+            card(card_header("Data in Vegbank"), card_body(uiOutput("dataSummary")))
           )
         ),
         fluidRow(
-          column(
-            width = 3,
-            card(
-              card_header("Top Places"),
-              card_body(
-                uiOutput("topPlaces")
-              )
-            )
-          ),
-          column(
-            width = 3,
-            card(
-              card_header("Top Species"),
-              card_body(
-                uiOutput("topSpecies")
-              )
-            )
-          ),
-          column(
-            width = 3,
-            card(
-              card_header("Top Observers"),
-              card_body(
-                uiOutput("topObservers")
-              )
-            )
-          ),
-          column(
-            width = 3,
-            card(
-              card_header("Top Years"),
-              card_body(
-                uiOutput("topYears")
-              )
-            )
-          )
+          column(3, card(card_header("Top Places"), card_body(uiOutput("topPlaces")))),
+          column(3, card(card_header("Top Species"), card_body(uiOutput("topSpecies")))),
+          column(3, card(card_header("Top Observers"), card_body(uiOutput("topObservers")))),
+          column(3, card(card_header("Top Years"), card_body(uiOutput("topYears"))))
         )
       )
     ),
-
     nav_menu(
       title = "Plots",
-      nav_panel(
-        title = "Table",
-        DT::dataTableOutput("dataTable")
-      ),
-      nav_panel(
-        title = "Map",
-        leafletOutput("map")
-      )
+      nav_panel(title = "Table", DT::dataTableOutput("dataTable")),
+      nav_panel(title = "Map", leafletOutput("map"))
     ),
-
-    nav_menu(
+     nav_menu(
       title = "Plants",
       nav_panel(
         title = "Table",
@@ -319,75 +231,53 @@ ui <- function(req) {
         title = "Map",
       )
     ),
-
-    # Removed Details nav panel
     nav_menu(
       title = "About",
       align = "right",
-      nav_panel(
-        title = "Frequently Asked Questions",
-        includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/www/faq.md")
-      )
-    ),
+      nav_panel(title = "FAQ", includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/www/faq.md"))
+    )
   )
-
   navbar_with_search <- tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
+  navbar_with_search
+}
 
-  # Add sliding overlay panel for details
+build_overlay <- function() {
   overlay <- tags$div(
     id = "detail-overlay",
     style = "position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; overflow-y: auto;
              background: #fff; border-left: 1px solid #ccc; z-index: 1050; padding:20px;
              transition: right 0.4s;",
-    # Close button
     actionButton("close_overlay", "",
-      onclick = "document.getElementById('detail-overlay').style.right='-400px';",
-      class = "btn-close",
-      style = "float:right; margin-bottom:10px;"
+      onclick = "document.getElementById('detail-overlay').style.right='-400px';
+                            Shiny.setInputValue('close_details', true, {priority:'event'});",
+      class = "btn-close", style = "float:right; margin-bottom:10px;"
     ),
-    # Details content (same as previous details nav panel)
     fluidRow(
       column(
-        width = 12,
-        card(
-          card_header("Plot IDs"),
-          uiOutput("plot_id_details")
-        ),
-        card(
-          card_header("Location"),
-          uiOutput("locationDetails")
-        ),
-        card(
-          card_header("Layout"),
-          uiOutput("layout_details")
-        ),
-        card(
-          card_header("Environment"),
-          uiOutput("environmental_details")
-        ),
-        card(
-          card_header("Methods"),
-          uiOutput("methods_details")
-        ),
-        card(
-          card_header("Plot Quality"),
-          uiOutput("plot_quality_details")
-        ),
-        card(
-          card_header("Top Taxa"),
-          uiOutput("taxaDetails")
-        )
+        12,
+        card(card_header("Plot IDs"), uiOutput("plot_id_details")),
+        card(card_header("Location"), uiOutput("locationDetails")),
+        card(card_header("Layout"), uiOutput("layout_details")),
+        card(card_header("Environment"), uiOutput("environmental_details")),
+        card(card_header("Methods"), uiOutput("methods_details")),
+        card(card_header("Plot Quality"), uiOutput("plot_quality_details")),
+        card(card_header("Top Taxa"), uiOutput("taxaDetails"))
       )
     )
   )
+  overlay
+}
 
+# UI: use helper functions and add custom JS
+ui <- function(req) {
+  navbar_with_search <- build_navbar()
+  overlay <- build_overlay()
   # Custom JS to open overlay from server message.
   script <- tags$script(HTML(
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
          document.getElementById('detail-overlay').style.right = '0px';
      });"
   ))
-
   # Add JS binding for "see details" buttons so they trigger input$see_details
   btn_script <- tags$script(HTML(
     '$(document).on("click", ".details-btn", function() {
@@ -395,18 +285,13 @@ ui <- function(req) {
          Shiny.setInputValue("see_details", idx, {priority:"event"});
     });'
   ))
-
   tagList(navbar_with_search, overlay, script, btn_script)
 }
 
+# In server, factor out common update logic
 server <- function(input, output, session) {
-  # Reactive value to hold table data from the JSON file
   rv_data <- reactiveVal(NULL)
-
   observe({
-    # Reading local file
-    # data <- jsonlite::fromJSON("/Users/dariangill/git/vegbank-web/shiny/100_plot_obs.json")
-    # Hit api for same data
     data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_test_data")
     rv_data(data)
   })
@@ -415,100 +300,79 @@ server <- function(input, output, session) {
 
   # Get number of plots
   output$dataSummary <- renderUI({
-    data <- rv_data()
-    summary <- paste0("This dataset contains ", nrow(data), " plots.")
-    tags$p(summary)
+    tags$p(paste0("This dataset contains ", nrow(rv_data()), " plots."))
   })
-
   # Get top 5 states
+
   output$topPlaces <- renderUI({
     data <- rv_data()
-    state_counts <- table(data$state)
-    top_states <- head(sort(state_counts, decreasing = TRUE), 5)
-
-    items <- lapply(names(top_states), function(state) {
-      tags$li(tags$strong(paste0(state, ": ")), top_states[state])
-    })
-
+    items <- lapply(
+      names(head(sort(table(data$state), decreasing = TRUE), 5)),
+      function(s) {
+        tags$li(tags$strong(s), table(data$state)[[s]])
+      }
+    )
     tags$ul(class = "list-unstyled", items)
   })
-
   # Get top 5 species
+
   output$topSpecies <- renderUI({
     data <- rv_data()
-    species_counts <- table(data$toptaxon1name)
-    top_species <- head(sort(species_counts, decreasing = TRUE), 5)
-
-    items <- lapply(names(top_species), function(species) {
-      tags$li(tags$strong(paste0(species, ": ")), paste(top_species[species], "occurrences"))
-    })
-
+    items <- lapply(
+      names(head(sort(table(data$toptaxon1name), decreasing = TRUE), 5)),
+      function(s) {
+        tags$li(tags$strong(s), paste(table(data$toptaxon1name)[[s]], "occurrences"))
+      }
+    )
     tags$ul(class = "list-unstyled", items)
   })
-
   # Get top 5 authors
+
   output$topObservers <- renderUI({
     data <- rv_data()
-    interpreter_counts <- table(data$interp_current_partyname)
-    top_interpreters <- head(sort(interpreter_counts, decreasing = TRUE), 5)
-
-    items <- lapply(names(top_interpreters), function(interpreter) {
-      tags$li(tags$strong(paste0(interpreter, ": ")), paste(top_interpreters[interpreter], "plots"))
-    })
-
+    items <- lapply(
+      names(head(sort(table(data$interp_current_partyname), decreasing = TRUE), 5)),
+      function(s) {
+        tags$li(tags$strong(s), paste(table(data$interp_current_partyname)[[s]], "plots"))
+      }
+    )
     tags$ul(class = "list-unstyled", items)
   })
-
   # Get top 5 years
+
   output$topYears <- renderUI({
     data <- rv_data()
-    year_counts <- table(data$dateentered)
-    top_years <- head(sort(year_counts, decreasing = TRUE), 5)
-
-    items <- lapply(names(top_years), function(year) {
-      tags$li(tags$strong(paste0(year, ": ")), paste(top_years[year], "plots"))
-    })
-
+    items <- lapply(
+      names(head(sort(table(data$dateentered), decreasing = TRUE), 5)),
+      function(s) {
+        tags$li(tags$strong(s), paste(table(data$dateentered)[[s]], "plots"))
+      }
+    )
     tags$ul(class = "list-unstyled", items)
   })
 
-  # Render datatable using rv_data()
   output$dataTable <- DT::renderDataTable({
     data <- rv_data()
-    # Create "Details" button for each row
-    details_col <- sapply(seq_len(nrow(data)), function(i) {
+    details <- sapply(seq_len(nrow(data)), function(i) {
       sprintf('<button class="btn btn-info details-btn" data-row="%d">See Details</button>', i)
     })
-    # Insert the Details column as the first column (after row names)
-    data <- cbind(Details = details_col, data)
-
-    DT::datatable(
-      data,
-      escape = FALSE,
-      selection = "none",
+    data <- cbind(Details = details, data)
+    DT::datatable(data,
+      escape = FALSE, selection = "none",
       options = list(
-        pageLength = 100,
-        scrollY = "calc(100vh - 300px)",
-        scrollX = TRUE,
-        scrollCollapse = TRUE
+        pageLength = 100, scrollY = "calc(100vh - 300px)",
+        scrollX = TRUE, scrollCollapse = TRUE
       )
     )
   })
 
-
-  # Render the leaflet map using fields "longitude" and "latitude"
   output$map <- leaflet::renderLeaflet({
     df <- rv_data()
     leaflet(data = df) %>%
       addTiles() %>%
-      addMarkers(
-        lng = ~longitude,
-        lat = ~latitude,
-        popup = ~ create_popup_link(accessioncode)
-      )
+      addMarkers(lng = ~longitude, lat = ~latitude, popup = ~ create_popup_link(accessioncode))
   })
 
-  # Initially hide the detailed view (in case no row/pin is selected at start)
   output$rowDetails <- renderUI({
     NULL
   })
@@ -516,97 +380,74 @@ server <- function(input, output, session) {
     NULL
   })
 
-
-  # Hanlde Events... _________________________________________________________
-
-  # Store the selected row in a reactiveVal for persistence
-  selected_row <- reactiveVal(NULL)
-
-  # Helper function to update details view
-  update_details_view <- function(selected_data) {
+  # Helper function: update details and open overlay
+  update_and_open_details <- function(idx) {
+    selected_data <- rv_data()[idx, ]
     details <- create_details_view(selected_data)
-    # Update all output elements with details
-    output$rowDetails <- details$row_details
-    output$locationDetails <- details$location_details
     output$plot_id_details <- details$plot_id_details
+    output$locationDetails <- details$location_details
     output$layout_details <- details$layout_details
     output$environmental_details <- details$environmental_details
     output$methods_details <- details$methods_details
     output$plot_quality_details <- details$plot_quality_details
     output$taxaDetails <- details$taxa_details
+    session$sendCustomMessage("openOverlay", list())
   }
 
-  # Add new observer for "see details" button clicks
+  # Observer for see details button clicks
+  selected_row <- reactiveVal(NULL)
   observeEvent(input$see_details, {
     idx <- as.numeric(input$see_details)
     if (!is.na(idx) && idx > 0) {
-      selected_row <- idx
-      selected_data <- rv_data()[idx, ]
-      update_details_view(selected_data)
-      print("clicked")
-      session$sendCustomMessage("openOverlay", list())
+      selected_row(idx)
+      update_and_open_details(idx)
     }
   })
-
-  # Restore state from bookmark
-  onRestore(function(state) 
-  { if (!is.null(state$values$selected_row)) {
-      selected_row(state$values$selected_row)
-      selected_data <- rv_data()[state$values$selected_row, ]
-      update_details_view(selected_data)
-      dt_proxy <- dataTableProxy("dataTable")
-      selectRows(dt_proxy, state$values$selected_row)
-    }
-  })
-
-  # Add selected row to bookmark
-  onBookmark(function(state) {
-    state$values$selected_row <- selected_row()
-    state
-  })
-
-  # Handle map marker clicks
+  # Observer for map marker clicks (reuse same update)
   observeEvent(input$marker_click, {
-    code_clicked <- input$marker_click
     data <- rv_data()
-    sel <- which(data$accessioncode == code_clicked)
+    sel <- which(data$accessioncode == input$marker_click)
     if (length(sel) > 0) {
       selected_row(sel)
-      selected_data <- data[sel, ]
-      update_details_view(selected_data)
+      update_and_open_details(sel)
       dt_proxy <- dataTableProxy("dataTable")
       selectRows(dt_proxy, sel)
-      session$sendCustomMessage("openOverlay", list())
     }
   })
 
-  # Search observer triggered when the user presses Enter in the search bar.
   observeEvent(input$search_enter, {
-    # Switch to the "Table" page
     updateNavbarPage(session, "page", selected = "Table")
-
-    # Get the search term and the current JSON table data
-    search_term <- input$search_enter
     data <- rv_data()
-
-    # Filter rows: check across all fields in each row for a match with the search term
-    filtered <- data[apply(data, 1, function(row) {
-      any(grepl(search_term, as.character(row)))
-    }), ]
-
-    # Update the reactive data and then update the datatable via DT proxy
+    filtered <- data[
+      apply(data, 1, function(row) any(grepl(input$search_enter, as.character(row)))), 
+    ]
     rv_data(filtered)
     dt_proxy <- dataTableProxy("dataTable")
     replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
   })
 
-  # Automatically trigger bookmarking on any input change
+  # Bookmarking: save and restore selected row
+  onBookmark(function(state) {
+    state$values$selected_row <- selected_row()
+    state
+  })
+  onRestore(function(state) {
+    if (!is.null(state$values$selected_row)) {
+      selected_row(state$values$selected_row)
+      update_and_open_details(state$values$selected_row)
+      dt_proxy <- dataTableProxy("dataTable")
+      selectRows(dt_proxy, state$values$selected_row)
+    }
+  })
+
+  observeEvent(input$close_details, {
+    selected_row(NULL)
+  })
+
   observe({
     reactiveValuesToList(input)
     session$doBookmark()
   })
-
-  # Update the browser's URL query string when bookmarking completes
   onBookmarked(function(url) {
     updateQueryString(url)
   })
