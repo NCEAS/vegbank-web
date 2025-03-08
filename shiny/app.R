@@ -287,53 +287,38 @@ server <- function(input, output, session) {
   output$dataSummary <- renderUI({
     tags$p(paste0("This dataset contains ", nrow(rv_data()), " plots."))
   })
-  # Get top 5 states
+
+  render_top_five_list <- function(data, column, suffix = "") {
+    freq_table <- sort(table(data[[column]]), decreasing = TRUE)
+    top_names <- names(head(freq_table, 5))
+    items <- lapply(
+      top_names,
+      function(s) {
+        count <- freq_table[[s]]
+        tags$li(tags$strong(s), paste0(" ", count, suffix))
+      }
+    )
+    tags$ul(class = "list-unstyled", items)
+  }
 
   output$topPlaces <- renderUI({
     data <- rv_data()
-    items <- lapply(
-      names(head(sort(table(data$state), decreasing = TRUE), 5)),
-      function(s) {
-        tags$li(tags$strong(s), table(data$state)[[s]])
-      }
-    )
-    tags$ul(class = "list-unstyled", items)
+    render_top_five_list(data, "stateprovince")
   })
-  # Get top 5 species
 
   output$topSpecies <- renderUI({
     data <- rv_data()
-    items <- lapply(
-      names(head(sort(table(data$toptaxon1name), decreasing = TRUE), 5)),
-      function(s) {
-        tags$li(tags$strong(s), paste(table(data$toptaxon1name)[[s]], "occurrences"))
-      }
-    )
-    tags$ul(class = "list-unstyled", items)
+    render_top_five_list(data, "toptaxon1name", " occurrences")
   })
-  # Get top 5 authors
 
   output$topObservers <- renderUI({
     data <- rv_data()
-    items <- lapply(
-      names(head(sort(table(data$interp_current_partyname), decreasing = TRUE), 5)),
-      function(s) {
-        tags$li(tags$strong(s), paste(table(data$interp_current_partyname)[[s]], "plots"))
-      }
-    )
-    tags$ul(class = "list-unstyled", items)
+    render_top_five_list(data, "interp_current_partyname", " plots")
   })
-  # Get top 5 years
 
   output$topYears <- renderUI({
     data <- rv_data()
-    items <- lapply(
-      names(head(sort(table(data$dateentered), decreasing = TRUE), 5)),
-      function(s) {
-        tags$li(tags$strong(s), paste(table(data$dateentered)[[s]], "plots"))
-      }
-    )
-    tags$ul(class = "list-unstyled", items)
+    render_top_five_list(data, "dateentered", " plots")
   })
 
   output$dataTable <- DT::renderDataTable({
