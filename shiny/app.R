@@ -83,48 +83,28 @@ create_details_view <- function(selected_data) {
       tags$tbody(tbody)
     )
   }
-  plot_id_details <- renderUI({
-    cols <- c("authorobscode", "authorplotcode")
-    dt <- selected_data[cols]
-    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
-    create_table(dt)
-  })
-  location_details <- renderUI({
-    cols <- c(
-      "confidentialitystatus", "latitude", "longitude",
-      "locationnarrative", "stateprovince", "country"
-    )
-    dt <- selected_data[cols]
-    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
-    create_table(dt)
-  })
-  layout_details <- renderUI({
-    cols <- c("area", "permanence")
-    dt <- selected_data[cols]
-    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
-    create_table(dt)
-  })
-  environmental_details <- renderUI({
-    cols <- c("elevation", "slopeaspect", "slopegradient")
-    dt <- selected_data[cols]
-    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
-    create_table(dt)
-  })
-  methods_details <- renderUI({
-    cols <- c(
-      "obsstartdate", "project_id", "covermethod_id",
-      "stratummethod_id", "taxonobservationarea", "autotaxoncover"
-    )
-    dt <- selected_data[cols]
-    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
-    create_table(dt)
-  })
-  plot_quality_details <- renderUI({
-    cols <- c("plotvalidationlevel")
-    dt <- selected_data[cols]
-    dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
-    create_table(dt)
-  })
+  # Helper function to generate renderUI details sections
+  render_details <- function(cols) {
+    renderUI({
+      dt <- selected_data[cols]
+      dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
+      create_table(dt)
+    })
+  }
+
+  plot_id_details <- render_details(c("authorobscode", "authorplotcode"))
+  location_details <- render_details(c(
+    "confidentialitystatus", "latitude", "longitude",
+    "locationnarrative", "stateprovince", "country"
+  ))
+  layout_details <- render_details(c("area", "permanence"))
+  environmental_details <- render_details(c("elevation", "slopeaspect", "slopegradient"))
+  methods_details <- render_details(c(
+    "obsstartdate", "project_id", "covermethod_id",
+    "stratummethod_id", "taxonobservationarea",
+    "autotaxoncover"
+  ))
+  plot_quality_details <- render_details(c("plotvalidationlevel"))
   list(
     row_details = row_details,
     taxa_details = taxa_details,
@@ -146,7 +126,9 @@ build_navbar <- function() {
       textInput("search", "", "Search..."),
       tags$script(HTML(
         "$(document).on('keypress', '#search', function(e) {
-           if(e.which == 13){ Shiny.setInputValue('search_enter', $(this).val(), {priority:'event'}); }
+          if(e.which == 13){
+            Shiny.setInputValue('search_enter', $(this).val(), {priority:'event'});
+          }
          });"
       ))
     )
@@ -195,7 +177,7 @@ build_navbar <- function() {
       nav_panel(title = "Table", DT::dataTableOutput("dataTable")),
       nav_panel(title = "Map", leafletOutput("map"))
     ),
-     nav_menu(
+    nav_menu(
       title = "Plants",
       nav_panel(
         title = "Table",
@@ -234,7 +216,10 @@ build_navbar <- function() {
     nav_menu(
       title = "About",
       align = "right",
-      nav_panel(title = "FAQ", includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/www/faq.md"))
+      nav_panel(
+        title = "FAQ",
+        includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/www/faq.md")
+      )
     )
   )
   navbar_with_search <- tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
@@ -419,7 +404,7 @@ server <- function(input, output, session) {
     updateNavbarPage(session, "page", selected = "Table")
     data <- rv_data()
     filtered <- data[
-      apply(data, 1, function(row) any(grepl(input$search_enter, as.character(row)))), 
+      apply(data, 1, function(row) any(grepl(input$search_enter, as.character(row)))),
     ]
     rv_data(filtered)
     dt_proxy <- dataTableProxy("dataTable")
