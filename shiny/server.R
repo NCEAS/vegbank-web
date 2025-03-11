@@ -1,5 +1,6 @@
 library(shiny)
 library(leaflet)
+library(magrittr)
 library(DT)
 
 server <- function(input, output, session) {
@@ -78,7 +79,6 @@ server <- function(input, output, session) {
   })
 
   # Helper: update panel details and open overlay
-  selected_accession <- reactiveVal(NULL)
   update_and_open_details <- function(idx) {
     selected_data <- rv_data()[idx, ]
     details <- create_details_view(selected_data)
@@ -90,7 +90,6 @@ server <- function(input, output, session) {
     output$plot_quality_details <- details$plot_quality_details
     output$taxaDetails <- details$taxa_details
     # Save accession code
-    selected_accession(selected_data$accessioncode)
     session$sendCustomMessage("openOverlay", list())
   }
 
@@ -123,40 +122,6 @@ server <- function(input, output, session) {
     rv_data(filtered)
     dt_proxy <- dataTableProxy("dataTable")
     replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
-  })
-
-  # Bookmarking: save and restore selected accession code
-  onBookmark(function(state) {
-    state$values$selected_accession <- selected_accession()
-    state
-  })
-
-  onRestore(function(state) {
-    if (!is.null(state$values$selected_accession)) {
-      acc <- state$values$selected_accession
-      data <- rv_data()
-      idx <- match(acc, data$accessioncode)
-      if (!is.na(idx)) {
-        selected_accession(acc)
-        update_and_open_details(idx)
-        dt_proxy <- dataTableProxy("dataTable")
-        selectRows(dt_proxy, idx)
-      }
-    }
-  })
-
-  observeEvent(input$close_details, {
-    selected_row(NULL)
-    selected_accession(NULL)
-  })
-
-  observe({
-    reactiveValuesToList(input)
-    session$doBookmark()
-  })
-
-  onBookmarked(function(url) {
-    updateQueryString(url)
   })
 }
 

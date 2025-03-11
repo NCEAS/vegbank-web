@@ -1,6 +1,7 @@
 library(shiny)
 library(htmltools)
 library(bslib)
+library(magrittr)
 
 ui <- function(req) {
   navbar_with_search <- build_navbar()
