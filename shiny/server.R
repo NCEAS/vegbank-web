@@ -6,13 +6,16 @@ library(DT)
 server <- function(input, output, session) {
   rv_data <- reactiveVal(NULL)
   observe({
-    tryCatch({
-      data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_test_data")
-      rv_data(data)
-    }, error = function(e) {
-      message("Error fetching data: ", e)
-      rv_data(NULL)
-    })
+    tryCatch(
+      {
+        data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_test_data")
+        rv_data(data)
+      },
+      error = function(e) {
+        message("Error fetching data: ", e)
+        rv_data(NULL)
+      }
+    )
   })
 
   # ...Render UI outputs...
@@ -63,7 +66,9 @@ server <- function(input, output, session) {
   output$map <- leaflet::renderLeaflet({
     data <- rv_data()
     if (is.null(data)) {
-      leaflet() %>% addTiles() %>% addControl("Data unavailable", position = "topright")
+      leaflet() %>%
+        addTiles() %>%
+        addControl("Data unavailable", position = "topright")
     } else {
       leaflet(data = data) %>%
         addTiles() %>%
@@ -122,6 +127,41 @@ server <- function(input, output, session) {
     rv_data(filtered)
     dt_proxy <- dataTableProxy("dataTable")
     replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
+  })
+
+  # Bookmarking: save and restore selected accession code
+  selected_accession <- reactiveVal(NULL)
+  onBookmark(function(state) {
+    state$values$selected_accession <- selected_accession()
+    state
+  })
+
+  onRestore(function(state) {
+    if (!is.null(state$values$selected_accession)) {
+      acc <- state$values$selected_accession
+      data <- rv_data()
+      idx <- match(acc, data$accessioncode)
+      if (!is.na(idx)) {
+        selected_accession(acc)
+        update_and_open_details(idx)
+        dt_proxy <- dataTableProxy("dataTable")
+        selectRows(dt_proxy, idx)
+      }
+    }
+  })
+
+  observeEvent(input$close_details, {
+    selected_row(NULL)
+    selected_accession(NULL)
+  })
+
+  observe({
+    reactiveValuesToList(input)
+    session$doBookmark()
+  })
+
+  onBookmarked(function(url) {
+    updateQueryString(url)
   })
 }
 
