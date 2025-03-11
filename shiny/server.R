@@ -83,6 +83,10 @@ server <- function(input, output, session) {
     NULL
   })
 
+  # Reactive values for state management
+  selected_accession <- reactiveVal(NULL)
+  details_open <- reactiveVal(FALSE)
+
   # Helper: update panel details and open overlay
   update_and_open_details <- function(idx) {
     selected_data <- rv_data()[idx, ]
@@ -94,7 +98,8 @@ server <- function(input, output, session) {
     output$methods_details <- details$methods_details
     output$plot_quality_details <- details$plot_quality_details
     output$taxaDetails <- details$taxa_details
-    # Save accession code
+    selected_accession(rv_data()[idx, "accessioncode"])
+    details_open(TRUE)
     session$sendCustomMessage("openOverlay", list())
   }
 
@@ -127,9 +132,9 @@ server <- function(input, output, session) {
   })
 
   # Bookmarking: save and restore selected accession code
-  selected_accession <- reactiveVal(NULL)
   onBookmark(function(state) {
     state$values$selected_accession <- selected_accession()
+    state$values$details_open <- details_open()
     state
   })
 
@@ -148,12 +153,27 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$close_details, {
+    details_open(FALSE)
     selected_accession(NULL)
+    session$doBookmark()
   })
 
   observe({
     reactiveValuesToList(input)
     session$doBookmark()
+  })
+
+  observe({
+    req(rv_data())
+    restored <- getQueryString()
+
+    if (!is.null(restored$details_open) && restored$details_open == "true" &&
+      !is.null(restored$selected_accession)) {
+      idx <- match(restored$selected_accession, rv_data()$accessioncode)
+      if (!is.na(idx)) {
+        update_and_open_details(idx)
+      }
+    }
   })
 
   onBookmarked(function(url) {

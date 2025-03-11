@@ -10,6 +10,14 @@ ui <- function(req) {
   script <- tags$script(HTML(
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
          document.getElementById('detail-overlay').style.right = '0px';
+     });
+     
+     // Check URL parameters on load
+     $(document).ready(function() {
+         var params = new URLSearchParams(window.location.search);
+         if(params.get('details_open') === 'true') {
+             document.getElementById('detail-overlay').style.right = '0px';
+         }
      });"
   ))
 
