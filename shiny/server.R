@@ -98,11 +98,9 @@ server <- function(input, output, session) {
     session$sendCustomMessage("openOverlay", list())
   }
 
-  selected_row <- reactiveVal(NULL)
   observeEvent(input$see_details, {
     idx <- as.numeric(input$see_details)
     if (!is.na(idx) && idx > 0) {
-      selected_row(idx)
       update_and_open_details(idx)
     }
   })
@@ -111,7 +109,6 @@ server <- function(input, output, session) {
     data <- rv_data()
     sel <- which(data$accessioncode == input$marker_click)
     if (length(sel) > 0) {
-      selected_row(sel)
       update_and_open_details(sel)
       dt_proxy <- dataTableProxy("dataTable")
       selectRows(dt_proxy, sel)
@@ -151,7 +148,6 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$close_details, {
-    selected_row(NULL)
     selected_accession(NULL)
   })
 
