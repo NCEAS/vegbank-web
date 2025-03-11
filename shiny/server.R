@@ -6,8 +6,6 @@ library(leaflet)
 library(htmltools)
 library(jsonlite)
 
-source("helpers.R")
-
 server <- function(input, output, session) {
   rv_data <- reactiveVal(NULL)
   observe({
@@ -16,7 +14,7 @@ server <- function(input, output, session) {
       rv_data(data)
     }, error = function(e) {
       message("Error fetching data: ", e)
-      rv_data(NULL)  # or you can assign fallback data here
+      rv_data(NULL)
     })
   })
 
@@ -164,4 +162,82 @@ server <- function(input, output, session) {
   onBookmarked(function(url) {
     updateQueryString(url)
   })
+}
+
+# Details view helper
+create_details_view <- function(selected_data) {
+  row_details <- renderUI({
+    valid <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
+    lapply(names(valid), function(n) {
+      tags$p(tags$strong(paste0(n, ": ")), valid[[n]])
+    })
+  })
+  taxa_details <- renderUI({
+    cols <- grep("^toptaxon[0-9]+name$", names(selected_data), value = TRUE)
+    list_data <- selected_data[cols]
+    list_data <- list_data[!is.na(list_data)]
+    lapply(seq_along(list_data), function(i) {
+      tags$p(class = "list-unstyled", tags$strong(paste0(i, ". ")), list_data[[i]])
+    })
+  })
+  column_names <- list(
+    "authorplotcode" = "Author Plot Code",
+    "authorobscode" = "Author Observation Code",
+    "area" = "Area",
+    "permenance" = "Permenance",
+    "elevation" = "Elevation",
+    "slopeaspect" = "Slope Aspect",
+    "slopegradient" = "Slope Gradient",
+    "confidentialitystatus" = "Confidentiality Status",
+    "latitude" = "Latitude",
+    "longitude" = "Longitude",
+    "locationnarrative" = "Location Description",
+    "stateprovince" = "State/Province",
+    "country" = "Country",
+    "obsstartdate" = "Observation Start Date",
+    "project_id" = "Project ID",
+    "covermethod_id" = "Cover Method ID",
+    "stratummethod_id" = "Stratum Method ID",
+    "taxonobservationarea" = "Taxon Observation Area",
+    "autotaxoncover" = "Taxon Cover Automatically Calculated",
+    "plotvalidationlevel" = "Plot Validation Level",
+    "permanence" = "Permanent"
+  )
+  create_table <- function(dl) {
+    tbody <- lapply(names(dl), function(name) {
+      tags$tr(
+        tags$td(tags$strong(column_names[[name]] %||% name)),
+        tags$td(class = "text-end", dl[[name]])
+      )
+    })
+    tags$table(
+      class = "table table-sm table-striped table-hover",
+      tags$tbody(tbody)
+    )
+  }
+  render_details <- function(cols) {
+    renderUI({
+      dt <- selected_data[cols]
+      dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
+      create_table(dt)
+    })
+  }
+  list(
+    row_details = renderUI({
+      row_details
+    }),
+    taxa_details = taxa_details,
+    plot_id_details = render_details(c("authorobscode", "authorplotcode")),
+    location_details = render_details(c(
+      "confidentialitystatus", "latitude", "longitude",
+      "locationnarrative", "stateprovince", "country"
+    )),
+    layout_details = render_details(c("area", "permanence")),
+    environmental_details = render_details(c("elevation", "slopeaspect", "slopegradient")),
+    methods_details = render_details(c(
+      "obsstartdate", "project_id", "covermethod_id",
+      "stratummethod_id", "taxonobservationarea", "autotaxoncover"
+    )),
+    plot_quality_details = render_details(c("plotvalidationlevel"))
+  )
 }
