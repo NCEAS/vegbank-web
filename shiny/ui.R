@@ -1,7 +1,6 @@
 library(shiny)
 library(htmltools)
 library(bslib)
-library(leaflet)
 
 ui <- function(req) {
   navbar_with_search <- build_navbar()
@@ -101,7 +100,7 @@ build_navbar <- function() {
     nav_menu(
       title = "Plots",
       nav_panel(title = "Table", DT::dataTableOutput("dataTable")),
-      nav_panel(title = "Map", leafletOutput("map"))
+      nav_panel(title = "Map", leaflet::leafletOutput("map"))
     ),
     nav_menu(
       title = "Plants",

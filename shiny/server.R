@@ -1,10 +1,6 @@
 library(shiny)
-library(bslib)
-library(magrittr)
-library(DT)
 library(leaflet)
-library(htmltools)
-library(jsonlite)
+library(DT)
 
 server <- function(input, output, session) {
   rv_data <- reactiveVal(NULL)
