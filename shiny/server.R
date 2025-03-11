@@ -46,14 +46,36 @@ server <- function(input, output, session) {
     render_top_five_list(rv_data(), "dateentered", " plots")
   })
 
+  format_taxa_list <- function(data_row) {
+    taxa_cols <- grep("^toptaxon[0-9]+name$", names(data_row), value = TRUE)
+    taxa <- data_row[taxa_cols]
+    taxa <- taxa[!is.na(taxa)]
+    if (length(taxa) > 0) {
+      paste(head(taxa, 5), collapse = ", ")
+    } else {
+      "No taxa recorded"
+    }
+  }
+
   output$dataTable <- DT::renderDataTable({
     data <- rv_data()
     details <- sapply(seq_len(nrow(data)), function(i) {
       sprintf('<button class="btn btn-info details-btn" data-row="%d">See Details</button>', i)
     })
-    data <- cbind(Details = details, data)
-    DT::datatable(data,
-      escape = FALSE, selection = "none",
+
+    # Create simplified dataset with only required columns
+    display_data <- data.frame(
+      Details = details,
+      "Author Plot Code" = data$authorobscode,
+      "Location" = data$stateprovince,
+      "Top Taxa" = apply(data, 1, format_taxa_list),
+      stringsAsFactors = FALSE,
+      check.names = FALSE  # Prevent conversion of spaces to periods
+    )
+
+    DT::datatable(display_data,
+      escape = FALSE,
+      selection = "none",
       options = list(
         pageLength = 100,
         scrollY = "calc(100vh - 300px)",
