@@ -15,6 +15,10 @@ ui <- function(req) {
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
          document.getElementById('detail-overlay').style.right = '0px';
      });
+     
+     Shiny.addCustomMessageHandler('triggerMarkerClick', function(message) {
+         Shiny.setInputValue('marker_click', message, {priority: 'event'});
+     });
 
      // Check URL parameters on load
      $(document).ready(function() {
@@ -53,15 +57,6 @@ custom_theme <- bs_theme(
      .navbar-brand { color: #2c5443 !important; font-weight: bold; }
      .navbar-brand img { height: 30px; margin-right: 10px; }"
   )
-
-create_popup_link <- function(accessioncode) {
-  paste0(
-    accessioncode,
-    '\n<a href="#" onclick="Shiny.setInputValue(\'marker_click\', \'',
-    accessioncode,
-    '\', {priority: \'event\'})">See Details</a>'
-  )
-}
 
 # Navbar and overlay builders
 build_navbar <- function() {

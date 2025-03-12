@@ -7,7 +7,7 @@ server <- function(input, output, session) {
   rv_data <- reactiveVal(NULL)
   selected_accession <- reactiveVal(NULL)
   details_open <- reactiveVal(FALSE)
-  map_proxy <- leafletProxy("map")
+  map_request <- reactiveVal(NULL) # Add this near the top with other reactiveVals
 
   observe({
     tryCatch(
@@ -116,6 +116,8 @@ server <- function(input, output, session) {
         )
     }
   })
+  # Add this to allow updating the map even when the tab is hidden:
+  outputOptions(output, "map", suspendWhenHidden = FALSE)
 
   # Move helper function definition before it's used
   update_and_open_details <- function(idx) {
@@ -133,6 +135,41 @@ server <- function(input, output, session) {
     session$sendCustomMessage("openOverlay", list())
   }
 
+  # Add this new function before it's used
+  update_map_view <- function(acc, idx) {
+    data <- rv_data()
+    leafletProxy("map", session) %>%
+      setView(
+        lng = data$longitude[idx],
+        lat = data$latitude[idx],
+        zoom = 12
+      ) %>%
+      clearPopups() %>%
+      addPopups(
+        lng = data$longitude[idx],
+        lat = data$latitude[idx],
+        popup = create_popup_link(acc)
+      )
+    selected_accession(acc)
+    session$sendCustomMessage("triggerMarkerClick", acc)
+  }
+
+  # Add this new observer
+  observe({
+    req(input$page == "Map")
+    req(map_request())
+
+    data <- rv_data()
+    acc <- map_request()
+    idx <- which(data$accessioncode == acc)
+
+    if (length(idx) > 0) {
+      invalidateLater(100) # Small delay to ensure map is ready
+      update_map_view(acc, idx)
+      map_request(NULL) # Clear the request
+    }
+  })
+
   observeEvent(input$see_details, {
     idx <- as.numeric(input$see_details)
     if (!is.na(idx) && idx > 0) {
@@ -140,30 +177,11 @@ server <- function(input, output, session) {
     }
   })
 
+  # Modify the show_on_map handler
   observeEvent(input$show_on_map, {
-    data <- rv_data()
     acc <- input$show_on_map
-    idx <- which(data$accessioncode == acc)
-
-    if (length(idx) > 0) {
-      # First switch to map view
-      updateNavbarPage(session, "page", selected = "Map")
-
-      # Wait briefly for the map to be ready
-      shinyjs::delay(500, {
-        # Center map
-        map_proxy %>%
-          setView(
-            lng = data$longitude[idx],
-            lat = data$latitude[idx],
-            zoom = 12
-          )
-
-        # Show popup and details
-        selected_accession(acc)
-        session$sendInputValue("marker_click", acc)
-      })
-    }
+    updateNavbarPage(session, "page", selected = "Map")
+    map_request(acc) # Set the request instead of updating map directly
   })
 
   observeEvent(input$marker_click, {
@@ -197,16 +215,19 @@ server <- function(input, output, session) {
   onRestore(function(state) {
     if (!is.null(state$values$selected_accession)) {
       acc <- state$values$selected_accession
-      observeEvent(rv_data(), {
-        data <- rv_data()
-        idx <- match(acc, data$accessioncode)
-        if (!is.na(idx)) {
-          selected_accession(acc)
-          update_and_open_details(idx)
-          dt_proxy <- dataTableProxy("dataTable")
-          selectRows(dt_proxy, idx)
-        }
-      }, once = TRUE)
+      observeEvent(rv_data(),
+        {
+          data <- rv_data()
+          idx <- match(acc, data$accessioncode)
+          if (!is.na(idx)) {
+            selected_accession(acc)
+            update_and_open_details(idx)
+            dt_proxy <- dataTableProxy("dataTable")
+            selectRows(dt_proxy, idx)
+          }
+        },
+        once = TRUE
+      )
     }
     invisible(NULL)
   })
@@ -238,6 +259,15 @@ server <- function(input, output, session) {
   onBookmarked(function(url) {
     updateQueryString(url)
   })
+}
+
+create_popup_link <- function(accessioncode) {
+  paste0(
+    accessioncode,
+    '\n<a href="#" onclick="Shiny.setInputValue(\'marker_click\', \'',
+    accessioncode,
+    '\', {priority: \'event\'})">See Details</a>'
+  )
 }
 
 # Details view helper
