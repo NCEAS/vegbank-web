@@ -197,15 +197,18 @@ server <- function(input, output, session) {
   onRestore(function(state) {
     if (!is.null(state$values$selected_accession)) {
       acc <- state$values$selected_accession
-      data <- rv_data()
-      idx <- match(acc, data$accessioncode)
-      if (!is.na(idx)) {
-        selected_accession(acc)
-        update_and_open_details(idx)
-        dt_proxy <- dataTableProxy("dataTable")
-        selectRows(dt_proxy, idx)
-      }
+      observeEvent(rv_data(), {
+        data <- rv_data()
+        idx <- match(acc, data$accessioncode)
+        if (!is.na(idx)) {
+          selected_accession(acc)
+          update_and_open_details(idx)
+          dt_proxy <- dataTableProxy("dataTable")
+          selectRows(dt_proxy, idx)
+        }
+      }, once = TRUE)
     }
+    invisible(NULL)
   })
 
   observeEvent(input$close_details, {
