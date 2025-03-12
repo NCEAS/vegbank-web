@@ -151,7 +151,6 @@ server <- function(input, output, session) {
         popup = create_popup_link(acc)
       )
     selected_accession(acc)
-    session$sendCustomMessage("triggerMarkerClick", acc)
   }
 
   # Add this new observer
