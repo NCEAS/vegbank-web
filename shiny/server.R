@@ -7,8 +7,8 @@ server <- function(input, output, session) {
   rv_data <- reactiveVal(NULL)
   selected_accession <- reactiveVal(NULL)
   details_open <- reactiveVal(FALSE)
-  map_request <- reactiveVal(NULL) # Add this near the top with other reactiveVals
-  current_zoom <- reactiveVal(NULL) # Add this new reactive value
+  map_request <- reactiveVal(NULL)
+  current_zoom <- reactiveVal(NULL)
 
   observe({
     tryCatch(
@@ -23,7 +23,7 @@ server <- function(input, output, session) {
     )
   })
 
-  # ...Render UI outputs...
+  # Render UI outputs...
   output$dataSummary <- renderUI({
     tags$p(paste0("This dataset contains ", nrow(rv_data()), " plots."))
   })
@@ -41,12 +41,15 @@ server <- function(input, output, session) {
   output$topPlaces <- renderUI({
     render_top_five_list(rv_data(), "stateprovince")
   })
+
   output$topSpecies <- renderUI({
     render_top_five_list(rv_data(), "toptaxon1name", " occurrences")
   })
+
   output$topObservers <- renderUI({
     render_top_five_list(rv_data(), "interp_current_partyname", " plots")
   })
+
   output$topYears <- renderUI({
     render_top_five_list(rv_data(), "dateentered", " plots")
   })
@@ -78,14 +81,13 @@ server <- function(input, output, session) {
       data$accessioncode
     )
 
-    # Create simplified dataset with only required columns
     display_data <- data.frame(
       "Actions" = actions,
       "Author Plot Code" = data$authorobscode,
       "Location" = data$stateprovince,
       "Top Taxa" = apply(data, 1, format_taxa_list),
       stringsAsFactors = FALSE,
-      check.names = FALSE # Prevent conversion of spaces to periods
+      check.names = FALSE
     )
 
     DT::datatable(display_data,
@@ -102,64 +104,70 @@ server <- function(input, output, session) {
 
   output$map <- leaflet::renderLeaflet({
     data <- rv_data()
+
     if (is.null(data)) {
       leaflet() %>%
         addTiles() %>%
         addControl("Data unavailable", position = "topright")
     } else {
-      leaflet(data = data) %>%
+      leaflet(data) %>%
         addTiles() %>%
         addMarkers(
           lng = ~longitude,
           lat = ~latitude,
           layerId = ~accessioncode,
-          popup = ~ create_popup_link(accessioncode)
+          popup = ~ create_popup_link(accessioncode),
         ) %>%
         htmlwidgets::onRender("
-          function(el, x) {
-            this.on('zoomend', function(e) {
-              Shiny.setInputValue('map_zoom', this.getZoom());
-            });
-          }
-        ")
+        function(el, x) {
+          this.on('zoomend', function(e) {
+            Shiny.setInputValue('map_zoom', this.getZoom());
+          });
+        }
+      ")
     }
   })
 
-  # Add zoom level observer
+
+
   observeEvent(input$map_zoom, {
     current_zoom(input$map_zoom)
     data <- rv_data()
     if (!is.null(data)) {
-      # Show labels only when zoomed in enough
-      show_labels <- input$map_zoom >= 13
+      # Group by latitude and longitude, and concatenate all authorobscode values for duplicates
+      data_grouped <- data %>%
+        dplyr::group_by(latitude, longitude) %>%
+        dplyr::mutate(authorobscode_label = paste(authorobscode, collapse = "<br>")) %>%
+        dplyr::ungroup()
+
+      show_labels <- input$map_zoom >= 14
       leafletProxy("map", session) %>%
         clearMarkers() %>%
         addMarkers(
-          data = data,
+          data = data_grouped,
           lng = ~longitude,
           lat = ~latitude,
           layerId = ~accessioncode,
           popup = ~ create_popup_link(accessioncode),
-          label = ~authorobscode,
-          labelOptions =
-            labelOptions(
-              noHide = show_labels, # Show labels on hover when zoomed out
-              direction = "bottom",
-              textOnly = TRUE,
-              style = list(
-                "color" = "#2c5443",
-                "font-weight" = "bold",
-                "padding" = "3px 8px",
-                "background" = "white",
-                "border" = "1px solid #2c5443",
-                "border-radius" = "3px"
-              )
+          # Display concatenated authorobscode for duplicates
+          label = ~authorobscode_label %>% lapply(htmltools::HTML),
+          labelOptions = labelOptions(
+            noHide = show_labels,
+            direction = "bottom",
+            textOnly = TRUE,
+            style = list(
+              "color" = "#2c5443",
+              "font-weight" = "bold",
+              "padding" = "3px 8px",
+              "background" = "white",
+              "border" = "1px solid #2c5443",
+              "border-radius" = "3px"
             )
+          )
         )
     }
   })
 
-  # Move helper function definition before it's used
   update_and_open_details <- function(idx) {
     selected_data <- rv_data()[idx, ]
     details <- create_details_view(selected_data)
@@ -175,7 +183,6 @@ server <- function(input, output, session) {
     session$sendCustomMessage("openOverlay", list())
   }
 
-  # Move map to selected plot
   update_map_view <- function(acc, idx) {
     data <- rv_data()
     leafletProxy("map", session) %>%
@@ -285,7 +292,6 @@ server <- function(input, output, session) {
   observe({
     req(rv_data())
     restored <- getQueryString()
-
     if (!is.null(restored$details_open) && restored$details_open == "true" &&
       !is.null(restored$selected_accession)) {
       idx <- match(restored$selected_accession, rv_data()$accessioncode)
@@ -299,6 +305,7 @@ server <- function(input, output, session) {
     updateQueryString(url)
   })
 }
+
 
 create_popup_link <- function(accessioncode) {
   paste0(
