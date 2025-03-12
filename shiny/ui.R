@@ -25,6 +25,10 @@ ui <- function(req) {
     '$(document).on("click", ".details-btn", function() {
          var idx = $(this).data("row");
          Shiny.setInputValue("see_details", idx, {priority:"event"});
+    });
+    $(document).on("click", ".map-btn", function() {
+         var acc = $(this).data("acc");
+         Shiny.setInputValue("show_on_map", acc, {priority:"event"});
     });'
   ))
   tagList(navbar_with_search, overlay, script, btn_script)

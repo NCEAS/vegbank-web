@@ -57,20 +57,30 @@ server <- function(input, output, session) {
     }
   }
 
+  format_action_buttons <- function(i, acc) {
+    sprintf(
+      '<button class="btn btn-info btn-sm details-btn" data-row="%d">See Details</button> 
+      <button class="btn btn-primary btn-sm map-btn" data-acc="%s">Show on Map</button>',
+      i, acc
+    )
+  }
+
   output$dataTable <- DT::renderDataTable({
     data <- rv_data()
-    details <- sapply(seq_len(nrow(data)), function(i) {
-      sprintf('<button class="btn btn-info details-btn" data-row="%d">See Details</button>', i)
-    })
+    actions <- mapply(
+      format_action_buttons,
+      seq_len(nrow(data)),
+      data$accessioncode
+    )
 
     # Create simplified dataset with only required columns
     display_data <- data.frame(
-      Details = details,
+      "Actions" = actions,
       "Author Plot Code" = data$authorobscode,
       "Location" = data$stateprovince,
       "Top Taxa" = apply(data, 1, format_taxa_list),
       stringsAsFactors = FALSE,
-      check.names = FALSE  # Prevent conversion of spaces to periods
+      check.names = FALSE # Prevent conversion of spaces to periods
     )
 
     DT::datatable(display_data,
