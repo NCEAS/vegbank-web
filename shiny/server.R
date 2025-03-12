@@ -5,6 +5,10 @@ library(DT)
 
 server <- function(input, output, session) {
   rv_data <- reactiveVal(NULL)
+  selected_accession <- reactiveVal(NULL)
+  details_open <- reactiveVal(FALSE)
+  map_proxy <- leafletProxy("map")
+
   observe({
     tryCatch(
       {
@@ -59,7 +63,7 @@ server <- function(input, output, session) {
 
   format_action_buttons <- function(i, acc) {
     sprintf(
-      '<button class="btn btn-info btn-sm details-btn" data-row="%d">See Details</button> 
+      '<button class="btn btn-info btn-sm details-btn" data-row="%d">See Details</button>
       <button class="btn btn-primary btn-sm map-btn" data-acc="%s">Show on Map</button>',
       i, acc
     )
@@ -104,22 +108,16 @@ server <- function(input, output, session) {
     } else {
       leaflet(data = data) %>%
         addTiles() %>%
-        addMarkers(lng = ~longitude, lat = ~latitude, popup = ~ create_popup_link(accessioncode))
+        addMarkers(
+          lng = ~longitude,
+          lat = ~latitude,
+          layerId = ~accessioncode, # Add unique ID for each marker
+          popup = ~ create_popup_link(accessioncode)
+        )
     }
   })
 
-  output$rowDetails <- renderUI({
-    NULL
-  })
-  output$taxaDetails <- renderUI({
-    NULL
-  })
-
-  # Reactive values for state management
-  selected_accession <- reactiveVal(NULL)
-  details_open <- reactiveVal(FALSE)
-
-  # Helper: update panel details and open overlay
+  # Move helper function definition before it's used
   update_and_open_details <- function(idx) {
     selected_data <- rv_data()[idx, ]
     details <- create_details_view(selected_data)
@@ -139,6 +137,32 @@ server <- function(input, output, session) {
     idx <- as.numeric(input$see_details)
     if (!is.na(idx) && idx > 0) {
       update_and_open_details(idx)
+    }
+  })
+
+  observeEvent(input$show_on_map, {
+    data <- rv_data()
+    acc <- input$show_on_map
+    idx <- which(data$accessioncode == acc)
+
+    if (length(idx) > 0) {
+      # First switch to map view
+      updateNavbarPage(session, "page", selected = "Map")
+
+      # Wait briefly for the map to be ready
+      shinyjs::delay(500, {
+        # Center map
+        map_proxy %>%
+          setView(
+            lng = data$longitude[idx],
+            lat = data$latitude[idx],
+            zoom = 12
+          )
+
+        # Show popup and details
+        selected_accession(acc)
+        session$sendInputValue("marker_click", acc)
+      })
     }
   })
 

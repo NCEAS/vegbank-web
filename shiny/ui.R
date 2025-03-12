@@ -2,8 +2,12 @@ library(shiny)
 library(htmltools)
 library(bslib)
 library(magrittr)
+library(shinyjs)
 
 ui <- function(req) {
+  # Add shinyjs before other UI elements
+  shinyjs::useShinyjs()
+
   navbar_with_search <- build_navbar()
   overlay <- build_overlay()
 
@@ -11,7 +15,7 @@ ui <- function(req) {
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
          document.getElementById('detail-overlay').style.right = '0px';
      });
-     
+
      // Check URL parameters on load
      $(document).ready(function() {
          var params = new URLSearchParams(window.location.search);
