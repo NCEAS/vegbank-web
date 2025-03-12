@@ -13,7 +13,7 @@ server <- function(input, output, session) {
   observe({
     tryCatch(
       {
-        data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_test_data")
+        data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_all_states_test_data")
         rv_data(data)
       },
       error = function(e) {
@@ -136,8 +136,11 @@ server <- function(input, output, session) {
     if (!is.null(data)) {
       # Group by latitude and longitude, and concatenate all authorobscode values for duplicates
       data_grouped <- data %>%
-        dplyr::group_by(latitude, longitude) %>%
-        dplyr::mutate(authorobscode_label = paste(authorobscode, collapse = "<br>")) %>%
+        dplyr::group_by(latitude, longitude) %>% # nolint: object_usage_linter.
+        dplyr::mutate(
+          authorobscode_label =
+            paste(authorobscode, collapse = "<br>") # nolint: object_usage_linter.
+        ) %>%
         dplyr::ungroup()
 
       show_labels <- input$map_zoom >= 14
@@ -150,7 +153,7 @@ server <- function(input, output, session) {
           layerId = ~accessioncode,
           popup = ~ create_popup_link(accessioncode),
           # Display concatenated authorobscode for duplicates
-          label = ~authorobscode_label %>% lapply(htmltools::HTML),
+          label = ~ authorobscode_label %>% lapply(htmltools::HTML),
           labelOptions = labelOptions(
             noHide = show_labels,
             direction = "bottom",
