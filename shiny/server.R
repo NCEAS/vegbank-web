@@ -111,8 +111,22 @@ server <- function(input, output, session) {
         addMarkers(
           lng = ~longitude,
           lat = ~latitude,
-          layerId = ~accessioncode, # Add unique ID for each marker
-          popup = ~ create_popup_link(accessioncode)
+          layerId = ~accessioncode,
+          popup = ~ create_popup_link(accessioncode),
+          label = ~authorobscode,
+          labelOptions = labelOptions(
+            noHide = TRUE,
+            direction = "bottom",
+            textOnly = TRUE,
+            style = list(
+              "color" = "#2c5443",
+              "font-weight" = "bold",
+              "padding" = "3px 8px",
+              "background" = "white",
+              "border" = "1px solid #2c5443",
+              "border-radius" = "3px"
+            )
+          )
         )
     }
   })
@@ -153,7 +167,7 @@ server <- function(input, output, session) {
     selected_accession(acc)
   }
 
-  # Add this new observer
+  # Observer for map_request
   observe({
     req(input$page == "Map")
     req(map_request())
@@ -176,7 +190,7 @@ server <- function(input, output, session) {
     }
   })
 
-  # Modify the show_on_map handler
+  # Handle show on map button click
   observeEvent(input$show_on_map, {
     acc <- input$show_on_map
     updateNavbarPage(session, "page", selected = "Map")
