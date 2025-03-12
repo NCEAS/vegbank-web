@@ -8,6 +8,7 @@ server <- function(input, output, session) {
   selected_accession <- reactiveVal(NULL)
   details_open <- reactiveVal(FALSE)
   map_request <- reactiveVal(NULL) # Add this near the top with other reactiveVals
+  current_zoom <- reactiveVal(NULL) # Add this new reactive value
 
   observe({
     tryCatch(
@@ -112,26 +113,51 @@ server <- function(input, output, session) {
           lng = ~longitude,
           lat = ~latitude,
           layerId = ~accessioncode,
+          popup = ~ create_popup_link(accessioncode)
+        ) %>%
+        htmlwidgets::onRender("
+          function(el, x) {
+            this.on('zoomend', function(e) {
+              Shiny.setInputValue('map_zoom', this.getZoom());
+            });
+          }
+        ")
+    }
+  })
+
+  # Add zoom level observer
+  observeEvent(input$map_zoom, {
+    current_zoom(input$map_zoom)
+    data <- rv_data()
+    if (!is.null(data)) {
+      # Show labels only when zoomed in enough
+      show_labels <- input$map_zoom >= 13
+      leafletProxy("map", session) %>%
+        clearMarkers() %>%
+        addMarkers(
+          data = data,
+          lng = ~longitude,
+          lat = ~latitude,
+          layerId = ~accessioncode,
           popup = ~ create_popup_link(accessioncode),
           label = ~authorobscode,
-          labelOptions = labelOptions(
-            noHide = TRUE,
-            direction = "bottom",
-            textOnly = TRUE,
-            style = list(
-              "color" = "#2c5443",
-              "font-weight" = "bold",
-              "padding" = "3px 8px",
-              "background" = "white",
-              "border" = "1px solid #2c5443",
-              "border-radius" = "3px"
+          labelOptions =
+            labelOptions(
+              noHide = show_labels, # Show labels on hover when zoomed out
+              direction = "bottom",
+              textOnly = TRUE,
+              style = list(
+                "color" = "#2c5443",
+                "font-weight" = "bold",
+                "padding" = "3px 8px",
+                "background" = "white",
+                "border" = "1px solid #2c5443",
+                "border-radius" = "3px"
+              )
             )
-          )
         )
     }
   })
-  # Add this to allow updating the map even when the tab is hidden:
-  outputOptions(output, "map", suspendWhenHidden = FALSE)
 
   # Move helper function definition before it's used
   update_and_open_details <- function(idx) {
@@ -149,14 +175,14 @@ server <- function(input, output, session) {
     session$sendCustomMessage("openOverlay", list())
   }
 
-  # Add this new function before it's used
+  # Move map to selected plot
   update_map_view <- function(acc, idx) {
     data <- rv_data()
     leafletProxy("map", session) %>%
       setView(
         lng = data$longitude[idx],
         lat = data$latitude[idx],
-        zoom = 12
+        zoom = 14
       ) %>%
       clearPopups() %>%
       addPopups(
