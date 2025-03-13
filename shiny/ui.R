@@ -13,7 +13,6 @@ ui <- function(req) {
          document.getElementById('detail-overlay').style.right = '0px';
      });
     
-     // Check URL parameters on load
      $(document).ready(function() {
          var params = new URLSearchParams(window.location.search);
          if(params.get('details_open') === 'true') {
@@ -57,7 +56,7 @@ build_navbar <- function() {
     class = "nav-item",
     tags$div(
       class = "navbar-form",
-      textInput("search", "", "Search..."),
+      textInput(inputId = "search", label = "", value = "", placeholder = "Search"),
       tags$script(HTML(
         "$(document).on('keypress', '#search', function(e) {
            if(e.which == 13){

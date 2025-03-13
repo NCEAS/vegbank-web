@@ -63,7 +63,8 @@ server <- function(input, output, session) {
 
     DT::datatable(display_data,
       escape = FALSE,
-      selection = "none",
+      # TODO: Clicking another row deselects the programtically selected row. It shouldnʻt.
+      selection = list(mode = "single", target = "row", selectable = FALSE),
       options = list(
         pageLength = 100,
         scrollY = "calc(100vh - 300px)",
@@ -200,7 +201,22 @@ server <- function(input, output, session) {
     idx <- as.numeric(input$see_details)
     if (!is.na(idx) && idx > 0) {
       update_and_open_details(idx)
+      dt_proxy <- dataTableProxy("dataTable")
+      selectRows(dt_proxy, idx, ignore.selectable = TRUE)
     }
+  })
+
+  # Handle close details button click
+  observeEvent(input$close_details, {
+    details_open(FALSE)
+    selected_accession(NULL)
+    idx <- as.numeric(input$see_details)
+    if (!is.na(idx) && idx > 0) {
+      dt_proxy <- dataTableProxy("dataTable")
+      # Wish there was a better way to do this, but I canʻt find a deleselect function anywhere
+      selectRows(dt_proxy, idx, ignore.selectable = FALSE)
+    }
+    session$doBookmark()
   })
 
   # Handle show on map button click
@@ -210,14 +226,14 @@ server <- function(input, output, session) {
     map_request(acc) # Set the request instead of updating map directly
   })
 
-  # Handle marker click
-  observeEvent(input$marker_click, {
+  # Handle marker popup see details link click
+  observeEvent(input$popup_link_click, {
     data <- rv_data()
-    idx <- which(data$accessioncode == input$marker_click)
+    idx <- which(data$accessioncode == input$popup_link_click)
     if (length(idx) > 0) {
       update_and_open_details(idx)
       dt_proxy <- dataTableProxy("dataTable")
-      selectRows(dt_proxy, idx)
+      selectRows(dt_proxy, idx, ignore.selectable = TRUE)
     }
   })
 
@@ -258,7 +274,7 @@ server <- function(input, output, session) {
             selected_accession(acc)
             update_and_open_details(idx)
             dt_proxy <- dataTableProxy("dataTable")
-            selectRows(dt_proxy, idx)
+            selectRows(dt_proxy, idx, ignore.selectable = TRUE)
           }
         },
         once = TRUE
@@ -267,29 +283,23 @@ server <- function(input, output, session) {
     invisible(NULL)
   })
 
-  observeEvent(input$close_details, {
-    details_open(FALSE)
-    selected_accession(NULL)
-    session$doBookmark()
-  })
-
   observe({
     reactiveValuesToList(input)
     session$doBookmark()
   })
 
   # TODO: Refactor this for redundancy. Use onRestored to open details view instead of js in ui?
-  observe({
-    req(rv_data())
-    restored <- getQueryString()
-    if (!is.null(restored$details_open) && restored$details_open == "true" &&
-          !is.null(restored$selected_accession)) {
-      idx <- match(restored$selected_accession, rv_data()$accessioncode)
-      if (!is.na(idx)) {
-        update_and_open_details(idx)
-      }
-    }
-  })
+  # observe({
+  #   req(rv_data())
+  #   restored <- getQueryString()
+  #   if (!is.null(restored$details_open) && restored$details_open == "true" &&
+  #         !is.null(restored$selected_accession)) {
+  #     idx <- match(restored$selected_accession, rv_data()$accessioncode)
+  #     if (!is.na(idx)) {
+  #       update_and_open_details(idx)
+  #     }
+  #   }
+  # })
 }
 
 # Helper Functions_________________________________________________________________________________
@@ -326,7 +336,7 @@ build_action_buttons <- function(i, acc) {
 build_popup_link <- function(accessioncode) {
   paste0(
     accessioncode,
-    '\n<a href="#" onclick="Shiny.setInputValue(\'marker_click\', \'',
+    '\n<a href="#" onclick="Shiny.setInputValue(\'popup_link_click\', \'',
     accessioncode,
     '\', {priority: \'event\'})">See Details</a>'
   )
