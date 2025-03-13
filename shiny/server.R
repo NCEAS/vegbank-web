@@ -23,60 +23,31 @@ server <- function(input, output, session) {
     )
   })
 
-  # Render UI outputs...
+  # Render UI Outputs ____________________________________________________________________________
   output$dataSummary <- renderUI({
     tags$p(paste0("This dataset contains ", nrow(rv_data()), " plots."))
   })
 
-  render_top_five_list <- function(data, column, suffix = "") {
-    freq_table <- sort(table(data[[column]]), decreasing = TRUE)
-    top_names <- names(head(freq_table, 5))
-    items <- lapply(top_names, function(s) {
-      count <- freq_table[[s]]
-      tags$li(tags$strong(s), paste0(" ", count, suffix))
-    })
-    tags$ul(class = "list-unstyled", items)
-  }
-
   output$topPlaces <- renderUI({
-    render_top_five_list(rv_data(), "stateprovince")
+    build_top_five_list(rv_data(), "stateprovince")
   })
 
   output$topSpecies <- renderUI({
-    render_top_five_list(rv_data(), "toptaxon1name", " occurrences")
+    build_top_five_list(rv_data(), "toptaxon1name", " occurrences")
   })
 
   output$topObservers <- renderUI({
-    render_top_five_list(rv_data(), "interp_current_partyname", " plots")
+    build_top_five_list(rv_data(), "interp_current_partyname", " plots")
   })
 
   output$topYears <- renderUI({
-    render_top_five_list(rv_data(), "dateentered", " plots")
+    build_top_five_list(rv_data(), "dateentered", " plots")
   })
-
-  format_taxa_list <- function(data_row) {
-    taxa_cols <- grep("^toptaxon[0-9]+name$", names(data_row), value = TRUE)
-    taxa <- data_row[taxa_cols]
-    taxa <- taxa[!is.na(taxa)]
-    if (length(taxa) > 0) {
-      paste(head(taxa, 5), collapse = ", ")
-    } else {
-      "No taxa recorded"
-    }
-  }
-
-  format_action_buttons <- function(i, acc) {
-    sprintf(
-      '<button class="btn btn-info btn-sm details-btn" data-row="%d">See Details</button>
-      <button class="btn btn-primary btn-sm map-btn" data-acc="%s">Show on Map</button>',
-      i, acc
-    )
-  }
 
   output$dataTable <- DT::renderDataTable({
     data <- rv_data()
     actions <- mapply(
-      format_action_buttons,
+      build_action_buttons,
       seq_len(nrow(data)),
       data$accessioncode
     )
@@ -85,7 +56,7 @@ server <- function(input, output, session) {
       "Actions" = actions,
       "Author Plot Code" = data$authorobscode,
       "Location" = data$stateprovince,
-      "Top Taxa" = apply(data, 1, format_taxa_list),
+      "Top Taxa" = apply(data, 1, build_taxa_list),
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -116,7 +87,7 @@ server <- function(input, output, session) {
           lng = ~longitude,
           lat = ~latitude,
           layerId = ~accessioncode,
-          popup = ~ create_popup_link(accessioncode),
+          popup = ~ build_popup_link(accessioncode),
         ) %>%
         htmlwidgets::onRender("
         function(el, x) {
@@ -128,13 +99,14 @@ server <- function(input, output, session) {
     }
   })
 
+  # Handle Events _________________________________________________________________________________
 
-
+  # Change the visibility of the marker labels based on the zoom level
   observeEvent(input$map_zoom, {
     current_zoom(input$map_zoom)
     data <- rv_data()
     if (!is.null(data)) {
-      # Group by latitude and longitude, and concatenate all authorobscode values for duplicates
+      # Handle duplicates by grouping on lat & long, and concatenate all authorobscode values
       data_grouped <- data %>%
         dplyr::group_by(latitude, longitude) %>% # nolint: object_usage_linter.
         dplyr::mutate(
@@ -151,13 +123,15 @@ server <- function(input, output, session) {
           lng = ~longitude,
           lat = ~latitude,
           layerId = ~accessioncode,
-          popup = ~ create_popup_link(accessioncode),
+          popup = ~ build_popup_link(accessioncode),
           # Display concatenated authorobscode for duplicates
           label = ~ authorobscode_label %>% lapply(htmltools::HTML),
+          # TODO: Explore cluster options for markers & labels
           labelOptions = labelOptions(
             noHide = show_labels,
             direction = "bottom",
             textOnly = TRUE,
+            # TODO: Tie these colors to the theme
             style = list(
               "color" = "#2c5443",
               "font-weight" = "bold",
@@ -171,9 +145,10 @@ server <- function(input, output, session) {
     }
   })
 
+  # TODO: Parameterize this to pull out of server fn?
   update_and_open_details <- function(idx) {
     selected_data <- rv_data()[idx, ]
-    details <- create_details_view(selected_data)
+    details <- build_details_view(selected_data)
     output$plot_id_details <- details$plot_id_details
     output$locationDetails <- details$location_details
     output$layout_details <- details$layout_details
@@ -186,6 +161,7 @@ server <- function(input, output, session) {
     session$sendCustomMessage("openOverlay", list())
   }
 
+  # TODO: Parameterize this to pull out of server fn?
   update_map_view <- function(acc, idx) {
     data <- rv_data()
     leafletProxy("map", session) %>%
@@ -198,12 +174,12 @@ server <- function(input, output, session) {
       addPopups(
         lng = data$longitude[idx],
         lat = data$latitude[idx],
-        popup = create_popup_link(acc)
+        popup = build_popup_link(acc)
       )
     selected_accession(acc)
   }
 
-  # Observer for map_request
+  # Handle map_request
   observe({
     req(input$page == "Map")
     req(map_request())
@@ -219,6 +195,7 @@ server <- function(input, output, session) {
     }
   })
 
+  # Handle see details button click
   observeEvent(input$see_details, {
     idx <- as.numeric(input$see_details)
     if (!is.na(idx) && idx > 0) {
@@ -233,16 +210,19 @@ server <- function(input, output, session) {
     map_request(acc) # Set the request instead of updating map directly
   })
 
+  # Handle marker click
   observeEvent(input$marker_click, {
     data <- rv_data()
-    sel <- which(data$accessioncode == input$marker_click)
-    if (length(sel) > 0) {
-      update_and_open_details(sel)
+    idx <- which(data$accessioncode == input$marker_click)
+    if (length(idx) > 0) {
+      update_and_open_details(idx)
       dt_proxy <- dataTableProxy("dataTable")
-      selectRows(dt_proxy, sel)
+      selectRows(dt_proxy, idx)
     }
   })
 
+  # TODO: Show all rows on empty search
+  # Handle nav bar search submission
   observeEvent(input$search_enter, {
     updateNavbarPage(session, "page", selected = "Table")
     data <- rv_data()
@@ -254,13 +234,19 @@ server <- function(input, output, session) {
     replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
   })
 
-  # Bookmarking: save and restore selected accession code
+  # Persist State _________________________________________________________________________________
+
   onBookmark(function(state) {
     state$values$selected_accession <- selected_accession()
     state$values$details_open <- details_open()
     state
   })
 
+  onBookmarked(function(url) {
+    updateQueryString(url)
+  })
+
+  # TODO: Restore map, search, and row selection state as well
   onRestore(function(state) {
     if (!is.null(state$values$selected_accession)) {
       acc <- state$values$selected_accession
@@ -292,25 +278,52 @@ server <- function(input, output, session) {
     session$doBookmark()
   })
 
+  # TODO: Refactor this for redundancy. Use onRestored to open details view instead of js in ui?
   observe({
     req(rv_data())
     restored <- getQueryString()
     if (!is.null(restored$details_open) && restored$details_open == "true" &&
-      !is.null(restored$selected_accession)) {
+          !is.null(restored$selected_accession)) {
       idx <- match(restored$selected_accession, rv_data()$accessioncode)
       if (!is.na(idx)) {
         update_and_open_details(idx)
       }
     }
   })
-
-  onBookmarked(function(url) {
-    updateQueryString(url)
-  })
 }
 
+# Helper Functions_________________________________________________________________________________
 
-create_popup_link <- function(accessioncode) {
+build_top_five_list <- function(data, column, suffix = "") {
+  freq_table <- sort(table(data[[column]]), decreasing = TRUE)
+  top_names <- names(head(freq_table, 5))
+  items <- lapply(top_names, function(s) {
+    count <- freq_table[[s]]
+    tags$li(tags$strong(s), paste0(" ", count, suffix))
+  })
+  tags$ul(class = "list-unstyled", items)
+}
+
+build_taxa_list <- function(data_row) {
+  taxa_cols <- grep("^toptaxon[0-9]+name$", names(data_row), value = TRUE)
+  taxa <- data_row[taxa_cols]
+  taxa <- taxa[!is.na(taxa)]
+  if (length(taxa) > 0) {
+    paste(head(taxa, 5), collapse = ", ")
+  } else {
+    "No taxa recorded"
+  }
+}
+
+build_action_buttons <- function(i, acc) {
+  sprintf(
+    '<button class="btn btn-info btn-sm details-btn" data-row="%d">See Details</button>
+      <button class="btn btn-primary btn-sm map-btn" data-acc="%s">Show on Map</button>',
+    i, acc
+  )
+}
+
+build_popup_link <- function(accessioncode) {
   paste0(
     accessioncode,
     '\n<a href="#" onclick="Shiny.setInputValue(\'marker_click\', \'',
@@ -319,14 +332,15 @@ create_popup_link <- function(accessioncode) {
   )
 }
 
-# Details view helper
-create_details_view <- function(selected_data) {
+# TODO: Refactor for redundancy with update_and_open_details
+build_details_view <- function(selected_data) {
   row_details <- renderUI({
     valid <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
     lapply(names(valid), function(n) {
       tags$p(tags$strong(paste0(n, ": ")), valid[[n]])
     })
   })
+  # TODO: Refactor for redundancy with build_taxa_list
   taxa_details <- renderUI({
     cols <- grep("^toptaxon[0-9]+name$", names(selected_data), value = TRUE)
     list_data <- selected_data[cols]
@@ -335,6 +349,7 @@ create_details_view <- function(selected_data) {
       tags$p(class = "list-unstyled", tags$strong(paste0(i, ". ")), list_data[[i]])
     })
   })
+  # TODO: Pull out into constant? Populate from existing dict in db?
   column_names <- list(
     "authorplotcode" = "Author Plot Code",
     "authorobscode" = "Author Observation Code",

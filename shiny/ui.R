@@ -5,21 +5,14 @@ library(magrittr)
 library(shinyjs)
 
 ui <- function(req) {
-  # Add shinyjs before other UI elements
-  shinyjs::useShinyjs()
-
   navbar_with_search <- build_navbar()
-  overlay <- build_overlay()
+  overlay <- build_detail_overlay()
 
   script <- tags$script(HTML(
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
          document.getElementById('detail-overlay').style.right = '0px';
      });
-     
-     Shiny.addCustomMessageHandler('triggerMarkerClick', function(message) {
-         Shiny.setInputValue('marker_click', message, {priority: 'event'});
-     });
-
+    
      // Check URL parameters on load
      $(document).ready(function() {
          var params = new URLSearchParams(window.location.search);
@@ -162,7 +155,7 @@ build_navbar <- function() {
   tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
 }
 
-build_overlay <- function() {
+build_detail_overlay <- function() {
   tags$div(
     id = "detail-overlay",
     style = "position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; overflow-y: auto;
