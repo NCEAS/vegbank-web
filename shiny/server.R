@@ -13,7 +13,7 @@ server <- function(input, output, session) {
   observe({
     tryCatch(
       {
-        data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_all_states_test_data")
+        data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_test_data")
         rv_data(data)
       },
       error = function(e) {
@@ -208,14 +208,15 @@ server <- function(input, output, session) {
 
   # Handle close details button click
   observeEvent(input$close_details, {
-    details_open(FALSE)
-    selected_accession(NULL)
-    idx <- as.numeric(input$see_details)
-    if (!is.na(idx) && idx > 0) {
+    data = rv_data()
+    idx <- which(data$accessioncode == selected_accession())
+    if (length(idx) > 0) {
       dt_proxy <- dataTableProxy("dataTable")
       # Wish there was a better way to do this, but I canʻt find a deleselect function anywhere
       selectRows(dt_proxy, idx, ignore.selectable = FALSE)
     }
+    details_open(FALSE)
+    selected_accession(NULL)
     session$doBookmark()
   })
 
