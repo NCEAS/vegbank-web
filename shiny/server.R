@@ -13,7 +13,7 @@ server <- function(input, output, session) {
   observe({
     tryCatch(
       {
-        data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_test_data")
+        data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_all_states_test_data")
         rv_data(data)
       },
       error = function(e) {
@@ -64,6 +64,7 @@ server <- function(input, output, session) {
     DT::datatable(display_data,
       escape = FALSE,
       # TODO: Clicking another row deselects the programtically selected row. It shouldnʻt.
+      #       Also probably worth using different styiing so select could be used for data cart.
       selection = list(mode = "single", target = "row", selectable = FALSE),
       options = list(
         pageLength = 100,
@@ -208,7 +209,7 @@ server <- function(input, output, session) {
 
   # Handle close details button click
   observeEvent(input$close_details, {
-    data = rv_data()
+    data <- rv_data()
     idx <- which(data$accessioncode == selected_accession())
     if (length(idx) > 0) {
       dt_proxy <- dataTableProxy("dataTable")
@@ -288,19 +289,6 @@ server <- function(input, output, session) {
     reactiveValuesToList(input)
     session$doBookmark()
   })
-
-  # TODO: Refactor this for redundancy. Use onRestored to open details view instead of js in ui?
-  # observe({
-  #   req(rv_data())
-  #   restored <- getQueryString()
-  #   if (!is.null(restored$details_open) && restored$details_open == "true" &&
-  #         !is.null(restored$selected_accession)) {
-  #     idx <- match(restored$selected_accession, rv_data()$accessioncode)
-  #     if (!is.na(idx)) {
-  #       update_and_open_details(idx)
-  #     }
-  #   }
-  # })
 }
 
 # Helper Functions_________________________________________________________________________________
@@ -327,13 +315,26 @@ build_taxa_list <- function(data_row) {
 }
 
 build_action_buttons <- function(i, acc) {
-  sprintf(
-    '<button class="btn btn-info btn-sm details-btn" data-row="%d">See Details</button>
-      <button class="btn btn-primary btn-sm map-btn" data-acc="%s">Show on Map</button>',
-    i, acc
+  as.character(
+    tagList(
+      actionButton(
+        inputId = paste0("see_details_", i),
+        label = "See Details",
+        class = "btn btn-info btn-sm details-btn mb-1",
+        onclick = sprintf("Shiny.setInputValue('see_details', %d, {priority: 'event'})", i)
+      ),
+      actionButton(
+        inputId = paste0("map_btn_", i),
+        label = "Show on Map",
+        class = "btn btn-primary btn-sm map-btn",
+        onclick = sprintf("Shiny.setInputValue('show_on_map', '%s', {priority: 'event'})", acc)
+      )
+    )
   )
 }
 
+# Trying to refactor this to use tags always throws a
+# "Text to be written must be a length-one character vector" error
 build_popup_link <- function(accessioncode) {
   paste0(
     accessioncode,
