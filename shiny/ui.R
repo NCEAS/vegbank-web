@@ -143,6 +143,15 @@ build_navbar <- function() {
       )
     ),
     nav_menu(
+      title = "Projects",
+      nav_panel(
+        title = "Table",
+      ),
+      nav_panel(
+        title = "Map",
+      )
+    ),
+    nav_menu(
       title = "About",
       align = "right",
       nav_panel(
