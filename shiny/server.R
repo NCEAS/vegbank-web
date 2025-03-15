@@ -1,3 +1,4 @@
+# TODO: What does dependency managment look like in R?
 library(shiny)
 library(leaflet)
 library(magrittr)
@@ -103,6 +104,8 @@ server <- function(input, output, session) {
 
   # Handle Events _________________________________________________________________________________
 
+  # TODO: Rewrite this to avoid re-rendering the map on every zoom event and only update the labels
+  # TODO: Rewrite the labels to include links instead of putting them in the popup
   # Change the visibility of the marker labels based on the zoom level
   observeEvent(input$map_zoom, {
     current_zoom(input$map_zoom)
@@ -125,6 +128,7 @@ server <- function(input, output, session) {
           lng = ~longitude,
           lat = ~latitude,
           layerId = ~accessioncode,
+          # TODO: This should be a list of linked accession codes too
           popup = ~ build_popup_link(accessioncode),
           # Display concatenated authorobscode for duplicates
           label = ~ authorobscode_label %>% lapply(htmltools::HTML),
