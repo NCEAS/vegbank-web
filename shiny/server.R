@@ -48,8 +48,7 @@ server <- function(input, output, session) {
     data <- rv_data()
     actions <- mapply(
       build_action_buttons,
-      seq_len(nrow(data)),
-      data$accessioncode
+      seq_len(nrow(data))
     )
 
     display_data <- data.frame(
@@ -89,7 +88,7 @@ server <- function(input, output, session) {
           authorobscode_label =
             paste(mapply(function(obs, acc) {
               sprintf(
-                "<a href=\"#\" onclick=\"Shiny.setInputValue('label_link_click', 
+                "<a href=\"#\" onclick=\"Shiny.setInputValue('label_link_click',
                 '%s', {priority:'event'})\">%s</a>",
                 acc, obs
               )
@@ -149,7 +148,7 @@ server <- function(input, output, session) {
   }
 
   # TODO: Parameterize this to pull out of server fn?
-  update_map_view <- function(acc, idx) {
+  update_map_view <- function(idx) {
     data <- rv_data()
     leafletProxy("map", session) %>%
       setView(
@@ -161,7 +160,7 @@ server <- function(input, output, session) {
       addPopups(
         lng = data$longitude[idx],
         lat = data$latitude[idx],
-        popup = "Here!"
+        popup = paste("Plot", data$authorobscode[idx], "is here!", sep = " ")
       )
   }
 
@@ -171,12 +170,11 @@ server <- function(input, output, session) {
     req(map_request())
 
     data <- rv_data()
-    acc <- map_request()
-    idx <- which(data$accessioncode == acc)
+    idx <- map_request()
 
     if (length(idx) > 0) {
       invalidateLater(100) # Small delay to ensure map is ready
-      update_map_view(acc, idx)
+      update_map_view(idx)
       map_request(NULL) # Clear the request
     }
   })
@@ -207,9 +205,9 @@ server <- function(input, output, session) {
 
   # Handle show on map button click
   observeEvent(input$show_on_map, {
-    acc <- input$show_on_map
+    idx <- as.numeric(input$show_on_map)
     updateNavbarPage(session, "page", selected = "Map")
-    map_request(acc) # Set the request instead of updating map directly
+    map_request(idx) # Set the request instead of updating map directly
   })
 
   # Handle label see details link click
@@ -298,7 +296,7 @@ build_taxa_list <- function(data_row) {
   }
 }
 
-build_action_buttons <- function(i, acc) {
+build_action_buttons <- function(i) {
   as.character(
     tagList(
       actionButton(
@@ -311,7 +309,7 @@ build_action_buttons <- function(i, acc) {
         inputId = paste0("map_btn_", i),
         label = "Show on Map",
         class = "btn btn-primary btn-sm map-btn",
-        onclick = sprintf("Shiny.setInputValue('show_on_map', '%s', {priority: 'event'})", acc)
+        onclick = sprintf("Shiny.setInputValue('show_on_map', '%s', {priority: 'event'})", i)
       )
     )
   )
