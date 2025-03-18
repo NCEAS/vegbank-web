@@ -109,7 +109,7 @@ build_navbar <- function() {
       )
     ),
     nav_menu(
-      title = "Commuinties",
+      title = "Communities",
       nav_panel(
         title = "Table",
       ),
