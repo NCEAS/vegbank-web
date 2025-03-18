@@ -9,12 +9,11 @@ server <- function(input, output, session) {
   selected_accession <- reactiveVal(NULL)
   details_open <- reactiveVal(FALSE)
   map_request <- reactiveVal(NULL)
-  # current_zoom <- reactiveVal(NULL)
 
   observe({
     tryCatch(
       {
-        data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_test_data")
+        data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_all_states_test_data")
         rv_data(data)
       },
       error = function(e) {
@@ -84,16 +83,17 @@ server <- function(input, output, session) {
         addTiles() %>%
         addControl("Data unavailable", position = "topright")
     } else {
-      # Group by latitude and longitude and create a link for each authorobscode that opens the details view
       data_grouped <- data %>%
-        dplyr::group_by(latitude, longitude) %>%  # nolint: object_usage_linter.
+        dplyr::group_by(latitude, longitude) %>% # nolint: object_usage_linter.
         dplyr::mutate(
-          # Create a link for each row using its accessioncode and authorobscode.
-          # mapply pairs the authorobscode with its accessioncode for the onclick action.
-          labels = paste(mapply(function(obs, acc) {
-            sprintf("<a href=\"#\" onclick=\"Shiny.setInputValue('popup_link_click', '%s', {priority:'event'})\">%s</a>",
-                    acc, obs)
-          }, authorobscode, accessioncode), collapse = "<br>"), # nolint: object_usage_linter.
+          authorobscode_label =
+            paste(mapply(function(obs, acc) {
+              sprintf(
+                "<a href=\"#\" onclick=\"Shiny.setInputValue('label_link_click', 
+                '%s', {priority:'event'})\">%s</a>",
+                acc, obs
+              )
+            }, authorobscode, accessioncode), collapse = "<br>"), # nolint: object_usage_linter.
         ) %>%
         dplyr::ungroup()
 
@@ -102,10 +102,9 @@ server <- function(input, output, session) {
         addMarkers(
           lng = ~longitude,
           lat = ~latitude,
-          layerId = ~paste(latitude, longitude, sep = ", "),
-          # popup = ~ build_popup_link(accessioncode),
+          layerId = ~ paste(latitude, longitude, sep = ", "),
           # Render the concatenated links
-          label = ~ htmltools::HTML(labels),
+          label = ~ authorobscode_label %>% lapply(htmltools::HTML),
           labelOptions = labelOptions(
             noHide = TRUE,
             clickable = TRUE,
@@ -132,53 +131,6 @@ server <- function(input, output, session) {
   })
 
   # Handle Events _________________________________________________________________________________
-
-  # TODO: Rewrite this to avoid re-rendering the map on every zoom event and only update the labels
-  # TODO: Rewrite the labels to include links instead of putting them in the popup
-  # Change the visibility of the marker labels based on the zoom level
-  # observeEvent(input$map_zoom, {
-  #   current_zoom(input$map_zoom)
-  #   data <- rv_data()
-  #   if (!is.null(data)) {
-  #     # Handle duplicates by grouping on lat & long, and concatenate all authorobscode values
-  #     data_grouped <- data %>%
-  #       dplyr::group_by(latitude, longitude) %>% # nolint: object_usage_linter.
-  #       dplyr::mutate(
-  #         authorobscode_label =
-  #           paste(authorobscode, collapse = "<br>") # nolint: object_usage_linter.
-  #       ) %>%
-  #       dplyr::ungroup()
-
-  #     show_labels <- input$map_zoom >= 14
-  #     leafletProxy("map", session) %>%
-  #       clearMarkers() %>%
-  #       addMarkers(
-  #         data = data_grouped,
-  #         lng = ~longitude,
-  #         lat = ~latitude,
-  #         layerId = ~accessioncode,
-  #         # TODO: This should be a list of linked accession codes too
-  #         popup = ~ build_popup_link(accessioncode),
-  #         # Display concatenated authorobscode for duplicates
-  #         label = ~ authorobscode_label %>% lapply(htmltools::HTML),
-  #         # TODO: Explore cluster options for markers & labels
-  #         labelOptions = labelOptions(
-  #           noHide = show_labels,
-  #           direction = "bottom",
-  #           textOnly = TRUE,
-  #           # TODO: Tie these colors to the theme
-  #           style = list(
-  #             "color" = "#2c5443",
-  #             "font-weight" = "bold",
-  #             "padding" = "3px 8px",
-  #             "background" = "white",
-  #             "border" = "1px solid #2c5443",
-  #             "border-radius" = "3px"
-  #           )
-  #         )
-  #       )
-  #   }
-  # })
 
   # TODO: Parameterize this to pull out of server fn?
   update_and_open_details <- function(idx) {
@@ -209,9 +161,8 @@ server <- function(input, output, session) {
       addPopups(
         lng = data$longitude[idx],
         lat = data$latitude[idx],
-        popup = build_popup_link(acc)
+        popup = "Here!"
       )
-    selected_accession(acc)
   }
 
   # Handle map_request
@@ -261,10 +212,10 @@ server <- function(input, output, session) {
     map_request(acc) # Set the request instead of updating map directly
   })
 
-  # Handle marker popup see details link click
-  observeEvent(input$popup_link_click, {
+  # Handle label see details link click
+  observeEvent(input$label_link_click, {
     data <- rv_data()
-    idx <- which(data$accessioncode == input$popup_link_click)
+    idx <- which(data$accessioncode == input$label_link_click)
     if (length(idx) > 0) {
       update_and_open_details(idx)
       dt_proxy <- dataTableProxy("dataTable")
@@ -363,17 +314,6 @@ build_action_buttons <- function(i, acc) {
         onclick = sprintf("Shiny.setInputValue('show_on_map', '%s', {priority: 'event'})", acc)
       )
     )
-  )
-}
-
-# Trying to refactor this to use tags always throws a
-# "Text to be written must be a length-one character vector" error
-build_popup_link <- function(accessioncode) {
-  paste0(
-    accessioncode,
-    '\n<a href="#" onclick="Shiny.setInputValue(\'popup_link_click\', \'',
-    accessioncode,
-    '\', {priority: \'event\'})">See Details</a>'
   )
 }
 
