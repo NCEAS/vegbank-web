@@ -3,6 +3,8 @@ library(shiny)
 library(leaflet)
 library(magrittr)
 library(DT)
+library(ggplot2) # added for heatmap rendering
+library(maps) # added to render world map boundaries
 
 server <- function(input, output, session) {
   rv_data <- reactiveVal(NULL)
@@ -11,12 +13,12 @@ server <- function(input, output, session) {
   map_request <- reactiveVal(NULL)
 
   observe({
-    filePath <- "/Users/dariangill/git/vegbank-web/shiny/www/all_states_plot_obs.json"
-    if (file.exists(filePath)) {
+    file_path <- "/Users/dariangill/git/vegbank-web/shiny/www/all_states_plot_obs.json"
+    if (file.exists(file_path)) {
       tryCatch(
         {
-          fileContent <- paste(readLines(filePath, warn = FALSE), collapse = "\n")
-          data <- jsonlite::fromJSON(fileContent)
+          file_content <- paste(readLines(file_path, warn = FALSE), collapse = "\n")
+          data <- jsonlite::fromJSON(file_content)
           rv_data(data)
         },
         error = function(e) {
@@ -25,7 +27,7 @@ server <- function(input, output, session) {
         }
       )
     } else {
-      message("Error fetching data: File not found: ", filePath)
+      message("Error fetching data: File not found: ", file_path)
       rv_data(NULL)
     }
   })
@@ -49,6 +51,32 @@ server <- function(input, output, session) {
 
   output$topYears <- renderUI({
     build_top_five_list(rv_data(), "dateentered", " plots")
+  })
+
+  output$plotHeatmap <- renderPlot({
+    data <- rv_data()
+    if (is.null(data)) {
+      return(NULL)
+    }
+    na_map <- map_data("world", region = c("USA", "Canada", "Mexico"))
+    ggplot() +
+      geom_polygon(
+        data = na_map, aes(
+          x = long, y = lat, group = group # nolint: object_usage_linter.
+        ), 
+        fill = "white", color = "gray70", size = 0.3
+      ) +
+      stat_density2d(
+        data = data, aes(
+          x = longitude, y = latitude, fill = ..level.. # nolint: object_usage_linter.
+        ),
+        geom = "polygon", color = "black", contour = TRUE
+      ) +
+      scale_fill_gradient(low = "lightgreen", high = "darkgreen", na.value = "white") +
+      coord_fixed(1.3) +
+      xlim(-200, -50) +
+      labs(title = "Plot Heatmap", x = "Longitude", y = "Latitude") +
+      theme_minimal()
   })
 
   output$dataTable <- DT::renderDataTable({

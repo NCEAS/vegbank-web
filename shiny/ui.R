@@ -91,14 +91,15 @@ build_navbar <- function() {
           )
         ),
         fluidRow(
-          column(12, card(card_header("Data in Vegbank"), card_body(uiOutput("dataSummary"))))
+          column(5, card(card_header("Data in Vegbank"), card_body(uiOutput("dataSummary")))),
+          column(7, card(card_header("Plot Heatmap"), card_body(plotOutput("plotHeatmap"))))
         ),
         fluidRow(
           column(3, card(card_header("Top Places"), card_body(uiOutput("topPlaces")))),
           column(3, card(card_header("Top Species"), card_body(uiOutput("topSpecies")))),
           column(3, card(card_header("Top Observers"), card_body(uiOutput("topObservers")))),
           column(3, card(card_header("Top Years"), card_body(uiOutput("topYears"))))
-        )
+        ),
       )
     ),
     nav_menu(
