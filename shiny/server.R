@@ -124,12 +124,26 @@ server <- function(input, output, session) {
               "border-radius" = "3px"
             )
           ),
-          clusterOptions = markerClusterOptions(minZoom = 5, maxZoom = 10)
+          clusterOptions = markerClusterOptions()
         ) %>%
+        # Display Zoom level for debugging purposes
         htmlwidgets::onRender("
           function(el, x) {
-            this.on('zoomend', function(e) {
-              Shiny.setInputValue('map_zoom', this.getZoom());
+            var map = this;
+            var zoomControl = L.control({position: 'bottomleft'});
+            zoomControl.onAdd = function(map) {
+              var div = L.DomUtil.create('div', 'zoom-control');
+              div.style.background = 'white';
+              div.style.padding = '5px';
+              div.style.border = '1px solid #ccc';
+              div.innerHTML = 'Zoom: ' + map.getZoom();
+              return div;
+            };
+            zoomControl.addTo(map);
+            map.on('zoomend', function() {
+              document.getElementsByClassName('zoom-control')
+                [0].innerHTML = 'Zoom: ' + map.getZoom();
+              Shiny.setInputValue('map_zoom', map.getZoom());
             });
           }
         ")
@@ -161,7 +175,7 @@ server <- function(input, output, session) {
       setView(
         lng = data$longitude[idx],
         lat = data$latitude[idx],
-        zoom = 14
+        zoom = 18
       ) %>%
       clearPopups() %>%
       addPopups(
