@@ -12,7 +12,7 @@ ui <- function(req) {
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
          document.getElementById('detail-overlay').style.right = '0px';
      });
-    
+
      $(document).ready(function() {
          var params = new URLSearchParams(window.location.search);
          if(params.get('details_open') === 'true') {
@@ -79,26 +79,18 @@ build_navbar <- function() {
             12,
             card(
               card_header("App Overview"),
-              card_body("Vegbank is a database of vegetation plot data. The data displayed in this
-            app is a subset of the full dataset, containing 100 randomly selected plots. Each row
-            in the table represents a plot, and the columns contain information about the plot
-            location, species observed, and observer details. This is a simple Shiny app that
-            demonstrates how to use bookmarking to save the state of the app in the URL. The
-            app displays a table of data, a map, and a detailed view of each row in the table.
-            You can search for specific rows using the search bar in the navbar or on the table
-            page.")
+              card_body(uiOutput("dataSummary"))
             )
           )
         ),
         fluidRow(
-          column(5, card(card_header("Data in Vegbank"), card_body(uiOutput("dataSummary")))),
-          column(7, card(card_header("Plot Heatmap"), card_body(plotOutput("plotHeatmap"))))
+          column(6, card(card_header("Top Places"), card_body(plotOutput("topPlaces")))),
+          column(6, card(card_header("Plot Heatmap"), card_body(plotOutput("plotHeatmap"))))
         ),
         fluidRow(
-          column(3, card(card_header("Top Places"), card_body(uiOutput("topPlaces")))),
-          column(3, card(card_header("Top Species"), card_body(uiOutput("topSpecies")))),
-          column(3, card(card_header("Top Observers"), card_body(uiOutput("topObservers")))),
-          column(3, card(card_header("Top Years"), card_body(uiOutput("topYears"))))
+          column(4, card(card_header("Top Species"), card_body(uiOutput("topSpecies")))),
+          column(4, card(card_header("Top Observers"), card_body(uiOutput("topObservers")))),
+          column(4, card(card_header("Top Years"), card_body(uiOutput("topYears"))))
         ),
       )
     ),

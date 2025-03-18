@@ -34,11 +34,31 @@ server <- function(input, output, session) {
 
   # Render UI Outputs ____________________________________________________________________________
   output$dataSummary <- renderUI({
-    tags$p(paste0("This dataset contains ", nrow(rv_data()), " plots."))
+    tags$p(paste0("Vegbank is a database of vegetation plot data. The data displayed in this
+            app is a subset of the full dataset, containing ", nrow(rv_data()), " randomly selected 
+            plots. Each row in the table represents a plot, and the columns contain information 
+            about the plot location, species observed, and observer details. This is a simple Shiny 
+            app that demonstrates how to use bookmarking to save the state of the app in the URL. 
+            The app displays a table of data, a map, and a detailed view of each row in the table.
+            You can search for specific rows using the search bar in the navbar or on the table
+            page."))
   })
 
-  output$topPlaces <- renderUI({
-    build_top_five_list(rv_data(), "stateprovince")
+  output$topPlaces <- renderPlot({
+    data <- rv_data()
+    if (is.null(data)) return(NULL)
+    counts <- table(data$stateprovince)
+    df <- as.data.frame(counts)
+    colnames(df) <- c("place", "count")
+    df <- df[order(df$count, decreasing = TRUE), ]
+    top_df <- head(df, 10)
+    ggplot(top_df, aes(x = reorder(place, count), y = count)) + # nolint: object_usage_linter.
+      geom_bar(stat = "identity", fill = "#72b9a2") +
+      geom_text(aes(label = count), hjust = -0.1, size = 3) +
+      coord_flip() +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
+      labs(x = "Place", y = "Count", title = "Top 10 Places") +
+      theme_minimal()
   })
 
   output$topSpecies <- renderUI({
