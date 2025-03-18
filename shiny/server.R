@@ -11,16 +11,23 @@ server <- function(input, output, session) {
   map_request <- reactiveVal(NULL)
 
   observe({
-    tryCatch(
-      {
-        data <- jsonlite::fromJSON("http://127.0.0.1:28015/gen_all_states_test_data")
-        rv_data(data)
-      },
-      error = function(e) {
-        message("Error fetching data: ", e)
-        rv_data(NULL)
-      }
-    )
+    filePath <- "/Users/dariangill/git/vegbank-web/shiny/www/all_states_plot_obs.json"
+    if (file.exists(filePath)) {
+      tryCatch(
+        {
+          fileContent <- paste(readLines(filePath, warn = FALSE), collapse = "\n")
+          data <- jsonlite::fromJSON(fileContent)
+          rv_data(data)
+        },
+        error = function(e) {
+          message("Error fetching data: ", e)
+          rv_data(NULL)
+        }
+      )
+    } else {
+      message("Error fetching data: File not found: ", filePath)
+      rv_data(NULL)
+    }
   })
 
   # Render UI Outputs ____________________________________________________________________________
@@ -117,7 +124,7 @@ server <- function(input, output, session) {
               "border-radius" = "3px"
             )
           ),
-          clusterOptions = markerClusterOptions()
+          clusterOptions = markerClusterOptions(minZoom = 5, maxZoom = 10)
         ) %>%
         htmlwidgets::onRender("
           function(el, x) {
