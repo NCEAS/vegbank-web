@@ -40,7 +40,7 @@ custom_theme <- bs_theme(
   fg = "#19201d",
   info = "#2c5443",
   primary = "#72b9a2",
-  secondary = "#d8fb5a",
+  secondary = "#72b9a2",
   base_font = font_google("Inter"),
   heading_font = font_google("Inter")
 ) %>%
@@ -84,11 +84,11 @@ build_navbar <- function() {
           )
         ),
         fluidRow(
-          column(6, card(card_header("Top Places"), card_body(plotOutput("topPlaces")))),
-          column(6, card(card_header("Plot Heatmap"), card_body(plotOutput("plotHeatmap"))))
+          column(4, card(card_header("Top Places"), card_body(plotOutput("topPlaces")))),
+          column(4, card(card_header("Top Species"), card_body(plotOutput("topSpecies")))),
+          column(4, card(card_header("Plot Heatmap"), card_body(plotOutput("plotHeatmap"))))
         ),
         fluidRow(
-          column(4, card(card_header("Top Species"), card_body(uiOutput("topSpecies")))),
           column(4, card(card_header("Top Observers"), card_body(uiOutput("topObservers")))),
           column(4, card(card_header("Top Years"), card_body(uiOutput("topYears"))))
         ),

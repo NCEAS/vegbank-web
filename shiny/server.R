@@ -44,25 +44,32 @@ server <- function(input, output, session) {
             page."))
   })
 
-  output$topPlaces <- renderPlot({
-    data <- rv_data()
-    if (is.null(data)) return(NULL)
-    counts <- table(data$stateprovince)
+  # Helper function: build top 10 bar chart
+  build_top10_barchart <- function(data, column, xlab, color) {
+    counts <- table(data[[column]])
     df <- as.data.frame(counts)
-    colnames(df) <- c("place", "count")
+    colnames(df) <- c("name", "count")
     df <- df[order(df$count, decreasing = TRUE), ]
     top_df <- head(df, 10)
-    ggplot(top_df, aes(x = reorder(place, count), y = count)) + # nolint: object_usage_linter.
-      geom_bar(stat = "identity", fill = "#72b9a2") +
+    ggplot(top_df, aes(x = reorder(name, count), y = count)) +
+      geom_bar(stat = "identity", fill = color) +
       geom_text(aes(label = count), hjust = -0.1, size = 3) +
       coord_flip() +
       scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
-      labs(x = "Place", y = "Count", title = "Top 10 Places") +
+      labs(x = xlab, y = "Plot Occurrences") +
       theme_minimal()
+  }
+
+  output$topPlaces <- renderPlot({
+    data <- rv_data()
+    if (is.null(data)) return(NULL)
+    build_top10_barchart(data, "stateprovince", "Place", "#4F8773")
   })
 
-  output$topSpecies <- renderUI({
-    build_top_five_list(rv_data(), "toptaxon1name", " occurrences")
+  output$topSpecies <- renderPlot({
+    data <- rv_data()
+    if (is.null(data)) return(NULL)
+    build_top10_barchart(data, "toptaxon1name", "Species", "#4F8773")
   })
 
   output$topObservers <- renderUI({
