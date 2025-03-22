@@ -63,7 +63,7 @@ server <- function(input, output, session) {
   output$topPlaces <- renderPlot({
     data <- rv_data()
     if (is.null(data)) return(NULL)
-    build_top10_barchart(data, "stateprovince", "Place", "#4F8773")
+    build_top10_barchart(data, "plotstateprovince", "Place", "#4F8773")
   })
 
   output$topSpecies <- renderPlot({
@@ -77,7 +77,7 @@ server <- function(input, output, session) {
   })
 
   output$topYears <- renderUI({
-    build_top_five_list(rv_data(), "dateentered", " plots")
+    build_top_five_list(rv_data(), "obsdateentered", " plots")
   })
 
   output$plotHeatmap <- renderPlot({
@@ -116,7 +116,7 @@ server <- function(input, output, session) {
     display_data <- data.frame(
       "Actions" = actions,
       "Author Plot Code" = data$authorobscode,
-      "Location" = data$stateprovince,
+      "Location" = data$plotstateprovince,
       "Top Taxa" = apply(data, 1, build_taxa_list),
       stringsAsFactors = FALSE,
       check.names = FALSE
@@ -154,7 +154,7 @@ server <- function(input, output, session) {
                 '%s', {priority:'event'})\">%s</a>",
                 acc, obs
               )
-            }, authorobscode, accessioncode), collapse = "<br>"), # nolint: object_usage_linter.
+            }, authorobscode, obsaccessioncode), collapse = "<br>"), # nolint: object_usage_linter.
         ) %>%
         dplyr::ungroup()
 
@@ -218,7 +218,7 @@ server <- function(input, output, session) {
     output$methods_details <- details$methods_details
     output$plot_quality_details <- details$plot_quality_details
     output$taxaDetails <- details$taxa_details
-    selected_accession(rv_data()[idx, "accessioncode"])
+    selected_accession(rv_data()[idx, "obsaccessioncode"])
     details_open(TRUE)
     session$sendCustomMessage("openOverlay", list())
   }
@@ -268,7 +268,7 @@ server <- function(input, output, session) {
   # Handle close details button click
   observeEvent(input$close_details, {
     data <- rv_data()
-    idx <- which(data$accessioncode == selected_accession())
+    idx <- which(data$obsaccessioncode == selected_accession())
     if (length(idx) > 0) {
       dt_proxy <- dataTableProxy("dataTable")
       # Wish there was a better way to do this, but I canʻt find a deleselect function anywhere
@@ -289,7 +289,7 @@ server <- function(input, output, session) {
   # Handle label see details link click
   observeEvent(input$label_link_click, {
     data <- rv_data()
-    idx <- which(data$accessioncode == input$label_link_click)
+    idx <- which(data$obsaccessioncode == input$label_link_click)
     if (length(idx) > 0) {
       update_and_open_details(idx)
       dt_proxy <- dataTableProxy("dataTable")
@@ -329,7 +329,7 @@ server <- function(input, output, session) {
       observeEvent(rv_data(),
         {
           data <- rv_data()
-          idx <- match(acc, data$accessioncode)
+          idx <- match(acc, data$obsaccessioncode)
           if (!is.na(idx)) {
             selected_accession(acc)
             update_and_open_details(idx)
@@ -421,12 +421,16 @@ build_details_view <- function(selected_data) {
     "latitude" = "Latitude",
     "longitude" = "Longitude",
     "locationnarrative" = "Location Description",
-    "stateprovince" = "State/Province",
+    "plotstateprovince" = "State/Province",
     "country" = "Country",
     "obsstartdate" = "Observation Start Date",
     "project_id" = "Project ID",
+    "projectname" = "Project Name",
     "covermethod_id" = "Cover Method ID",
+    "covertype" = "Cover Type",
     "stratummethod_id" = "Stratum Method ID",
+    "stratummethodname" = "Stratum Method",
+    "stratummethoddescription" = "Stratum Method Description",
     "taxonobservationarea" = "Taxon Observation Area",
     "autotaxoncover" = "Taxon Cover Automatically Calculated",
     "plotvalidationlevel" = "Plot Validation Level",
@@ -459,13 +463,13 @@ build_details_view <- function(selected_data) {
     plot_id_details = render_details(c("authorobscode", "authorplotcode")),
     location_details = render_details(c(
       "confidentialitystatus", "latitude", "longitude",
-      "locationnarrative", "stateprovince", "country"
+      "locationnarrative", "plotstateprovince", "country"
     )),
     layout_details = render_details(c("area", "permanence")),
-    environmental_details = render_details(c("elevation", "slopeaspect", "slopegradient")),
+    environmental_details = render_details(c("elevation", "slopeaspect")), #"slopegradient"
     methods_details = render_details(c(
-      "obsstartdate", "project_id", "covermethod_id",
-      "stratummethod_id", "taxonobservationarea", "autotaxoncover"
+      "obsstartdate", "projectname", "covertype",
+      "stratummethodname", "stratummethoddescription" # "taxonobservationarea", "autotaxoncover"
     )),
     plot_quality_details = render_details(c("plotvalidationlevel"))
   )
