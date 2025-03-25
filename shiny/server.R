@@ -504,7 +504,7 @@ build_details_view <- function(selected_data) {
           row <- sorted_taxa[i, ]
           tags$tr(
             tags$td(row$authorplantname),
-            tags$td(row$cover)
+            tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
           )
         })
 
