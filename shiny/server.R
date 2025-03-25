@@ -35,10 +35,10 @@ server <- function(input, output, session) {
   # Render UI Outputs ____________________________________________________________________________
   output$dataSummary <- renderUI({
     tags$p(paste0("Vegbank is a database of vegetation plot data. The data displayed in this
-            app is a subset of the full dataset, containing ", nrow(rv_data()), " randomly selected 
-            plots. Each row in the table represents a plot, and the columns contain information 
-            about the plot location, species observed, and observer details. This is a simple Shiny 
-            app that demonstrates how to use bookmarking to save the state of the app in the URL. 
+            app is a subset of the full dataset, containing ", nrow(rv_data()), " randomly selected
+            plots. Each row in the table represents a plot, and the columns contain information
+            about the plot location, species observed, and observer details. This is a simple Shiny
+            app that demonstrates how to use bookmarking to save the state of the app in the URL.
             The app displays a table of data, a map, and a detailed view of each row in the table.
             You can search for specific rows using the search bar in the navbar or on the table
             page."))
@@ -51,7 +51,7 @@ server <- function(input, output, session) {
     colnames(df) <- c("name", "count")
     df <- df[order(df$count, decreasing = TRUE), ]
     top_df <- head(df, 10)
-    ggplot(top_df, aes(x = reorder(name, count), y = count)) +
+    ggplot(top_df, aes(x = reorder(name, count), y = count)) + # nolint: object_usage_linter.
       geom_bar(stat = "identity", fill = color) +
       geom_text(aes(label = count), hjust = -0.1, size = 3) +
       coord_flip() +
@@ -62,13 +62,17 @@ server <- function(input, output, session) {
 
   output$topPlaces <- renderPlot({
     data <- rv_data()
-    if (is.null(data)) return(NULL)
+    if (is.null(data)) {
+      return(NULL)
+    }
     build_top10_barchart(data, "plotstateprovince", "Place", "#4F8773")
   })
 
   output$topSpecies <- renderPlot({
     data <- rv_data()
-    if (is.null(data)) return(NULL)
+    if (is.null(data)) {
+      return(NULL)
+    }
     build_top10_barchart(data, "toptaxon1name", "Species", "#4F8773")
   })
 
@@ -90,7 +94,7 @@ server <- function(input, output, session) {
       geom_polygon(
         data = na_map, aes(
           x = long, y = lat, group = group # nolint: object_usage_linter.
-        ), 
+        ),
         fill = "white", color = "gray70", size = 0.3
       ) +
       stat_density2d(
@@ -466,7 +470,7 @@ build_details_view <- function(selected_data) {
       "locationnarrative", "plotstateprovince", "country"
     )),
     layout_details = render_details(c("area", "permanence")),
-    environmental_details = render_details(c("elevation", "slopeaspect")), #"slopegradient"
+    environmental_details = render_details(c("elevation", "slopeaspect")), # "slopegradient"
     methods_details = render_details(c(
       "obsstartdate", "projectname", "covertype",
       "stratummethodname", "stratummethoddescription" # "taxonobservationarea", "autotaxoncover"
