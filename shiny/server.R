@@ -189,14 +189,21 @@ server <- function(input, output, session) {
 
     DT::datatable(display_data,
       escape = FALSE,
-      # TODO: Clicking another row deselects the programtically selected row. It shouldnʻt.
-      #       Also probably worth using different styiing so select could be used for data cart.
       selection = list(mode = "single", target = "row", selectable = FALSE),
       options = list(
         pageLength = 100,
         scrollY = "calc(100vh - 300px)",
         scrollX = TRUE,
-        scrollCollapse = TRUE
+        scrollCollapse = TRUE,
+        autoWidth = FALSE,
+        columnDefs = list(
+          list(targets = c(0), width = "5%"),   # Number
+          list(targets = c(1), width = "10%"),  # Actions
+          list(targets = c(2), width = "10%"),  # Author Plot Code
+          list(targets = c(3), width = "10%"),  # Location
+          list(targets = c(4), width = "45%"),  # Top Taxa
+          list(targets = c(5), width = "20%")   # Community
+        )
       )
     )
   })
@@ -427,14 +434,25 @@ build_top_five_list <- function(data, column, suffix = "") {
 }
 
 build_taxa_list <- function(data_row) {
-  taxa_cols <- grep("^toptaxon[0-9]+name$", names(data_row), value = TRUE)
-  taxa <- data_row[taxa_cols]
-  taxa <- taxa[!is.na(taxa)]
-  if (length(taxa) > 0) {
-    paste(head(taxa, 5), collapse = ", ")
-  } else {
-    "No taxa recorded"
-  }
+  tryCatch(
+    {
+      # Access the taxa data as a data frame from jsonlite::fromJSON
+      taxa <- data_row[["taxa"]]
+      if (!is.null(taxa) && nrow(taxa) > 0) {
+        # Sort by cover in descending order
+        sorted_taxa <- taxa[order(-taxa$cover), ]
+        top5 <- head(sorted_taxa, 5)
+        taxa_items <- sprintf("<li>%s <b>(%g%%)</b></li>", top5$authorplantname, top5$cover)
+        paste("<ol>", paste(taxa_items, collapse = "\n"), "</ol>", sep = "\n")
+      } else {
+        "No taxa recorded"
+      }
+    },
+    error = function(e) {
+      print(paste("Error in build_taxa_list:", e$message))
+      "Error processing taxa"
+    }
+  )
 }
 
 build_action_buttons <- function(i) {
