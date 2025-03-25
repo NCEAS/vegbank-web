@@ -197,12 +197,12 @@ server <- function(input, output, session) {
         scrollCollapse = TRUE,
         autoWidth = FALSE,
         columnDefs = list(
-          list(targets = c(0), width = "5%"),   # Number
-          list(targets = c(1), width = "10%"),  # Actions
-          list(targets = c(2), width = "10%"),  # Author Plot Code
-          list(targets = c(3), width = "10%"),  # Location
-          list(targets = c(4), width = "45%"),  # Top Taxa
-          list(targets = c(5), width = "20%")   # Community
+          list(targets = c(0), width = "5%"), # Number
+          list(targets = c(1), width = "10%"), # Actions
+          list(targets = c(2), width = "10%"), # Author Plot Code
+          list(targets = c(3), width = "10%"), # Location
+          list(targets = c(4), width = "45%"), # Top Taxa
+          list(targets = c(5), width = "20%") # Community
         )
       )
     )
@@ -482,14 +482,49 @@ build_details_view <- function(selected_data) {
       tags$p(tags$strong(paste0(n, ": ")), valid[[n]])
     })
   })
-  # TODO: Refactor for redundancy with build_taxa_list
+  # Updated taxa_details using build_taxa_list as inspiration
   taxa_details <- renderUI({
-    cols <- grep("^toptaxon[0-9]+name$", names(selected_data), value = TRUE)
-    list_data <- selected_data[cols]
-    list_data <- list_data[!is.na(list_data)]
-    lapply(seq_along(list_data), function(i) {
-      tags$p(class = "list-unstyled", tags$strong(paste0(i, ". ")), list_data[[i]])
-    })
+    tryCatch(
+      {
+        taxa <- selected_data[["taxa"]]
+        if (is.null(taxa)) {
+          return("No taxa recorded")
+        }
+        if (!is.data.frame(taxa)) {
+          taxa <- as.data.frame(taxa)
+        }
+        if (nrow(taxa) == 0) {
+          return("No taxa recorded")
+        }
+
+        # Sort by descending cover (ensure numeric comparison)
+        sorted_taxa <- taxa[order(-as.numeric(taxa$cover)), ]
+        # Build table rows; show all taxa entries
+        rows <- lapply(seq_len(nrow(sorted_taxa)), function(i) {
+          row <- sorted_taxa[i, ]
+          tags$tr(
+            tags$td(row$authorplantname),
+            tags$td(row$cover)
+          )
+        })
+
+        tags$table(
+          class = "table table-bordered",
+          tags$thead(
+            tags$tr(
+              tags$th("Author Plant Name"),
+              tags$th("Cover")
+            )
+          ),
+          tags$tbody(
+            rows
+          )
+        )
+      },
+      error = function(e) {
+        paste("Error processing taxa:", e$message)
+      }
+    )
   })
   # TODO: Pull out into constant? Populate from existing dict in db?
   column_names <- list(
