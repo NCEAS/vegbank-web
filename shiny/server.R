@@ -182,6 +182,7 @@ server <- function(input, output, session) {
       "Author Plot Code" = data$authorobscode,
       "Location" = data$plotstateprovince,
       "Top Taxa" = apply(data, 1, build_taxa_list),
+      "Community" = data$commname,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
