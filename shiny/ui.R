@@ -86,12 +86,18 @@ build_navbar <- function() {
         fluidRow(
           column(4, card(card_header("Top Places"), card_body(plotOutput("topPlaces")))),
           column(4, card(card_header("Top Species"), card_body(plotOutput("topSpecies")))),
-          column(4, card(card_header("Plot Heatmap"), card_body(plotOutput("plotHeatmap"))))
-        ),
-        fluidRow(
-          column(4, card(card_header("Top Observers"), card_body(uiOutput("topObservers")))),
           column(4, card(card_header("Top Years"), card_body(uiOutput("topYears"))))
         ),
+        fluidRow(
+          column(
+            6,
+            card(
+              card_header("Authors"),
+              card_body(plotlyOutput("authorPie")) # nolint: object_usage_linter.
+            )
+          ),
+          column(6, card(card_header("Plot Heatmap"), card_body(plotOutput("plotHeatmap"))))
+        )
       )
     ),
     nav_menu(

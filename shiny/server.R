@@ -5,6 +5,7 @@ library(magrittr)
 library(DT)
 library(ggplot2) # added for heatmap rendering
 library(maps) # added to render world map boundaries
+library(plotly) # added for interactive pie chart
 
 server <- function(input, output, session) {
   rv_data <- reactiveVal(NULL)
@@ -76,8 +77,33 @@ server <- function(input, output, session) {
     build_top10_barchart(data, "toptaxon1name", "Species", "#4F8773")
   })
 
-  output$topObservers <- renderUI({
-    build_top_five_list(rv_data(), "interp_current_partyname", " plots")
+  output$authorPie <- renderPlotly({
+    data <- rv_data()
+    if (is.null(data)) return(NULL)
+    counts <- as.data.frame(table(data$interp_current_partyname))
+    colnames(counts) <- c("author", "plots")
+    # Sort by descending plot count
+    counts <- counts[order(-counts$plots), ]
+    # Create label only for the top five authors
+    counts$label <- ""
+    counts$label[seq_len(min(4, nrow(counts)))] <- paste0(
+      counts$author[seq_len(min(5, nrow(counts)))],
+      ": ",
+      counts$plots[seq_len(min(5, nrow(counts)))]
+    )
+    # Generate a palette of distinct green shades
+    colors <- colorRampPalette(c("#a1d99b", "#31a354"))(nrow(counts))
+    plot_ly(counts, labels = ~author, values = ~plots, type = "pie",
+            text = ~label,
+            textinfo = "text",
+            insidetextorientation = "radial",
+            marker = list(colors = colors)) %>%
+      layout(
+        showlegend = TRUE,
+        autosize = TRUE,
+        margin = list(l = 20, r = 20, b = 20, t = 20)
+      ) %>%
+      config(responsive = TRUE)
   })
 
   output$topYears <- renderUI({
