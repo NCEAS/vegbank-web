@@ -552,6 +552,7 @@ build_details_view <- function(selected_data) {
     "taxonobservationarea" = "Taxon Observation Area",
     "autotaxoncover" = "Taxon Cover Automatically Calculated",
     "plotvalidationlevel" = "Plot Validation Level",
+    "plotvalidationleveldescr" = "Validation Level",
     "permanence" = "Permanent"
   )
   create_table <- function(dl) {
@@ -569,7 +570,9 @@ build_details_view <- function(selected_data) {
   render_details <- function(cols) {
     renderUI({
       dt <- selected_data[cols]
-      dt <- dt[!sapply(dt, function(x) is.null(x) || all(is.na(x)))]
+      dt <- lapply(dt, function(x) {
+        if (is.null(x) || all(is.na(x))) "Not recorded" else x
+      })
       create_table(dt)
     })
   }
@@ -584,11 +587,11 @@ build_details_view <- function(selected_data) {
       "locationnarrative", "plotstateprovince", "country"
     )),
     layout_details = render_details(c("area", "permanence")),
-    environmental_details = render_details(c("elevation", "slopeaspect")), # "slopegradient"
+    environmental_details = render_details(c("elevation", "slopeaspect", "slopegradient")),
     methods_details = render_details(c(
       "obsstartdate", "projectname", "covertype",
-      "stratummethodname", "stratummethoddescription" # "taxonobservationarea", "autotaxoncover"
+      "stratummethodname", "stratummethoddescription", "taxonobservationarea", "autotaxoncover"
     )),
-    plot_quality_details = render_details(c("plotvalidationlevel"))
+    plot_quality_details = render_details(c("plotvalidationleveldescr"))
   )
 }
