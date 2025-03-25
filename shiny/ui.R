@@ -86,7 +86,7 @@ build_navbar <- function() {
         fluidRow(
           column(4, card(card_header("Top Places"), card_body(plotOutput("topPlaces")))),
           column(4, card(card_header("Top Species"), card_body(plotOutput("topSpecies")))),
-          column(4, card(card_header("Top Years"), card_body(uiOutput("topYears"))))
+          column(4, card(card_header("Most Recent Uploads"), card_body(uiOutput("mostRecentUploads"))))
         ),
         fluidRow(
           column(

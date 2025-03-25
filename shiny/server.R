@@ -74,12 +74,14 @@ server <- function(input, output, session) {
     if (is.null(data)) {
       return(NULL)
     }
-    build_top10_barchart(data, "toptaxon1name", "Species", "#4F8773")
+    build_top10_barchart(data, "toptaxon1name", "Species", "#6AA26E")
   })
 
   output$authorPie <- renderPlotly({
     data <- rv_data()
-    if (is.null(data)) return(NULL)
+    if (is.null(data)) {
+      return(NULL)
+    }
     counts <- as.data.frame(table(data$interp_current_partyname))
     colnames(counts) <- c("author", "plots")
     # Sort by descending plot count
@@ -87,17 +89,19 @@ server <- function(input, output, session) {
     # Create label only for the top five authors
     counts$label <- ""
     counts$label[seq_len(min(4, nrow(counts)))] <- paste0(
-      counts$author[seq_len(min(5, nrow(counts)))],
+      counts$author[seq_len(min(4, nrow(counts)))],
       ": ",
-      counts$plots[seq_len(min(5, nrow(counts)))]
+      counts$plots[seq_len(min(4, nrow(counts)))]
     )
     # Generate a palette of distinct green shades
     colors <- colorRampPalette(c("#a1d99b", "#31a354"))(nrow(counts))
-    plot_ly(counts, labels = ~author, values = ~plots, type = "pie",
-            text = ~label,
-            textinfo = "text",
-            insidetextorientation = "radial",
-            marker = list(colors = colors)) %>%
+    plot_ly(counts,
+      labels = ~author, values = ~plots, type = "pie",
+      text = ~label,
+      textinfo = "text",
+      insidetextorientation = "radial",
+      marker = list(colors = colors)
+    ) %>%
       layout(
         showlegend = TRUE,
         autosize = TRUE,
@@ -106,8 +110,38 @@ server <- function(input, output, session) {
       config(responsive = TRUE)
   })
 
-  output$topYears <- renderUI({
-    build_top_five_list(rv_data(), "obsdateentered", " plots")
+  output$mostRecentUploads <- renderUI({
+    data <- rv_data()
+    if (is.null(data)) {
+      return(NULL)
+    }
+
+    # Parse dates with additional orders for different formats
+    dates_df <- data.frame(
+      original = data$obsdateentered,
+      parsed = lubridate::parse_date_time(
+        data$obsdateentered,
+        orders = c(
+          "a, d b Y H:M:S z", # For "Tue, 27 Feb 2018 18:57:32 GMT"
+          "d b Y H:M:S", # Backup without weekday and timezone
+          "Y-m-d H:M:S" # ISO format backup
+        )
+      )
+    )
+
+    # Remove any failed parses and get unique dates
+    dates_df <- dates_df[!is.na(dates_df$parsed), ]
+    dates_df <- dates_df[!duplicated(dates_df$parsed), ]
+
+    # Sort by parsed datetime and get top 10 most recent
+    top10 <- head(dates_df[order(dates_df$parsed, decreasing = TRUE), ], 16)
+
+    # Create list items with original date strings
+    items <- lapply(top10$original, function(d) {
+      tags$li(class = "list-unstyled", tags$strong(d))
+    })
+
+    tags$ul(items)
   })
 
   output$plotHeatmap <- renderPlot({
@@ -125,9 +159,9 @@ server <- function(input, output, session) {
       ) +
       stat_density2d(
         data = data, aes(
-          x = longitude, y = latitude, fill = ..level.. # nolint: object_usage_linter.
+          x = longitude, y = latitude, fill = after_stat(level) # nolint: object_usage_linter.
         ),
-        geom = "polygon", color = "black", contour = TRUE
+        geom = "polygon", color = "black", linewidth = 0.5, contour = TRUE
       ) +
       scale_fill_gradient(low = "lightgreen", high = "darkgreen", na.value = "white") +
       coord_fixed(1.3) +
