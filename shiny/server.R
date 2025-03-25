@@ -37,12 +37,9 @@ server <- function(input, output, session) {
   output$dataSummary <- renderUI({
     tags$p(paste0("Vegbank is a database of vegetation plot data. The data displayed in this
             app is a subset of the full dataset, containing ", nrow(rv_data()), " randomly selected
-            plots. Each row in the table represents a plot, and the columns contain information
-            about the plot location, species observed, and observer details. This is a simple Shiny
-            app that demonstrates how to use bookmarking to save the state of the app in the URL.
-            The app displays a table of data, a map, and a detailed view of each row in the table.
-            You can search for specific rows using the search bar in the navbar or on the table
-            page."))
+            plots. Each row in the table and link in a map label represents a plot. Clicking on a
+            row in the table or a link in the map will display detailed information about the plot,
+            including information about the plot location, species observed, and other details."))
   })
 
   # Helper function: build top 10 bar chart
