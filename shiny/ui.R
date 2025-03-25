@@ -46,8 +46,43 @@ custom_theme <- bs_theme(
 ) %>%
   bs_add_rules(
     ".card-header { background-color: #2c5443; color: #FFFFFF; font-weight: bold; }
-     .navbar-brand { color: #2c5443 !important; font-weight: bold; }
-     .navbar-brand img { height: 30px; margin-right: 10px; }"
+     .navbar { 
+       min-height: 56px !important;
+       display: flex;
+       align-items: center;
+     }
+     .navbar-nav {
+       display: flex;
+       align-items: center;
+       height: 100%;
+     }
+     .navbar-brand { 
+       color: #2c5443 !important; 
+       font-weight: bold;
+       padding: 0;
+       display: flex;
+       align-items: center;
+     }
+     .navbar-brand img { 
+       height: 30px; 
+       margin-right: 10px; 
+     }
+     .nav-item {
+       display: flex;
+       align-items: center;
+       height: 100%;
+     }
+     .navbar-form {
+       display: flex;
+       align-items: center;
+       margin-bottom: 5px;
+     }
+     .navbar-form .form-group {
+       margin: 0;
+     }
+     .form-control {
+       height: 36px;
+     }"
   )
 
 # Navbar and overlay builders
