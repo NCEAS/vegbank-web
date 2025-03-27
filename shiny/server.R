@@ -1,19 +1,21 @@
 # TODO: What does dependency managment look like in R?
 library(shiny)
-library(leaflet)
-library(magrittr)
-library(DT)
-library(ggplot2) # added for heatmap rendering
-library(maps) # added to render world map boundaries
-library(plotly) # added for interactive pie chart
+library(leaflet)  # map rendering
+library(magrittr) # pipe operator
+library(DT)       # data table rendering
+library(ggplot2)  # heatmap rendering
+library(maps)     # map boundaries (on heatmap)
+library(plotly)   # interactive pie chart
 
 server <- function(input, output, session) {
+  # TODO: rework data flow to use server-side pagination, search, and details endpoint
   rv_data <- reactiveVal(NULL)
   selected_accession <- reactiveVal(NULL)
   details_open <- reactiveVal(FALSE)
   map_request <- reactiveVal(NULL)
 
   observe({
+    # Update to load data from your own local file for now... eventually we'll hit api
     file_path <- "/Users/dariangill/git/vegbank-web/shiny/www/all_states_plot_obs.json"
     if (file.exists(file_path)) {
       tryCatch(
@@ -41,22 +43,6 @@ server <- function(input, output, session) {
             row in the table or a link in the map will display detailed information about the plot,
             including information about the plot location, species observed, and other details."))
   })
-
-  # Helper function: build top 10 bar chart
-  build_top10_barchart <- function(data, column, xlab, color) {
-    counts <- table(data[[column]])
-    df <- as.data.frame(counts)
-    colnames(df) <- c("name", "count")
-    df <- df[order(df$count, decreasing = TRUE), ]
-    top_df <- head(df, 10)
-    ggplot(top_df, aes(x = reorder(name, count), y = count)) + # nolint: object_usage_linter.
-      geom_bar(stat = "identity", fill = color) +
-      geom_text(aes(label = count), hjust = -0.1, size = 3) +
-      coord_flip() +
-      scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
-      labs(x = xlab, y = "Plot Occurrences") +
-      theme_minimal()
-  }
 
   output$topPlaces <- renderPlot({
     data <- rv_data()
@@ -192,14 +178,14 @@ server <- function(input, output, session) {
         scrollY = "calc(100vh - 300px)",
         scrollX = TRUE,
         scrollCollapse = TRUE,
-        autoWidth = FALSE,
+        autoWidth = TRUE,
         columnDefs = list(
-          list(targets = c(0), width = "5%"), # Number
-          list(targets = c(1), width = "10%"), # Actions
-          list(targets = c(2), width = "10%"), # Author Plot Code
-          list(targets = c(3), width = "10%"), # Location
-          list(targets = c(4), width = "45%"), # Top Taxa
-          list(targets = c(5), width = "20%") # Community
+          list(targets = c(0), width = "5%"),   # Number
+          list(targets = c(1), width = "10%"),  # Actions
+          list(targets = c(2), width = "10%"),  # Author Plot Code
+          list(targets = c(3), width = "10%"),  # Location
+          list(targets = c(4), width = "45%"),  # Top Taxa
+          list(targets = c(5), width = "20%")   # Community
         )
       )
     )
@@ -419,6 +405,21 @@ server <- function(input, output, session) {
 }
 
 # Helper Functions_________________________________________________________________________________
+
+build_top10_barchart <- function(data, column, xlab, color) {
+  counts <- table(data[[column]])
+  df <- as.data.frame(counts)
+  colnames(df) <- c("name", "count")
+  df <- df[order(df$count, decreasing = TRUE), ]
+  top_df <- head(df, 10)
+  ggplot(top_df, aes(x = reorder(name, count), y = count)) + # nolint: object_usage_linter.
+    geom_bar(stat = "identity", fill = color) +
+    geom_text(aes(label = count), hjust = -0.1, size = 3) +
+    coord_flip() +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
+    labs(x = xlab, y = "Plot Occurrences") +
+    theme_minimal()
+}
 
 build_top_five_list <- function(data, column, suffix = "") {
   freq_table <- sort(table(data[[column]]), decreasing = TRUE)

@@ -7,7 +7,7 @@
 - Contact us: support@dataone.org
 - [DataONE discussions](https://github.com/DataONEorg/dataone/discussions)
 
-*Vegbank Web App* Vegbank is a database of vegetation plot data. This app is intended to provide a web access point for browsing, searching, inspecting, and downloading that plot data.
+Vegbank is a database of vegetation plot data. This app is intended to provide a web access point for browsing, searching, inspecting, and downloading that plot data.
 
 DataONE in general, and HashStore in particular, are open source, community projects.  We [welcome contributions](./CONTRIBUTING.md) in many forms, including code, graphics, documentation, bug reports, testing, etc.  Use the [DataONE discussions](https://github.com/DataONEorg/dataone/discussions) to discuss these contributions with us.
 
@@ -20,7 +20,7 @@ Documentation is a work in progress, and can be found ...
 
 This is a [Shiny App](https://shiny.posit.co/) built using the [Shiny R package](https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/). 
 
-The app is currently configured to hit an api running on kubernetes for data. If you don't have access to kubernetes you can revise the `server.R` code and read the 100_plot_obs.json file in the www directory to see some functionality without the api.
+The app is currently configured to read from a local file or hit an api running on kubernetes for data. If you don't have access to kubernetes you ask a team member for the all_states_plot_obs.json file, place it in your www directory, and can revise the `server.R` code read its path.
 
 To run the app locally with full access to the api, you'll need to connect to the `dev-vegbank` kubernetes context and port forward the vegbankdb pod with a rotating name (not the postgresql pod) as follows: 
 

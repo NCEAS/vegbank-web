@@ -1,8 +1,8 @@
+# TODO: What does dependency managment look like in R?
 library(shiny)
-library(htmltools)
-library(bslib)
-library(magrittr)
-library(shinyjs)
+library(htmltools)  # HTML tags
+library(bslib)      # Bootstrap themes
+library(magrittr)   # Pipe operator
 
 ui <- function(req) {
   navbar_with_search <- build_navbar()
@@ -34,7 +34,6 @@ ui <- function(req) {
   tagList(navbar_with_search, overlay, script, btn_script)
 }
 
-# Custom theme and rules
 custom_theme <- bs_theme(
   bg = "#FFFFFF",
   fg = "#19201d",
@@ -85,7 +84,6 @@ custom_theme <- bs_theme(
      }"
   )
 
-# Navbar and overlay builders
 build_navbar <- function() {
   search_div <- tags$li(
     class = "nav-item",
@@ -129,7 +127,7 @@ build_navbar <- function() {
             6,
             card(
               card_header("Authors"),
-              card_body(plotlyOutput("authorPie")) # nolint: object_usage_linter.
+              card_body(plotly::plotlyOutput("authorPie"))
             )
           ),
           column(6, card(card_header("Plot Heatmap"), card_body(plotOutput("plotHeatmap"))))
