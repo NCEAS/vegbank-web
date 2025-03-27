@@ -1,11 +1,11 @@
 # TODO: What does dependency managment look like in R?
 library(shiny)
-library(leaflet)  # map rendering
+library(leaflet) # map rendering
 library(magrittr) # pipe operator
-library(DT)       # data table rendering
-library(ggplot2)  # heatmap rendering
-library(maps)     # map boundaries (on heatmap)
-library(plotly)   # interactive pie chart
+library(DT) # data table rendering
+library(ggplot2) # heatmap rendering
+library(maps) # map boundaries (on heatmap)
+library(plotly) # interactive pie chart
 
 server <- function(input, output, session) {
   # TODO: rework data flow to use server-side pagination, search, and details endpoint
@@ -65,32 +65,7 @@ server <- function(input, output, session) {
     if (is.null(data)) {
       return(NULL)
     }
-    counts <- as.data.frame(table(data$interp_current_partyname))
-    colnames(counts) <- c("author", "plots")
-    # Sort by descending plot count
-    counts <- counts[order(-counts$plots), ]
-    # Create label only for the top five authors
-    counts$label <- ""
-    counts$label[seq_len(min(4, nrow(counts)))] <- paste0(
-      counts$author[seq_len(min(4, nrow(counts)))],
-      ": ",
-      counts$plots[seq_len(min(4, nrow(counts)))]
-    )
-    # Generate a palette of distinct green shades
-    colors <- colorRampPalette(c("#a1d99b", "#31a354"))(nrow(counts))
-    plot_ly(counts,
-      labels = ~author, values = ~plots, type = "pie",
-      text = ~label,
-      textinfo = "text",
-      insidetextorientation = "radial",
-      marker = list(colors = colors)
-    ) %>%
-      layout(
-        showlegend = TRUE,
-        autosize = TRUE,
-        margin = list(l = 20, r = 20, b = 20, t = 20)
-      ) %>%
-      config(responsive = TRUE)
+    build_pie_chart(data, "interp_current_partyname")
   })
 
   output$mostRecentUploads <- renderUI({
@@ -98,33 +73,7 @@ server <- function(input, output, session) {
     if (is.null(data)) {
       return(NULL)
     }
-
-    # Parse dates with additional orders for different formats
-    dates_df <- data.frame(
-      original = data$obsdateentered,
-      parsed = lubridate::parse_date_time(
-        data$obsdateentered,
-        orders = c(
-          "a, d b Y H:M:S z", # For "Tue, 27 Feb 2018 18:57:32 GMT"
-          "d b Y H:M:S", # Backup without weekday and timezone
-          "Y-m-d H:M:S" # ISO format backup
-        )
-      )
-    )
-
-    # Remove any failed parses and get unique dates
-    dates_df <- dates_df[!is.na(dates_df$parsed), ]
-    dates_df <- dates_df[!duplicated(dates_df$parsed), ]
-
-    # Sort by parsed datetime and get top 10 most recent
-    top10 <- head(dates_df[order(dates_df$parsed, decreasing = TRUE), ], 16)
-
-    # Create list items with original date strings
-    items <- lapply(top10$original, function(d) {
-      tags$li(class = "list-unstyled", tags$strong(d))
-    })
-
-    tags$ul(items)
+    build_most_recent_date_list(data)
   })
 
   output$plotHeatmap <- renderPlot({
@@ -132,25 +81,7 @@ server <- function(input, output, session) {
     if (is.null(data)) {
       return(NULL)
     }
-    na_map <- map_data("world", region = c("USA", "Canada", "Mexico"))
-    ggplot() +
-      geom_polygon(
-        data = na_map, aes(
-          x = long, y = lat, group = group # nolint: object_usage_linter.
-        ),
-        fill = "white", color = "gray70", size = 0.3
-      ) +
-      stat_density2d(
-        data = data, aes(
-          x = longitude, y = latitude, fill = after_stat(level) # nolint: object_usage_linter.
-        ),
-        geom = "polygon", color = "black", linewidth = 0.5, contour = TRUE
-      ) +
-      scale_fill_gradient(low = "lightgreen", high = "darkgreen", na.value = "white") +
-      coord_fixed(1.3) +
-      xlim(-200, -50) +
-      labs(title = "Plot Heatmap", x = "Longitude", y = "Latitude") +
-      theme_minimal()
+    build_plot_heatmap(data)
   })
 
   output$dataTable <- DT::renderDataTable({
@@ -180,12 +111,12 @@ server <- function(input, output, session) {
         scrollCollapse = TRUE,
         autoWidth = TRUE,
         columnDefs = list(
-          list(targets = c(0), width = "5%"),   # Number
-          list(targets = c(1), width = "10%"),  # Actions
-          list(targets = c(2), width = "10%"),  # Author Plot Code
-          list(targets = c(3), width = "10%"),  # Location
-          list(targets = c(4), width = "45%"),  # Top Taxa
-          list(targets = c(5), width = "20%")   # Community
+          list(targets = c(0), width = "5%"), # Number
+          list(targets = c(1), width = "10%"), # Actions
+          list(targets = c(2), width = "10%"), # Author Plot Code
+          list(targets = c(3), width = "10%"), # Location
+          list(targets = c(4), width = "45%"), # Top Taxa
+          list(targets = c(5), width = "20%") # Community
         )
       )
     )
@@ -421,14 +352,67 @@ build_top10_barchart <- function(data, column, xlab, color) {
     theme_minimal()
 }
 
-build_top_five_list <- function(data, column, suffix = "") {
-  freq_table <- sort(table(data[[column]]), decreasing = TRUE)
-  top_names <- names(head(freq_table, 5))
-  items <- lapply(top_names, function(s) {
-    count <- freq_table[[s]]
-    tags$li(tags$strong(s), paste0(" ", count, suffix))
+build_pie_chart <- function(data, field, palette = c("#a1d99b", "#31a354"), label_top_n = 4) {
+  counts <- as.data.frame(table(data[[field]]))
+  colnames(counts) <- c("name", "value")
+  counts <- counts[order(-counts$value), ]
+  counts$label <- ""
+  counts$label[seq_len(min(label_top_n, nrow(counts)))] <- paste0(
+    counts$name[seq_len(min(label_top_n, nrow(counts)))],
+    ": ",
+    counts$value[seq_len(min(label_top_n, nrow(counts)))]
+  )
+  colors <- colorRampPalette(palette)(nrow(counts))
+  plot_ly(counts,
+    labels = ~name, values = ~value, type = "pie",
+    text = ~label,
+    textinfo = "text",
+    insidetextorientation = "radial",
+    marker = list(colors = colors)
+  ) %>%
+    layout(
+      showlegend = TRUE,
+      autosize = TRUE,
+      margin = list(l = 20, r = 20, b = 20, t = 20)
+    ) %>%
+    config(responsive = TRUE)
+}
+
+build_most_recent_date_list <- function(data, n = 16, date_field = "obsdateentered") {
+  dates_df <- data.frame(
+    original = data[[date_field]],
+    parsed = lubridate::parse_date_time(
+      data[[date_field]],
+      orders = c("a, d b Y H:M:S z", "d b Y H:M:S", "Y-m-d H:M:S")
+    )
+  )
+  dates_df <- dates_df[!is.na(dates_df$parsed), ]
+  dates_df <- dates_df[!duplicated(dates_df$parsed), ]
+  top_dates <- head(dates_df[order(dates_df$parsed, decreasing = TRUE), ], n)
+  items <- lapply(top_dates$original, function(d) {
+    tags$li(class = "list-unstyled", tags$strong(d))
   })
-  tags$ul(class = "list-unstyled", items)
+  tags$ul(items)
+}
+
+build_plot_heatmap <- function(data) {
+  na_map <- map_data("world", region = c("USA", "Canada", "Mexico"))
+  ggplot() +
+    geom_polygon(
+      data = na_map,
+      aes(x = long, y = lat, group = group), # nolint: object_usage_linter.
+      fill = "white", color = "gray70", size = 0.3
+    ) +
+    stat_density2d(
+      data = data,
+      aes(x = longitude, y = latitude, fill = after_stat(level)), # nolint: object_usage_linter.
+      geom = "polygon", color = "black", linewidth = 0.5, contour = TRUE
+    ) +
+    scale_fill_gradient(low = "lightgreen", high = "darkgreen", na.value = "white") +
+    coord_fixed(1.3) +
+    xlim(-200, -50) +
+    labs(title = "Plot Heatmap", x = "Longitude", y = "Latitude") +
+    theme_minimal()
 }
 
 build_taxa_list <- function(data_row) {
@@ -507,7 +491,7 @@ build_details_view <- function(selected_data) {
         })
 
         tags$table(
-          class = "table table-bordered",
+          class = "table table-sm table-striped table-hover",
           tags$thead(
             tags$tr(
               tags$th("Author Plant Name"),
