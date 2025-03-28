@@ -1,13 +1,12 @@
-## Product: This is a dataone tagline for the product
-
-- **Authors**: Last, First (ORCID); ...
+## Vegbank Web: A Web App for Vegetative Plot Data
+- **Authors**: Gill, Darian; Regetz, Jim (0009-0008-2666-6229);
 - **License**: [Apache 2](http://opensource.org/licenses/Apache-2.0)
-- [Package source code on GitHub](https://github.com/DataONEorg/reponame)
-- [**Submit Bugs and feature requests**](https://github.com/DataONEorg/reponame/issues)
+- [Package source code on GitHub](https://github.com/NCEAS/vegbank-web)
+- [**Submit Bugs and feature requests**](https://github.com/NCEAS/vegbank-web/issues)
 - Contact us: support@dataone.org
 - [DataONE discussions](https://github.com/DataONEorg/dataone/discussions)
 
-*Product overview goes here.* Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+Vegbank is a database of vegetation plot data. This app is intended to provide a web access point for browsing, searching, inspecting, and downloading that plot data.
 
 DataONE in general, and HashStore in particular, are open source, community projects.  We [welcome contributions](./CONTRIBUTING.md) in many forms, including code, graphics, documentation, bug reports, testing, etc.  Use the [DataONE discussions](https://github.com/DataONEorg/dataone/discussions) to discuss these contributions with us.
 
@@ -18,25 +17,26 @@ Documentation is a work in progress, and can be found ...
 
 ## Development build
 
-This is a python package, and built using the [Python Poetry](https://python-poetry.org) build tool.
+This is a [Shiny App](https://shiny.posit.co/) built using the [Shiny R package](https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/). 
 
-To install locally, create a virtual environment for python 3.9+, 
-install poetry, and then install or build the package with `poetry install` or `poetry build`, respectively.
+The app is currently configured to read from a local file or hit an api running on kubernetes for data. If you don't have access to kubernetes you ask a team member for the all_states_plot_obs.json file, place it in your www directory, and can revise the `server.R` code read its path.
 
-To run tests, navigate to the root directory and run `pytest -s`. The test suite contains tests that
-take a longer time to run (relating to the storage of large files) - to execute all tests, run
-`pytest --run-slow`. To see detailed
+To run the app locally with full access to the api, you'll need to connect to the `dev-vegbank` kubernetes context and port forward the vegbankdb pod with a rotating name (not the postgresql pod) as follows: 
 
-## Usage Example
-
-To view more details about the Public API - see 'hashstore.py` interface documentation
-
-```py
-from product import Product
-
-# Example code here...
-
+*Note: your pod name will be different from this example command.*
 ```
+~ % kubectl config use-context dev-vegbank
+
+~ % kubectl get pods
+(Sample pod name output)
+NAME                         READY   STATUS    RESTARTS   AGE
+vegbankdb-5d796654c4-wrdzf   1/1     Running   0          28h
+vegbankdb-postgresql-0       1/1     Running   0          28h
+
+~ % kubectl port-forward vegbankdb-5d796654c4-wrdzf 28015:80
+```
+
+Once the API pod is port-forwarded you can run the app in the R environment of your choice (RStudio, VsCode with the Shiny extension, and  seem to be popular options).
 
 ## License
 ```
