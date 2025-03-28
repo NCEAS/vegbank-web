@@ -1,4 +1,4 @@
-# TODO: What does dependency managment look like in R?
+# TODO: What does dependency management look like in R?
 library(shiny)
 library(leaflet) # map rendering
 library(magrittr) # pipe operator
@@ -335,8 +335,9 @@ server <- function(input, output, session) {
   })
 }
 
-# Helper Functions_________________________________________________________________________________
-
+# Helper Functions _________________________________________________________________________________
+# Tried pulling these out into a separate file, but couldn't get them to be recognized in
+# the namespace and not thow object_usage_linter warnings when calling form this file
 build_top10_barchart <- function(data, column, xlab, color) {
   counts <- table(data[[column]])
   df <- as.data.frame(counts)
@@ -456,124 +457,103 @@ build_action_buttons <- function(i) {
   )
 }
 
-# TODO: Refactor for redundancy with update_and_open_details
 build_details_view <- function(selected_data) {
-  row_details <- renderUI({
-    valid <- selected_data[!sapply(selected_data, function(x) is.null(x) || all(is.na(x)))]
-    lapply(names(valid), function(n) {
-      tags$p(tags$strong(paste0(n, ": ")), valid[[n]])
-    })
-  })
-  # Updated taxa_details using build_taxa_list as inspiration
-  taxa_details <- renderUI({
-    tryCatch(
-      {
-        taxa <- selected_data[["taxa"]]
-        if (is.null(taxa)) {
-          return("No taxa recorded")
-        }
-        if (!is.data.frame(taxa)) {
-          taxa <- as.data.frame(taxa)
-        }
-        if (nrow(taxa) == 0) {
-          return("No taxa recorded")
-        }
 
-        # Sort by descending cover (ensure numeric comparison)
-        sorted_taxa <- taxa[order(-as.numeric(taxa$cover)), ]
-        # Build table rows; show all taxa entries
-        rows <- lapply(seq_len(nrow(sorted_taxa)), function(i) {
-          row <- sorted_taxa[i, ]
-          tags$tr(
-            tags$td(row$authorplantname),
-            tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
-          )
-        })
-
-        tags$table(
-          class = "table table-sm table-striped table-hover",
-          tags$thead(
-            tags$tr(
-              tags$th("Author Plant Name"),
-              tags$th("Cover")
-            )
-          ),
-          tags$tbody(
-            rows
-          )
-        )
-      },
-      error = function(e) {
-        paste("Error processing taxa:", e$message)
-      }
-    )
-  })
-  # TODO: Pull out into constant? Populate from existing dict in db?
-  column_names <- list(
-    "authorplotcode" = "Author Plot Code",
-    "authorobscode" = "Author Observation Code",
-    "area" = "Area",
-    "permenance" = "Permenance",
-    "elevation" = "Elevation",
-    "slopeaspect" = "Slope Aspect",
-    "slopegradient" = "Slope Gradient",
-    "confidentialitystatus" = "Confidentiality Status",
-    "latitude" = "Latitude",
-    "longitude" = "Longitude",
-    "locationnarrative" = "Location Description",
-    "plotstateprovince" = "State/Province",
-    "country" = "Country",
-    "obsstartdate" = "Observation Start Date",
-    "project_id" = "Project ID",
-    "projectname" = "Project Name",
-    "covermethod_id" = "Cover Method ID",
-    "covertype" = "Cover Type",
-    "stratummethod_id" = "Stratum Method ID",
-    "stratummethodname" = "Stratum Method",
-    "stratummethoddescription" = "Stratum Method Description",
-    "taxonobservationarea" = "Taxon Observation Area",
-    "autotaxoncover" = "Taxon Cover Automatically Calculated",
-    "plotvalidationlevel" = "Plot Validation Level",
-    "plotvalidationleveldescr" = "Validation Level",
-    "permanence" = "Permanent"
+  # Mapping internal field names to their display names.
+  display_names <- list(
+    authorplotcode = "Author Plot Code",
+    authorobscode = "Author Observation Code",
+    area = "Area",
+    permanence = "Permanent",
+    elevation = "Elevation",
+    slopeaspect = "Slope Aspect",
+    slopegradient = "Slope Gradient",
+    confidentialitystatus = "Confidentiality Status",
+    latitude = "Latitude",
+    longitude = "Longitude",
+    locationnarrative = "Location Description",
+    plotstateprovince = "State/Province",
+    country = "Country",
+    obsstartdate = "Observation Start Date",
+    project_id = "Project ID",
+    projectname = "Project Name",
+    covermethod_id = "Cover Method ID",
+    covertype = "Cover Type",
+    stratummethod_id = "Stratum Method ID",
+    stratummethodname = "Stratum Method",
+    stratummethoddescription = "Stratum Method Description",
+    taxonobservationarea = "Taxon Observation Area",
+    autotaxoncover = "Taxon Cover Automatically Calculated",
+    plotvalidationlevel = "Plot Validation Level",
+    plotvalidationleveldescr = "Validation Level"
   )
-  create_table <- function(dl) {
-    tbody <- lapply(names(dl), function(name) {
-      tags$tr(
-        tags$td(tags$strong(column_names[[name]] %||% name)),
-        tags$td(class = "text-end", dl[[name]])
-      )
-    })
+
+  create_table <- function(details, col_names) {
     tags$table(
       class = "table table-sm table-striped table-hover",
-      tags$tbody(tbody)
+      tags$tbody(
+        lapply(names(details), function(name) {
+          display_name <- if (!is.null(col_names[[name]])) col_names[[name]] else name
+          tags$tr(
+            tags$td(tags$strong(display_name)),
+            tags$td(class = "text-end", details[[name]])
+          )
+        })
+      )
     )
   }
-  render_details <- function(cols) {
+
+  safe_render_details <- function(fields) {
     renderUI({
-      dt <- selected_data[cols]
-      dt <- lapply(dt, function(x) {
+      values <- lapply(selected_data[fields], function(x) { 
         if (is.null(x) || all(is.na(x))) "Not recorded" else x
       })
-      create_table(dt)
+      create_table(values, col_names = display_names)
     })
   }
+
+  # Render taxa details with error handling.
+  taxa_details_ui <- renderUI({
+    tryCatch({
+      taxa <- selected_data[["taxa"]]
+      if (is.null(taxa)) return("No taxa recorded")
+      if (!is.data.frame(taxa)) taxa <- as.data.frame(taxa)
+      if (nrow(taxa) == 0) return("No taxa recorded")
+
+      taxa$cover <- as.numeric(taxa$cover)
+      sorted_taxa <- taxa[order(-taxa$cover), ]
+      rows <- lapply(seq_len(nrow(sorted_taxa)), function(i) {
+        row <- sorted_taxa[i, ]
+        tags$tr(
+          tags$td(row$authorplantname),
+          tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
+        )
+      })
+      tags$table(
+        class = "table table-sm table-striped table-hover",
+        tags$thead(
+          tags$tr(
+            tags$th("Author Plant Name"),
+            tags$th("Cover")
+          )
+        ),
+        tags$tbody(rows)
+      )
+    }, error = function(e) {
+      paste("Error processing taxa:", e$message)
+    })
+  })
+
   list(
-    row_details = renderUI({
-      row_details
-    }),
-    taxa_details = taxa_details,
-    plot_id_details = render_details(c("authorobscode", "authorplotcode")),
-    location_details = render_details(c(
-      "confidentialitystatus", "latitude", "longitude",
-      "locationnarrative", "plotstateprovince", "country"
-    )),
-    layout_details = render_details(c("area", "permanence")),
-    environmental_details = render_details(c("elevation", "slopeaspect", "slopegradient")),
-    methods_details = render_details(c(
-      "obsstartdate", "projectname", "covertype",
-      "stratummethodname", "stratummethoddescription", "taxonobservationarea", "autotaxoncover"
-    )),
-    plot_quality_details = render_details(c("plotvalidationleveldescr"))
+    plot_id_details = safe_render_details(c("authorobscode", "authorplotcode")),
+    location_details = safe_render_details(c("confidentialitystatus", "latitude", "longitude",
+                                             "locationnarrative", "plotstateprovince", "country")),
+    layout_details = safe_render_details(c("area", "permanence")),
+    environmental_details = safe_render_details(c("elevation", "slopeaspect", "slopegradient")),
+    methods_details = safe_render_details(c("obsstartdate", "projectname", "covertype",
+                                            "stratummethodname", "stratummethoddescription",
+                                            "taxonobservationarea", "autotaxoncover")),
+    plot_quality_details = safe_render_details("plotvalidationleveldescr"),
+    taxa_details = taxa_details_ui
   )
 }

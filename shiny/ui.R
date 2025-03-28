@@ -1,8 +1,8 @@
-# TODO: What does dependency managment look like in R?
+# TODO: What does dependency management look like in R?
 library(shiny)
-library(htmltools)  # HTML tags
-library(bslib)      # Bootstrap themes
-library(magrittr)   # Pipe operator
+library(htmltools) # HTML tags
+library(bslib) # Bootstrap themes
+library(magrittr) # Pipe operator
 
 ui <- function(req) {
   navbar_with_search <- build_navbar()
@@ -45,7 +45,7 @@ custom_theme <- bs_theme(
 ) %>%
   bs_add_rules(
     ".card-header { background-color: #2c5443; color: #FFFFFF; font-weight: bold; }
-     .navbar { 
+     .navbar {
        min-height: 56px !important;
        display: flex;
        align-items: center;
@@ -55,16 +55,16 @@ custom_theme <- bs_theme(
        align-items: center;
        height: 100%;
      }
-     .navbar-brand { 
-       color: #2c5443 !important; 
+     .navbar-brand {
+       color: #2c5443 !important;
        font-weight: bold;
        padding: 0;
        display: flex;
        align-items: center;
      }
-     .navbar-brand img { 
-       height: 30px; 
-       margin-right: 10px; 
+     .navbar-brand img {
+       height: 30px;
+       margin-right: 10px;
      }
      .nav-item {
        display: flex;
@@ -119,8 +119,10 @@ build_navbar <- function() {
         fluidRow(
           column(4, card(card_header("Top Places"), card_body(plotOutput("topPlaces")))),
           column(4, card(card_header("Top Species"), card_body(plotOutput("topSpecies")))),
-          column(4, card(card_header("Most Recent Uploads"),
-                         card_body(uiOutput("mostRecentUploads"))))
+          column(4, card(
+            card_header("Most Recent Uploads"),
+            card_body(uiOutput("mostRecentUploads"))
+          ))
         ),
         fluidRow(
           column(
