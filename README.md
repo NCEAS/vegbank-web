@@ -1,5 +1,4 @@
-## Vegbank Web: A Web App for Vegatative Plot Data
-
+## Vegbank Web: A Web App for Vegetative Plot Data
 - **Authors**: Gill, Darian; Regetz, Jim (0009-0008-2666-6229);
 - **License**: [Apache 2](http://opensource.org/licenses/Apache-2.0)
 - [Package source code on GitHub](https://github.com/NCEAS/vegbank-web)
