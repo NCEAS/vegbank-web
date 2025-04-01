@@ -1,12 +1,12 @@
-# TODO: What does dependency management look like in R?
-library(shiny)
-library(leaflet) # map rendering
-library(magrittr) # pipe operator
-library(DT) # data table rendering
-library(ggplot2) # heatmap rendering
-library(maps) # map boundaries (on heatmap)
-library(plotly) # interactive pie chart
-
+#' Shiny Server for Vegbank Web Application
+#'
+#' Initializes server-side functionality for data visualization and interactivity.
+#'
+#' @param input Shiny input object.
+#' @param output Shiny output object.
+#' @param session Shiny session object.
+#' @return Called for its side effects.
+#' @export
 server <- function(input, output, session) {
   # TODO: rework data flow to use server-side pagination, search, and details endpoint
   rv_data <- reactiveVal(NULL)
@@ -336,8 +336,17 @@ server <- function(input, output, session) {
 }
 
 # Helper Functions _________________________________________________________________________________
-# Tried pulling these out into a separate file, but couldn't get them to be recognized in
-# the namespace and not thow object_usage_linter warnings when calling form this file
+
+#' Build Top Ten Bar Chart
+#'
+#' Constructs a ggplot bar chart based on the top 10 counts for a specified column.
+#'
+#' @param data Data frame containing the data.
+#' @param column Name of the column to summarize.
+#' @param xlab Label for the x-axis.
+#' @param color Bar fill color.
+#' @return A ggplot object.
+#' @keywords internal
 build_top10_barchart <- function(data, column, xlab, color) {
   counts <- table(data[[column]])
   df <- as.data.frame(counts)
@@ -353,6 +362,16 @@ build_top10_barchart <- function(data, column, xlab, color) {
     theme_minimal()
 }
 
+#' Build Pie Chart
+#'
+#' Constructs an interactive pie chart using plotly.
+#'
+#' @param data Data frame containing the data.
+#' @param field The column name used for pie chart slices.
+#' @param palette Color palette.
+#' @param label_top_n Number of top labels to display.
+#' @return A plotly pie chart.
+#' @keywords internal
 build_pie_chart <- function(data, field, palette = c("#a1d99b", "#31a354"), label_top_n = 4) {
   counts <- as.data.frame(table(data[[field]]))
   colnames(counts) <- c("name", "value")
@@ -379,6 +398,15 @@ build_pie_chart <- function(data, field, palette = c("#a1d99b", "#31a354"), labe
     config(responsive = TRUE)
 }
 
+#' Build Most Recent Date List
+#'
+#' Creates a list of the most recent dates from the data.
+#'
+#' @param data Data frame containing date information.
+#' @param n Maximum number of dates to display.
+#' @param date_field Name of the date field.
+#' @return A Shiny UI tag containing an unordered list.
+#' @keywords internal
 build_most_recent_date_list <- function(data, n = 16, date_field = "obsdateentered") {
   dates_df <- data.frame(
     original = data[[date_field]],
@@ -396,6 +424,13 @@ build_most_recent_date_list <- function(data, n = 16, date_field = "obsdateenter
   tags$ul(items)
 }
 
+#' Build Plot Heatmap
+#'
+#' Constructs a heatmap (using ggplot2) of plot locations using density estimation.
+#'
+#' @param data Data frame containing longitude and latitude.
+#' @return A ggplot object.
+#' @keywords internal
 build_plot_heatmap <- function(data) {
   na_map <- map_data("world", region = c("USA", "Canada", "Mexico"))
   ggplot() +
@@ -416,6 +451,13 @@ build_plot_heatmap <- function(data) {
     theme_minimal()
 }
 
+#' Build Taxa List
+#'
+#' Generates an HTML ordered list of taxa from a data row.
+#'
+#' @param data_row A row of data that contains taxa information.
+#' @return A character string containing HTML markup.
+#' @keywords internal
 build_taxa_list <- function(data_row) {
   tryCatch(
     {
@@ -438,6 +480,13 @@ build_taxa_list <- function(data_row) {
   )
 }
 
+#' Build Action Buttons
+#'
+#' Creates action buttons for viewing details and mapping a plot.
+#'
+#' @param i Index used to uniquely identify buttons.
+#' @return A character string containing the button HTML.
+#' @keywords internal
 build_action_buttons <- function(i) {
   as.character(
     tagList(
@@ -457,8 +506,14 @@ build_action_buttons <- function(i) {
   )
 }
 
+#' Build Details View
+#'
+#' Constructs a list of Shiny UI outputs for displaying detailed plot information.
+#'
+#' @param selected_data A data row representing the selected plot.
+#' @return A list of Shiny UI outputs.
+#' @keywords internal
 build_details_view <- function(selected_data) {
-
   # Mapping internal field names to their display names.
   display_names <- list(
     authorplotcode = "Author Plot Code",
@@ -505,7 +560,7 @@ build_details_view <- function(selected_data) {
 
   safe_render_details <- function(fields) {
     renderUI({
-      values <- lapply(selected_data[fields], function(x) { 
+      values <- lapply(selected_data[fields], function(x) {
         if (is.null(x) || all(is.na(x))) "Not recorded" else x
       })
       create_table(values, col_names = display_names)
@@ -514,45 +569,56 @@ build_details_view <- function(selected_data) {
 
   # Render taxa details with error handling.
   taxa_details_ui <- renderUI({
-    tryCatch({
-      taxa <- selected_data[["taxa"]]
-      if (is.null(taxa)) return("No taxa recorded")
-      if (!is.data.frame(taxa)) taxa <- as.data.frame(taxa)
-      if (nrow(taxa) == 0) return("No taxa recorded")
+    tryCatch(
+      {
+        taxa <- selected_data[["taxa"]]
+        if (is.null(taxa)) {
+          return("No taxa recorded")
+        }
+        if (!is.data.frame(taxa)) taxa <- as.data.frame(taxa)
+        if (nrow(taxa) == 0) {
+          return("No taxa recorded")
+        }
 
-      taxa$cover <- as.numeric(taxa$cover)
-      sorted_taxa <- taxa[order(-taxa$cover), ]
-      rows <- lapply(seq_len(nrow(sorted_taxa)), function(i) {
-        row <- sorted_taxa[i, ]
-        tags$tr(
-          tags$td(row$authorplantname),
-          tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
-        )
-      })
-      tags$table(
-        class = "table table-sm table-striped table-hover",
-        tags$thead(
+        taxa$cover <- as.numeric(taxa$cover)
+        sorted_taxa <- taxa[order(-taxa$cover), ]
+        rows <- lapply(seq_len(nrow(sorted_taxa)), function(i) {
+          row <- sorted_taxa[i, ]
           tags$tr(
-            tags$th("Author Plant Name"),
-            tags$th("Cover")
+            tags$td(row$authorplantname),
+            tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
           )
-        ),
-        tags$tbody(rows)
-      )
-    }, error = function(e) {
-      paste("Error processing taxa:", e$message)
-    })
+        })
+        tags$table(
+          class = "table table-sm table-striped table-hover",
+          tags$thead(
+            tags$tr(
+              tags$th("Author Plant Name"),
+              tags$th("Cover")
+            )
+          ),
+          tags$tbody(rows)
+        )
+      },
+      error = function(e) {
+        paste("Error processing taxa:", e$message)
+      }
+    )
   })
 
   list(
     plot_id_details = safe_render_details(c("authorobscode", "authorplotcode")),
-    location_details = safe_render_details(c("confidentialitystatus", "latitude", "longitude",
-                                             "locationnarrative", "plotstateprovince", "country")),
+    location_details = safe_render_details(c(
+      "confidentialitystatus", "latitude", "longitude",
+      "locationnarrative", "plotstateprovince", "country"
+    )),
     layout_details = safe_render_details(c("area", "permanence")),
     environmental_details = safe_render_details(c("elevation", "slopeaspect", "slopegradient")),
-    methods_details = safe_render_details(c("obsstartdate", "projectname", "covertype",
-                                            "stratummethodname", "stratummethoddescription",
-                                            "taxonobservationarea", "autotaxoncover")),
+    methods_details = safe_render_details(c(
+      "obsstartdate", "projectname", "covertype",
+      "stratummethodname", "stratummethoddescription",
+      "taxonobservationarea", "autotaxoncover"
+    )),
     plot_quality_details = safe_render_details("plotvalidationleveldescr"),
     taxa_details = taxa_details_ui
   )

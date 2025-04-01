@@ -1,14 +1,15 @@
-# TODO: What does dependency management look like in R?
-library(shiny)
-library(htmltools) # HTML tags
-library(bslib) # Bootstrap themes
-library(magrittr) # Pipe operator
-
+#' Shiny UI for Vegbank Web Application
+#'
+#' Constructs the user interface for browsing vegetation plot data.
+#'
+#' @param req A Shiny request object.
+#' @return A Shiny tag list.
+#' @export
 ui <- function(req) {
   navbar_with_search <- build_navbar()
   overlay <- build_detail_overlay()
 
-  script <- tags$script(HTML(
+  script <- htmltools::tags$script(htmltools::HTML(
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
          document.getElementById('detail-overlay').style.right = '0px';
      });
@@ -21,7 +22,7 @@ ui <- function(req) {
      });"
   ))
 
-  btn_script <- tags$script(HTML(
+  btn_script <- htmltools::tags$script(htmltools::HTML(
     '$(document).on("click", ".details-btn", function() {
          var idx = $(this).data("row");
          Shiny.setInputValue("see_details", idx, {priority:"event"});
@@ -31,66 +32,79 @@ ui <- function(req) {
          Shiny.setInputValue("show_on_map", acc, {priority:"event"});
     });'
   ))
-  tagList(navbar_with_search, overlay, script, btn_script)
+  htmltools::tagList(navbar_with_search, overlay, script, btn_script)
 }
 
-custom_theme <- bs_theme(
+#' Custom Bootstrap Theme for Vegbank Web Application
+#'
+#' Defines a bslib theme with custom rules.
+#'
+#' @return A Bootstrap theme object.
+#' @keywords internal
+custom_theme <- bslib::bs_theme(
   bg = "#FFFFFF",
   fg = "#19201d",
   info = "#2c5443",
   primary = "#72b9a2",
   secondary = "#72b9a2",
-  base_font = font_google("Inter"),
-  heading_font = font_google("Inter")
-) %>%
-  bs_add_rules(
-    ".card-header { background-color: #2c5443; color: #FFFFFF; font-weight: bold; }
+  base_font = bslib::font_google("Inter"),
+  heading_font = bslib::font_google("Inter")
+)
+custom_theme <- bslib::bs_add_rules(
+  custom_theme,
+  ".card-header { background-color: #2c5443; color: #FFFFFF; font-weight: bold; }
      .navbar {
-       min-height: 56px !important;
-       display: flex;
-       align-items: center;
+         min-height: 56px !important;
+         display: flex;
+         align-items: center;
      }
      .navbar-nav {
-       display: flex;
-       align-items: center;
-       height: 100%;
+         display: flex;
+         align-items: center;
+         height: 100%;
      }
      .navbar-brand {
-       color: #2c5443 !important;
-       font-weight: bold;
-       padding: 0;
-       display: flex;
-       align-items: center;
+         color: #2c5443 !important;
+         font-weight: bold;
+         padding: 0;
+         display: flex;
+         align-items: center;
      }
      .navbar-brand img {
-       height: 30px;
-       margin-right: 10px;
+         height: 30px;
+         margin-right: 10px;
      }
      .nav-item {
-       display: flex;
-       align-items: center;
-       height: 100%;
+         display: flex;
+         align-items: center;
+         height: 100%;
      }
      .navbar-form {
-       display: flex;
-       align-items: center;
-       margin-bottom: 5px;
+         display: flex;
+         align-items: center;
+         margin-bottom: 5px;
      }
      .navbar-form .form-group {
-       margin: 0;
+         margin: 0;
      }
      .form-control {
-       height: 36px;
+         height: 36px;
      }"
-  )
+)
 
+#' Build Navigation Bar for Vegbank UI
+#'
+#' Constructs and returns the navigation bar to be used in the UI.
+#'
+#' @return A Shiny tag list representing the navigation bar.
+#' @keywords internal
 build_navbar <- function() {
-  search_div <- tags$li(
+  search_div <- htmltools::tags$li(
     class = "nav-item",
-    tags$div(
+    htmltools::tags$div(
       class = "navbar-form",
-      textInput(inputId = "search", label = "", value = "", placeholder = "Search"),
-      tags$script(HTML(
+      shiny::textInput(inputId = "search", label = "", value = "", placeholder = "Search"),
+      tags$script(htmltools::HTML(
         "$(document).on('keypress', '#search', function(e) {
            if(e.which == 13){
              Shiny.setInputValue('search_enter', $(this).val(), {priority:'event'});
@@ -100,19 +114,19 @@ build_navbar <- function() {
     )
   )
 
-  navbar <- page_navbar(
+  navbar <- shiny::page_navbar( # use triple-colon to access unexported function
     id = "page",
     theme = custom_theme,
-    title = tags$span(tags$img(src = "logo_vegbank_leaves.svg"), "Vegbank"),
-    nav_panel(
+    title = htmltools::tags$span(tags$img(src = "logo_vegbank_leaves.svg"), "Vegbank"),
+    shiny::nav_panel( # use triple-colon here as well
       title = "Overview",
-      fluidPage(
-        fluidRow(
-          column(
+      shiny::fluidPage(
+        shiny::fluidRow(
+          shiny::column(
             12,
-            card(
-              card_header("App Overview"),
-              card_body(uiOutput("dataSummary"))
+            bslib::card(
+              bslib::card_header("App Overview"),
+              bslib::card_body(uiOutput("dataSummary"))
             )
           )
         ),
@@ -136,57 +150,37 @@ build_navbar <- function() {
         )
       )
     ),
-    nav_menu(
+    shiny::nav_menu( # and here
       title = "Plots",
       nav_panel(title = "Table", DT::dataTableOutput("dataTable")),
       nav_panel(title = "Map", leaflet::leafletOutput("map"))
     ),
-    nav_menu(
+    shiny::nav_menu(
       title = "Plants",
-      nav_panel(
-        title = "Table",
-      ),
-      nav_panel(
-        title = "Map",
-      )
+      nav_panel(title = "Table"),
+      nav_panel(title = "Map")
     ),
-    nav_menu(
+    shiny::nav_menu(
       title = "Communities",
-      nav_panel(
-        title = "Table",
-      ),
-      nav_panel(
-        title = "Map",
-      )
+      nav_panel(title = "Table"),
+      nav_panel(title = "Map")
     ),
-    nav_menu(
+    shiny::nav_menu(
       title = "Places",
-      nav_panel(
-        title = "Table",
-      ),
-      nav_panel(
-        title = "Map",
-      )
+      nav_panel(title = "Table"),
+      nav_panel(title = "Map")
     ),
-    nav_menu(
+    shiny::nav_menu(
       title = "People",
-      nav_panel(
-        title = "Table",
-      ),
-      nav_panel(
-        title = "Map",
-      )
+      nav_panel(title = "Table"),
+      nav_panel(title = "Map")
     ),
-    nav_menu(
+    shiny::nav_menu(
       title = "Projects",
-      nav_panel(
-        title = "Table",
-      ),
-      nav_panel(
-        title = "Map",
-      )
+      nav_panel(title = "Table"),
+      nav_panel(title = "Map")
     ),
-    nav_menu(
+    shiny::nav_menu(
       title = "About",
       align = "right",
       nav_panel(
@@ -198,6 +192,12 @@ build_navbar <- function() {
   tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
 }
 
+#' Build Detail Overlay for Vegbank UI
+#'
+#' Constructs the overlay panel that displays detailed plot information.
+#'
+#' @return A Shiny tag representing the detail overlay.
+#' @keywords internal
 build_detail_overlay <- function() {
   tags$div(
     id = "detail-overlay",
