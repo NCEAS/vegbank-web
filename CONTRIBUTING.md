@@ -45,7 +45,7 @@ In short:
 
 ## 🚀 Development Workflow
 
-Development is managed through the git repository at https://github.com/DataONEorg/REPONAME.  The repository is organized into several branches, each with a specific purpose.  
+Development is managed through the git repository at https://github.com/NCEAS/vegbank-web.  The repository is organized into several branches, each with a specific purpose.  
 
 **main**. The `main` branch represents the stable branch that is constantly maintained with the current release.  It should generally be safe to install and use the `main` branch the same way as binary releases. The version number in all configuration files and the README on the `main` branch follows [semantic versioning](https://semver.org/) and should always be set to the current stable release, for example `2.8.5`.
 
