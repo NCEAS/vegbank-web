@@ -3,7 +3,7 @@ Type: Package
 Title: "VegBank Web: A Shiny Application for Vegetation Plot Data"
 Version: 0.1.0
 Authors@R: 
-    person(given = "Darian", family = "Gill", email = "support@dataone.org", role = c("aut", "cre"))
+    person(given = "Darian", family = "Gill", email = "help@vegbank.org", role = c("aut", "cre"))
 Description: "This package provides a Shiny web interface to browse, search, inspect and download vegetation plot data."
 License: Apache License (>= 2)
 Imports: 

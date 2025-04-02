@@ -1,14 +1,13 @@
-## Vegbank Web: A Web App for Vegetative Plot Data
+## VegBank Web: A Web App for Vegetative Plot Data
 - **Authors**: Gill, Darian; Regetz, Jim (0009-0008-2666-6229);
 - **License**: [Apache 2](http://opensource.org/licenses/Apache-2.0)
 - [Package source code on GitHub](https://github.com/NCEAS/vegbank-web)
 - [**Submit Bugs and feature requests**](https://github.com/NCEAS/vegbank-web/issues)
-- Contact us: support@dataone.org
-- [DataONE discussions](https://github.com/DataONEorg/dataone/discussions)
 
-Vegbank is a database of vegetation plot data. This app is intended to provide a web access point for browsing, searching, inspecting, and downloading that plot data.
 
-DataONE in general, and HashStore in particular, are open source, community projects.  We [welcome contributions](./CONTRIBUTING.md) in many forms, including code, graphics, documentation, bug reports, testing, etc.  Use the [DataONE discussions](https://github.com/DataONEorg/dataone/discussions) to discuss these contributions with us.
+This package is an web access point for VegBank, the vegetation plot database of the Ecological Society of America's Panel on Vegetation Classification, hosted by the National Center for Ecological Analysis and Synthesis (NCEAS). VegBank contains vegetation plot data, community types recognized by the U.S. National Vegetation Classification and others, and all ITIS/USDA plant taxa along with other taxa recorded in plot records. As a VegBank API client, the 'vegbankweb' package supports browsing, searching, inspectin, and downloading vegetation plot records and other supporting information to and from the VegBank database.
+
+VegBank in general, and the vegbankr package in particular, are open source, community projects. We [welcome contributions](./CONTRIBUTING.md) in many forms, including code, data, documentation, bug reports, testing, etc. Use the VegBank discussions to discuss these contributions with us.
 
 
 ## Documentation
@@ -40,7 +39,7 @@ Once the API pod is port-forwarded you can run the app in the R environment of y
 
 ## License
 ```
-Copyright [2024] [Regents of the University of California]
+Copyright [2025] [Regents of the University of California]
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,9 +57,6 @@ limitations under the License.
 ## Acknowledgements
 Work on this package was supported by:
 
-- DataONE Network
-- Arctic Data Center: NSF-PLR grant #2042102 to M. B. Jones, A. Budden, M. Schildhauer, and J. Dozier
-
-Additional support was provided for collaboration by the National Center for Ecological Analysis and Synthesis, a Center funded by the University of California, Santa Barbara, and the State of California.
+- TheNational Center for Ecological Analysis and Synthesis, a Center funded by the University of California, Santa Barbara, and the State of California.
 
 [![nceas_footer](https://www.nceas.ucsb.edu/sites/default/files/2020-03/NCEAS-full%20logo-4C.png)](https://www.nceas.ucsb.edu)
