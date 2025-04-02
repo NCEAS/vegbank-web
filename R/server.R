@@ -7,7 +7,6 @@
 #' @param session Shiny session object.
 #' @return Called for its side effects.
 #' @importFrom magrittr %>%
-#' @import shiny bslib htmltools
 server <- function(input, output, session) {
   # TODO: rework data flow to use server-side pagination, search, and details endpoint
   rv_data <- shiny::reactiveVal(NULL)

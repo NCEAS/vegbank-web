@@ -4,7 +4,6 @@
 #'
 #' @param req A Shiny request object.
 #' @return A Shiny tag list.
-#' @import shiny bslib htmltools
 #' @importFrom magrittr %>%
 ui <- function(req) {
   shiny::addResourcePath("assets", "/Users/dariangill/git/vegbank-web/inst/shiny/www")
