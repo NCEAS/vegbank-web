@@ -354,10 +354,10 @@ build_top10_barchart <- function(data, column, xlab, color) {
   df <- as.data.frame(counts)
   colnames(df) <- c("name", "count")
   df <- df[order(df$count, decreasing = TRUE), ]
-  top_df <- head(df, 10)
+  top_df <- utils::head(df, 10)
   ggplot2::ggplot(
     top_df,
-    ggplot2::aes(x = reorder(name, count), y = count) # nolint: object_usage_linter.
+    ggplot2::aes(x = stats::reorder(name, count), y = count) # nolint: object_usage_linter.
   ) +
     ggplot2::geom_bar(stat = "identity", fill = color) +
     ggplot2::geom_text(ggplot2::aes(label = count), hjust = -0.1, size = 3) +
@@ -388,7 +388,7 @@ build_pie_chart <- function(data, field, palette = c("#a1d99b", "#31a354"), labe
     ": ",
     counts$value[seq_len(min(label_top_n, nrow(counts)))]
   )
-  colors <- colorRampPalette(palette)(nrow(counts))
+  colors <- grDevices::colorRampPalette(palette)(nrow(counts))
   plotly::plot_ly(
     counts,
     labels = ~name, values = ~value, type = "pie",
@@ -419,7 +419,7 @@ build_most_recent_date_list <- function(data, n = 16, date_field = "obsdateenter
   )
   dates_df <- dates_df[!is.na(dates_df$parsed), ]
   dates_df <- dates_df[!duplicated(dates_df$parsed), ]
-  top_dates <- head(dates_df[order(dates_df$parsed, decreasing = TRUE), ], n)
+  top_dates <- utils::head(dates_df[order(dates_df$parsed, decreasing = TRUE), ], n)
   items <- lapply(top_dates$original, function(d) {
     htmltools::tags$li(class = "list-unstyled", htmltools::tags$strong(d))
   })
@@ -470,7 +470,7 @@ build_taxa_list <- function(data_row) {
       if (!is.null(taxa) && nrow(taxa) > 0) {
         # Sort by cover in descending order
         sorted_taxa <- taxa[order(-taxa$cover), ]
-        top5 <- head(sorted_taxa, 5)
+        top5 <- utils::head(sorted_taxa, 5)
         taxa_items <- sprintf("<li>%s <b>(%g%%)</b></li>", top5$authorplantname, top5$cover)
         paste("<ol>", paste(taxa_items, collapse = "\n"), "</ol>", sep = "\n")
       } else {

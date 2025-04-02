@@ -1,2 +1,4 @@
 ^CONTRIBUTING\.md$
 ^\.github$
+^LICENSE\.md$
+^.blinter

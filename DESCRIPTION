@@ -5,14 +5,13 @@ Version: 0.1.0
 Authors@R: 
     person(given = "Darian", family = "Gill", email = "support@dataone.org", role = c("aut", "cre"))
 Description: "This package provides a Shiny web interface to browse, search, inspect and download vegetation plot data."
-License: Apache License 2.0
+License: Apache License (>= 2)
 Imports: 
     shiny (>= 1.10.0),
     leaflet (>= 2.0.0),
     magrittr (>= 2.0.1),
     DT (>= 0.18),
     ggplot2 (>= 3.3.6),
-    maps (>= 3.4.0),
     plotly (>= 4.9.3),
     dplyr (>= 1.0.7),
     jsonlite (>= 1.7.2),
