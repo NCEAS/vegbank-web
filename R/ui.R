@@ -4,7 +4,8 @@
 #'
 #' @param req A Shiny request object.
 #' @return A Shiny tag list.
-#' @export
+#' @import shiny bslib htmltools
+#' @importFrom magrittr %>%
 ui <- function(req) {
   navbar_with_search <- build_navbar()
   overlay <- build_detail_overlay()
@@ -104,7 +105,7 @@ build_navbar <- function() {
     htmltools::tags$div(
       class = "navbar-form",
       shiny::textInput(inputId = "search", label = "", value = "", placeholder = "Search"),
-      tags$script(htmltools::HTML(
+      htmltools::tags$script(htmltools::HTML(
         "$(document).on('keypress', '#search', function(e) {
            if(e.which == 13){
              Shiny.setInputValue('search_enter', $(this).val(), {priority:'event'});
@@ -114,11 +115,16 @@ build_navbar <- function() {
     )
   )
 
-  navbar <- shiny::page_navbar( # use triple-colon to access unexported function
+  navbar <- bslib::page_navbar(
     id = "page",
     theme = custom_theme,
-    title = htmltools::tags$span(tags$img(src = "logo_vegbank_leaves.svg"), "Vegbank"),
-    shiny::nav_panel( # use triple-colon here as well
+    title = htmltools::tags$span(
+      htmltools::tags$img(
+        src = "/Users/dariangill/git/vegbank-web/inst/shiny/www/logo_vegbank_leaves.svg"
+      ),
+      "Vegbank"
+    ),
+    bslib::nav_panel(
       title = "Overview",
       shiny::fluidPage(
         shiny::fluidRow(
@@ -126,70 +132,82 @@ build_navbar <- function() {
             12,
             bslib::card(
               bslib::card_header("App Overview"),
-              bslib::card_body(uiOutput("dataSummary"))
+              bslib::card_body(shiny::uiOutput("dataSummary"))
             )
           )
         ),
-        fluidRow(
-          column(4, card(card_header("Top Places"), card_body(plotOutput("topPlaces")))),
-          column(4, card(card_header("Top Species"), card_body(plotOutput("topSpecies")))),
-          column(4, card(
-            card_header("Most Recent Uploads"),
-            card_body(uiOutput("mostRecentUploads"))
+        shiny::fluidRow(
+          shiny::column(4, bslib::card(
+            bslib::card_header("Top Places"),
+            bslib::card_body(shiny::plotOutput("topPlaces"))
+          )),
+          shiny::column(4, bslib::card(
+            bslib::card_header("Top Species"),
+            bslib::card_body(shiny::plotOutput("topSpecies"))
+          )),
+          shiny::column(4, bslib::card(
+            bslib::card_header("Most Recent Uploads"),
+            bslib::card_body(shiny::uiOutput("mostRecentUploads"))
           ))
         ),
-        fluidRow(
-          column(
+        shiny::fluidRow(
+          shiny::column(
             6,
-            card(
-              card_header("Authors"),
-              card_body(plotly::plotlyOutput("authorPie"))
+            bslib::card(
+              bslib::card_header("Authors"),
+              bslib::card_body(plotly::plotlyOutput("authorPie"))
             )
           ),
-          column(6, card(card_header("Plot Heatmap"), card_body(plotOutput("plotHeatmap"))))
+          shiny::column(
+            6,
+            bslib::card(
+              bslib::card_header("Plot Heatmap"),
+              bslib::card_body(shiny::plotOutput("plotHeatmap"))
+            )
+          )
         )
       )
     ),
-    shiny::nav_menu( # and here
+    bslib::nav_menu(
       title = "Plots",
-      nav_panel(title = "Table", DT::dataTableOutput("dataTable")),
-      nav_panel(title = "Map", leaflet::leafletOutput("map"))
+      bslib::nav_panel(title = "Table", DT::dataTableOutput("dataTable")),
+      bslib::nav_panel(title = "Map", leaflet::leafletOutput("map"))
     ),
-    shiny::nav_menu(
+    bslib::nav_menu(
       title = "Plants",
-      nav_panel(title = "Table"),
-      nav_panel(title = "Map")
+      bslib::nav_panel(title = "Table"),
+      bslib::nav_panel(title = "Map")
     ),
-    shiny::nav_menu(
+    bslib::nav_menu(
       title = "Communities",
-      nav_panel(title = "Table"),
-      nav_panel(title = "Map")
+      bslib::nav_panel(title = "Table"),
+      bslib::nav_panel(title = "Map")
     ),
-    shiny::nav_menu(
+    bslib::nav_menu(
       title = "Places",
-      nav_panel(title = "Table"),
-      nav_panel(title = "Map")
+      bslib::nav_panel(title = "Table"),
+      bslib::nav_panel(title = "Map")
     ),
-    shiny::nav_menu(
+    bslib::nav_menu(
       title = "People",
-      nav_panel(title = "Table"),
-      nav_panel(title = "Map")
+      bslib::nav_panel(title = "Table"),
+      bslib::nav_panel(title = "Map")
     ),
-    shiny::nav_menu(
+    bslib::nav_menu(
       title = "Projects",
-      nav_panel(title = "Table"),
-      nav_panel(title = "Map")
+      bslib::nav_panel(title = "Table"),
+      bslib::nav_panel(title = "Map")
     ),
-    shiny::nav_menu(
+    bslib::nav_menu(
       title = "About",
       align = "right",
-      nav_panel(
+      bslib::nav_panel(
         title = "FAQ",
-        includeMarkdown("/Users/dariangill/git/vegbank-web/shiny/www/faq.md")
+        shiny::includeMarkdown("/Users/dariangill/git/vegbank-web/inst/shiny/www/faq.md")
       )
     )
   )
-  tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
+  htmltools::tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
 }
 
 #' Build Detail Overlay for Vegbank UI
@@ -199,26 +217,26 @@ build_navbar <- function() {
 #' @return A Shiny tag representing the detail overlay.
 #' @keywords internal
 build_detail_overlay <- function() {
-  tags$div(
+  htmltools::tags$div(
     id = "detail-overlay",
     style = "position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; overflow-y: auto;
              background: #fff; border-left: 1px solid #ccc; z-index: 1050; padding:20px;
              transition: right 0.4s;",
-    actionButton("close_overlay", "",
+    shiny::actionButton("close_overlay", "",
       onclick = "document.getElementById('detail-overlay').style.right='-400px';
                             Shiny.setInputValue('close_details', true, {priority:'event'});",
       class = "btn-close", style = "float:right; margin-bottom:10px;"
     ),
-    fluidRow(
-      column(
+    shiny::fluidRow(
+      shiny::column(
         12,
-        card(card_header("Plot IDs"), uiOutput("plot_id_details")),
-        card(card_header("Location"), uiOutput("locationDetails")),
-        card(card_header("Layout"), uiOutput("layout_details")),
-        card(card_header("Environment"), uiOutput("environmental_details")),
-        card(card_header("Methods"), uiOutput("methods_details")),
-        card(card_header("Plot Quality"), uiOutput("plot_quality_details")),
-        card(card_header("Top Taxa"), uiOutput("taxaDetails"))
+        bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
+        bslib::card(bslib::card_header("Location"), shiny::uiOutput("locationDetails")),
+        bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
+        bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),
+        bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
+        bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
+        bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxaDetails"))
       )
     )
   )

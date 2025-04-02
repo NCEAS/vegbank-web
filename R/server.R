@@ -6,17 +6,18 @@
 #' @param output Shiny output object.
 #' @param session Shiny session object.
 #' @return Called for its side effects.
-#' @export
+#' @importFrom magrittr %>%
+#' @import shiny bslib htmltools
 server <- function(input, output, session) {
   # TODO: rework data flow to use server-side pagination, search, and details endpoint
-  rv_data <- reactiveVal(NULL)
-  selected_accession <- reactiveVal(NULL)
-  details_open <- reactiveVal(FALSE)
-  map_request <- reactiveVal(NULL)
+  rv_data <- shiny::reactiveVal(NULL)
+  selected_accession <- shiny::reactiveVal(NULL)
+  details_open <- shiny::reactiveVal(FALSE)
+  map_request <- shiny::reactiveVal(NULL)
 
-  observe({
+  shiny::observe({
     # Update to load data from your own local file for now... eventually we'll hit api
-    file_path <- "/Users/dariangill/git/vegbank-web/shiny/www/all_states_plot_obs.json"
+    file_path <- "/Users/dariangill/git/vegbank-web/inst/shiny/www/all_states_plot_obs.json"
     if (file.exists(file_path)) {
       tryCatch(
         {
@@ -36,15 +37,16 @@ server <- function(input, output, session) {
   })
 
   # Render UI Outputs ____________________________________________________________________________
-  output$dataSummary <- renderUI({
-    tags$p(paste0("Vegbank is a database of vegetation plot data. The data displayed in this
-            app is a subset of the full dataset, containing ", nrow(rv_data()), " randomly selected
-            plots. Each row in the table and link in a map label represents a plot. Clicking on a
-            row in the table or a link in the map will display detailed information about the plot,
-            including information about the plot location, species observed, and other details."))
+  output$dataSummary <- shiny::renderUI({
+    htmltools::tags$p(paste0("Vegbank is a database of vegetation plot data. The data displayed in
+            this app is a subset of the full dataset, containing ", nrow(rv_data()), " randomly
+            selectedplots. Each row in the table and link in a map label represents a plot.
+            Clicking on arow in the table or a link in the map will display detailed information
+            about the plot, including information about the plot location, species observed, and
+            other details."))
   })
 
-  output$topPlaces <- renderPlot({
+  output$topPlaces <- shiny::renderPlot({
     data <- rv_data()
     if (is.null(data)) {
       return(NULL)
@@ -52,7 +54,7 @@ server <- function(input, output, session) {
     build_top10_barchart(data, "plotstateprovince", "Place", "#4F8773")
   })
 
-  output$topSpecies <- renderPlot({
+  output$topSpecies <- shiny::renderPlot({
     data <- rv_data()
     if (is.null(data)) {
       return(NULL)
@@ -60,7 +62,7 @@ server <- function(input, output, session) {
     build_top10_barchart(data, "toptaxon1name", "Species", "#6AA26E")
   })
 
-  output$authorPie <- renderPlotly({
+  output$authorPie <- plotly::renderPlotly({
     data <- rv_data()
     if (is.null(data)) {
       return(NULL)
@@ -68,7 +70,7 @@ server <- function(input, output, session) {
     build_pie_chart(data, "interp_current_partyname")
   })
 
-  output$mostRecentUploads <- renderUI({
+  output$mostRecentUploads <- shiny::renderUI({
     data <- rv_data()
     if (is.null(data)) {
       return(NULL)
@@ -76,7 +78,7 @@ server <- function(input, output, session) {
     build_most_recent_date_list(data)
   })
 
-  output$plotHeatmap <- renderPlot({
+  output$plotHeatmap <- shiny::renderPlot({
     data <- rv_data()
     if (is.null(data)) {
       return(NULL)
@@ -126,9 +128,9 @@ server <- function(input, output, session) {
     data <- rv_data()
 
     if (is.null(data)) {
-      leaflet() %>%
-        addTiles() %>%
-        addControl("Data unavailable", position = "topright")
+      leaflet::leaflet() %>%
+        leaflet::addTiles() %>%
+        leaflet::addControl("Data unavailable", position = "topright")
     } else {
       data_grouped <- data %>%
         dplyr::group_by(latitude, longitude) %>% # nolint: object_usage_linter.
@@ -144,15 +146,15 @@ server <- function(input, output, session) {
         ) %>%
         dplyr::ungroup()
 
-      leaflet(data_grouped) %>%
-        addTiles() %>%
-        addMarkers(
+      leaflet::leaflet(data_grouped) %>%
+        leaflet::addTiles() %>%
+        leaflet::addMarkers(
           lng = ~longitude,
           lat = ~latitude,
           layerId = ~ paste(latitude, longitude, sep = ", "),
           # Render the concatenated links
           label = ~ authorobscode_label %>% lapply(htmltools::HTML),
-          labelOptions = labelOptions(
+          labelOptions = leaflet::labelOptions(
             noHide = TRUE,
             clickable = TRUE,
             direction = "bottom",
@@ -165,7 +167,7 @@ server <- function(input, output, session) {
               "border-radius" = "3px"
             )
           ),
-          clusterOptions = markerClusterOptions()
+          clusterOptions = leaflet::markerClusterOptions()
         ) %>%
         # Display Zoom level for debugging purposes
         htmlwidgets::onRender("
@@ -212,14 +214,14 @@ server <- function(input, output, session) {
   # TODO: Parameterize this to pull out of server fn?
   update_map_view <- function(idx) {
     data <- rv_data()
-    leafletProxy("map", session) %>%
-      setView(
+    leaflet::leafletProxy("map", session) %>%
+      leaflet::setView(
         lng = data$longitude[idx],
         lat = data$latitude[idx],
         zoom = 18
       ) %>%
-      clearPopups() %>%
-      addPopups(
+      leaflet::clearPopups() %>%
+      leaflet::addPopups(
         lng = data$longitude[idx],
         lat = data$latitude[idx],
         popup = paste("Plot", data$authorobscode[idx], "is here!", sep = " ")
@@ -227,38 +229,38 @@ server <- function(input, output, session) {
   }
 
   # Handle map_request
-  observe({
-    req(input$page == "Map")
-    req(map_request())
+  shiny::observe({
+    shiny::req(input$page == "Map")
+    shiny::req(map_request())
 
     data <- rv_data()
     idx <- map_request()
 
     if (length(idx) > 0) {
-      invalidateLater(100) # Small delay to ensure map is ready
+      shiny::invalidateLater(100) # Small delay to ensure map is ready
       update_map_view(idx)
       map_request(NULL) # Clear the request
     }
   })
 
   # Handle see details button click
-  observeEvent(input$see_details, {
+  shiny::observeEvent(input$see_details, {
     idx <- as.numeric(input$see_details)
     if (!is.na(idx) && idx > 0) {
       update_and_open_details(idx)
-      dt_proxy <- dataTableProxy("dataTable")
-      selectRows(dt_proxy, idx, ignore.selectable = TRUE)
+      dt_proxy <- DT::dataTableProxy("dataTable")
+      DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
     }
   })
 
   # Handle close details button click
-  observeEvent(input$close_details, {
+  shiny::observeEvent(input$close_details, {
     data <- rv_data()
     idx <- which(data$obsaccessioncode == selected_accession())
     if (length(idx) > 0) {
-      dt_proxy <- dataTableProxy("dataTable")
+      dt_proxy <- DT::dataTableProxy("dataTable")
       # Wish there was a better way to do this, but I canʻt find a deleselect function anywhere
-      selectRows(dt_proxy, idx, ignore.selectable = FALSE)
+      DT::selectRows(dt_proxy, idx, ignore.selectable = FALSE)
     }
     details_open(FALSE)
     selected_accession(NULL)
@@ -266,61 +268,61 @@ server <- function(input, output, session) {
   })
 
   # Handle show on map button click
-  observeEvent(input$show_on_map, {
+  shiny::observeEvent(input$show_on_map, {
     idx <- as.numeric(input$show_on_map)
-    updateNavbarPage(session, "page", selected = "Map")
+    shiny::updateNavbarPage(session, "page", selected = "Map")
     map_request(idx) # Set the request instead of updating map directly
   })
 
   # Handle label see details link click
-  observeEvent(input$label_link_click, {
+  shiny::observeEvent(input$label_link_click, {
     data <- rv_data()
     idx <- which(data$obsaccessioncode == input$label_link_click)
     if (length(idx) > 0) {
       update_and_open_details(idx)
-      dt_proxy <- dataTableProxy("dataTable")
-      selectRows(dt_proxy, idx, ignore.selectable = TRUE)
+      dt_proxy <- DT::dataTableProxy("dataTable")
+      DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
     }
   })
 
   # TODO: Show all rows on empty search
   # Handle nav bar search submission
-  observeEvent(input$search_enter, {
-    updateNavbarPage(session, "page", selected = "Table")
+  shiny::observeEvent(input$search_enter, {
+    shiny::updateNavbarPage(session, "page", selected = "Table")
     data <- rv_data()
     filtered <- data[
       apply(data, 1, function(row) any(grepl(input$search_enter, as.character(row)))),
     ]
     rv_data(filtered)
-    dt_proxy <- dataTableProxy("dataTable")
-    replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
+    dt_proxy <- DT::dataTableProxy("dataTable")
+    DT::replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
   })
 
   # Persist State _________________________________________________________________________________
 
-  onBookmark(function(state) {
+  shiny::onBookmark(function(state) {
     state$values$selected_accession <- selected_accession()
     state$values$details_open <- details_open()
     state
   })
 
-  onBookmarked(function(url) {
-    updateQueryString(url)
+  shiny::onBookmarked(function(url) {
+    shiny::updateQueryString(url)
   })
 
   # TODO: Restore map, search, and row selection state as well
-  onRestore(function(state) {
+  shiny::onRestore(function(state) {
     if (!is.null(state$values$selected_accession)) {
       acc <- state$values$selected_accession
-      observeEvent(rv_data(),
+      shiny::observeEvent(rv_data(),
         {
           data <- rv_data()
           idx <- match(acc, data$obsaccessioncode)
           if (!is.na(idx)) {
             selected_accession(acc)
             update_and_open_details(idx)
-            dt_proxy <- dataTableProxy("dataTable")
-            selectRows(dt_proxy, idx, ignore.selectable = TRUE)
+            dt_proxy <- DT::dataTableProxy("dataTable")
+            DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
           }
         },
         once = TRUE
@@ -329,8 +331,8 @@ server <- function(input, output, session) {
     invisible(NULL)
   })
 
-  observe({
-    reactiveValuesToList(input)
+  shiny::observe({
+    shiny::reactiveValuesToList(input)
     session$doBookmark()
   })
 }
@@ -353,13 +355,16 @@ build_top10_barchart <- function(data, column, xlab, color) {
   colnames(df) <- c("name", "count")
   df <- df[order(df$count, decreasing = TRUE), ]
   top_df <- head(df, 10)
-  ggplot(top_df, aes(x = reorder(name, count), y = count)) + # nolint: object_usage_linter.
-    geom_bar(stat = "identity", fill = color) +
-    geom_text(aes(label = count), hjust = -0.1, size = 3) +
-    coord_flip() +
-    scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
-    labs(x = xlab, y = "Plot Occurrences") +
-    theme_minimal()
+  ggplot2::ggplot(
+    top_df,
+    ggplot2::aes(x = reorder(name, count), y = count) # nolint: object_usage_linter.
+  ) +
+    ggplot2::geom_bar(stat = "identity", fill = color) +
+    ggplot2::geom_text(ggplot2::aes(label = count), hjust = -0.1, size = 3) +
+    ggplot2::coord_flip() +
+    ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.2))) +
+    ggplot2::labs(x = xlab, y = "Plot Occurrences") +
+    ggplot2::theme_minimal()
 }
 
 #' Build Pie Chart
@@ -375,6 +380,7 @@ build_top10_barchart <- function(data, column, xlab, color) {
 build_pie_chart <- function(data, field, palette = c("#a1d99b", "#31a354"), label_top_n = 4) {
   counts <- as.data.frame(table(data[[field]]))
   colnames(counts) <- c("name", "value")
+  counts$name <- as.character(counts$name)
   counts <- counts[order(-counts$value), ]
   counts$label <- ""
   counts$label[seq_len(min(label_top_n, nrow(counts)))] <- paste0(
@@ -383,19 +389,15 @@ build_pie_chart <- function(data, field, palette = c("#a1d99b", "#31a354"), labe
     counts$value[seq_len(min(label_top_n, nrow(counts)))]
   )
   colors <- colorRampPalette(palette)(nrow(counts))
-  plot_ly(counts,
+  plotly::plot_ly(
+    counts,
     labels = ~name, values = ~value, type = "pie",
     text = ~label,
     textinfo = "text",
     insidetextorientation = "radial",
     marker = list(colors = colors)
   ) %>%
-    layout(
-      showlegend = TRUE,
-      autosize = TRUE,
-      margin = list(l = 20, r = 20, b = 20, t = 20)
-    ) %>%
-    config(responsive = TRUE)
+    plotly::config(responsive = TRUE)
 }
 
 #' Build Most Recent Date List
@@ -419,9 +421,9 @@ build_most_recent_date_list <- function(data, n = 16, date_field = "obsdateenter
   dates_df <- dates_df[!duplicated(dates_df$parsed), ]
   top_dates <- head(dates_df[order(dates_df$parsed, decreasing = TRUE), ], n)
   items <- lapply(top_dates$original, function(d) {
-    tags$li(class = "list-unstyled", tags$strong(d))
+    htmltools::tags$li(class = "list-unstyled", htmltools::tags$strong(d))
   })
-  tags$ul(items)
+  htmltools::tags$ul(items)
 }
 
 #' Build Plot Heatmap
@@ -432,23 +434,25 @@ build_most_recent_date_list <- function(data, n = 16, date_field = "obsdateenter
 #' @return A ggplot object.
 #' @keywords internal
 build_plot_heatmap <- function(data) {
-  na_map <- map_data("world", region = c("USA", "Canada", "Mexico"))
-  ggplot() +
-    geom_polygon(
+  na_map <- ggplot2::map_data("world", region = c("USA", "Canada", "Mexico"))
+  ggplot2::ggplot() +
+    ggplot2::geom_polygon(
       data = na_map,
-      aes(x = long, y = lat, group = group), # nolint: object_usage_linter.
+      ggplot2::aes(x = long, y = lat, group = group), # nolint: object_usage_linter.
       fill = "white", color = "gray70", size = 0.3
     ) +
-    stat_density2d(
+    ggplot2::stat_density2d(
       data = data,
-      aes(x = longitude, y = latitude, fill = after_stat(level)), # nolint: object_usage_linter.
+      ggplot2::aes(x = longitude, # nolint: object_usage_linter.
+                   y = latitude, # nolint: object_usage_linter.
+                   fill = ggplot2::after_stat(level)), # nolint: object_usage_linter.
       geom = "polygon", color = "black", linewidth = 0.5, contour = TRUE
     ) +
-    scale_fill_gradient(low = "lightgreen", high = "darkgreen", na.value = "white") +
-    coord_fixed(1.3) +
-    xlim(-200, -50) +
-    labs(title = "Plot Heatmap", x = "Longitude", y = "Latitude") +
-    theme_minimal()
+    ggplot2::scale_fill_gradient(low = "lightgreen", high = "darkgreen", na.value = "white") +
+    ggplot2::coord_fixed(1.3) +
+    ggplot2::xlim(-200, -50) +
+    ggplot2::labs(title = "Plot Heatmap", x = "Longitude", y = "Latitude") +
+    ggplot2::theme_minimal()
 }
 
 #' Build Taxa List
@@ -489,14 +493,14 @@ build_taxa_list <- function(data_row) {
 #' @keywords internal
 build_action_buttons <- function(i) {
   as.character(
-    tagList(
-      actionButton(
+    htmltools::tagList(
+      shiny::actionButton(
         inputId = paste0("see_details_", i),
         label = "See Details",
         class = "btn btn-info btn-sm details-btn mb-1",
         onclick = sprintf("Shiny.setInputValue('see_details', %d, {priority: 'event'})", i)
       ),
-      actionButton(
+      shiny::actionButton(
         inputId = paste0("map_btn_", i),
         label = "Show on Map",
         class = "btn btn-primary btn-sm map-btn",
@@ -544,14 +548,14 @@ build_details_view <- function(selected_data) {
   )
 
   create_table <- function(details, col_names) {
-    tags$table(
+    htmltools::tags$table(
       class = "table table-sm table-striped table-hover",
-      tags$tbody(
+      htmltools::tags$tbody(
         lapply(names(details), function(name) {
           display_name <- if (!is.null(col_names[[name]])) col_names[[name]] else name
-          tags$tr(
-            tags$td(tags$strong(display_name)),
-            tags$td(class = "text-end", details[[name]])
+          htmltools::tags$tr(
+            htmltools::tags$td(tags$strong(display_name)),
+            htmltools::tags$td(class = "text-end", details[[name]])
           )
         })
       )
@@ -559,7 +563,7 @@ build_details_view <- function(selected_data) {
   }
 
   safe_render_details <- function(fields) {
-    renderUI({
+    shiny::renderUI({
       values <- lapply(selected_data[fields], function(x) {
         if (is.null(x) || all(is.na(x))) "Not recorded" else x
       })
@@ -568,7 +572,7 @@ build_details_view <- function(selected_data) {
   }
 
   # Render taxa details with error handling.
-  taxa_details_ui <- renderUI({
+  taxa_details_ui <- shiny::renderUI({
     tryCatch(
       {
         taxa <- selected_data[["taxa"]]
@@ -584,20 +588,20 @@ build_details_view <- function(selected_data) {
         sorted_taxa <- taxa[order(-taxa$cover), ]
         rows <- lapply(seq_len(nrow(sorted_taxa)), function(i) {
           row <- sorted_taxa[i, ]
-          tags$tr(
-            tags$td(row$authorplantname),
-            tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
+          htmltools::tags$tr(
+            htmltools::tags$td(row$authorplantname),
+            htmltools::tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
           )
         })
-        tags$table(
+        htmltools::tags$table(
           class = "table table-sm table-striped table-hover",
-          tags$thead(
-            tags$tr(
-              tags$th("Author Plant Name"),
-              tags$th("Cover")
+          htmltools::tags$thead(
+            htmltools::tags$tr(
+              htmltools::tags$th("Author Plant Name"),
+              htmltools::tags$th("Cover")
             )
           ),
-          tags$tbody(rows)
+          htmltools::tags$tbody(rows)
         )
       },
       error = function(e) {

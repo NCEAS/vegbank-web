@@ -5,8 +5,8 @@
 #' @export
 runVegBankApp <- function() {
   shiny::shinyApp(
-    ui = VegBankWeb::ui,
-    server = VegBankWeb::server,
+    ui = ui,
+    server = server,
     enableBookmarking = "url"
   )
 }
