@@ -7,6 +7,8 @@
 #' @import shiny bslib htmltools
 #' @importFrom magrittr %>%
 ui <- function(req) {
+  shiny::addResourcePath("assets", "/Users/dariangill/git/vegbank-web/inst/shiny/www")
+
   navbar_with_search <- build_navbar()
   overlay <- build_detail_overlay()
 
@@ -120,7 +122,7 @@ build_navbar <- function() {
     theme = custom_theme,
     title = htmltools::tags$span(
       htmltools::tags$img(
-        src = "/Users/dariangill/git/vegbank-web/inst/shiny/www/logo_vegbank_leaves.svg"
+        src = "assets/logo_vegbank_leaves.svg"
       ),
       "Vegbank"
     ),

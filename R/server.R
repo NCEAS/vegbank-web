@@ -133,7 +133,7 @@ server <- function(input, output, session) {
         leaflet::addControl("Data unavailable", position = "topright")
     } else {
       data_grouped <- data %>%
-        dplyr::group_by(latitude, longitude) %>% # nolint: object_usage_linter.
+        dplyr::group_by(latitude, longitude) %>%
         dplyr::mutate(
           authorobscode_label =
             paste(mapply(function(obs, acc) {
@@ -142,7 +142,7 @@ server <- function(input, output, session) {
                 '%s', {priority:'event'})\">%s</a>",
                 acc, obs
               )
-            }, authorobscode, obsaccessioncode), collapse = "<br>"), # nolint: object_usage_linter.
+            }, authorobscode, obsaccessioncode), collapse = "<br>"),
         ) %>%
         dplyr::ungroup()
 
@@ -357,7 +357,7 @@ build_top10_barchart <- function(data, column, xlab, color) {
   top_df <- utils::head(df, 10)
   ggplot2::ggplot(
     top_df,
-    ggplot2::aes(x = stats::reorder(name, count), y = count) # nolint: object_usage_linter.
+    ggplot2::aes(x = stats::reorder(name, count), y = count)
   ) +
     ggplot2::geom_bar(stat = "identity", fill = color) +
     ggplot2::geom_text(ggplot2::aes(label = count), hjust = -0.1, size = 3) +
@@ -438,14 +438,14 @@ build_plot_heatmap <- function(data) {
   ggplot2::ggplot() +
     ggplot2::geom_polygon(
       data = na_map,
-      ggplot2::aes(x = long, y = lat, group = group), # nolint: object_usage_linter.
+      ggplot2::aes(x = long, y = lat, group = group),
       fill = "white", color = "gray70", size = 0.3
     ) +
     ggplot2::stat_density2d(
       data = data,
-      ggplot2::aes(x = longitude, # nolint: object_usage_linter.
-                   y = latitude, # nolint: object_usage_linter.
-                   fill = ggplot2::after_stat(level)), # nolint: object_usage_linter.
+      ggplot2::aes(x = longitude,
+                   y = latitude,
+                   fill = ggplot2::after_stat(level)),
       geom = "polygon", color = "black", linewidth = 0.5, contour = TRUE
     ) +
     ggplot2::scale_fill_gradient(low = "lightgreen", high = "darkgreen", na.value = "white") +
