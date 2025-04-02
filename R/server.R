@@ -7,6 +7,7 @@
 #' @param session Shiny session object.
 #' @return Called for its side effects.
 #' @importFrom magrittr %>%
+#' @importFrom ggplot2 .data
 server <- function(input, output, session) {
   # TODO: rework data flow to use server-side pagination, search, and details endpoint
   rv_data <- shiny::reactiveVal(NULL)
@@ -132,7 +133,7 @@ server <- function(input, output, session) {
         leaflet::addControl("Data unavailable", position = "topright")
     } else {
       data_grouped <- data %>%
-        dplyr::group_by(latitude, longitude) %>%
+        dplyr::group_by(.data$latitude, .data$longitude) %>%
         dplyr::mutate(
           authorobscode_label =
             paste(mapply(function(obs, acc) {
@@ -141,7 +142,7 @@ server <- function(input, output, session) {
                 '%s', {priority:'event'})\">%s</a>",
                 acc, obs
               )
-            }, authorobscode, obsaccessioncode), collapse = "<br>"),
+            }, .data$authorobscode, .data$obsaccessioncode), collapse = "<br>"),
         ) %>%
         dplyr::ungroup()
 
@@ -348,6 +349,7 @@ server <- function(input, output, session) {
 #' @param color Bar fill color.
 #' @return A ggplot object.
 #' @keywords internal
+#' @importFrom ggplot2 .data
 build_top10_barchart <- function(data, column, xlab, color) {
   counts <- table(data[[column]])
   df <- as.data.frame(counts)
@@ -356,10 +358,10 @@ build_top10_barchart <- function(data, column, xlab, color) {
   top_df <- utils::head(df, 10)
   ggplot2::ggplot(
     top_df,
-    ggplot2::aes(x = stats::reorder(name, count), y = count)
+    ggplot2::aes(x = stats::reorder(.data$name, .data$count), y = .data$count)
   ) +
     ggplot2::geom_bar(stat = "identity", fill = color) +
-    ggplot2::geom_text(ggplot2::aes(label = count), hjust = -0.1, size = 3) +
+    ggplot2::geom_text(ggplot2::aes(label = .data$count), hjust = -0.1, size = 3) +
     ggplot2::coord_flip() +
     ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.2))) +
     ggplot2::labs(x = xlab, y = "Plot Occurrences") +
@@ -432,19 +434,20 @@ build_most_recent_date_list <- function(data, n = 16, date_field = "obsdateenter
 #' @param data Data frame containing longitude and latitude.
 #' @return A ggplot object.
 #' @keywords internal
+#' @importFrom ggplot2 .data
 build_plot_heatmap <- function(data) {
   na_map <- ggplot2::map_data("world", region = c("USA", "Canada", "Mexico"))
   ggplot2::ggplot() +
     ggplot2::geom_polygon(
       data = na_map,
-      ggplot2::aes(x = long, y = lat, group = group),
+      ggplot2::aes(x = .data$long, y = .data$lat, group = .data$group),
       fill = "white", color = "gray70", size = 0.3
     ) +
     ggplot2::stat_density2d(
       data = data,
-      ggplot2::aes(x = longitude,
-                   y = latitude,
-                   fill = ggplot2::after_stat(level)),
+      ggplot2::aes(x = .data$longitude,
+                   y = .data$latitude,
+                   fill = ggplot2::after_stat(.data$level)),
       geom = "polygon", color = "black", linewidth = 0.5, contour = TRUE
     ) +
     ggplot2::scale_fill_gradient(low = "lightgreen", high = "darkgreen", na.value = "white") +
@@ -553,7 +556,7 @@ build_details_view <- function(selected_data) {
         lapply(names(details), function(name) {
           display_name <- if (!is.null(col_names[[name]])) col_names[[name]] else name
           htmltools::tags$tr(
-            htmltools::tags$td(tags$strong(display_name)),
+            htmltools::tags$td(htmltools::tags$strong(display_name)),
             htmltools::tags$td(class = "text-end", details[[name]])
           )
         })
