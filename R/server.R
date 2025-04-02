@@ -17,7 +17,7 @@ server <- function(input, output, session) {
 
   shiny::observe({
     # Update to load data from your own local file for now... eventually we'll hit api
-    file_path <- "/Users/dariangill/git/vegbank-web/inst/shiny/www/all_states_plot_obs.json"
+    file_path <- file.path("inst", "shiny", "www", "all_states_plot_obs.json")
     if (file.exists(file_path)) {
       tryCatch(
         {

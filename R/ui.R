@@ -205,7 +205,7 @@ build_navbar <- function() {
       align = "right",
       bslib::nav_panel(
         title = "FAQ",
-        shiny::includeMarkdown("/Users/dariangill/git/vegbank-web/inst/shiny/www/faq.md")
+        shiny::includeMarkdown(file.path("inst", "shiny", "www", "faq.md"))
       )
     )
   )
