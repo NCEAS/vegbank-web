@@ -4,23 +4,26 @@
 #'
 #' @param req A Shiny request object.
 #' @return A Shiny tag list.
-#' @importFrom magrittr %>%
 ui <- function(req) {
-  shiny::addResourcePath("assets", "/Users/dariangill/git/vegbank-web/inst/shiny/www")
+  shiny::addResourcePath("assets", system.file("shiny/www", package = "VegBankWeb"))
 
   navbar_with_search <- build_navbar()
   overlay <- build_detail_overlay()
 
   script <- htmltools::tags$script(htmltools::HTML(
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
-         document.getElementById('detail-overlay').style.right = '0px';
-     });
+      if (document.getElementById('detail-overlay')) {
+        document.getElementById('detail-overlay').style.right = '0px';
+      }     
+    });
 
-     $(document).ready(function() {
-         var params = new URLSearchParams(window.location.search);
-         if(params.get('details_open') === 'true') {
-             document.getElementById('detail-overlay').style.right = '0px';
-         }
+    $(document).ready(function() {
+      var params = new URLSearchParams(window.location.search);
+      if(params.get('details_open') === 'true') {
+        if (document.getElementById('detail-overlay')) {
+            document.getElementById('detail-overlay').style.right = '0px';
+        }         
+      }
      });"
   ))
 
