@@ -6,7 +6,6 @@
 #' @param output Shiny output object.
 #' @param session Shiny session object.
 #' @return Called for its side effects.
-#' @importFrom magrittr %>%
 #' @importFrom ggplot2 .data
 server <- function(input, output, session) {
   # TODO: rework data flow to use server-side pagination, search, and details endpoint
@@ -128,12 +127,12 @@ server <- function(input, output, session) {
     data <- rv_data()
 
     if (is.null(data)) {
-      leaflet::leaflet() %>%
-        leaflet::addTiles() %>%
+      leaflet::leaflet() |>
+        leaflet::addTiles() |>
         leaflet::addControl("Data unavailable", position = "topright")
     } else {
-      data_grouped <- data %>%
-        dplyr::group_by(.data$latitude, .data$longitude) %>%
+      data_grouped <- data |>
+        dplyr::group_by(.data$latitude, .data$longitude) |>
         dplyr::mutate(
           authorobscode_label =
             paste(mapply(function(obs, acc) {
@@ -143,17 +142,17 @@ server <- function(input, output, session) {
                 acc, obs
               )
             }, .data$authorobscode, .data$obsaccessioncode), collapse = "<br>"),
-        ) %>%
+        ) |>
         dplyr::ungroup()
 
-      leaflet::leaflet(data_grouped) %>%
-        leaflet::addTiles() %>%
+      leaflet::leaflet(data_grouped) |>
+        leaflet::addTiles() |>
         leaflet::addMarkers(
           lng = ~longitude,
           lat = ~latitude,
           layerId = ~ paste(latitude, longitude, sep = ", "),
           # Render the concatenated links
-          label = ~ authorobscode_label %>% lapply(htmltools::HTML),
+          label = ~ authorobscode_label |> lapply(htmltools::HTML),
           labelOptions = leaflet::labelOptions(
             noHide = TRUE,
             clickable = TRUE,
@@ -168,7 +167,7 @@ server <- function(input, output, session) {
             )
           ),
           clusterOptions = leaflet::markerClusterOptions()
-        ) %>%
+        ) |>
         # Display Zoom level for debugging purposes
         htmlwidgets::onRender("
           function(el, x) {
@@ -214,13 +213,13 @@ server <- function(input, output, session) {
   # TODO: Parameterize this to pull out of server fn?
   update_map_view <- function(idx) {
     data <- rv_data()
-    leaflet::leafletProxy("map", session) %>%
+    leaflet::leafletProxy("map", session) |>
       leaflet::setView(
         lng = data$longitude[idx],
         lat = data$latitude[idx],
         zoom = 18
-      ) %>%
-      leaflet::clearPopups() %>%
+      ) |>
+      leaflet::clearPopups() |>
       leaflet::addPopups(
         lng = data$longitude[idx],
         lat = data$latitude[idx],
@@ -358,7 +357,10 @@ build_top10_barchart <- function(data, column, xlab, color) {
   top_df <- utils::head(df, 10)
   ggplot2::ggplot(
     top_df,
-    ggplot2::aes(x = stats::reorder(.data$name, .data$count), y = .data$count)
+    ggplot2::aes(
+      x = stats::reorder(.data$name, .data$count),
+      y = .data$count
+    )
   ) +
     ggplot2::geom_bar(stat = "identity", fill = color) +
     ggplot2::geom_text(ggplot2::aes(label = .data$count), hjust = -0.1, size = 3) +
@@ -397,7 +399,7 @@ build_pie_chart <- function(data, field, palette = c("#a1d99b", "#31a354"), labe
     textinfo = "text",
     insidetextorientation = "radial",
     marker = list(colors = colors)
-  ) %>%
+  ) |>
     plotly::config(responsive = TRUE)
 }
 
@@ -440,7 +442,10 @@ build_plot_heatmap <- function(data) {
   ggplot2::ggplot() +
     ggplot2::geom_polygon(
       data = na_map,
-      ggplot2::aes(x = .data$long, y = .data$lat, group = .data$group),
+      ggplot2::aes(
+        x = .data$long,
+        y = .data$lat, group = .data$group
+      ),
       fill = "white", color = "gray70", size = 0.3
     ) +
     ggplot2::stat_density2d(
