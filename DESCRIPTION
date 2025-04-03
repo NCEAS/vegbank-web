@@ -9,7 +9,6 @@ License: Apache License (>= 2)
 Imports: 
     shiny (>= 1.10.0),
     leaflet (>= 2.0.0),
-    magrittr (>= 2.0.1),
     DT (>= 0.18),
     ggplot2 (>= 3.3.6),
     plotly (>= 4.9.3),

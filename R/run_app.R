@@ -3,7 +3,7 @@
 #' Launches the Vegbank Shiny application.
 #'
 #' @export
-runVegBankApp <- function() {
+run_app <- function() {
   shiny::shinyApp(
     ui = ui,
     server = server,
