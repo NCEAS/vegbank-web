@@ -1,10 +1,8 @@
- VegBank FAQ
-===========
+# VegBank FAQ {#topoffaq}
 
 Frequently Asked Questions about the VegBank database and website.
 
 Please select from the following questions, or browse through this file:  
-([clear highlighting on this page](#).)
 
 **[General Questions](#catg_general):**
 
@@ -57,9 +55,9 @@ Please select from the following questions, or browse through this file:
 
 * * *
 
-#### General Questions
+#### General Questions {#catg_general}
 
-What is VegBank?
+##### What is VegBank? {#whatisvegbank}
 
 > VegBank is the vegetation plot database of the Ecological Society of America's Panel on Vegetation Classification. VegBank stores data about vegetation plots and necessary supplemental data, such as a plant taxon database and community type database. VegBank's purpose is to allow plant Ecologists to submit and share data to allow permanent documentation of plot data, which will provide a permanent record of plots which define communities.
 
@@ -67,7 +65,7 @@ What is VegBank?
 
 * * *
 
-Who runs VegBank?
+##### Who runs VegBank? {#whoruns}
 
 > VegBank is operated by the Ecological Society of America's [Vegetation Panel](/vegdocs/panel/panel.html) in cooperation with the [National Center for Ecological Analysis and Synthesis](http://www.nceas.ucsb.edu/). The development team for VegBank is listed on the [contact](/vegbank/general/contact.html) page. Further participants can be found on the [development history](/vegdocs/history/development.html#particpants) page.
 
@@ -75,7 +73,7 @@ Who runs VegBank?
 
 * * *
 
-What is a plot?
+##### What is a plot? {#whatisplot}
 
 > The purpose of plots is to record the vegetation and its environmental context. A plot may be contained by a single bounded area, such as a 50m x 20m rectangle. It could also consist of smaller subplots which sample vegetation over a large range. While we encourage plots to have boundaries and definite size, VegBank also accepts relevés that have no bounds as valid plots. An observation is a one-time record of vegetation present in a plot. So multiple observations of a plot could be made at different times, producing different values for both vegetation present (both in which taxa are present and its abundance as well as environmental variables, such as soil characteristics).
 
@@ -83,7 +81,7 @@ What is a plot?
 
 * * *
 
-Where does VegBank get its plots and other data?
+##### Where does VegBank get its plots and other data? {#whereplotsfrom}
 
 > Plots in VegBank come from the users who decide to **contribute their plots**. VegBank does not fund plot collection, but see ourselves as a means for those who do collect plots to share their data. There are two major implications of this:  
 > 1) We do not guarantee the accurateness of the data in VegBank. Users are allowed to annotate (make notes and reinterpret plants and plots) to share with other users their opinions about the data already in VegBank. \[Some of the annotation features are still in development.\]  
@@ -95,7 +93,7 @@ Where does VegBank get its plots and other data?
 
 * * *
 
-How do I find plots in VegBank?
+##### How do I find plots in VegBank? {#howsearch}
 
 > You can search for plots with two different pages in VegBank.  
 >   
@@ -109,7 +107,7 @@ How do I find plots in VegBank?
 
 * * *
 
-How do I download VegBank data to my computer?
+##### How do I download VegBank data to my computer? {#howdownload}
 
 > Once you have added plots to the datacart, you can download them from the "download" link next to the datacart icon near the top of any page in VegBank. Once you click that link, you will see a menu of options that you can perform with the data in your datacart, including downloading the data.  
 > For more information on adding plots to the datacart, please see the FAQ topic on [how to search for plots](#howsearch).  
@@ -119,7 +117,7 @@ How do I download VegBank data to my computer?
 
 * * *
 
-Why do I need to register? Why do I need to log in?
+##### Why do I need to register? Why do I need to log in? {#whyregister}
 
 > You don't need to register to use most of VegBank's features. Registration is only required if you want to VegBank remember one or more datasets or if you want to upload data to include in the VegBank archive (this also requires [certification](#whycertification)).
 
@@ -127,7 +125,7 @@ Why do I need to register? Why do I need to log in?
 
 * * *
 
-What is a dataset? What is the datacart?
+##### What is a dataset? What is the datacart? {#dataset}
 
 > A dataset is a set of items (plots, communities, or plants) that you are interested in. The datacart is the current or active dataset to which you can add items when searching or viewing data. You add items to the datacart by clicking the "add to datacart" icon: ![add to datacart icon](/vegbank/images/cart_add_one.gif) after searching for data or viewing data.  
 >   
@@ -139,7 +137,7 @@ What is a dataset? What is the datacart?
 
 * * *
 
-What features does VegBank offer for analysis of plot data?
+##### What features does VegBank offer for analysis of plot data? {#analysis}
 
 > VegBank does not have analysis tools. Other groups have done a good job making tools for analysis, and we encourage users to find data in VegBank, then export into a format of your choice, then work on analysis with a program like PC-Ord.
 
@@ -147,7 +145,7 @@ What features does VegBank offer for analysis of plot data?
 
 * * *
 
-What are the best practices or standards of VegBank?
+##### What are the best practices or standards of VegBank? {#bestpractice}
 
 > VegBank has a very flexible structure that allows legacy data to be added, as well as data that do not conform to our best practices. We do encourage users to conform to the best practices standards as described in the standards document, [_Guidelines for Describing Associations and Alliances of the U.S. National Vegetation Classification_](/vegdocs/panel/standards.html) . This document will help you understand the best practices of plot collection in VegBank for purposes of classification.
 
@@ -155,7 +153,7 @@ What are the best practices or standards of VegBank?
 
 * * *
 
-What is certification? When do I need to be certified?
+##### What is certification? When do I need to be certified? {#whycertification}
 
 > Certification is required for VegBank features that allow you to add data to the database. You can become a certified user by [registering](/vegbank/forms/RegisterNewUser.jsp) to be a VegBank user, then filling out a [certification application](/vegbank/LoadCertification.do). This means that your user profile will be public, as well as some of your certification questions (the application tells you what will be made public). This helps users understand who you are and what credentials are behind your opinions and plots in VegBank.
 
@@ -163,7 +161,7 @@ What is certification? When do I need to be certified?
 
 * * *
 
-What is a community?
+##### What is a community? {#whatcommunity}
 
 > In overly simple terms, a community is a set of plant taxa that live adjacent to one another within a set of physical conditions. This community of co-occurring plants may be seen to repeat itself in a predictable pattern. One may classify (or interpret) a plot as belonging to a certain community type.  
 >   
@@ -176,7 +174,7 @@ What is a community?
 
 * * *
 
-What is a plant concept? What is a community concept?
+##### What is a plant concept? What is a community concept? {#whatconcept}
 
 > Generally, people use only a plant name to refer to a particular plant taxon. However, names may mean different things to different people or at different times. When users view a plant in VegBank, they need to know what is meant by a plant name, hence only a name is not enough. A reference, or context, must be provided which gives the name meaning and defines what the taxon encompasses. When we mention a "plant concept" in VegBank, we mean this unique combination of name and reference. For example, one might mention "Carya ovata" according to (reference) "Radford, 1968." Each plant concept and community concept in VegBank has an Accession Code which provides unique identification for the plant concept. For more information, please see the [VegBank Plant Taxonomy Overview](/vegdocs/design/planttaxaoverview.html).  
 > Community Concepts function in exactly the same way, except that Community Concepts describe a community type, not a plant taxon.
@@ -185,7 +183,7 @@ What is a plant concept? What is a community concept?
 
 * * *
 
-What is your standard list of species/communities?
+##### What is your standard list of species/communities? {#standardtaxa}
 
 > VegBank does not have a standard list of taxa or communities. In VegBank, plants and communities have a Party Perspective which defines whether a plant or community is standard or not and what names may be used to describe it. VegBank has no Party Perspective of its own. However, USDA PLANTS 2002 data and NatureServe communities were initially loaded into the database and users are strongly encouraged to map any new plants or communities onto USDA's or NatureServe's standards. This allows other users, who may know nothing of your own views, to view information according to the USDA or NatureServe standards.
 
@@ -193,7 +191,7 @@ What is your standard list of species/communities?
 
 * * *
 
-What is metadata?
+##### What is metadata? {#metadata}
 
 > Metadata is plot data that defines not what was measured, but how it was measured. Cover Method and Stratum Method are examples of metadata. Plot size and stem sampling method might also be considered metadata. These data are often considered secondary in importance, but are essential when many different techniques are used to collect plots, as is the case with VegBank data.
 
@@ -201,7 +199,7 @@ What is metadata?
 
 * * *
 
-Why are there so few soil variables in the soilObs table?
+##### Why are there so few soil variables in the soilObs table? {#soilvariables}
 
 > Soil analysis techniques vary widely and thus make it difficult to define standard soil variables. We do recognize some standards, such as pH, percent clay, percent silt, percent sand. But other variables, such as Nitrogen ppm could be measured with different techniques, yielding different values for the same soil. We encourage users to input their soil values in user-defined fields where they can describe what techniques were used to analyze their soils.
 
@@ -209,7 +207,7 @@ Why are there so few soil variables in the soilObs table?
 
 * * *
 
-What is annotation?
+##### What is annotation? {#annotate}
 
 > Annotation is when users add their own opinions to plots that are already in the VegBank archive. This is a bit different from a plot author, who provides information about his or her own plot. Annotation can be grouped into three categories: 1) plant interpretation, 2) plot interpretation, and 3) notes.  
 >   
@@ -223,7 +221,7 @@ What is annotation?
 
 * * *
 
-How do I cite VegBank?
+##### How do I cite VegBank? {#cite}
 
 > You may cite VegBank, as a whole or one or more elements, with the instructions on the [citation page](/vegbank/general/cite.html). That page also shows how to cite a description of VegBank.
 
@@ -231,7 +229,7 @@ How do I cite VegBank?
 
 * * *
 
-What is an Accession Code?
+##### What is an Accession Code? {#accessioncode}
 
 > An Accession Code is a unique combination of letters, numbers, and some periods which uniquely identify something in VegBank. Accession Codes are used to identify plots and observations, as well as methods, plant taxa, and community types. This allows communication about these elements to take place so that each party knows that they are mentioning the same thing. Accession Codes are important when VegBranch and VegBank communicate, because this helps the two databases align the different types of data, rather than repeating redundant information.  
 >   
@@ -245,7 +243,7 @@ What is an Accession Code?
 
 * * *
 
-How is VegBank financed? How can I help VegBank operate financially?
+##### How is VegBank financed? How can I help VegBank operate financially? {#donate}
 
 > We are currently funded by the **US National Science Foundation (NSF)**. We gratefully acknowledge the financial support of NSF. This project would not have been possible without the support provided by NSF grant DBI-9905838.  
 >   
@@ -257,9 +255,9 @@ How is VegBank financed? How can I help VegBank operate financially?
 
 * * *
 
-#### Learning More about VegBank
+#### Learning More about VegBank {#catg_learnmore}
 
-How can I get help with VegBank? Is there a tutorial?
+##### How can I get help with VegBank? Is there a tutorial? {#tutorial}
 
 > Yes! There is currently a set of instructions that walks the user through the main forms in VegBank. See [the instructions page](/vegbank/forms/getHelp.jsp) to start this.
 
@@ -267,7 +265,7 @@ How can I get help with VegBank? Is there a tutorial?
 
 * * *
 
-When can I sign up for a training workshop?
+##### When can I sign up for a training workshop? {#training}
 
 > We do offer training in VegBank and VegBranch. Training information can be found on the [Professional Training](/vegdocs/panel/training.html) page. We present workshops at the ESA annual meeting and periodically with groups who request special training. VegBank presents information about the [next VegBank workshop here](/vegdocs/workshop/index.html). You can sign up for a workshop from that page, if there is one in the near future, or you can request a training session by sending email to help@vegbank.org. We will try to offer special training session, but are limited in both time and funds for such purposes.
 
@@ -275,7 +273,7 @@ When can I sign up for a training workshop?
 
 * * *
 
-How does VegBank keep track of plot area? Why is the area negative sometimes?
+##### How does VegBank keep track of plot area? Why is the area negative sometimes? {#areafields}
 
 > VegBank has several fields that store area values, recording the size of the plot **in square meters.** A simple value is not always sufficient, as sub-sampling and super-sampling are often used, as are dispersed subplots. Furthermore, sub- or super-sampling may be used only for certain species or even certain sizes of species. These complex situations require that many area fields be available in VegBank. **Area of -1** indicates that there is no known area.  
 >   
@@ -294,9 +292,9 @@ How does VegBank keep track of plot area? Why is the area negative sometimes?
 
 * * *
 
-#### Contacting VegBank Developers
+#### Contacting VegBank Developers {#catg_contact}
 
-What if I find something not working in VegBank?
+##### What if I find something not working in VegBank? {#bug}
 
 > You should tell us about what wasn't working. Just send an email to help@vegbank.org and explain what it is that isn't working. Please be as specific as possible, i.e. what the URL was when the error occurred, what the search criteria were if you were searching for something, the time and date the error occurred, etc. Users who report errors help us improve the VegBank experience for everyone. Thank you!
 
@@ -304,7 +302,7 @@ What if I find something not working in VegBank?
 
 * * *
 
-What are the VegBank Mailing Lists? How do I sign up?
+##### What are the VegBank Mailing Lists? How do I sign up? {#mailinglist}
 
 > There are two VegBank mailing lists. The Users list is for VegBank users to post questions and comments to each other. The VegBranch list is similar, but covers topics related to VegBranch. The development team is also on these lists and can answer questions. The advantage to using this list is that an archive of questions and answers is being built that users can search. These lists are described in detail in the [contact](/vegbank/general/contact.html) page. If you have a question or comment for the development team that you do not want posted to a public archive, please email us at help@vegbank.org.
 
@@ -312,9 +310,9 @@ What are the VegBank Mailing Lists? How do I sign up?
 
 * * *
 
-#### Loading Data into VegBank
+#### Loading Data into VegBank {#catg_loading}
 
-How do I load plots into VegBank?
+##### How do I load plots into VegBank? {#howload}
 
 > Plots can be loaded into VegBank with the desktop tool called VegBranch. VegBranch can then create an XML document (a particular format of text file) that can be sent to VegBank. One could also create an XML document and load this without using VegBranch. This is for advanced users with much experience with our data model only. See the VegBranch topic in this FAQ for more information about VegBranch and loading plots.
 
@@ -322,7 +320,7 @@ How do I load plots into VegBank?
 
 * * *
 
-What is VegBranch?
+##### What is VegBranch? {#vegbranch}
 
 > VegBranch is an MS-Access (2000 or higher) database that allows users to import or enter data manually for import into the central VegBank database. It also allows users to add new plants and communities, enter new methods, projects, references, and parties. Furthermore, one can download plots from VegBank and read them into VegBranch. For more information on VegBranch, please see the [overview of VegBranch](/vegdocs/vegbranch/vbr-overview.html).
 
@@ -330,7 +328,7 @@ What is VegBranch?
 
 * * *
 
-How can I protect my plots in VegBank?
+##### How can I protect my plots in VegBank? {#intellectualproperty}
 
 > There are several different ways that one can protect plot data in VegBank. The first option is to scramble the latitude and longitude so that the exact location of the plot is not known. This allows full access to the other data about the plot. This is generally sufficient for protecting endangered species. You can set the confidentiality status to a distance (i.e. 1km, 10km, 100km) in VegBranch for each plot, or in the Metadata form for all plots. The field in question is [plot.confidentialityStatus](/ddfull/plot/confidentialitystatus) (Plot Data Loading table, confidentialityStatus in VegBranch).  
 >   
@@ -342,7 +340,7 @@ How can I protect my plots in VegBank?
 
 * * *
 
-Is data from other countries allowed into VegBank?
+##### Is data from other countries allowed into VegBank? {#geographicscope}
 
 > Yes, we do accept data from countries outside of North America, but consider VegBank's primary function to serve plots in North America. Eventually we hope to have several different VegBank systems which can be maintained and funded separately for different countries and regions. If you wish to submit plots from outside North America, there will be some challenges for you, especially in dealing with plant taxa, as we have only loaded plant concepts into VegBank that are found in North America.
 
@@ -350,7 +348,7 @@ Is data from other countries allowed into VegBank?
 
 * * *
 
-How many plots can I add?
+##### How many plots can I add? {#howmanyplotsperuser}
 
 > Currently, we ask users to limit the number of plots that they provide to not more than 1000 plots without speaking to us directly about the plots. Some features of databases work well with a smaller amount of data and only very weakly with large amounts of data. We want to increase the size of VegBank somewhat gradually to help alleviate such technological issues.
 
@@ -358,7 +356,7 @@ How many plots can I add?
 
 * * *
 
-What if my plant species are not found in your list of taxa?
+##### What if my plant species are not found in your list of taxa? {#addplant}
 
 > If you have a plant taxon that isn't in the list of VegBank plants, you can add a new plant in VegBranch. The Species List loading table can be used to import data from a file that defines new plant concepts. Or, you can use a form for the Species List to fill in the different fields of this table. Please map your new concept onto the USDA list of plants if possible.
 
@@ -366,7 +364,7 @@ What if my plant species are not found in your list of taxa?
 
 * * *
 
-What if my community is not found in your list of community types?
+# What if my community is not found in your list of community types? {#addcomm}
 
 > If you have a community that is not already in VegBank, you can add the community with VegBranch. VegBranch has a loading table called "Community Concept" that allows you to define a new community. It would be appreciated if you would correlate this community to any extant community concepts already in VegBank, preferable in the set of NatureServe communities so that other users might know how your new community maps onto the set of commonly accepted communities.
 
@@ -374,9 +372,9 @@ What if my community is not found in your list of community types?
 
 * * *
 
-#### Advanced Questions
+#### Advanced Questions {#catg_advanced}
 
-What is your data model?
+##### What is your data model? {#datamodel}
 
 > Our data model is a complex set of tables that comprise our relational database. More information about these can be seen with our [data-dictionary](/get/index/dba_tabledescription) and our [ERD](/vegdocs/design/erd/vegbank_erd.pdf) (Entity Relationship Diagram). The data dictionary provides information about each field and table in our database, such as data type, definition, if it is a required field, and what other field it may reference (foreign key). The ERD is a way of visualizing the tables and fields of our database. This information will only be useful to users who have some previous database experience.
 
@@ -384,7 +382,7 @@ What is your data model?
 
 * * *
 
-Is there more than one VegBank? Can I run my own VegBank to serve data from another Country?
+##### Is there more than one VegBank? Can I run my own VegBank to serve data from another Country? {#distributedvegbank}
 
 > Currently, there is only one VegBank. We have plans to allow other groups to use our software to create their own versions of VegBank, with the set of VegBank databases and website communicating to each other. This way, you could query for plots with a particular species in it and get results from plots in different databases. This will allow different organizations to maintain and fund their own plot archives, while still keeping the ability to share and compile plot datasets for users.
 
