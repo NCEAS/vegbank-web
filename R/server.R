@@ -6,6 +6,7 @@
 #' @param output Shiny output object.
 #' @param session Shiny session object.
 #' @return Called for its side effects.
+#' @importFrom ggplot2 .data
 server <- function(input, output, session) {
   # TODO: rework data flow to use server-side pagination, search, and details endpoint
   rv_data <- shiny::reactiveVal(NULL)
@@ -131,7 +132,7 @@ server <- function(input, output, session) {
         leaflet::addControl("Data unavailable", position = "topright")
     } else {
       data_grouped <- data |>
-        dplyr::group_by(ggplot2::.data$latitude, ggplot2::.data$longitude) |>
+        dplyr::group_by(.data$latitude, .data$longitude) |>
         dplyr::mutate(
           authorobscode_label =
             paste(mapply(function(obs, acc) {
@@ -140,7 +141,7 @@ server <- function(input, output, session) {
                 '%s', {priority:'event'})\">%s</a>",
                 acc, obs
               )
-            }, ggplot2::.data$authorobscode, ggplot2::.data$obsaccessioncode), collapse = "<br>"),
+            }, .data$authorobscode, .data$obsaccessioncode), collapse = "<br>"),
         ) |>
         dplyr::ungroup()
 
@@ -347,6 +348,7 @@ server <- function(input, output, session) {
 #' @param color Bar fill color.
 #' @return A ggplot object.
 #' @keywords internal
+#' @importFrom ggplot2 .data
 build_top10_barchart <- function(data, column, xlab, color) {
   counts <- table(data[[column]])
   df <- as.data.frame(counts)
@@ -356,12 +358,12 @@ build_top10_barchart <- function(data, column, xlab, color) {
   ggplot2::ggplot(
     top_df,
     ggplot2::aes(
-      x = stats::reorder(ggplot2::.data$name, ggplot2::.data$count),
-      y = ggplot2::.data$count
+      x = stats::reorder(.data$name, .data$count),
+      y = .data$count
     )
   ) +
     ggplot2::geom_bar(stat = "identity", fill = color) +
-    ggplot2::geom_text(ggplot2::aes(label = ggplot2::.data$count), hjust = -0.1, size = 3) +
+    ggplot2::geom_text(ggplot2::aes(label = .data$count), hjust = -0.1, size = 3) +
     ggplot2::coord_flip() +
     ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.2))) +
     ggplot2::labs(x = xlab, y = "Plot Occurrences") +
@@ -434,23 +436,24 @@ build_most_recent_date_list <- function(data, n = 16, date_field = "obsdateenter
 #' @param data Data frame containing longitude and latitude.
 #' @return A ggplot object.
 #' @keywords internal
+#' @importFrom ggplot2 .data
 build_plot_heatmap <- function(data) {
   na_map <- ggplot2::map_data("world", region = c("USA", "Canada", "Mexico"))
   ggplot2::ggplot() +
     ggplot2::geom_polygon(
       data = na_map,
       ggplot2::aes(
-        x = ggplot2::.data$long,
-        y = ggplot2::.data$lat, group = ggplot2::.data$group
+        x = .data$long,
+        y = .data$lat, group = .data$group
       ),
       fill = "white", color = "gray70", size = 0.3
     ) +
     ggplot2::stat_density2d(
       data = data,
       ggplot2::aes(
-        x = ggplot2::.data$longitude,
-        y = ggplot2::.data$latitude,
-        fill = ggplot2::after_stat(ggplot2::.data$level)
+        x = .data$longitude,
+        y = .data$latitude,
+        fill = ggplot2::after_stat(.data$level)
       ),
       geom = "polygon", color = "black", linewidth = 0.5, contour = TRUE
     ) +
