@@ -446,7 +446,7 @@ build_plot_heatmap <- function(data) {
         x = .data$long,
         y = .data$lat, group = .data$group
       ),
-      fill = "white", color = "gray70", size = 0.3
+      fill = "white", color = "gray70", linewidth = 0.3
     ) +
     ggplot2::stat_density2d(
       data = data,
