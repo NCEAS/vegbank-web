@@ -2,11 +2,9 @@
 #'
 #' Launches the Vegbank Shiny application.
 #'
+#' @param options A list of options to pass to the Shiny application.
+#'   Default is an empty list.
 #' @family **Standalone Application**
-#' @section Details:
-#' The application uses:
-#' - **UI**: Defined in [`ui.R`].
-#' - **Server Logic**: Defined in [`server.R`].
 #' @return A **Shiny application** object.
 #' @export
 run_app <- function(options = list()) {

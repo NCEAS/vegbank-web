@@ -6,19 +6,14 @@
 \usage{
 run_app(options = list())
 }
+\arguments{
+\item{options}{A list of options to pass to the Shiny application.
+Default is an empty list.}
+}
 \value{
 A \strong{Shiny application} object.
 }
 \description{
 Launches the Vegbank Shiny application.
 }
-\section{Details}{
-
-The application uses:
-\itemize{
-\item \strong{UI}: Defined in \code{\link{ui.R}}.
-\item \strong{Server Logic}: Defined in \code{\link{server.R}}.
-}
-}
-
 \concept{\strong{Standalone Application}}
