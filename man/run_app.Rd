@@ -4,8 +4,21 @@
 \alias{run_app}
 \title{Run Vegbank Web Application}
 \usage{
-run_app()
+run_app(options = list())
+}
+\value{
+A \strong{Shiny application} object.
 }
 \description{
 Launches the Vegbank Shiny application.
 }
+\section{Details}{
+
+The application uses:
+\itemize{
+\item \strong{UI}: Defined in \code{\link{ui.R}}.
+\item \strong{Server Logic}: Defined in \code{\link{server.R}}.
+}
+}
+
+\concept{\strong{Standalone Application}}
