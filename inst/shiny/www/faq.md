@@ -4,7 +4,7 @@ Frequently Asked Questions about the VegBank database and website.
 
 Please select from the following questions, or browse through this file:  
 
-**[General Questions](#catg_general):**
+**[General Questions](#catggeneral):**
 
 > [What is VegBank?](#whatisvegbank)  
 > [Who runs VegBank?](#whoruns)  
@@ -27,18 +27,18 @@ Please select from the following questions, or browse through this file:
 > [What is an Accession Code?](#accessioncode)  
 > [How is VegBank financed? How can I help VegBank operate financially?](#donate)
 
-**[Learning More about VegBank](#catg_learnmore):**
+**[Learning More about VegBank](#catglearnmore):**
 
 > [How can I get help with VegBank? Is there a tutorial?](#tutorial)  
 > [When can I sign up for a training workshop?](#training)  
 > [How does VegBank keep track of plot area? Why is the area negative sometimes?](#areafields)
 
-**[Contacting VegBank Developers](#catg_contact):**
+**[Contacting VegBank Developers](#catgcontact):**
 
 > [What if I find something not working in VegBank?](#bug)  
 > [What are the VegBank Mailing Lists? How do I sign up?](#mailinglist)
 
-**[Loading Data into VegBank](#catg_loading):**
+**[Loading Data into VegBank](#catgloading):**
 
 > [How do I load plots into VegBank?](#howload)  
 > [What is VegBranch?](#vegbranch)  
@@ -48,14 +48,14 @@ Please select from the following questions, or browse through this file:
 > [What if my plant species are not found in your list of taxa?](#addplant)  
 > [What if my community is not found in your list of community types?](#addcomm)
 
-**[Advanced Questions](#catg_advanced):**
+**[Advanced Questions](#catgadvanced):**
 
 > [What is your data model?](#datamodel)  
 > [Is there more than one VegBank? Can I run my own VegBank to serve data from another Country?](#distributedvegbank)
 
 * * *
 
-#### General Questions {#catg_general}
+## General Questions {#catggeneral}
 
 ##### What is VegBank? {#whatisvegbank}
 
@@ -255,7 +255,7 @@ Please select from the following questions, or browse through this file:
 
 * * *
 
-#### Learning More about VegBank {#catg_learnmore}
+## Learning More about VegBank {#catglearnmore}
 
 ##### How can I get help with VegBank? Is there a tutorial? {#tutorial}
 
@@ -292,7 +292,7 @@ Please select from the following questions, or browse through this file:
 
 * * *
 
-#### Contacting VegBank Developers {#catg_contact}
+## Contacting VegBank Developers {#catgcontact}
 
 ##### What if I find something not working in VegBank? {#bug}
 
@@ -310,7 +310,7 @@ Please select from the following questions, or browse through this file:
 
 * * *
 
-#### Loading Data into VegBank {#catg_loading}
+## Loading Data into VegBank {#catgloading}
 
 ##### How do I load plots into VegBank? {#howload}
 
@@ -372,7 +372,7 @@ Please select from the following questions, or browse through this file:
 
 * * *
 
-#### Advanced Questions {#catg_advanced}
+## Advanced Questions {#catgadvanced}
 
 ##### What is your data model? {#datamodel}
 
