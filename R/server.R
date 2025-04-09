@@ -124,72 +124,93 @@ server <- function(input, output, session) {
   })
 
   output$map <- leaflet::renderLeaflet({
-    data <- rv_data()
+    shiny::withProgress(message = "Loading map data...", value = 0, {
+      incProgress(0.2, detail = "Fetching pins")
+      map_data <- tryCatch({
+        resp <- httr::GET("http://127.0.0.1:28015/get_map_points")
+        raw_content <- httr::content(resp, "text")
+        if (nchar(raw_content) == 0) {
+          warning("Empty response from map endpoint")
+          NULL
+        } else if (!jsonlite::validate(raw_content)) {
+          warning("Invalid JSON content from map endpoint")
+          NULL
+        } else {
+          pins <- jsonlite::fromJSON(raw_content)
+          head(subset(pins, !is.na(latitude) & !is.na(longitude)), 80000)
+        }
+      }, error = function(e) {
+        warning("Error fetching map data: ", e$message)
+        NULL
+      })
+      incProgress(0.6, detail = "Processing map data")
 
-    if (is.null(data)) {
-      leaflet::leaflet() |>
-        leaflet::addTiles() |>
-        leaflet::addControl("Data unavailable", position = "topright")
-    } else {
-      data_grouped <- data |>
-        dplyr::group_by(.data$latitude, .data$longitude) |>
-        dplyr::mutate(
-          authorobscode_label =
-            paste(mapply(function(obs, acc) {
-              sprintf(
-                "<a href=\"#\" onclick=\"Shiny.setInputValue('label_link_click',
-                '%s', {priority:'event'})\">%s</a>",
-                acc, obs
-              )
-            }, .data$authorobscode, .data$obsaccessioncode), collapse = "<br>"),
-        ) |>
-        dplyr::ungroup()
-
-      leaflet::leaflet(data_grouped) |>
-        leaflet::addTiles() |>
-        leaflet::addMarkers(
-          lng = ~longitude,
-          lat = ~latitude,
-          layerId = ~ paste(latitude, longitude, sep = ", "),
-          # Render the concatenated links
-          label = ~ authorobscode_label |> lapply(htmltools::HTML),
-          labelOptions = leaflet::labelOptions(
-            noHide = TRUE,
-            clickable = TRUE,
-            direction = "bottom",
-            style = list(
-              "color" = "#2c5443",
-              "font-weight" = "bold",
-              "padding" = "3px 8px",
-              "background" = "white",
-              "border" = "1px solid #2c5443",
-              "border-radius" = "3px"
+      if (is.null(map_data) || nrow(map_data) == 0) {
+        leaflet::leaflet() |>
+          leaflet::addTiles() |>
+          leaflet::addControl("Data unavailable", position = "topright")
+      } else {
+        data_grouped <- map_data |>
+          dplyr::group_by(latitude, longitude) |>
+          dplyr::mutate(
+            authorobscode_label = paste(
+              mapply(function(obs, acc) {
+                sprintf(
+                  "<a href=\"#\" onclick=\"Shiny.setInputValue('label_link_click',
+                  '%s',{priority:'event'})\">%s</a>",
+                  acc, obs
+                )
+              }, authorobscode, accessioncode),
+              collapse = "<br>"
             )
-          ),
-          clusterOptions = leaflet::markerClusterOptions()
-        ) |>
-        # Display Zoom level for debugging purposes
-        htmlwidgets::onRender("
-          function(el, x) {
-            var map = this;
-            var zoomControl = L.control({position: 'bottomleft'});
-            zoomControl.onAdd = function(map) {
-              var div = L.DomUtil.create('div', 'zoom-control');
-              div.style.background = 'white';
-              div.style.padding = '5px';
-              div.style.border = '1px solid #ccc';
-              div.innerHTML = 'Zoom: ' + map.getZoom();
-              return div;
-            };
-            zoomControl.addTo(map);
-            map.on('zoomend', function() {
-              document.getElementsByClassName('zoom-control')
-                [0].innerHTML = 'Zoom: ' + map.getZoom();
-              Shiny.setInputValue('map_zoom', map.getZoom());
-            });
-          }
-        ")
-    }
+          ) |>
+          dplyr::ungroup()
+
+        incProgress(0.9, detail = "Rendering map")
+        leaflet::leaflet(data_grouped) |>
+          leaflet::addTiles() |>
+          leaflet::addMarkers(
+            lng = ~longitude,
+            lat = ~latitude,
+            layerId = ~ paste(latitude, longitude, sep = ", "),
+            label = ~ authorobscode_label |> lapply(htmltools::HTML),
+            labelOptions = leaflet::labelOptions(
+              noHide = TRUE,
+              clickable = TRUE,
+              direction = "bottom",
+              style = list(
+                "color" = "#2c5443",
+                "font-weight" = "bold",
+                "padding" = "3px 8px",
+                "background" = "white",
+                "border" = "1px solid #2c5443",
+                "border-radius" = "3px"
+              )
+            ),
+            clusterOptions = leaflet::markerClusterOptions()
+          ) |>
+          htmlwidgets::onRender("
+            function(el, x) {
+              var map = this;
+              var zoomControl = L.control({position: 'bottomleft'});
+              zoomControl.onAdd = function(map) {
+                var div = L.DomUtil.create('div', 'zoom-control');
+                div.style.background = 'white';
+                div.style.padding = '5px';
+                div.style.border = '1px solid #ccc';
+                div.innerHTML = 'Zoom: ' + map.getZoom();
+                return div;
+              };
+              zoomControl.addTo(map);
+              map.on('zoomend', function() {
+                document.getElementsByClassName('zoom-control')
+                  [0].innerHTML = 'Zoom: ' + map.getZoom();
+                Shiny.setInputValue('map_zoom', map.getZoom());
+              });
+            }
+          ")
+      }
+    })
   })
 
   # Handle Events _________________________________________________________________________________
