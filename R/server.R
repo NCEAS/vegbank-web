@@ -126,30 +126,55 @@ server <- function(input, output, session) {
   output$map <- leaflet::renderLeaflet({
     shiny::withProgress(message = "Loading map data...", value = 0, {
       incProgress(0.2, detail = "Fetching pins")
-      map_data <- tryCatch({
-        resp <- httr::GET("http://127.0.0.1:28015/get_map_points")
-        raw_content <- httr::content(resp, "text")
-        if (nchar(raw_content) == 0) {
-          warning("Empty response from map endpoint")
+      map_data <- tryCatch(
+        {
+          # Add logging to see what's happening with the API call
+          message("Attempting to fetch map points from endpoint")
+          resp <- httr::GET("http://127.0.0.1:28015/get_map_points")
+          message("API response status: ", resp$status_code)
+          raw_content <- httr::content(resp, "text")
+          message("Response content length: ", nchar(raw_content))
+          if (nchar(raw_content) == 0) {
+            warning("Empty response from map endpoint")
+            NULL
+          } else if (!jsonlite::validate(raw_content)) {
+            warning("Invalid JSON content from map endpoint")
+            NULL
+          } else {
+            pins <- jsonlite::fromJSON(raw_content)
+            pins <- subset(pins, !is.na(latitude) & !is.na(longitude))
+            
+            # If too many pins, sample them
+            total_pins <- nrow(pins)
+            message("Total valid pins: ", total_pins)
+            
+            if (total_pins > 10000) {
+              message("Too many pins, sampling down to 10,000")
+              set.seed(42) # For reproducibility
+              pins <- pins[sample(nrow(pins), 10000), ]
+            } else {
+              message("Using all ", total_pins, " pins")
+            }
+            pins
+          }
+        },
+        error = function(e) {
+          message("Error in API call: ", e$message)
+          warning("Error fetching map data: ", e$message)
           NULL
-        } else if (!jsonlite::validate(raw_content)) {
-          warning("Invalid JSON content from map endpoint")
-          NULL
-        } else {
-          pins <- jsonlite::fromJSON(raw_content)
-          head(subset(pins, !is.na(latitude) & !is.na(longitude)), 80000)
         }
-      }, error = function(e) {
-        warning("Error fetching map data: ", e$message)
-        NULL
-      })
+      )
+
       incProgress(0.6, detail = "Processing map data")
 
-      if (is.null(map_data) || nrow(map_data) == 0) {
+      # Store the map in a variable first
+      result_map <- if (is.null(map_data) || nrow(map_data) == 0) {
+        message("No map data available, showing empty map")
         leaflet::leaflet() |>
           leaflet::addTiles() |>
           leaflet::addControl("Data unavailable", position = "topright")
       } else {
+        message("Processing ", nrow(map_data), " map points")
         data_grouped <- map_data |>
           dplyr::group_by(latitude, longitude) |>
           dplyr::mutate(
@@ -210,6 +235,10 @@ server <- function(input, output, session) {
             }
           ")
       }
+
+      # Final progress update right before returning
+      incProgress(1, detail = "Done")
+      return(result_map)
     })
   })
 
