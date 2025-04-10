@@ -173,8 +173,8 @@ server <- function(input, output, session) {
             authorobscode_label = paste(
               mapply(function(obs, acc) {
                 sprintf(
-                  "<a 
-                  href=\"#\" 
+                  "<a
+                  href=\"#\"
                   onclick=\"Shiny.setInputValue('label_link_click', '%s', {priority: 'event'})\"
                   >%s</a>",
                   acc, obs
@@ -240,19 +240,51 @@ server <- function(input, output, session) {
   # Handle Events _________________________________________________________________________________
 
   # TODO: Parameterize this to pull out of server fn?
-  update_and_open_details <- function(idx) {
-    selected_data <- rv_data()[idx, ]
-    details <- build_details_view(selected_data)
-    output$plot_id_details <- details$plot_id_details
-    output$locationDetails <- details$location_details
-    output$layout_details <- details$layout_details
-    output$environmental_details <- details$environmental_details
-    output$methods_details <- details$methods_details
-    output$plot_quality_details <- details$plot_quality_details
-    output$taxaDetails <- details$taxa_details
-    selected_accession(rv_data()[idx, "obsaccessioncode"])
-    details_open(TRUE)
-    session$sendCustomMessage("openOverlay", list())
+  update_and_open_details <- function(accession_code) {
+    shiny::withProgress(message = "Loading details...", value = 0, {
+      # Get details from API
+      api_url <- paste0("http://127.0.0.1:28015/get_observation_details/", accession_code)
+      response <- tryCatch(
+        {
+          message("Fetching details for ", accession_code)
+          httr::GET(api_url)
+        },
+        error = function(e) {
+          message("Error connecting to API: ", e$message)
+          NULL
+        }
+      )
+
+      if (!is.null(response) && httr::status_code(response) == 200) {
+        raw_content <- httr::content(response, "text")
+        if (nchar(raw_content) > 0 && jsonlite::validate(raw_content)) {
+          selected_data <- jsonlite::fromJSON(raw_content)
+
+          # Build details from API response
+          details <- build_details_view(selected_data)
+          output$plot_id_details <- details$plot_id_details
+          output$locationDetails <- details$location_details
+          output$layout_details <- details$layout_details
+          output$environmental_details <- details$environmental_details
+          output$methods_details <- details$methods_details
+          output$plot_quality_details <- details$plot_quality_details
+          output$taxaDetails <- details$taxa_details
+
+          # Set the selected accession code
+          selected_accession(accession_code)
+          details_open(TRUE)
+          incProgress(1, detail = "Done")
+          session$sendCustomMessage("openOverlay", list())
+        } else {
+          message("Invalid JSON response from API")
+          shiny::showNotification("Error loading details: Invalid data format", type = "error")
+        }
+      } else {
+        status <- if (!is.null(response)) httr::status_code(response) else "connection failed"
+        message("API Error: Status ", status)
+        shiny::showNotification("Failed to load details. Please try again.", type = "error")
+      }
+    })
   }
 
   # TODO: Parameterize this to pull out of server fn?
@@ -291,7 +323,9 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$see_details, {
     idx <- as.numeric(input$see_details)
     if (!is.na(idx) && idx > 0) {
-      update_and_open_details(idx)
+      data <- rv_data()
+      accession_code <- data$obsaccessioncode[idx]
+      update_and_open_details(accession_code)
       dt_proxy <- DT::dataTableProxy("dataTable")
       DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
     }
@@ -320,12 +354,16 @@ server <- function(input, output, session) {
 
   # Handle label see details link click
   shiny::observeEvent(input$label_link_click, {
-    data <- rv_data()
-    idx <- which(data$obsaccessioncode == input$label_link_click)
-    if (length(idx) > 0) {
-      update_and_open_details(idx)
-      dt_proxy <- DT::dataTableProxy("dataTable")
-      DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
+    accession_code <- input$label_link_click
+    if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      update_and_open_details(accession_code)
+      # Select the corresponding row in the table if available
+      data <- rv_data()
+      idx <- which(data$obsaccessioncode == accession_code)
+      if (length(idx) > 0) {
+        dt_proxy <- DT::dataTableProxy("dataTable")
+        DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
+      }
     }
   })
 
@@ -360,11 +398,11 @@ server <- function(input, output, session) {
       acc <- state$values$selected_accession
       shiny::observeEvent(rv_data(),
         {
+          update_and_open_details(acc)
+          # Select the row in the table if possible
           data <- rv_data()
           idx <- match(acc, data$obsaccessioncode)
           if (!is.na(idx)) {
-            selected_accession(acc)
-            update_and_open_details(idx)
             dt_proxy <- DT::dataTableProxy("dataTable")
             DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
           }
@@ -582,6 +620,7 @@ build_details_view <- function(selected_data) {
     slopeaspect = "Slope Aspect",
     slopegradient = "Slope Gradient",
     confidentialitystatus = "Confidentiality Status",
+    confidentialitytext = "Confidentiality Status",
     latitude = "Latitude",
     longitude = "Longitude",
     locationnarrative = "Location Description",
@@ -667,8 +706,8 @@ build_details_view <- function(selected_data) {
   list(
     plot_id_details = safe_render_details(c("authorobscode", "authorplotcode")),
     location_details = safe_render_details(c(
-      "confidentialitystatus", "latitude", "longitude",
-      "locationnarrative", "plotstateprovince", "country"
+      "confidentialitytext", "latitude", "longitude",
+      "locationnarrative", "stateprovince", "country"
     )),
     layout_details = safe_render_details(c("area", "permanence")),
     environmental_details = safe_render_details(c("elevation", "slopeaspect", "slopegradient")),
