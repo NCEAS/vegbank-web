@@ -14,26 +14,132 @@ server <- function(input, output, session) {
   details_open <- shiny::reactiveVal(FALSE)
   map_request <- shiny::reactiveVal(NULL)
 
-  shiny::observe({
-    # Update to load data from your own local file for now... eventually we'll hit api
-    file_path <- file.path("inst", "shiny", "www", "all_states_plot_obs.json")
-    if (file.exists(file_path)) {
-      tryCatch(
+  # Add pagination reactive values
+  current_page_size <- shiny::reactiveVal(100)
+  last_plot_id <- shiny::reactiveVal(NULL)
+  has_more_data <- shiny::reactiveVal(TRUE)
+
+  # Function to fetch paginated table data
+  fetch_table_data <- function(page_size = NULL, prev_plot_id = NULL, force_refresh = FALSE) {
+    shiny::withProgress(message = "Loading data...", value = 0, {
+      # Use provided values or defaults from reactive values
+      page_size <- if (is.null(page_size)) current_page_size() else page_size
+
+      # Construct API URL
+      base_url <- "http://127.0.0.1:28015/get_observation_table"
+      api_url <- if (is.null(prev_plot_id)) {
+        paste0(base_url, "/", page_size)
+      } else {
+        paste0(base_url, "/", page_size, "/", prev_plot_id)
+      }
+
+      incProgress(0.2, detail = "Fetching data")
+      message("Fetching paginated table data: ", api_url)
+
+      response <- tryCatch(
         {
-          file_content <- paste(readLines(file_path, warn = FALSE), collapse = "\n")
-          data <- jsonlite::fromJSON(file_content)
-          rv_data(data)
+          httr::GET(api_url)
         },
         error = function(e) {
-          warning("Error loading data: ", conditionMessage(e))
-          rv_data(NULL)
+          message("Error connecting to API: ", e$message)
+          NULL
         }
       )
-    } else {
-      warning("Data file not found at: ", file_path)
-      rv_data(NULL)
-    }
+
+      if (!is.null(response) && httr::status_code(response) == 200) {
+        incProgress(0.6, detail = "Processing data")
+        raw_content <- httr::content(response, "text")
+
+        if (nchar(raw_content) > 0 && jsonlite::validate(raw_content)) {
+          data <- jsonlite::fromJSON(raw_content)
+
+          # Check if we have a has_more field in response to determine pagination status
+          if ("has_more" %in% names(data)) {
+            has_more_data(data$has_more)
+            data <- data$results # Assuming actual data is in a results field
+          } else {
+            # If no has_more field, check if we got less data than requested
+            has_more_data(nrow(data) >= page_size)
+          }
+
+          # Update last plot ID if we have data
+          if (nrow(data) > 0) {
+            last_plot_id(data$plot_id[nrow(data)])
+          }
+
+          # Update the reactive data
+          rv_data(data)
+          incProgress(1, detail = "Done")
+          return(TRUE)
+        } else {
+          message("Invalid JSON response from API")
+          shiny::showNotification("Error loading data: Invalid format", type = "error")
+          incProgress(1, detail = "Error")
+          return(FALSE)
+        }
+      } else {
+        status <- if (!is.null(response)) httr::status_code(response) else "connection failed"
+        message("API Error: Status ", status)
+        shiny::showNotification("Failed to load data. Please try again.", type = "error")
+        incProgress(1, detail = "Error")
+        return(FALSE)
+      }
+    })
+  }
+
+  # Load initial data when app starts
+  shiny::observe({
+    # Load first page of data when app initializes
+    fetch_table_data()
   })
+
+  # Find page with specific accession code
+  find_page_with_accession <- function(accession_code, callback) {
+    # Reset pagination to start from beginning
+    last_plot_id(NULL)
+
+    search_for_accession <- function() {
+      current_data <- rv_data()
+
+      # Check if accession code is in current page
+      if (!is.null(current_data)) {
+        idx <- which(current_data$obsaccessioncode == accession_code)
+        if (length(idx) > 0) {
+          # Found it - execute callback
+          callback(idx)
+          return(TRUE)
+        }
+      }
+
+      # Not in current page, try next page if available
+      if (has_more_data()) {
+        fetch_table_data(prev_plot_id = last_plot_id())
+        # Continue searching in next iteration
+        return(FALSE)
+      } else {
+        # Exhausted all pages and didn't find it
+        message("Accession code not found in any page: ", accession_code)
+        return(TRUE)
+      }
+    }
+
+    # Initial search
+    found <- search_for_accession()
+
+    # If not found, continue checking with a timer
+    if (!found) {
+      search_timer <- shiny::reactiveTimer(500)
+
+      shiny::observe({
+        search_timer()
+        found <- search_for_accession()
+        if (found) {
+          # Stop this observer once found
+          shiny::observeEvent.priority <- -1
+        }
+      })
+    }
+  }
 
   # Render UI Outputs ____________________________________________________________________________
   output$dataSummary <- shiny::renderUI({
@@ -87,17 +193,39 @@ server <- function(input, output, session) {
 
   output$dataTable <- DT::renderDataTable({
     data <- rv_data()
-    actions <- mapply(
-      build_action_buttons,
-      seq_len(nrow(data))
+    if (is.null(data) || nrow(data) == 0) {
+      return(DT::datatable(
+        data.frame("No Data Available" = "Please try again or check your connection"),
+        options = list(dom = "t")
+      ))
+    }
+
+    n_rows <- nrow(data)
+
+    taxa_lists <- tryCatch(
+      {
+        apply(data, 1, build_taxa_list)
+      },
+      error = function(e) {
+        message("Error generating taxa lists: ", e$message)
+        rep("Error loading taxa", n_rows)
+      }
     )
+
+    # Provide fallback vectors if columns are missing
+    author_codes <- if (!is.null(data$authorobscode)) data$authorobscode else rep("Unknown", n_rows)
+    locations <- if (!is.null(data$stateprovince)) data$stateprovince else rep("Unknown", n_rows)
+    communities <- if (!is.null(data$commname)) data$commname else rep("Unknown", n_rows)
+
+    # Ensure 'actions' matches the row count
+    actions <- mapply(build_action_buttons, seq_len(n_rows))
 
     display_data <- data.frame(
       "Actions" = actions,
-      "Author Plot Code" = data$authorobscode,
-      "Location" = data$plotstateprovince,
-      "Top Taxa" = apply(data, 1, build_taxa_list),
-      "Community" = data$commname,
+      "Author Plot Code" = author_codes,
+      "Location" = locations,
+      "Top Taxa" = taxa_lists,
+      "Community" = communities,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -121,6 +249,53 @@ server <- function(input, output, session) {
         )
       )
     )
+  })
+
+  # Create pagination UI
+  output$tablePagination <- shiny::renderUI({
+    shiny::fluidRow(
+      shiny::column(
+        12,
+        shiny::div(
+          class = "d-flex justify-content-between align-items-center mt-2",
+          shiny::div(
+            class = "pagination-info",
+            shiny::textOutput("paginationStatus")
+          ),
+          shiny::div(
+            class = "pagination-controls",
+            shiny::actionButton("prevPage", "Previous", class = "btn btn-outline-secondary"),
+            shiny::actionButton("nextPage", "Next", class = "btn btn-outline-primary")
+          )
+        )
+      )
+    )
+  })
+
+  # Display pagination status
+  output$paginationStatus <- shiny::renderText({
+    data <- rv_data()
+    if (is.null(data)) {
+      return("No data available")
+    }
+
+    paste0(
+      "Showing ", nrow(data), " records",
+      if (has_more_data()) " (more available)" else " (end of data)"
+    )
+  })
+
+  # Pagination controls
+  shiny::observeEvent(input$prevPage, {
+    # Go back to first page
+    last_plot_id(NULL)
+    fetch_table_data()
+  })
+
+  shiny::observeEvent(input$nextPage, {
+    if (has_more_data()) {
+      fetch_table_data(prev_plot_id = last_plot_id())
+    }
   })
 
   output$map <- leaflet::renderLeaflet({
@@ -321,14 +496,12 @@ server <- function(input, output, session) {
 
   # Handle see details button click
   shiny::observeEvent(input$see_details, {
-    idx <- as.numeric(input$see_details)
-    if (!is.na(idx) && idx > 0) {
-      data <- rv_data()
-      accession_code <- data$obsaccessioncode[idx]
-      update_and_open_details(accession_code)
-      dt_proxy <- DT::dataTableProxy("dataTable")
-      DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
-    }
+    i <- as.numeric(input$see_details)
+    dt_proxy <- DT::dataTableProxy("dataTable")
+    DT::selectRows(dt_proxy, i, ignore.selectable = TRUE)
+    data_table <- rv_data()
+    selected_row_accession <- data_table[i, "obsaccessioncode"]
+    update_and_open_details(selected_row_accession)
   })
 
   # Handle close details button click
@@ -357,13 +530,6 @@ server <- function(input, output, session) {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       update_and_open_details(accession_code)
-      # Select the corresponding row in the table if available
-      data <- rv_data()
-      idx <- which(data$obsaccessioncode == accession_code)
-      if (length(idx) > 0) {
-        dt_proxy <- DT::dataTableProxy("dataTable")
-        DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
-      }
     }
   })
 
@@ -371,13 +537,15 @@ server <- function(input, output, session) {
   # Handle nav bar search submission
   shiny::observeEvent(input$search_enter, {
     shiny::updateNavbarPage(session, "page", selected = "Table")
-    data <- rv_data()
-    filtered <- data[
-      apply(data, 1, function(row) any(grepl(input$search_enter, as.character(row)))),
-    ]
-    rv_data(filtered)
-    dt_proxy <- DT::dataTableProxy("dataTable")
-    DT::replaceData(dt_proxy, rv_data(), resetPaging = TRUE)
+
+    # In a production app, you would send the search term to the API
+    # For now, reset to first page and search locally (less efficient)
+    last_plot_id(NULL)
+    fetch_table_data()
+
+    # Future enhancement: Call a search-specific API endpoint
+    # search_api_url <- paste0("http://127.0.0.1:28015/search_observations/",
+    #                          URLencode(input$search_enter))
   })
 
   # Persist State _________________________________________________________________________________
@@ -561,9 +729,9 @@ build_taxa_list <- function(data_row) {
       taxa <- data_row[["taxa"]]
       if (!is.null(taxa) && nrow(taxa) > 0) {
         # Sort by cover in descending order
-        sorted_taxa <- taxa[order(-taxa$cover), ]
+        sorted_taxa <- taxa[order(-taxa$maxcover), ]
         top5 <- utils::head(sorted_taxa, 5)
-        taxa_items <- sprintf("<li>%s <b>(%g%%)</b></li>", top5$authorplantname, top5$cover)
+        taxa_items <- sprintf("<li>%s <b>(%g%%)</b></li>", top5$authorplantname, top5$maxcover)
         paste("<ol>", paste(taxa_items, collapse = "\n"), "</ol>", sep = "\n")
       } else {
         "No taxa recorded"
