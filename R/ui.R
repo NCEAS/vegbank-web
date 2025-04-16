@@ -14,7 +14,7 @@ ui <- function(req) {
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
       if (document.getElementById('detail-overlay')) {
         document.getElementById('detail-overlay').style.right = '0px';
-      }     
+      }
     });
 
     $(document).ready(function() {
@@ -22,7 +22,7 @@ ui <- function(req) {
       if(params.get('details_open') === 'true') {
         if (document.getElementById('detail-overlay')) {
             document.getElementById('detail-overlay').style.right = '0px';
-        }         
+        }
       }
      });"
   ))
@@ -174,8 +174,17 @@ build_navbar <- function() {
     ),
     bslib::nav_menu(
       title = "Plots",
-      bslib::nav_panel(title = "Table", DT::dataTableOutput("dataTable")),
-      bslib::nav_panel(title = "Map", leaflet::leafletOutput("map"))
+      bslib::nav_panel(
+        title = "Table",
+        shiny::fluidPage(
+          DT::dataTableOutput("dataTable"),
+          shiny::uiOutput("tablePagination"),
+        )
+      ),
+      bslib::nav_panel(
+        title = "Map",
+        leaflet::leafletOutput("map")
+      )
     ),
     bslib::nav_menu(
       title = "Plants",

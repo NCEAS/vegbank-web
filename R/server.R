@@ -93,6 +93,54 @@ server <- function(input, output, session) {
     fetch_table_data()
   })
 
+  # Find page with specific accession code
+  find_page_with_accession <- function(accession_code, callback) {
+    # Reset pagination to start from beginning
+    last_plot_id(NULL)
+
+    search_for_accession <- function() {
+      current_data <- rv_data()
+
+      # Check if accession code is in current page
+      if (!is.null(current_data)) {
+        idx <- which(current_data$obsaccessioncode == accession_code)
+        if (length(idx) > 0) {
+          # Found it - execute callback
+          callback(idx)
+          return(TRUE)
+        }
+      }
+
+      # Not in current page, try next page if available
+      if (has_more_data()) {
+        fetch_table_data(prev_plot_id = last_plot_id())
+        # Continue searching in next iteration
+        return(FALSE)
+      } else {
+        # Exhausted all pages and didn't find it
+        message("Accession code not found in any page: ", accession_code)
+        return(TRUE)
+      }
+    }
+
+    # Initial search
+    found <- search_for_accession()
+
+    # If not found, continue checking with a timer
+    if (!found) {
+      search_timer <- shiny::reactiveTimer(500)
+
+      shiny::observe({
+        search_timer()
+        found <- search_for_accession()
+        if (found) {
+          # Stop this observer once found
+          shiny::observeEvent.priority <- -1
+        }
+      })
+    }
+  }
+
   # Render UI Outputs ____________________________________________________________________________
   output$dataSummary <- shiny::renderUI({
     htmltools::tags$p(paste0("Vegbank is a database of vegetation plot data. The data displayed in
@@ -183,21 +231,22 @@ server <- function(input, output, session) {
     )
 
     DT::datatable(display_data,
+      rownames = FALSE,
       escape = FALSE,
       selection = list(mode = "single", target = "row", selectable = FALSE),
       options = list(
+        dom = "ft",
         pageLength = 100,
         scrollY = "calc(100vh - 300px)",
         scrollX = TRUE,
         scrollCollapse = TRUE,
         autoWidth = TRUE,
         columnDefs = list(
-          list(targets = c(0), width = "5%"), # Number
-          list(targets = c(1), width = "10%"), # Actions
-          list(targets = c(2), width = "10%"), # Author Plot Code
-          list(targets = c(3), width = "10%"), # Location
-          list(targets = c(4), width = "45%"), # Top Taxa
-          list(targets = c(5), width = "20%") # Community
+          list(targets = c(0), width = "10%"), # Actions
+          list(targets = c(1), width = "10%"), # Author Plot Code
+          list(targets = c(2), width = "10%"), # Location
+          list(targets = c(3), width = "45%"), # Top Taxa
+          list(targets = c(4), width = "20%") # Community
         )
       )
     )
