@@ -21,7 +21,7 @@ server <- function(input, output, session) {
 
   # Function to fetch paginated table data
   fetch_table_data <- function(page_size = NULL, prev_plot_id = NULL, force_refresh = FALSE) {
-    shiny::withProgress(message = "Loading data...", value = 0, {
+    shiny::withProgress(message = "Loading table data...", value = 0, {
       # Use provided values or defaults from reactive values
       page_size <- if (is.null(page_size)) current_page_size() else page_size
 
@@ -33,7 +33,7 @@ server <- function(input, output, session) {
         paste0(base_url, "/", page_size, "/", prev_plot_id)
       }
 
-      incProgress(0.2, detail = "Fetching data")
+      shiny::incProgress(0.2, detail = "Fetching data")
       message("Fetching paginated table data: ", api_url)
 
       response <- tryCatch(
@@ -47,7 +47,7 @@ server <- function(input, output, session) {
       )
 
       if (!is.null(response) && httr::status_code(response) == 200) {
-        incProgress(0.6, detail = "Processing data")
+        shiny::incProgress(0.6, detail = "Processing data")
         raw_content <- httr::content(response, "text")
 
         if (nchar(raw_content) > 0 && jsonlite::validate(raw_content)) {
@@ -69,19 +69,19 @@ server <- function(input, output, session) {
 
           # Update the reactive data
           rv_data(data)
-          incProgress(1, detail = "Done")
+          shiny::incProgress(1, detail = "Done")
           return(TRUE)
         } else {
           message("Invalid JSON response from API")
           shiny::showNotification("Error loading data: Invalid format", type = "error")
-          incProgress(1, detail = "Error")
+          shiny::incProgress(1, detail = "Error")
           return(FALSE)
         }
       } else {
         status <- if (!is.null(response)) httr::status_code(response) else "connection failed"
         message("API Error: Status ", status)
         shiny::showNotification("Failed to load data. Please try again.", type = "error")
-        incProgress(1, detail = "Error")
+        shiny::incProgress(1, detail = "Error")
         return(FALSE)
       }
     })
@@ -92,54 +92,6 @@ server <- function(input, output, session) {
     # Load first page of data when app initializes
     fetch_table_data()
   })
-
-  # Find page with specific accession code
-  find_page_with_accession <- function(accession_code, callback) {
-    # Reset pagination to start from beginning
-    last_plot_id(NULL)
-
-    search_for_accession <- function() {
-      current_data <- rv_data()
-
-      # Check if accession code is in current page
-      if (!is.null(current_data)) {
-        idx <- which(current_data$obsaccessioncode == accession_code)
-        if (length(idx) > 0) {
-          # Found it - execute callback
-          callback(idx)
-          return(TRUE)
-        }
-      }
-
-      # Not in current page, try next page if available
-      if (has_more_data()) {
-        fetch_table_data(prev_plot_id = last_plot_id())
-        # Continue searching in next iteration
-        return(FALSE)
-      } else {
-        # Exhausted all pages and didn't find it
-        message("Accession code not found in any page: ", accession_code)
-        return(TRUE)
-      }
-    }
-
-    # Initial search
-    found <- search_for_accession()
-
-    # If not found, continue checking with a timer
-    if (!found) {
-      search_timer <- shiny::reactiveTimer(500)
-
-      shiny::observe({
-        search_timer()
-        found <- search_for_accession()
-        if (found) {
-          # Stop this observer once found
-          shiny::observeEvent.priority <- -1
-        }
-      })
-    }
-  }
 
   # Render UI Outputs ____________________________________________________________________________
   output$dataSummary <- shiny::renderUI({
@@ -300,7 +252,7 @@ server <- function(input, output, session) {
 
   output$map <- leaflet::renderLeaflet({
     shiny::withProgress(message = "Loading map data...", value = 0, {
-      incProgress(0.2, detail = "Fetching pins")
+      shiny::incProgress(0.2, detail = "Fetching pins")
       map_data <- tryCatch(
         {
           message("Attempting to fetch map points from endpoint")
@@ -316,7 +268,7 @@ server <- function(input, output, session) {
             NULL
           } else {
             pins <- jsonlite::fromJSON(raw_content)
-            pins <- subset(pins, !is.na(latitude) & !is.na(longitude))
+            pins <- subset(pins, !is.na(pins$latitude) & !is.na(pins$longitude))
 
             message("Total valid pins: ", nrow(pins))
             pins
@@ -329,7 +281,7 @@ server <- function(input, output, session) {
         }
       )
 
-      incProgress(0.6, detail = "Processing map data")
+      shiny::incProgress(0.6, detail = "Processing map data")
       result_map <- if (is.null(map_data) || nrow(map_data) == 0) {
         message("No map data available, showing empty map")
         leaflet::leaflet() |>
@@ -343,7 +295,7 @@ server <- function(input, output, session) {
         # TDO: Can this be done in the API instead of client side?
         message("Grouping labels for ", nrow(map_data), " map points")
         data_grouped <- map_data |>
-          dplyr::group_by(latitude, longitude) |>
+          dplyr::group_by(.data$latitude, .data$longitude) |>
           dplyr::summarize(
             authorobscode_label = paste(
               mapply(function(obs, acc) {
@@ -354,14 +306,14 @@ server <- function(input, output, session) {
                   >%s</a>",
                   acc, obs
                 )
-              }, authorobscode, accessioncode),
+              }, .data$authorobscode, .data$accessioncode),
               collapse = "<br>"
             ),
             .groups = "drop"
           )
         message("Total grouped labels: ", nrow(data_grouped))
 
-        incProgress(0.9, detail = "Rendering map")
+        shiny::incProgress(0.9, detail = "Rendering map")
         leaflet::leaflet(data_grouped) |>
           leaflet::addTiles() |>
           leaflet::addMarkers(
@@ -407,7 +359,7 @@ server <- function(input, output, session) {
       }
 
       # Final progress update right before returning
-      incProgress(1, detail = "Done")
+      shiny::incProgress(1, detail = "Done")
       return(result_map)
     })
   })
@@ -448,7 +400,7 @@ server <- function(input, output, session) {
           # Set the selected accession code
           selected_accession(accession_code)
           details_open(TRUE)
-          incProgress(1, detail = "Done")
+          shiny::incProgress(1, detail = "Done")
           session$sendCustomMessage("openOverlay", list())
         } else {
           message("Invalid JSON response from API")
@@ -792,7 +744,7 @@ build_details_view <- function(selected_data) {
     latitude = "Latitude",
     longitude = "Longitude",
     locationnarrative = "Location Description",
-    plotstateprovince = "State/Province",
+    stateprovince = "State/Province",
     country = "Country",
     obsstartdate = "Observation Start Date",
     project_id = "Project ID",

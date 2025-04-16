@@ -30,7 +30,13 @@ test_that("build_plot_heatmap returns a ggplot object", {
 })
 
 test_that("build_taxa_list handles valid data", {
-  row_data <- list(taxa = data.frame(authorplantname = "Species1", cover = 50))
+  row_data <- list(taxa = data.frame(
+    authorplantname = c(
+      "Metrosiderous polymorpha", "Acacia Koa", "Artemisia Tridentata",
+      "Clarmontia kakeana", "Haplostachys haplostachya", "Lobelia hypoleuca"
+    ),
+    maxcover = c(50, 30, 20, 10, 5, 2)
+  ))
   html_out <- build_taxa_list(row_data)
   expect_true(grepl("<ol>", html_out))
 })
