@@ -343,29 +343,34 @@ server <- function(input, output, session) {
           leaflet::addTiles() |>
           leaflet::addControl("Data unavailable", position = "topright")
       } else {
-        # TODO: Sort links alphabetically
-        # TODO: What to do with fuzzed coords with 100+ plots on a point
-        #       If there are more than 20 obs on a single location, link to the table with them?
-        #       Can we make the labels contain a carousel of lists?
-        # TDO: Can this be done in the API instead of client side?
+        # TODO: Can this be done in the API instead of client side?
         message("Grouping labels for ", nrow(map_data), " map points")
         data_grouped <- map_data |>
+          dplyr::arrange(.data$authorobscode) |>
           dplyr::group_by(.data$latitude, .data$longitude) |>
           dplyr::summarize(
-            authorobscode_label = paste(
-              mapply(function(obs, acc) {
-                sprintf(
-                  "<a
-                  href=\"#\"
-                  onclick=\"Shiny.setInputValue('label_link_click', '%s', {priority: 'event'})\"
-                  >%s</a>",
-                  acc, obs
-                )
-              }, .data$authorobscode, .data$accessioncode),
-              collapse = "<br>"
+            authorobscode_label = paste0(
+              "<div style='max-height: 15.5rem; overflow-y: auto;' 
+              onwheel='event.stopPropagation()' 
+              onmousewheel='event.stopPropagation()' 
+              onDOMMouseScroll='event.stopPropagation()'>",
+              paste(
+                mapply(function(obs, acc) {
+                  sprintf(
+                    "<a
+                    href=\"#\"
+                    onclick=\"Shiny.setInputValue('label_link_click', '%s', {priority: 'event'})\"
+                    >%s</a>",
+                    acc, obs
+                  )
+                }, .data$authorobscode, .data$accessioncode),
+                collapse = "<br>"
+              ),
+              "</div>"
             ),
             .groups = "drop"
           )
+
         message("Total grouped labels: ", nrow(data_grouped))
 
         shiny::incProgress(0.9, detail = "Rendering map")
