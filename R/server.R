@@ -36,6 +36,8 @@ server <- function(input, output, session) {
       shiny::incProgress(0.2, detail = "Fetching data")
       message("Fetching paginated table data: ", api_url)
 
+      # Timer for table data
+      start_time <- Sys.time()
       response <- tryCatch(
         {
           httr::GET(api_url)
@@ -45,6 +47,11 @@ server <- function(input, output, session) {
           NULL
         }
       )
+      end_time <- Sys.time()
+      message(paste(
+        "Table data retrieval took",
+        round(difftime(end_time, start_time, units = "secs"), 2), "seconds"
+      ))
 
       if (!is.null(response) && httr::status_code(response) == 200) {
         shiny::incProgress(0.6, detail = "Processing data")
@@ -302,6 +309,9 @@ server <- function(input, output, session) {
   output$map <- leaflet::renderLeaflet({
     shiny::withProgress(message = "Loading map data...", value = 0, {
       shiny::incProgress(0.2, detail = "Fetching pins")
+
+      # Timer for map data
+      start_time_map <- Sys.time()
       map_data <- tryCatch(
         {
           message("Attempting to fetch map points from endpoint")
@@ -329,6 +339,11 @@ server <- function(input, output, session) {
           NULL
         }
       )
+      end_time_map <- Sys.time()
+      message(paste(
+        "Map data retrieval took",
+        round(difftime(end_time_map, start_time_map, units = "secs"), 2), "seconds"
+      ))
 
       shiny::incProgress(0.6, detail = "Processing map data")
       result_map <- if (is.null(map_data) || nrow(map_data) == 0) {
@@ -350,9 +365,9 @@ server <- function(input, output, session) {
           dplyr::group_by(.data$latitude, .data$longitude) |>
           dplyr::summarize(
             authorobscode_label = paste0(
-              "<div style='max-height: 15.5rem; overflow-y: auto;' 
-              onwheel='event.stopPropagation()' 
-              onmousewheel='event.stopPropagation()' 
+              "<div style='max-height: 15.5rem; overflow-y: auto;'
+              onwheel='event.stopPropagation()'
+              onmousewheel='event.stopPropagation()'
               onDOMMouseScroll='event.stopPropagation()'>",
               paste(
                 mapply(function(obs, acc) {
@@ -438,6 +453,9 @@ server <- function(input, output, session) {
     shiny::withProgress(message = "Loading details...", value = 0, {
       # Get details from API
       api_url <- paste0("http://127.0.0.1:28015/get_observation_details/", accession_code)
+
+      # Timer for details
+      start_time_details <- Sys.time()
       response <- tryCatch(
         {
           message("Fetching details for ", accession_code)
@@ -448,6 +466,11 @@ server <- function(input, output, session) {
           NULL
         }
       )
+      end_time_details <- Sys.time()
+      message(paste(
+        "Details retrieval took",
+        round(difftime(end_time_details, start_time_details, units = "secs"), 2), "seconds"
+      ))
 
       if (!is.null(response) && httr::status_code(response) == 200) {
         raw_content <- httr::content(response, "text")
