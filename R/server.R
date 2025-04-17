@@ -317,8 +317,8 @@ server <- function(input, output, session) {
             NULL
           } else {
             pins <- jsonlite::fromJSON(raw_content)
+            message("Total pins fetched: ", nrow(pins))
             pins <- subset(pins, !is.na(pins$latitude) & !is.na(pins$longitude))
-
             message("Total valid pins: ", nrow(pins))
             pins
           }
@@ -333,7 +333,13 @@ server <- function(input, output, session) {
       shiny::incProgress(0.6, detail = "Processing map data")
       result_map <- if (is.null(map_data) || nrow(map_data) == 0) {
         message("No map data available, showing empty map")
-        leaflet::leaflet() |>
+        leaflet::leaflet(options = leaflet::leafletOptions(minZoom = 2)) |>
+          leaflet::setMaxBounds(
+            lng1 = -180,
+            lat1 = -85,
+            lng2 = 180,
+            lat2 = 85
+          ) |>
           leaflet::addTiles() |>
           leaflet::addControl("Data unavailable", position = "topright")
       } else {
@@ -363,7 +369,14 @@ server <- function(input, output, session) {
         message("Total grouped labels: ", nrow(data_grouped))
 
         shiny::incProgress(0.9, detail = "Rendering map")
-        leaflet::leaflet(data_grouped) |>
+        leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = 2)) |>
+          leaflet::setMaxBounds(
+            lng1 = -180,
+            lat1 = -85,
+            lng2 = 180,
+            lat2 = 85
+          ) |>
+          leaflet::setView(lng = -98.5795, lat = 39.8283, zoom = 2) |>
           leaflet::addTiles() |>
           leaflet::addMarkers(
             lng = ~longitude,
