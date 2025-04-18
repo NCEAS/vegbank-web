@@ -72,11 +72,11 @@ build_details_view <- function(selected_data) {
       {
         taxa <- selected_data[["taxa"]]
         if (is.null(taxa)) {
-          return("No taxa recorded")
+          "No taxa recorded"
         }
         if (!is.data.frame(taxa)) taxa <- as.data.frame(taxa)
         if (nrow(taxa) == 0) {
-          return("No taxa recorded")
+          "No taxa recorded"
         }
 
         taxa$cover <- as.numeric(taxa$cover)

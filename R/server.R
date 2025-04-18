@@ -8,7 +8,7 @@
 #' @return Called for its side effects.
 #' @importFrom ggplot2 .data
 #' @importFrom shiny reactiveVal observeEvent observe req renderUI renderText showNotification
-#'             updateNavbarPage invalidateLater reactiveValuesToList onBookmark onBookmarked 
+#'             updateNavbarPage invalidateLater reactiveValuesToList onBookmark onBookmarked
 #'             onRestore
 #' @importFrom DT renderDataTable datatable dataTableProxy selectRows
 #' @importFrom htmltools tags
@@ -44,7 +44,7 @@ server <- function(input, output, session) {
       state$pagination$last_plot_id(data$plot_id[nrow(data)])
     }
 
-    return(data)
+    data
   }
 
   # DATA OPERATIONS
@@ -58,15 +58,15 @@ server <- function(input, output, session) {
       if (!result$success) {
         step(0.2, "Error loading data")
         shiny::showNotification("Failed to load data. Please try again.", type = "error")
-        return(FALSE)
+        FALSE
+      } else {
+        step(0.4, "Processing data")
+        data <- update_pagination_state(result$data, page_size)
+        state$data(data)
+
+        complete("Done")
+        TRUE
       }
-
-      step(0.4, "Processing data")
-      data <- update_pagination_state(result$data, page_size)
-      state$data(data)
-
-      complete("Done")
-      return(TRUE)
     })
   }
 
@@ -78,14 +78,14 @@ server <- function(input, output, session) {
 
       if (!result$success) {
         step(0.3, "Error loading map data")
-        return(plot_map$create_empty_map())
+        plot_map$create_empty_map()
+      } else {
+        step(0.5, "Processing map data")
+        map <- plot_map$process_map_data(result$data)
+
+        complete("Map rendered")
+        map
       }
-
-      step(0.5, "Processing map data")
-      map <- plot_map$process_map_data(result$data)
-
-      complete("Map rendered")
-      return(map)
     })
   }
 
@@ -98,27 +98,27 @@ server <- function(input, output, session) {
       if (!result$success) {
         step(0.3, "Error loading details")
         shiny::showNotification("Failed to load details. Please try again.", type = "error")
-        return(FALSE)
+        FALSE
+      } else {
+        step(0.5, "Processing details")
+
+        details <- build_details_view(result$data)
+        output$plot_id_details <- details$plot_id_details
+        output$locationDetails <- details$location_details
+        output$layout_details <- details$layout_details
+        output$environmental_details <- details$environmental_details
+        output$methods_details <- details$methods_details
+        output$plot_quality_details <- details$plot_quality_details
+        output$taxaDetails <- details$taxa_details
+
+        state$selected_accession(accession_code)
+        state$details_open(TRUE)
+
+        complete("Details ready")
+        session$sendCustomMessage("openOverlay", list())
+
+        TRUE
       }
-
-      step(0.5, "Processing details")
-
-      details <- build_details_view(result$data)
-      output$plot_id_details <- details$plot_id_details
-      output$locationDetails <- details$location_details
-      output$layout_details <- details$layout_details
-      output$environmental_details <- details$environmental_details
-      output$methods_details <- details$methods_details
-      output$plot_quality_details <- details$plot_quality_details
-      output$taxaDetails <- details$taxa_details
-
-      state$selected_accession(accession_code)
-      state$details_open(TRUE)
-
-      complete("Details ready")
-      session$sendCustomMessage("openOverlay", list())
-
-      return(TRUE)
     })
   }
 
@@ -132,16 +132,22 @@ server <- function(input, output, session) {
         idx <- which(current_data$obsaccessioncode == accession_code)
         if (length(idx) > 0) {
           callback(idx)
-          return(TRUE)
+          TRUE
+        } else if (state$pagination$has_more_data()) {
+          fetch_table_data(prev_plot_id = state$pagination$last_plot_id())
+          FALSE
+        } else {
+          message("Accession code not found in any page: ", accession_code)
+          TRUE
         }
-      }
-
-      if (state$pagination$has_more_data()) {
-        fetch_table_data(prev_plot_id = state$pagination$last_plot_id())
-        return(FALSE)
       } else {
-        message("Accession code not found in any page: ", accession_code)
-        return(TRUE)
+        if (state$pagination$has_more_data()) {
+          fetch_table_data(prev_plot_id = state$pagination$last_plot_id())
+          FALSE
+        } else {
+          message("Accession code not found in any page: ", accession_code)
+          TRUE
+        }
       }
     }
 
@@ -231,62 +237,66 @@ server <- function(input, output, session) {
   output$dataTable <- DT::renderDataTable({
     data <- state$data()
     if (is.null(data) || nrow(data) == 0) {
-      return(DT::datatable(
+      DT::datatable(
         data.frame("No Data Available" = "Please try again or check your connection"),
         options = list(dom = "t")
-      ))
-    }
+      )
+    } else {
+      n_rows <- nrow(data)
 
-    n_rows <- nrow(data)
+      taxa_lists <- tryCatch(
+        {
+          apply(data, 1, build_taxa_list)
+        },
+        error = function(e) {
+          message("Error generating taxa lists: ", e$message)
+          rep("Error loading taxa", n_rows)
+        }
+      )
 
-    taxa_lists <- tryCatch(
-      {
-        apply(data, 1, build_taxa_list)
-      },
-      error = function(e) {
-        message("Error generating taxa lists: ", e$message)
-        rep("Error loading taxa", n_rows)
+      # Provide fallback vectors if columns are missing
+      author_codes <- if (!is.null(data$authorobscode)) {
+        data$authorobscode
+      } else {
+        rep("Unknown", n_rows)
       }
-    )
+      locations <- if (!is.null(data$stateprovince)) data$stateprovince else rep("Unknown", n_rows)
+      communities <- if (!is.null(data$commname)) data$commname else rep("Unknown", n_rows)
 
-    # Provide fallback vectors if columns are missing
-    author_codes <- if (!is.null(data$authorobscode)) data$authorobscode else rep("Unknown", n_rows)
-    locations <- if (!is.null(data$stateprovince)) data$stateprovince else rep("Unknown", n_rows)
-    communities <- if (!is.null(data$commname)) data$commname else rep("Unknown", n_rows)
+      # Ensure 'actions' matches the row count
+      actions <- mapply(build_action_buttons, seq_len(n_rows))
 
-    # Ensure 'actions' matches the row count
-    actions <- mapply(build_action_buttons, seq_len(n_rows))
+      display_data <- data.frame(
+        "Actions" = actions,
+        "Author Plot Code" = author_codes,
+        "Location" = locations,
+        "Top Taxa" = taxa_lists,
+        "Community" = communities,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
 
-    display_data <- data.frame(
-      "Actions" = actions,
-      "Author Plot Code" = author_codes,
-      "Location" = locations,
-      "Top Taxa" = taxa_lists,
-      "Community" = communities,
-      stringsAsFactors = FALSE,
-      check.names = FALSE
-    )
-
-    DT::datatable(display_data,
-      rownames = FALSE,
-      escape = FALSE,
-      selection = list(mode = "single", target = "row", selectable = FALSE),
-      options = list(
-        dom = "ft",
-        pageLength = 100,
-        scrollY = "calc(100vh - 300px)",
-        scrollX = TRUE,
-        scrollCollapse = TRUE,
-        autoWidth = TRUE,
-        columnDefs = list(
-          list(targets = c(0), width = "10%"),
-          list(targets = c(1), width = "10%"),
-          list(targets = c(2), width = "10%"),
-          list(targets = c(3), width = "45%"),
-          list(targets = c(4), width = "20%")
+      DT::datatable(display_data,
+        rownames = FALSE,
+        escape = FALSE,
+        selection = list(mode = "single", target = "row", selectable = FALSE),
+        options = list(
+          dom = "ft",
+          pageLength = 100,
+          scrollY = "calc(100vh - 300px)",
+          scrollX = TRUE,
+          scrollCollapse = TRUE,
+          autoWidth = TRUE,
+          columnDefs = list(
+            list(targets = c(0), width = "10%"),
+            list(targets = c(1), width = "10%"),
+            list(targets = c(2), width = "10%"),
+            list(targets = c(3), width = "45%"),
+            list(targets = c(4), width = "20%")
+          )
         )
       )
-    )
+    }
   })
 
   output$tablePagination <- shiny::renderUI({
@@ -312,13 +322,13 @@ server <- function(input, output, session) {
   output$paginationStatus <- shiny::renderText({
     data <- state$data()
     if (is.null(data)) {
-      return("No data available")
+      "No data available"
+    } else {
+      paste0(
+        "Showing ", nrow(data), " records",
+        if (state$pagination$has_more_data()) " (more available)" else " (end of data)"
+      )
     }
-
-    paste0(
-      "Showing ", nrow(data), " records",
-      if (state$pagination$has_more_data()) " (more available)" else " (end of data)"
-    )
   })
 
   output$map <- leaflet::renderLeaflet({

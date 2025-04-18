@@ -28,26 +28,23 @@ veg_bank_api <- (function() {
       paste("API call took", round(difftime(end_time, start_time, units = "secs"), 2), "seconds")
     )
 
-    return(response)
+    response
   }
 
   process_response <- function(response) {
     if (is.null(response)) {
-      return(list(success = FALSE, data = NULL, status = "connection failed"))
+      list(success = FALSE, data = NULL, status = "connection failed")
+    } else if (httr::status_code(response) != 200) {
+      list(success = FALSE, data = NULL, status = httr::status_code(response))
+    } else {
+      raw_content <- httr::content(response, "text")
+      if (nchar(raw_content) == 0 || !jsonlite::validate(raw_content)) {
+        list(success = FALSE, data = NULL, status = "invalid json")
+      } else {
+        data <- jsonlite::fromJSON(raw_content)
+        list(success = TRUE, data = data, status = httr::status_code(response))
+      }
     }
-
-    status_code <- httr::status_code(response)
-    if (status_code != 200) {
-      return(list(success = FALSE, data = NULL, status = status_code))
-    }
-
-    raw_content <- httr::content(response, "text")
-    if (nchar(raw_content) == 0 || !jsonlite::validate(raw_content)) {
-      return(list(success = FALSE, data = NULL, status = "invalid json"))
-    }
-
-    data <- jsonlite::fromJSON(raw_content)
-    return(list(success = TRUE, data = data, status = status_code))
   }
 
   list(
@@ -59,15 +56,15 @@ veg_bank_api <- (function() {
       }
 
       response <- fetch(endpoint)
-      return(process_response(response))
+      process_response(response)
     },
     get_map_points = function() {
       response <- fetch("/get_map_points")
-      return(process_response(response))
+      process_response(response)
     },
     get_observation_details = function(accession_code) {
       response <- fetch(paste0("/get_observation_details/", accession_code))
-      return(process_response(response))
+      process_response(response)
     }
   )
 })()

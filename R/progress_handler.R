@@ -39,7 +39,7 @@ show_progress <- function(message) {
           complete()
         }
 
-        return(result)
+        result
       }
     )
   }

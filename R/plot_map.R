@@ -32,7 +32,7 @@ plot_map <- (function() {
         mapply(
           function(obs, acc) {
             sprintf(
-              "<a href=\"#\" onclick=\"Shiny.setInputValue('label_link_click', 
+              "<a href=\"#\" onclick=\"Shiny.setInputValue('label_link_click',
               '%s', {priority: 'event'})\">%s</a>",
               acc, obs
             )
@@ -69,54 +69,54 @@ plot_map <- (function() {
 
   process_map_data <- function(map_data) {
     if (is.null(map_data) || nrow(map_data) == 0) {
-      return(create_empty_map())
+      create_empty_map()
+    } else {
+      # Filter valid points and group by location
+      valid_points <- subset(map_data, !is.na(map_data$latitude) & !is.na(map_data$longitude))
+      message("Total valid pins: ", nrow(valid_points))
+
+      data_grouped <- valid_points |>
+        dplyr::arrange(.data$authorobscode) |>
+        dplyr::group_by(.data$latitude, .data$longitude) |>
+        dplyr::summarize(
+          obs_count = dplyr::n(),
+          authorobscode_label = create_marker_popup(
+            .data$authorobscode,
+            .data$accessioncode,
+            dplyr::n()
+          ),
+          .groups = "drop"
+        )
+
+      message("Total grouped labels: ", nrow(data_grouped))
+
+      # Create and return the map
+      leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = 2)) |>
+        leaflet::setMaxBounds(lng1 = -180, lat1 = -85, lng2 = 180, lat2 = 85) |>
+        leaflet::setView(lng = -98.5795, lat = 39.8283, zoom = 2) |>
+        leaflet::addTiles() |>
+        leaflet::addMarkers(
+          lng = ~longitude,
+          lat = ~latitude,
+          layerId = ~ paste(latitude, longitude, sep = ", "),
+          label = ~ authorobscode_label |> lapply(htmltools::HTML),
+          labelOptions = leaflet::labelOptions(
+            noHide = TRUE,
+            clickable = TRUE,
+            direction = "bottom",
+            style = list(
+              "color" = "#2c5443",
+              "font-weight" = "bold",
+              "padding" = "3px 8px",
+              "background" = "white",
+              "border" = "1px solid #2c5443",
+              "border-radius" = "3px"
+            )
+          ),
+          clusterOptions = leaflet::markerClusterOptions()
+        ) |>
+        add_zoom_control()
     }
-
-    # Filter valid points and group by location
-    valid_points <- subset(map_data, !is.na(map_data$latitude) & !is.na(map_data$longitude))
-    message("Total valid pins: ", nrow(valid_points))
-
-    data_grouped <- valid_points |>
-      dplyr::arrange(.data$authorobscode) |>
-      dplyr::group_by(.data$latitude, .data$longitude) |>
-      dplyr::summarize(
-        obs_count = dplyr::n(),
-        authorobscode_label = create_marker_popup(
-          .data$authorobscode,
-          .data$accessioncode,
-          dplyr::n()
-        ),
-        .groups = "drop"
-      )
-
-    message("Total grouped labels: ", nrow(data_grouped))
-
-    # Create and return the map
-    leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = 2)) |>
-      leaflet::setMaxBounds(lng1 = -180, lat1 = -85, lng2 = 180, lat2 = 85) |>
-      leaflet::setView(lng = -98.5795, lat = 39.8283, zoom = 2) |>
-      leaflet::addTiles() |>
-      leaflet::addMarkers(
-        lng = ~longitude,
-        lat = ~latitude,
-        layerId = ~ paste(latitude, longitude, sep = ", "),
-        label = ~ authorobscode_label |> lapply(htmltools::HTML),
-        labelOptions = leaflet::labelOptions(
-          noHide = TRUE,
-          clickable = TRUE,
-          direction = "bottom",
-          style = list(
-            "color" = "#2c5443",
-            "font-weight" = "bold",
-            "padding" = "3px 8px",
-            "background" = "white",
-            "border" = "1px solid #2c5443",
-            "border-radius" = "3px"
-          )
-        ),
-        clusterOptions = leaflet::markerClusterOptions()
-      ) |>
-      add_zoom_control()
   }
 
   list(
