@@ -364,25 +364,33 @@ server <- function(input, output, session) {
           dplyr::arrange(.data$authorobscode) |>
           dplyr::group_by(.data$latitude, .data$longitude) |>
           dplyr::summarize(
-            authorobscode_label = paste0(
-              "<div style='max-height: 15.5rem; overflow-y: auto;'
-              onwheel='event.stopPropagation()'
-              onmousewheel='event.stopPropagation()'
-              onDOMMouseScroll='event.stopPropagation()'>",
-              paste(
-                mapply(function(obs, acc) {
-                  sprintf(
-                    "<a
-                    href=\"#\"
-                    onclick=\"Shiny.setInputValue('label_link_click', '%s', {priority: 'event'})\"
-                    >%s</a>",
-                    acc, obs
-                  )
-                }, .data$authorobscode, .data$accessioncode),
-                collapse = "<br>"
+            obs_count = dplyr::n(),
+            authorobscode_label =
+              paste0(
+                "<strong>",
+                ifelse(obs_count == 1,
+                  paste(obs_count, "Observation"),
+                  paste(obs_count, "Observations")
+                ),
+                "</strong>",
+                "<div style='max-height: 15.5rem; overflow-y: auto;'
+                  onwheel='event.stopPropagation()'
+                  onmousewheel='event.stopPropagation()'
+                  onDOMMouseScroll='event.stopPropagation()'>",
+                paste(
+                  mapply(function(obs, acc) {
+                    sprintf(
+                      "<a
+                      href=\"#\"
+                      onclick=\"Shiny.setInputValue('label_link_click', '%s', {priority: 'event'})\"
+                      >%s</a>",
+                      acc, obs
+                    )
+                  }, .data$authorobscode, .data$accessioncode),
+                  collapse = "<br>"
+                ),
+                "</div>"
               ),
-              "</div>"
-            ),
             .groups = "drop"
           )
 
