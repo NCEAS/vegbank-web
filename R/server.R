@@ -7,199 +7,455 @@
 #' @param session Shiny session object.
 #' @return Called for its side effects.
 #' @importFrom ggplot2 .data
-server <- function(input, output, session) {
-  # TODO: rework data flow to use server-side pagination, search, and details endpoint
-  rv_data <- shiny::reactiveVal(NULL)
-  selected_accession <- shiny::reactiveVal(NULL)
-  details_open <- shiny::reactiveVal(FALSE)
-  map_request <- shiny::reactiveVal(NULL)
 
-  # Add pagination reactive values
-  current_page_size <- shiny::reactiveVal(100)
-  last_plot_id <- shiny::reactiveVal(NULL)
-  has_more_data <- shiny::reactiveVal(TRUE)
+# ========================== API CLIENT MODULE ==========================
 
-  # Function to fetch paginated table data
-  fetch_table_data <- function(page_size = NULL, prev_plot_id = NULL, force_refresh = FALSE) {
-    shiny::withProgress(message = "Loading table data...", value = 0, {
-      # Use provided values or defaults from reactive values
-      page_size <- if (is.null(page_size)) current_page_size() else page_size
+VegBankAPI <- (function() {
+  base_url <- "http://127.0.0.1:28015"
 
-      # Construct API URL
-      base_url <- "http://127.0.0.1:28015/get_observation_table"
-      api_url <- if (is.null(prev_plot_id)) {
-        paste0(base_url, "/", page_size)
+  fetch <- function(path, ...) {
+    api_url <- paste0(base_url, path)
+    message("Fetching from API: ", api_url)
+    start_time <- Sys.time()
+
+    response <- tryCatch(
+      {
+        httr::GET(api_url, ...)
+      },
+      error = function(e) {
+        message("Error connecting to API: ", e$message)
+        NULL
+      }
+    )
+
+    end_time <- Sys.time()
+    message(paste("API call took", round(difftime(end_time, start_time, units = "secs"), 2), "seconds"))
+
+    return(response)
+  }
+
+  process_response <- function(response) {
+    if (is.null(response)) {
+      return(list(success = FALSE, data = NULL, status = "connection failed"))
+    }
+
+    status_code <- httr::status_code(response)
+    if (status_code != 200) {
+      return(list(success = FALSE, data = NULL, status = status_code))
+    }
+
+    raw_content <- httr::content(response, "text")
+    if (nchar(raw_content) == 0 || !jsonlite::validate(raw_content)) {
+      return(list(success = FALSE, data = NULL, status = "invalid json"))
+    }
+
+    data <- jsonlite::fromJSON(raw_content)
+    return(list(success = TRUE, data = data, status = status_code))
+  }
+
+  list(
+    get_table_data = function(page_size, prev_plot_id = NULL) {
+      endpoint <- if (is.null(prev_plot_id)) {
+        paste0("/get_observation_table/", page_size)
       } else {
-        paste0(base_url, "/", page_size, "/", prev_plot_id)
+        paste0("/get_observation_table/", page_size, "/", prev_plot_id)
       }
 
-      shiny::incProgress(0.2, detail = "Fetching data")
-      message("Fetching paginated table data: ", api_url)
+      response <- fetch(endpoint)
+      return(process_response(response))
+    },
+    get_map_points = function() {
+      response <- fetch("/get_map_points")
+      return(process_response(response))
+    },
+    get_observation_details = function(accession_code) {
+      response <- fetch(paste0("/get_observation_details/", accession_code))
+      return(process_response(response))
+    }
+  )
+})()
 
-      # Timer for table data
-      start_time <- Sys.time()
-      response <- tryCatch(
-        {
-          httr::GET(api_url)
-        },
-        error = function(e) {
-          message("Error connecting to API: ", e$message)
-          NULL
+# ========================== PROGRESS HANDLER ==========================
+
+# Simplified progress handler that works properly with Shiny
+make_progress <- function(message) {
+  function(code) {
+    shiny::withProgress(
+      message = message,
+      value = 0,
+      {
+        # Create a local environment to track progress
+        env <- new.env()
+        env$current <- 0
+
+        # Function to increment progress
+        step <- function(amount, detail = NULL) {
+          env$current <- min(1, env$current + amount)
+          shiny::incProgress(amount = amount, detail = detail)
         }
+
+        # Function to complete progress
+        complete <- function(detail = "Done") {
+          remaining <- 1 - env$current
+          if (remaining > 0) {
+            shiny::incProgress(amount = remaining, detail = detail)
+          }
+        }
+
+        # Execute the provided code with access to progress functions
+        result <- code(step, complete)
+
+        # Ensure progress completes
+        if (env$current < 1) {
+          complete()
+        }
+
+        return(result)
+      }
+    )
+  }
+}
+
+# ========================== MAP FUNCTIONS MODULE ==========================
+
+MapModule <- (function() {
+  create_empty_map <- function() {
+    leaflet::leaflet(options = leaflet::leafletOptions(minZoom = 2)) |>
+      leaflet::setMaxBounds(
+        lng1 = -180, lat1 = -85, lng2 = 180, lat2 = 85
+      ) |>
+      leaflet::addTiles() |>
+      leaflet::addControl("Data unavailable", position = "topright")
+  }
+
+  create_marker_popup <- function(obs_codes, accession_codes, count) {
+    paste0(
+      "<strong>",
+      ifelse(count == 1, "1 Observation", paste(count, "Observations")),
+      "</strong>",
+      "<div style='max-height: 15.5rem; overflow-y: auto;'
+        onwheel='event.stopPropagation()'
+        onmousewheel='event.stopPropagation()'
+        onDOMMouseScroll='event.stopPropagation()'>",
+      paste(
+        mapply(
+          function(obs, acc) {
+            sprintf(
+              "<a href=\"#\" onclick=\"Shiny.setInputValue('label_link_click', '%s', {priority: 'event'})\">%s</a>",
+              acc, obs
+            )
+          },
+          obs_codes, accession_codes
+        ),
+        collapse = "<br>"
+      ),
+      "</div>"
+    )
+  }
+
+  add_zoom_control <- function(map) {
+    map |> htmlwidgets::onRender("
+      function(el, x) {
+        var map = this;
+        var zoomControl = L.control({position: 'bottomleft'});
+        zoomControl.onAdd = function(map) {
+          var div = L.DomUtil.create('div', 'zoom-control');
+          div.style.background = 'white';
+          div.style.padding = '5px';
+          div.style.border = '1px solid #ccc';
+          div.innerHTML = 'Zoom: ' + map.getZoom();
+          return div;
+        };
+        zoomControl.addTo(map);
+        map.on('zoomend', function() {
+          document.getElementsByClassName('zoom-control')[0].innerHTML = 'Zoom: ' + map.getZoom();
+          Shiny.setInputValue('map_zoom', map.getZoom());
+        });
+      }
+    ")
+  }
+
+  process_map_data <- function(map_data) {
+    if (is.null(map_data) || nrow(map_data) == 0) {
+      return(create_empty_map())
+    }
+
+    # Filter valid points and group by location
+    valid_points <- subset(map_data, !is.na(map_data$latitude) & !is.na(map_data$longitude))
+    message("Total valid pins: ", nrow(valid_points))
+
+    data_grouped <- valid_points |>
+      dplyr::arrange(.data$authorobscode) |>
+      dplyr::group_by(.data$latitude, .data$longitude) |>
+      dplyr::summarize(
+        obs_count = dplyr::n(),
+        authorobscode_label = create_marker_popup(
+          .data$authorobscode,
+          .data$accessioncode,
+          dplyr::n()
+        ),
+        .groups = "drop"
       )
-      end_time <- Sys.time()
-      message(paste(
-        "Table data retrieval took",
-        round(difftime(end_time, start_time, units = "secs"), 2), "seconds"
-      ))
 
-      if (!is.null(response) && httr::status_code(response) == 200) {
-        shiny::incProgress(0.6, detail = "Processing data")
-        raw_content <- httr::content(response, "text")
+    message("Total grouped labels: ", nrow(data_grouped))
 
-        if (nchar(raw_content) > 0 && jsonlite::validate(raw_content)) {
-          data <- jsonlite::fromJSON(raw_content)
+    # Create and return the map
+    leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = 2)) |>
+      leaflet::setMaxBounds(lng1 = -180, lat1 = -85, lng2 = 180, lat2 = 85) |>
+      leaflet::setView(lng = -98.5795, lat = 39.8283, zoom = 2) |>
+      leaflet::addTiles() |>
+      leaflet::addMarkers(
+        lng = ~longitude,
+        lat = ~latitude,
+        layerId = ~ paste(latitude, longitude, sep = ", "),
+        label = ~ authorobscode_label |> lapply(htmltools::HTML),
+        labelOptions = leaflet::labelOptions(
+          noHide = TRUE,
+          clickable = TRUE,
+          direction = "bottom",
+          style = list(
+            "color" = "#2c5443",
+            "font-weight" = "bold",
+            "padding" = "3px 8px",
+            "background" = "white",
+            "border" = "1px solid #2c5443",
+            "border-radius" = "3px"
+          )
+        ),
+        clusterOptions = leaflet::markerClusterOptions()
+      ) |>
+      add_zoom_control()
+  }
 
-          # Check if we have a has_more field in response to determine pagination status
-          if ("has_more" %in% names(data)) {
-            has_more_data(data$has_more)
-            data <- data$results # Assuming actual data is in a results field
-          } else {
-            # If no has_more field, check if we got less data than requested
-            has_more_data(nrow(data) >= page_size)
-          }
+  list(
+    process_map_data = process_map_data,
+    create_empty_map = create_empty_map,
+    update_map_view = function(map_proxy, lng, lat, label, zoom = 18) {
+      map_proxy |>
+        leaflet::setView(lng = lng, lat = lat, zoom = zoom) |>
+        leaflet::clearPopups() |>
+        leaflet::addPopups(
+          lng = lng,
+          lat = lat,
+          popup = label
+        )
+    }
+  )
+})()
 
-          # Update last plot ID if we have data
-          if (nrow(data) > 0) {
-            last_plot_id(data$plot_id[nrow(data)])
-          }
+# ================= MAIN SERVER FUNCTION =================
 
-          # Update the reactive data
-          rv_data(data)
-          shiny::incProgress(1, detail = "Done")
-          return(TRUE)
-        } else {
-          message("Invalid JSON response from API")
-          shiny::showNotification("Error loading data: Invalid format", type = "error")
-          shiny::incProgress(1, detail = "Error")
-          return(FALSE)
-        }
-      } else {
-        status <- if (!is.null(response)) httr::status_code(response) else "connection failed"
-        message("API Error: Status ", status)
+server <- function(input, output, session) {
+  # STATE MANAGEMENT
+  state <- list(
+    data = shiny::reactiveVal(NULL),
+    selected_accession = shiny::reactiveVal(NULL),
+    details_open = shiny::reactiveVal(FALSE),
+    map_request = shiny::reactiveVal(NULL),
+    pagination = list(
+      current_page_size = shiny::reactiveVal(100),
+      last_plot_id = shiny::reactiveVal(NULL),
+      has_more_data = shiny::reactiveVal(TRUE)
+    )
+  )
+
+  # HELPER FUNCTIONS
+  update_pagination_state <- function(data, page_size) {
+    if ("has_more" %in% names(data)) {
+      state$pagination$has_more_data(data$has_more)
+      data <- data$results
+    } else {
+      state$pagination$has_more_data(nrow(data) >= page_size)
+    }
+
+    if (nrow(data) > 0) {
+      state$pagination$last_plot_id(data$plot_id[nrow(data)])
+    }
+
+    return(data)
+  }
+
+  # DATA OPERATIONS
+  fetch_table_data <- function(page_size = NULL, prev_plot_id = NULL, force_refresh = FALSE) {
+    make_progress("Loading table data...")(function(step, complete) {
+      page_size <- if (is.null(page_size)) state$pagination$current_page_size() else page_size
+      step(0.2, "Fetching data")
+
+      result <- VegBankAPI$get_table_data(page_size, prev_plot_id)
+
+      if (!result$success) {
+        step(0.2, "Error loading data")
         shiny::showNotification("Failed to load data. Please try again.", type = "error")
-        shiny::incProgress(1, detail = "Error")
         return(FALSE)
       }
+
+      step(0.4, "Processing data")
+      data <- update_pagination_state(result$data, page_size)
+      state$data(data)
+
+      complete("Done")
+      return(TRUE)
     })
   }
 
-  # Load initial data when app starts
-  shiny::observe({
-    # Load first page of data when app initializes
-    fetch_table_data()
-  })
+  fetch_map_data <- function() {
+    make_progress("Loading map data...")(function(step, complete) {
+      step(0.2, "Fetching pins")
 
-  # Find page with specific accession code
+      result <- VegBankAPI$get_map_points()
+
+      if (!result$success) {
+        step(0.3, "Error loading map data")
+        return(MapModule$create_empty_map())
+      }
+
+      step(0.5, "Processing map data")
+      map <- MapModule$process_map_data(result$data)
+
+      complete("Map rendered")
+      return(map)
+    })
+  }
+
+  update_and_open_details <- function(accession_code) {
+    make_progress("Loading details...")(function(step, complete) {
+      step(0.2, "Fetching details")
+
+      result <- VegBankAPI$get_observation_details(accession_code)
+
+      if (!result$success) {
+        step(0.3, "Error loading details")
+        shiny::showNotification("Failed to load details. Please try again.", type = "error")
+        return(FALSE)
+      }
+
+      step(0.5, "Processing details")
+
+      details <- build_details_view(result$data)
+      output$plot_id_details <- details$plot_id_details
+      output$locationDetails <- details$location_details
+      output$layout_details <- details$layout_details
+      output$environmental_details <- details$environmental_details
+      output$methods_details <- details$methods_details
+      output$plot_quality_details <- details$plot_quality_details
+      output$taxaDetails <- details$taxa_details
+
+      state$selected_accession(accession_code)
+      state$details_open(TRUE)
+
+      complete("Details ready")
+      session$sendCustomMessage("openOverlay", list())
+
+      return(TRUE)
+    })
+  }
+
   find_page_with_accession <- function(accession_code, callback) {
-    # Reset pagination to start from beginning
-    last_plot_id(NULL)
+    state$pagination$last_plot_id(NULL)
 
     search_for_accession <- function() {
-      current_data <- rv_data()
+      current_data <- state$data()
 
-      # Check if accession code is in current page
       if (!is.null(current_data)) {
         idx <- which(current_data$obsaccessioncode == accession_code)
         if (length(idx) > 0) {
-          # Found it - execute callback
           callback(idx)
           return(TRUE)
         }
       }
 
-      # Not in current page, try next page if available
-      if (has_more_data()) {
-        fetch_table_data(prev_plot_id = last_plot_id())
-        # Continue searching in next iteration
+      if (state$pagination$has_more_data()) {
+        fetch_table_data(prev_plot_id = state$pagination$last_plot_id())
         return(FALSE)
       } else {
-        # Exhausted all pages and didn't find it
         message("Accession code not found in any page: ", accession_code)
         return(TRUE)
       }
     }
 
-    # Initial search
     found <- search_for_accession()
 
-    # If not found, continue checking with a timer
     if (!found) {
       search_timer <- shiny::reactiveTimer(500)
-
       shiny::observe({
         search_timer()
         found <- search_for_accession()
         if (found) {
-          # Stop this observer once found
           shiny::observeEvent.priority <- -1
         }
       })
     }
   }
 
-  # Render UI Outputs ____________________________________________________________________________
+  update_map_view <- function(idx) {
+    data <- state$data()
+    leaflet::leafletProxy("map", session) |>
+      MapModule$update_map_view(
+        data$longitude[idx],
+        data$latitude[idx],
+        paste("Plot", data$authorobscode[idx], "is here!")
+      )
+  }
+
+  # LOAD INITIAL DATA
+  shiny::observe({
+    fetch_table_data()
+  })
+
+  # RENDER UI ELEMENTS
   output$dataSummary <- shiny::renderUI({
-    htmltools::tags$p(paste0("Vegbank is a database of vegetation plot data. The data displayed in
-            this app is a subset of the full dataset, containing ", nrow(rv_data()), " randomly
-            selectedplots. Each row in the table and link in a map label represents a plot.
-            Clicking on arow in the table or a link in the map will display detailed information
-            about the plot, including information about the plot location, species observed, and
-            other details."))
+    htmltools::tags$p(paste0(
+      "Vegbank is a database of vegetation plot data. The data displayed in ",
+      "this app is a subset of the full dataset, containing ", nrow(state$data()), " randomly ",
+      "selectedplots. Each row in the table and link in a map label represents a plot. ",
+      "Clicking on arow in the table or a link in the map will display detailed information ",
+      "about the plot, including information about the plot location, species observed, and ",
+      "other details."
+    ))
   })
 
-  output$topPlaces <- shiny::renderPlot({
-    data <- rv_data()
-    if (is.null(data)) {
-      return(NULL)
-    }
-    build_top10_barchart(data, "plotstateprovince", "Place", "#4F8773")
-  })
+  # output$topPlaces <- shiny::renderPlot({
+  #   data <- state$data()
+  #   if (is.null(data)) {
+  #     return(NULL)
+  #   }
+  #   build_top10_barchart(data, "plotstateprovince", "Place", "#4F8773")
+  # })
 
-  output$topSpecies <- shiny::renderPlot({
-    data <- rv_data()
-    if (is.null(data)) {
-      return(NULL)
-    }
-    build_top10_barchart(data, "toptaxon1name", "Species", "#6AA26E")
-  })
+  # output$topSpecies <- shiny::renderPlot({
+  #   data <- state$data()
+  #   if (is.null(data)) {
+  #     return(NULL)
+  #   }
+  #   build_top10_barchart(data, "toptaxon1name", "Species", "#6AA26E")
+  # })
 
-  output$authorPie <- plotly::renderPlotly({
-    data <- rv_data()
-    if (is.null(data)) {
-      return(NULL)
-    }
-    build_pie_chart(data, "interp_current_partyname")
-  })
+  # output$authorPie <- plotly::renderPlotly({
+  #   data <- state$data()
+  #   if (is.null(data)) {
+  #     return(NULL)
+  #   }
+  #   build_pie_chart(data, "interp_current_partyname")
+  # })
 
-  output$mostRecentUploads <- shiny::renderUI({
-    data <- rv_data()
-    if (is.null(data)) {
-      return(NULL)
-    }
-    build_most_recent_date_list(data)
-  })
+  # output$mostRecentUploads <- shiny::renderUI({
+  #   data <- state$data()
+  #   if (is.null(data)) {
+  #     return(NULL)
+  #   }
+  #   build_most_recent_date_list(data)
+  # })
 
-  output$plotHeatmap <- shiny::renderPlot({
-    data <- rv_data()
-    if (is.null(data)) {
-      return(NULL)
-    }
-    build_plot_heatmap(data)
-  })
+  # output$plotHeatmap <- shiny::renderPlot({
+  #   data <- state$data()
+  #   if (is.null(data)) {
+  #     return(NULL)
+  #   }
+  #   build_plot_heatmap(data)
+  # })
 
   output$dataTable <- DT::renderDataTable({
-    data <- rv_data()
+    data <- state$data()
     if (is.null(data) || nrow(data) == 0) {
       return(DT::datatable(
         data.frame("No Data Available" = "Please try again or check your connection"),
@@ -249,17 +505,16 @@ server <- function(input, output, session) {
         scrollCollapse = TRUE,
         autoWidth = TRUE,
         columnDefs = list(
-          list(targets = c(0), width = "10%"), # Actions
-          list(targets = c(1), width = "10%"), # Author Plot Code
-          list(targets = c(2), width = "10%"), # Location
-          list(targets = c(3), width = "45%"), # Top Taxa
-          list(targets = c(4), width = "20%") # Community
+          list(targets = c(0), width = "10%"),
+          list(targets = c(1), width = "10%"),
+          list(targets = c(2), width = "10%"),
+          list(targets = c(3), width = "45%"),
+          list(targets = c(4), width = "20%")
         )
       )
     )
   })
 
-  # Create pagination UI
   output$tablePagination <- shiny::renderUI({
     shiny::fluidRow(
       shiny::column(
@@ -280,302 +535,78 @@ server <- function(input, output, session) {
     )
   })
 
-  # Display pagination status
   output$paginationStatus <- shiny::renderText({
-    data <- rv_data()
+    data <- state$data()
     if (is.null(data)) {
       return("No data available")
     }
 
     paste0(
       "Showing ", nrow(data), " records",
-      if (has_more_data()) " (more available)" else " (end of data)"
+      if (state$pagination$has_more_data()) " (more available)" else " (end of data)"
     )
   })
 
-  # Pagination controls
+  output$map <- leaflet::renderLeaflet({
+    fetch_map_data()
+  })
+
+  # EVENT HANDLERS
   shiny::observeEvent(input$prevPage, {
-    # Go back to first page
-    last_plot_id(NULL)
+    state$pagination$last_plot_id(NULL)
     fetch_table_data()
   })
 
   shiny::observeEvent(input$nextPage, {
-    if (has_more_data()) {
-      fetch_table_data(prev_plot_id = last_plot_id())
+    if (state$pagination$has_more_data()) {
+      fetch_table_data(prev_plot_id = state$pagination$last_plot_id())
     }
   })
 
-  output$map <- leaflet::renderLeaflet({
-    shiny::withProgress(message = "Loading map data...", value = 0, {
-      shiny::incProgress(0.2, detail = "Fetching pins")
-
-      # Timer for map data
-      start_time_map <- Sys.time()
-      map_data <- tryCatch(
-        {
-          message("Attempting to fetch map points from endpoint")
-          resp <- httr::GET("http://127.0.0.1:28015/get_map_points")
-          message("API response status: ", resp$status_code)
-          raw_content <- httr::content(resp, "text")
-          message("Response content length: ", nchar(raw_content))
-          if (nchar(raw_content) == 0) {
-            warning("Empty response from map endpoint")
-            NULL
-          } else if (!jsonlite::validate(raw_content)) {
-            warning("Invalid JSON content from map endpoint")
-            NULL
-          } else {
-            pins <- jsonlite::fromJSON(raw_content)
-            message("Total pins fetched: ", nrow(pins))
-            pins <- subset(pins, !is.na(pins$latitude) & !is.na(pins$longitude))
-            message("Total valid pins: ", nrow(pins))
-            pins
-          }
-        },
-        error = function(e) {
-          message("Error in API call: ", e$message)
-          warning("Error fetching map data: ", e$message)
-          NULL
-        }
-      )
-      end_time_map <- Sys.time()
-      message(paste(
-        "Map data retrieval took",
-        round(difftime(end_time_map, start_time_map, units = "secs"), 2), "seconds"
-      ))
-
-      shiny::incProgress(0.6, detail = "Processing map data")
-      result_map <- if (is.null(map_data) || nrow(map_data) == 0) {
-        message("No map data available, showing empty map")
-        leaflet::leaflet(options = leaflet::leafletOptions(minZoom = 2)) |>
-          leaflet::setMaxBounds(
-            lng1 = -180,
-            lat1 = -85,
-            lng2 = 180,
-            lat2 = 85
-          ) |>
-          leaflet::addTiles() |>
-          leaflet::addControl("Data unavailable", position = "topright")
-      } else {
-        # TODO: Can this be done in the API instead of client side?
-        message("Grouping labels for ", nrow(map_data), " map points")
-        data_grouped <- map_data |>
-          dplyr::arrange(.data$authorobscode) |>
-          dplyr::group_by(.data$latitude, .data$longitude) |>
-          dplyr::summarize(
-            obs_count = dplyr::n(),
-            authorobscode_label =
-              paste0(
-                "<strong>",
-                ifelse(obs_count == 1,
-                  paste(obs_count, "Observation"),
-                  paste(obs_count, "Observations")
-                ),
-                "</strong>",
-                "<div style='max-height: 15.5rem; overflow-y: auto;'
-                  onwheel='event.stopPropagation()'
-                  onmousewheel='event.stopPropagation()'
-                  onDOMMouseScroll='event.stopPropagation()'>",
-                paste(
-                  mapply(function(obs, acc) {
-                    sprintf(
-                      "<a
-                      href=\"#\"
-                      onclick=\"Shiny.setInputValue('label_link_click', '%s', {priority: 'event'})\"
-                      >%s</a>",
-                      acc, obs
-                    )
-                  }, .data$authorobscode, .data$accessioncode),
-                  collapse = "<br>"
-                ),
-                "</div>"
-              ),
-            .groups = "drop"
-          )
-
-        message("Total grouped labels: ", nrow(data_grouped))
-
-        shiny::incProgress(0.9, detail = "Rendering map")
-        leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = 2)) |>
-          leaflet::setMaxBounds(
-            lng1 = -180,
-            lat1 = -85,
-            lng2 = 180,
-            lat2 = 85
-          ) |>
-          leaflet::setView(lng = -98.5795, lat = 39.8283, zoom = 2) |>
-          leaflet::addTiles() |>
-          leaflet::addMarkers(
-            lng = ~longitude,
-            lat = ~latitude,
-            layerId = ~ paste(latitude, longitude, sep = ", "),
-            label = ~ authorobscode_label |> lapply(htmltools::HTML),
-            labelOptions = leaflet::labelOptions(
-              noHide = TRUE,
-              clickable = TRUE,
-              direction = "bottom",
-              style = list(
-                "color" = "#2c5443",
-                "font-weight" = "bold",
-                "padding" = "3px 8px",
-                "background" = "white",
-                "border" = "1px solid #2c5443",
-                "border-radius" = "3px"
-              )
-            ),
-            clusterOptions = leaflet::markerClusterOptions()
-          ) |>
-          htmlwidgets::onRender("
-            function(el, x) {
-              var map = this;
-              var zoomControl = L.control({position: 'bottomleft'});
-              zoomControl.onAdd = function(map) {
-                var div = L.DomUtil.create('div', 'zoom-control');
-                div.style.background = 'white';
-                div.style.padding = '5px';
-                div.style.border = '1px solid #ccc';
-                div.innerHTML = 'Zoom: ' + map.getZoom();
-                return div;
-              };
-              zoomControl.addTo(map);
-              map.on('zoomend', function() {
-                document.getElementsByClassName('zoom-control')
-                  [0].innerHTML = 'Zoom: ' + map.getZoom();
-                Shiny.setInputValue('map_zoom', map.getZoom());
-              });
-            }
-          ")
-      }
-
-      # Final progress update right before returning
-      shiny::incProgress(1, detail = "Done")
-      return(result_map)
-    })
-  })
-
-  # Handle Events _________________________________________________________________________________
-
-  # TODO: Parameterize this to pull out of server fn?
-  update_and_open_details <- function(accession_code) {
-    shiny::withProgress(message = "Loading details...", value = 0, {
-      # Get details from API
-      api_url <- paste0("http://127.0.0.1:28015/get_observation_details/", accession_code)
-
-      # Timer for details
-      start_time_details <- Sys.time()
-      response <- tryCatch(
-        {
-          message("Fetching details for ", accession_code)
-          httr::GET(api_url)
-        },
-        error = function(e) {
-          message("Error connecting to API: ", e$message)
-          NULL
-        }
-      )
-      end_time_details <- Sys.time()
-      message(paste(
-        "Details retrieval took",
-        round(difftime(end_time_details, start_time_details, units = "secs"), 2), "seconds"
-      ))
-
-      if (!is.null(response) && httr::status_code(response) == 200) {
-        raw_content <- httr::content(response, "text")
-        if (nchar(raw_content) > 0 && jsonlite::validate(raw_content)) {
-          selected_data <- jsonlite::fromJSON(raw_content)
-
-          # Build details from API response
-          details <- build_details_view(selected_data)
-          output$plot_id_details <- details$plot_id_details
-          output$locationDetails <- details$location_details
-          output$layout_details <- details$layout_details
-          output$environmental_details <- details$environmental_details
-          output$methods_details <- details$methods_details
-          output$plot_quality_details <- details$plot_quality_details
-          output$taxaDetails <- details$taxa_details
-
-          # Set the selected accession code
-          selected_accession(accession_code)
-          details_open(TRUE)
-          shiny::incProgress(1, detail = "Done")
-          session$sendCustomMessage("openOverlay", list())
-        } else {
-          message("Invalid JSON response from API")
-          shiny::showNotification("Error loading details: Invalid data format", type = "error")
-        }
-      } else {
-        status <- if (!is.null(response)) httr::status_code(response) else "connection failed"
-        message("API Error: Status ", status)
-        shiny::showNotification("Failed to load details. Please try again.", type = "error")
-      }
-    })
-  }
-
-  # TODO: Parameterize this to pull out of server fn?
-  update_map_view <- function(idx) {
-    data <- rv_data()
-    leaflet::leafletProxy("map", session) |>
-      leaflet::setView(
-        lng = data$longitude[idx],
-        lat = data$latitude[idx],
-        zoom = 18
-      ) |>
-      leaflet::clearPopups() |>
-      leaflet::addPopups(
-        lng = data$longitude[idx],
-        lat = data$latitude[idx],
-        popup = paste("Plot", data$authorobscode[idx], "is here!", sep = " ")
-      )
-  }
-
-  # Handle map_request
   shiny::observe({
     shiny::req(input$page == "Map")
-    shiny::req(map_request())
+    shiny::req(state$map_request())
 
-    data <- rv_data()
-    idx <- map_request()
+    data <- state$data()
+    idx <- state$map_request()
 
     if (length(idx) > 0) {
-      shiny::invalidateLater(100) # Small delay to ensure map is ready
+      shiny::invalidateLater(100)
       update_map_view(idx)
-      map_request(NULL) # Clear the request
+      state$map_request(NULL)
     }
   })
 
-  # Handle see details button click
   shiny::observeEvent(input$see_details, {
     i <- as.numeric(input$see_details)
     dt_proxy <- DT::dataTableProxy("dataTable")
     DT::selectRows(dt_proxy, i, ignore.selectable = TRUE)
-    data_table <- rv_data()
+
+    data_table <- state$data()
     selected_row_accession <- data_table[i, "obsaccessioncode"]
     update_and_open_details(selected_row_accession)
   })
 
-  # Handle close details button click
   shiny::observeEvent(input$close_details, {
-    data <- rv_data()
-    idx <- which(data$obsaccessioncode == selected_accession())
+    data <- state$data()
+    idx <- which(data$obsaccessioncode == state$selected_accession())
+
     if (length(idx) > 0) {
       dt_proxy <- DT::dataTableProxy("dataTable")
-      # Wish there was a better way to do this, but I canʻt find a deleselect function anywhere
       DT::selectRows(dt_proxy, idx, ignore.selectable = FALSE)
     }
-    details_open(FALSE)
-    selected_accession(NULL)
+
+    state$details_open(FALSE)
+    state$selected_accession(NULL)
     session$doBookmark()
   })
 
-  # Handle show on map button click
   shiny::observeEvent(input$show_on_map, {
     idx <- as.numeric(input$show_on_map)
     shiny::updateNavbarPage(session, "page", selected = "Map")
-    map_request(idx) # Set the request instead of updating map directly
+    state$map_request(idx)
   })
 
-  # Handle label see details link click
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
@@ -583,42 +614,31 @@ server <- function(input, output, session) {
     }
   })
 
-  # TODO: Show all rows on empty search
-  # Handle nav bar search submission
   shiny::observeEvent(input$search_enter, {
     shiny::updateNavbarPage(session, "page", selected = "Table")
-
-    # In a production app, you would send the search term to the API
-    # For now, reset to first page and search locally (less efficient)
-    last_plot_id(NULL)
+    state$pagination$last_plot_id(NULL)
     fetch_table_data()
-
-    # Future enhancement: Call a search-specific API endpoint
-    # search_api_url <- paste0("http://127.0.0.1:28015/search_observations/",
-    #                          URLencode(input$search_enter))
   })
 
-  # Persist State _________________________________________________________________________________
-
-  shiny::onBookmark(function(state) {
-    state$values$selected_accession <- selected_accession()
-    state$values$details_open <- details_open()
-    state
+  # STATE PERSISTENCE
+  shiny::onBookmark(function(state_obj) {
+    state_obj$values$selected_accession <- state$selected_accession()
+    state_obj$values$details_open <- state$details_open()
+    state_obj
   })
 
   shiny::onBookmarked(function(url) {
     shiny::updateQueryString(url)
   })
 
-  # TODO: Restore map, search, and row selection state as well
-  shiny::onRestore(function(state) {
-    if (!is.null(state$values$selected_accession)) {
-      acc <- state$values$selected_accession
-      shiny::observeEvent(rv_data(),
+  shiny::onRestore(function(state_obj) {
+    if (!is.null(state_obj$values$selected_accession)) {
+      acc <- state_obj$values$selected_accession
+      shiny::observeEvent(state$data(),
         {
           update_and_open_details(acc)
-          # Select the row in the table if possible
-          data <- rv_data()
+
+          data <- state$data()
           idx <- match(acc, data$obsaccessioncode)
           if (!is.na(idx)) {
             dt_proxy <- DT::dataTableProxy("dataTable")
@@ -637,7 +657,7 @@ server <- function(input, output, session) {
   })
 }
 
-# Helper Functions _________________________________________________________________________________
+# =================== HELPER FUNCTIONS ===================
 
 #' Build Top Ten Bar Chart
 #'
@@ -775,10 +795,8 @@ build_plot_heatmap <- function(data) {
 build_taxa_list <- function(data_row) {
   tryCatch(
     {
-      # Access the taxa data as a data frame from jsonlite::fromJSON
       taxa <- data_row[["taxa"]]
       if (!is.null(taxa) && nrow(taxa) > 0) {
-        # Sort by cover in descending order
         sorted_taxa <- taxa[order(-taxa$maxcover), ]
         top5 <- utils::head(sorted_taxa, 5)
         taxa_items <- sprintf("<li>%s <b>(%g%%)</b></li>", top5$authorplantname, top5$maxcover)
@@ -882,7 +900,6 @@ build_details_view <- function(selected_data) {
     })
   }
 
-  # Render taxa details with error handling.
   taxa_details_ui <- shiny::renderUI({
     tryCatch(
       {
