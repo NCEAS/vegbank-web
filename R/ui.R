@@ -17,6 +17,23 @@ ui <- function(req) {
       }
     });
 
+    Shiny.addCustomMessageHandler('closeDropdown', function(message) {
+      // TODO: There has to be a better way to do this
+      // this is a workaround for the bootstrap dropdowns not closing
+      // wait briefly for the navbar to update, then strip all dropdown show‐states
+      setTimeout(function() {
+        document.querySelectorAll('.nav-item.dropdown.show').forEach(function(el) {
+          el.classList.remove('show');
+        });
+        document.querySelectorAll('.dropdown-menu.show').forEach(function(el) {
+          el.classList.remove('show');
+        });
+        document.querySelectorAll('.dropdown-toggle[aria-expanded=\"true\"]').forEach(function(el) {
+          el.setAttribute('aria-expanded', 'false');
+        });
+      }, 100);
+    });
+
     $(document).ready(function() {
       var params = new URLSearchParams(window.location.search);
       if(params.get('details_open') === 'true') {

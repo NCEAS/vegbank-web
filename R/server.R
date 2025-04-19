@@ -328,6 +328,7 @@ server <- function(input, output, session) {
     idx <- as.numeric(input$show_on_map)
     shiny::updateNavbarPage(session, "page", selected = "Map")
     state$map_request(idx)
+    session$sendCustomMessage(type = "closeDropdown", message = list())
   })
 
   shiny::observeEvent(input$label_link_click, {
