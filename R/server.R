@@ -21,6 +21,7 @@ server <- function(input, output, session) {
   # STATE MANAGEMENT
   state <- list(
     data = shiny::reactiveVal(NULL),
+    data_loading = shiny::reactiveVal(FALSE), # Track if data is currently loading
     selected_accession = shiny::reactiveVal(NULL),
     details_open = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
@@ -49,26 +50,50 @@ server <- function(input, output, session) {
 
   # DATA OPERATIONS
   fetch_table_data <- function(page_size = NULL, prev_plot_id = NULL, force_refresh = FALSE) {
-    show_progress("Loading table data...")(function(step, complete) {
-      page_size <- if (is.null(page_size)) state$pagination$current_page_size() else page_size
-      step(0.2, "Fetching data")
+    # Don't fetch if already loading
+    if (state$data_loading()) {
+      return(NULL)
+    }
 
-      result <- veg_bank_api$get_table_data(page_size, prev_plot_id)
+    # Mark as loading
+    state$data_loading(TRUE)
 
-      if (!result$success) {
-        step(0.2, "Error loading data")
-        shiny::showNotification("Failed to load data. Please try again.", type = "error")
-        FALSE
-      } else {
-        step(0.4, "Processing data")
-        data <- update_pagination_state(result$data, page_size)
-        state$data(data)
+    page_size <- if (is.null(page_size)) state$pagination$current_page_size() else page_size
 
-        complete("Done")
-        TRUE
+    withProgress(
+      message = "Loading table data...",
+      value = 0,
+      {
+        incProgress(0.2, "Fetching data")
+
+        result <- veg_bank_api$get_table_data(page_size, prev_plot_id)
+
+        if (!result$success) {
+          incProgress(0.2, "Error loading data")
+          shiny::showNotification("Failed to load data. Please try again.", type = "error")
+        } else {
+          incProgress(0.3, "Processing data")
+          data <- update_pagination_state(result$data, page_size)
+          state$data(data)
+        }
+
+        # Mark as done loading regardless of success/failure
+        state$data_loading(FALSE)
+
+        incProgress(0.5, "Done")
       }
-    })
+    )
   }
+
+  # Separate observer to handle data loading
+  observeEvent(input$page,
+    {
+      if (input$page == "Table" && is.null(state$data()) && !state$data_loading()) {
+        fetch_table_data()
+      }
+    },
+    ignoreInit = FALSE
+  )
 
   fetch_map_data <- function() {
     show_progress("Loading map data...")(function(step, complete) {
@@ -177,146 +202,56 @@ server <- function(input, output, session) {
       )
   }
 
-  # LOAD INITIAL DATA
-  shiny::observe({
-    fetch_table_data()
-  })
-
   # RENDER UI ELEMENTS
   output$dataSummary <- shiny::renderUI({
-    htmltools::tags$p(paste0(
-      "Vegbank is a database of vegetation plot data. The data displayed in ",
-      "this app is a subset of the full dataset, containing ", nrow(state$data()), " randomly ",
-      "selectedplots. Each row in the table and link in a map label represents a plot. ",
-      "Clicking on arow in the table or a link in the map will display detailed information ",
-      "about the plot, including information about the plot location, species observed, and ",
-      "other details."
-    ))
+    data <- state$data()
+    if (is.null(data)) {
+      htmltools::tags$p(paste0(
+        "Vegbank is a database of vegetation plot data. Navigate to the 'Plots > Table' tab ",
+        "to browse the available plot data. Each row in the table represents a plot. ",
+        "Clicking on a row will display detailed information about the plot."
+      ))
+    } else {
+      htmltools::tags$p(paste0(
+        "Vegbank is a database of vegetation plot data. The data displayed in ",
+        "this app is a subset of the full dataset, containing ", nrow(data), " randomly ",
+        "selected plots. Each row in the table and link in a map label represents a plot. ",
+        "Clicking on a row in the table or a link in the map will display detailed information ",
+        "about the plot, including information about the plot location, species observed, and ",
+        "other details."
+      ))
+    }
   })
 
-  # output$topPlaces <- shiny::renderPlot({
-  #   data <- state$data()
-  #   if (is.null(data)) {
-  #     return(NULL)
-  #   }
-  #   build_top10_barchart(data, "plotstateprovince", "Place", "#4F8773")
-  # })
-
-  # output$topSpecies <- shiny::renderPlot({
-  #   data <- state$data()
-  #   if (is.null(data)) {
-  #     return(NULL)
-  #   }
-  #   build_top10_barchart(data, "toptaxon1name", "Species", "#6AA26E")
-  # })
-
-  # output$authorPie <- plotly::renderPlotly({
-  #   data <- state$data()
-  #   if (is.null(data)) {
-  #     return(NULL)
-  #   }
-  #   build_pie_chart(data, "interp_current_partyname")
-  # })
-
-  # output$mostRecentUploads <- shiny::renderUI({
-  #   data <- state$data()
-  #   if (is.null(data)) {
-  #     return(NULL)
-  #   }
-  #   build_most_recent_date_list(data)
-  # })
-
-  # output$plotHeatmap <- shiny::renderPlot({
-  #   data <- state$data()
-  #   if (is.null(data)) {
-  #     return(NULL)
-  #   }
-  #   build_plot_heatmap(data)
-  # })
-
+  # Simplified dataTable renderer - only handles rendering, not data loading
   output$dataTable <- DT::renderDataTable({
+    # Use reactives to trigger re-render when data changes
     data <- state$data()
-    if (is.null(data) || nrow(data) == 0) {
-      DT::datatable(
-        data.frame("No Data Available" = "Please try again or check your connection"),
-        options = list(dom = "t")
-      )
-    } else {
-      n_rows <- nrow(data)
+    # Use the plot_table module to process the data
+    plot_table$process_table_data(data)
+  })
 
-      taxa_lists <- tryCatch(
-        {
-          apply(data, 1, build_taxa_list)
-        },
-        error = function(e) {
-          message("Error generating taxa lists: ", e$message)
-          rep("Error loading taxa", n_rows)
-        }
-      )
-
-      # Provide fallback vectors if columns are missing
-      author_codes <- if (!is.null(data$authorobscode)) {
-        data$authorobscode
-      } else {
-        rep("Unknown", n_rows)
-      }
-      locations <- if (!is.null(data$stateprovince)) data$stateprovince else rep("Unknown", n_rows)
-      communities <- if (!is.null(data$commname)) data$commname else rep("Unknown", n_rows)
-
-      # Ensure 'actions' matches the row count
-      actions <- mapply(build_action_buttons, seq_len(n_rows))
-
-      display_data <- data.frame(
-        "Actions" = actions,
-        "Author Plot Code" = author_codes,
-        "Location" = locations,
-        "Top Taxa" = taxa_lists,
-        "Community" = communities,
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-
-      DT::datatable(display_data,
-        rownames = FALSE,
-        escape = FALSE,
-        selection = list(mode = "single", target = "row", selectable = FALSE),
-        options = list(
-          dom = "ft",
-          pageLength = 100,
-          scrollY = "calc(100vh - 300px)",
-          scrollX = TRUE,
-          scrollCollapse = TRUE,
-          autoWidth = TRUE,
-          columnDefs = list(
-            list(targets = c(0), width = "10%"),
-            list(targets = c(1), width = "10%"),
-            list(targets = c(2), width = "10%"),
-            list(targets = c(3), width = "45%"),
-            list(targets = c(4), width = "20%")
+  output$tablePagination <- shiny::renderUI({
+    # Only show pagination UI if we have data
+    if (!is.null(state$data())) {
+      shiny::fluidRow(
+        shiny::column(
+          12,
+          shiny::div(
+            class = "d-flex justify-content-between align-items-center mt-2",
+            shiny::div(
+              class = "pagination-info",
+              shiny::textOutput("paginationStatus")
+            ),
+            shiny::div(
+              class = "pagination-controls",
+              shiny::actionButton("prevPage", "Previous", class = "btn btn-outline-secondary"),
+              shiny::actionButton("nextPage", "Next", class = "btn btn-outline-primary")
+            )
           )
         )
       )
     }
-  })
-
-  output$tablePagination <- shiny::renderUI({
-    shiny::fluidRow(
-      shiny::column(
-        12,
-        shiny::div(
-          class = "d-flex justify-content-between align-items-center mt-2",
-          shiny::div(
-            class = "pagination-info",
-            shiny::textOutput("paginationStatus")
-          ),
-          shiny::div(
-            class = "pagination-controls",
-            shiny::actionButton("prevPage", "Previous", class = "btn btn-outline-secondary"),
-            shiny::actionButton("nextPage", "Next", class = "btn btn-outline-primary")
-          )
-        )
-      )
-    )
   })
 
   output$paginationStatus <- shiny::renderText({
@@ -335,15 +270,19 @@ server <- function(input, output, session) {
     fetch_map_data()
   })
 
-  # EVENT HANDLERS
+  # EVENT HANDLERS for pagination - simplified to avoid duplicating data load logic
   shiny::observeEvent(input$prevPage, {
-    state$pagination$last_plot_id(NULL)
-    fetch_table_data()
+    if (!state$data_loading()) {
+      state$pagination$last_plot_id(NULL)
+      fetch_table_data()
+    }
   })
 
   shiny::observeEvent(input$nextPage, {
-    if (state$pagination$has_more_data()) {
-      fetch_table_data(prev_plot_id = state$pagination$last_plot_id())
+    if (state$pagination$has_more_data() && !state$data_loading()) {
+      # When moving to next page, we need to preserve the last_plot_id
+      prev_id <- state$pagination$last_plot_id()
+      fetch_table_data(prev_plot_id = prev_id)
     }
   })
 
@@ -399,9 +338,11 @@ server <- function(input, output, session) {
   })
 
   shiny::observeEvent(input$search_enter, {
-    shiny::updateNavbarPage(session, "page", selected = "Table")
-    state$pagination$last_plot_id(NULL)
-    fetch_table_data()
+    if (!state$data_loading()) {
+      shiny::updateNavbarPage(session, "page", selected = "Table")
+      state$pagination$last_plot_id(NULL)
+      fetch_table_data()
+    }
   })
 
   # STATE PERSISTENCE
