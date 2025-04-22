@@ -156,36 +156,6 @@ build_navbar <- function() {
               bslib::card_body(shiny::uiOutput("dataSummary"))
             )
           )
-        ),
-        shiny::fluidRow(
-          shiny::column(4, bslib::card(
-            bslib::card_header("Top Places"),
-            bslib::card_body(shiny::plotOutput("topPlaces"))
-          )),
-          shiny::column(4, bslib::card(
-            bslib::card_header("Top Species"),
-            bslib::card_body(shiny::plotOutput("topSpecies"))
-          )),
-          shiny::column(4, bslib::card(
-            bslib::card_header("Most Recent Uploads"),
-            bslib::card_body(shiny::uiOutput("mostRecentUploads"))
-          ))
-        ),
-        shiny::fluidRow(
-          shiny::column(
-            6,
-            bslib::card(
-              bslib::card_header("Authors"),
-              bslib::card_body(plotly::plotlyOutput("authorPie"))
-            )
-          ),
-          shiny::column(
-            6,
-            bslib::card(
-              bslib::card_header("Plot Heatmap"),
-              bslib::card_body(shiny::plotOutput("plotHeatmap"))
-            )
-          )
         )
       )
     ),

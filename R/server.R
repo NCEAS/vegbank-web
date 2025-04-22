@@ -18,7 +18,7 @@
 # ================= MAIN SERVER FUNCTION =================
 
 server <- function(input, output, session) {
-  # STATE MANAGEMENT
+  # STATE MANAGEMENT ______________________________________________________________________________
   state <- list(
     data = shiny::reactiveVal(NULL),
     data_loading = shiny::reactiveVal(FALSE), # Track if data is currently loading
@@ -32,7 +32,7 @@ server <- function(input, output, session) {
     )
   )
 
-  # HELPER FUNCTIONS
+  # HELPER FUNCTIONS ______________________________________________________________________________
   update_pagination_state <- function(data, page_size) {
     if ("has_more" %in% names(data)) {
       state$pagination$has_more_data(data$has_more)
@@ -48,7 +48,7 @@ server <- function(input, output, session) {
     data
   }
 
-  # DATA OPERATIONS
+  # DATA OPERATIONS _______________________________________________________________________________
   fetch_table_data <- function(page_size = NULL, prev_plot_id = NULL, force_refresh = FALSE) {
     # Don't fetch if already loading
     if (state$data_loading()) {
@@ -202,25 +202,16 @@ server <- function(input, output, session) {
       )
   }
 
-  # RENDER UI ELEMENTS
+  # RENDER UI ELEMENTS __________________________________________________________________
   output$dataSummary <- shiny::renderUI({
-    data <- state$data()
-    if (is.null(data)) {
-      htmltools::tags$p(paste0(
-        "Vegbank is a database of vegetation plot data. Navigate to the 'Plots > Table' tab ",
-        "to browse the available plot data. Each row in the table represents a plot. ",
-        "Clicking on a row will display detailed information about the plot."
-      ))
-    } else {
-      htmltools::tags$p(paste0(
-        "Vegbank is a database of vegetation plot data. The data displayed in ",
-        "this app is a subset of the full dataset, containing ", nrow(data), " randomly ",
-        "selected plots. Each row in the table and link in a map label represents a plot. ",
-        "Clicking on a row in the table or a link in the map will display detailed information ",
-        "about the plot, including information about the plot location, species observed, and ",
-        "other details."
-      ))
-    }
+    htmltools::tags$p(
+      "Vegbank is a database of vegetation plot data. Navigate to the 'Plots > Table' tab ",
+      "to browse the available plot data. Each row in the table represents a plot observation.",
+      "You can also view the plot locations on a map by navigating to the 'Plots > Map' tab. ",
+      "Clicking on the see details button in a row in the table or a link in the pin label on the ",
+      "map will display detailed information about that plot observation including information ",
+      "about the plot location, species observed, and other details."
+    )
   })
 
   # Simplified dataTable renderer - only handles rendering, not data loading
@@ -270,7 +261,7 @@ server <- function(input, output, session) {
     fetch_map_data()
   })
 
-  # EVENT HANDLERS for pagination - simplified to avoid duplicating data load logic
+  # EVENT HANDLERS _________________________________________________________________________________
   shiny::observeEvent(input$prevPage, {
     if (!state$data_loading()) {
       state$pagination$last_plot_id(NULL)
@@ -346,7 +337,7 @@ server <- function(input, output, session) {
     }
   })
 
-  # STATE PERSISTENCE
+  # STATE PERSISTENCE ____________________________________________________________________________
   shiny::onBookmark(function(state_obj) {
     state_obj$values$selected_accession <- state$selected_accession()
     state_obj$values$details_open <- state$details_open()
