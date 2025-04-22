@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(VegBankWeb)
+library(vegbankweb)
 
-test_check("VegBankWeb")
+test_check("vegbankweb")

@@ -1,4 +1,4 @@
-Package: VegBankWeb
+Package: vegbankweb
 Type: Package
 Title: "VegBank Web: A Shiny Application for Vegetation Plot Data"
 Version: 0.1.0
