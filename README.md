@@ -5,9 +5,9 @@
 - [**Submit Bugs and feature requests**](https://github.com/NCEAS/vegbank-web/issues)
 
 
-This package is an web access point for VegBank, the vegetation plot database of the Ecological Society of America's Panel on Vegetation Classification, hosted by the National Center for Ecological Analysis and Synthesis (NCEAS). VegBank contains vegetation plot data, community types recognized by the U.S. National Vegetation Classification and others, and all ITIS/USDA plant taxa along with other taxa recorded in plot records. As a VegBank API client, the 'VegBankWeb' package supports browsing, searching, inspecting, and downloading vegetation plot records and other supporting information to and from the VegBank database.
+This package is an web access point for VegBank, the vegetation plot database of the Ecological Society of America's Panel on Vegetation Classification, hosted by the National Center for Ecological Analysis and Synthesis (NCEAS). VegBank contains vegetation plot data, community types recognized by the U.S. National Vegetation Classification and others, and all ITIS/USDA plant taxa along with other taxa recorded in plot records. As a VegBank API client, the 'vegbankweb' package supports browsing, searching, inspecting, and downloading vegetation plot records and other supporting information to and from the VegBank database.
 
-VegBank in general, and the VegBankWeb package in particular, are open source, community projects. We [welcome contributions](./CONTRIBUTING.md) in many forms, including code, data, documentation, bug reports, testing, etc. Use the VegBank discussions to discuss these contributions with us.
+VegBank in general, and the vegbankweb package in particular, are open source, community projects. We [welcome contributions](./CONTRIBUTING.md) in many forms, including code, data, documentation, bug reports, testing, etc. Use the VegBank discussions to discuss these contributions with us.
 
 
 ## Documentation
