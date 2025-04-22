@@ -14,18 +14,15 @@
 #' @return A ggplot object.
 #' @importFrom ggplot2 .data ggplot aes geom_bar geom_text coord_flip scale_y_continuous
 #' @importFrom ggplot2 labs theme_minimal expansion
-#' @importFrom stats reorder
+#' @importFrom stats reorder var
 #' @keywords internal
 build_top10_barchart <- function(data, column, xlab, color) {
-  counts <- table(data[[column]])
-  df <- as.data.frame(counts)
-  colnames(df) <- c("name", "count")
-  df <- df[order(df$count, decreasing = TRUE), ]
-  top_df <- utils::head(df, 10)
+  top_df <- dplyr::count(data, var = .data[[column]], sort = TRUE) |>
+    head(10)
   ggplot2::ggplot(
     top_df,
     ggplot2::aes(
-      x = stats::reorder(.data$name, .data$count),
+      x = stats::reorder(.data$var, .data$n),
       y = .data$count
     )
   ) +
@@ -42,28 +39,22 @@ build_top10_barchart <- function(data, column, xlab, color) {
 #' Constructs an interactive pie chart using plotly.
 #'
 #' @param data Data frame containing the data.
-#' @param field The column name used for pie chart slices.
+#' @param column The column name used for pie chart slices.
 #' @param palette Color palette.
 #' @param label_top_n Number of top labels to display.
 #' @return A plotly pie chart.
 #' @importFrom plotly plot_ly config
 #' @importFrom grDevices colorRampPalette
 #' @keywords internal
-build_pie_chart <- function(data, field, palette = c("#a1d99b", "#31a354"), label_top_n = 4) {
-  counts <- as.data.frame(table(data[[field]]))
-  colnames(counts) <- c("name", "value")
-  counts$name <- as.character(counts$name)
-  counts <- counts[order(-counts$value), ]
-  counts$label <- ""
-  counts$label[seq_len(min(label_top_n, nrow(counts)))] <- paste0(
-    counts$name[seq_len(min(label_top_n, nrow(counts)))],
-    ": ",
-    counts$value[seq_len(min(label_top_n, nrow(counts)))]
-  )
+build_pie_chart <- function(data, column, palette = c("#a1d99b", "#31a354"), label_top_n = 4) {
+  counts <- dplyr::count(data, var = .data[[column]], sort = TRUE) |>
+    dplyr::mutate(label = ifelse(dplyr::row_number() <= label_top_n,
+      paste0(var, ": ", n), ""
+    ))
   colors <- grDevices::colorRampPalette(palette)(nrow(counts))
   plotly::plot_ly(
     counts,
-    labels = ~name, values = ~value, type = "pie",
+    labels = ~var, values = ~n, type = "pie",
     text = ~label,
     textinfo = "text",
     insidetextorientation = "radial",
@@ -78,22 +69,22 @@ build_pie_chart <- function(data, field, palette = c("#a1d99b", "#31a354"), labe
 #'
 #' @param data Data frame containing date information.
 #' @param n Maximum number of dates to display.
-#' @param date_field Name of the date field.
+#' @param date_column Name of the date column
 #' @return A Shiny UI tag containing an unordered list.
 #' @importFrom lubridate parse_date_time
 #' @importFrom htmltools tags
 #' @keywords internal
-build_most_recent_date_list <- function(data, n = 16, date_field = "obsdateentered") {
-  dates_df <- data.frame(
-    original = data[[date_field]],
-    parsed = lubridate::parse_date_time(
-      data[[date_field]],
-      orders = c("a, d b Y H:M:S z", "d b Y H:M:S", "Y-m-d H:M:S")
-    )
-  )
-  dates_df <- dates_df[!is.na(dates_df$parsed), ]
-  dates_df <- dates_df[!duplicated(dates_df$parsed), ]
-  top_dates <- utils::head(dates_df[order(dates_df$parsed, decreasing = TRUE), ], n)
+build_most_recent_date_list <- function(data, n = 16, date_column = "obsdateentered") {
+  date_formats <- c("a, d b Y H:M:S z", "d b Y H:M:S", "Y-m-d H:M:S")
+  top_dates <- data |>
+    dplyr::select(original = dplyr::all_of(date_column)) |>
+    dplyr::mutate(parsed = lubridate::parse_date_time(
+      data[[date_column]],
+      orders = date_formats
+    )) |>
+    dplyr::filter(!is.na(.data$parsed), !duplicated(.data$parsed)) |>
+    dplyr::arrange(dplyr::desc(.data$parsed)) |>
+    utils::head(n)
   items <- lapply(top_dates$original, function(d) {
     htmltools::tags$li(class = "list-unstyled", htmltools::tags$strong(d))
   })
@@ -106,7 +97,8 @@ build_most_recent_date_list <- function(data, n = 16, date_field = "obsdateenter
 #'
 #' @param data Data frame containing longitude and latitude.
 #' @return A ggplot object.
-#' @importFrom ggplot2 .data ggplot geom_polygon stat_density2d scale_fill_gradient coord_fixed xlim labs theme_minimal map_data after_stat aes
+#' @importFrom ggplot2 .data ggplot geom_polygon stat_density2d scale_fill_gradient coord_fixed
+#' @importFrom ggplot2 xlim labs theme_minimal map_data after_stat aes
 #' @keywords internal
 build_plot_heatmap <- function(data) {
   na_map <- ggplot2::map_data("world", region = c("USA", "Canada", "Mexico"))

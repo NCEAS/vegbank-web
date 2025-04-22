@@ -5,7 +5,7 @@
 #' @param req A Shiny request object.
 #' @return A Shiny tag list.
 ui <- function(req) {
-  shiny::addResourcePath("assets", system.file("shiny/www", package = "VegBankWeb"))
+  shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
   navbar_with_search <- build_navbar()
   overlay <- build_detail_overlay()
@@ -20,7 +20,7 @@ ui <- function(req) {
     Shiny.addCustomMessageHandler('closeDropdown', function(message) {
       // TODO: There has to be a better way to do this
       // this is a workaround for the bootstrap dropdowns not closing
-      // wait briefly for the navbar to update, then strip all dropdown show‐states
+      // wait briefly for the navbar to update, then strip all dropdown show states
       setTimeout(function() {
         document.querySelectorAll('.nav-item.dropdown.show').forEach(function(el) {
           el.classList.remove('show');
