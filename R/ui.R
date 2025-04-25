@@ -34,6 +34,18 @@ ui <- function(req) {
       }, 100);
     });
 
+    Shiny.addCustomMessageHandler('invalidateMapSize', function(message) {
+      var mapWidget = HTMLWidgets.find('#map');
+      if (mapWidget) {
+        var map = mapWidget.getMap();
+        if(map) {
+          setTimeout(function(){
+            map.invalidateSize();
+          }, 300);
+        }
+      }
+    });
+
     $(document).ready(function() {
       var params = new URLSearchParams(window.location.search);
       if(params.get('details_open') === 'true') {

@@ -337,6 +337,12 @@ server <- function(input, output, session) {
     }
   })
 
+  shiny::observeEvent(input$page, {
+    if (input$page == "Map") {
+      session$sendCustomMessage("invalidateMapSize", list())
+    }
+  })
+
   # STATE PERSISTENCE ____________________________________________________________________________
   shiny::onBookmark(function(state_obj) {
     state_obj$values$selected_accession <- state$selected_accession()
