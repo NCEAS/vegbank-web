@@ -281,7 +281,6 @@ server <- function(input, output, session) {
     shiny::req(input$page == "Map")
     shiny::req(state$map_request())
 
-    data <- state$data()
     idx <- state$map_request()
 
     if (length(idx) > 0) {
@@ -320,6 +319,7 @@ server <- function(input, output, session) {
     shiny::updateNavbarPage(session, "page", selected = "Map")
     state$map_request(idx)
     session$sendCustomMessage(type = "closeDropdown", message = list())
+    session$sendCustomMessage("invalidateMapSize", list()) # Invalidate size only when using Show on Map
   })
 
   shiny::observeEvent(input$label_link_click, {
@@ -337,11 +337,11 @@ server <- function(input, output, session) {
     }
   })
 
-  shiny::observeEvent(input$page, {
-    if (input$page == "Map") {
-      session$sendCustomMessage("invalidateMapSize", list())
-    }
-  })
+  # shiny::observeEvent(input$page, {
+  #   if (input$page == "Map") {
+  #     session$sendCustomMessage("invalidateMapSize", list())
+  #   }
+  # })
 
   # STATE PERSISTENCE ____________________________________________________________________________
   shiny::onBookmark(function(state_obj) {

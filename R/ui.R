@@ -41,7 +41,7 @@ ui <- function(req) {
         if(map) {
           setTimeout(function(){
             map.invalidateSize();
-          }, 300);
+          }, 100);
         }
       }
     });

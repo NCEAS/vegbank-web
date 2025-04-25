@@ -113,7 +113,7 @@ plot_map <- (function() {
               "border-radius" = "3px"
             )
           ),
-          clusterOptions = leaflet::markerClusterOptions()
+          clusterOptions = leaflet::markerClusterOptions(disableClusteringAtZoom = 17)
         ) |>
         add_zoom_control()
     }
