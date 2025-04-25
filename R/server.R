@@ -277,17 +277,29 @@ server <- function(input, output, session) {
     }
   })
 
-  shiny::observe({
-    shiny::req(input$page == "Map")
-    shiny::req(state$map_request())
+  shiny::observeEvent(input$show_on_map, {
+    idx <- as.numeric(input$show_on_map)
+    state$map_request(idx)
+    shiny::updateNavbarPage(session, "page", selected = "Map")
+    session$sendCustomMessage(type = "closeDropdown", message = list())
 
-    idx <- state$map_request()
+    # Create a self-destroying observer instead of using once=TRUE
+    map_update_observer <- shiny::observe({
+      # Only proceed if we're on the map page
+      shiny::req(input$page == "Map")
 
-    if (length(idx) > 0) {
-      shiny::invalidateLater(100)
-      update_map_view(idx)
-      state$map_request(NULL)
-    }
+      idx <- state$map_request()
+      if (!is.null(idx) && length(idx) > 0) {
+        # First trigger invalidateSize (this avoids the need for a timer)
+        session$sendCustomMessage("invalidateMapSize", list())
+        # Then update the map view (the sizing will already be fixed)
+        update_map_view(idx)
+        state$map_request(NULL)
+
+        # Destroy this observer after it runs
+        map_update_observer$destroy()
+      }
+    })
   })
 
   shiny::observeEvent(input$see_details, {
@@ -314,14 +326,6 @@ server <- function(input, output, session) {
     session$doBookmark()
   })
 
-  shiny::observeEvent(input$show_on_map, {
-    idx <- as.numeric(input$show_on_map)
-    shiny::updateNavbarPage(session, "page", selected = "Map")
-    state$map_request(idx)
-    session$sendCustomMessage(type = "closeDropdown", message = list())
-    session$sendCustomMessage("invalidateMapSize", list()) # Invalidate size only when using Show on Map
-  })
-
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
@@ -337,10 +341,8 @@ server <- function(input, output, session) {
     }
   })
 
-  # shiny::observeEvent(input$page, {
-  #   if (input$page == "Map") {
-  #     session$sendCustomMessage("invalidateMapSize", list())
-  #   }
+  # shiny::observeEvent(input$table_tab_shown, {
+  #   DT::dataTableProxy("dataTable") %>% DT::reloadData()
   # })
 
   # STATE PERSISTENCE ____________________________________________________________________________
