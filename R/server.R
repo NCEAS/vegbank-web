@@ -281,7 +281,6 @@ server <- function(input, output, session) {
     idx <- as.numeric(input$show_on_map)
     state$map_request(idx)
     shiny::updateNavbarPage(session, "page", selected = "Map")
-    session$sendCustomMessage(type = "closeDropdown", message = list())
 
     # Create a self-destroying observer instead of using once=TRUE
     map_update_observer <- shiny::observe({
@@ -290,6 +289,7 @@ server <- function(input, output, session) {
 
       idx <- state$map_request()
       if (!is.null(idx) && length(idx) > 0) {
+        session$sendCustomMessage(type = "closeDropdown", message = list())
         # First trigger invalidateSize (this avoids the need for a timer)
         session$sendCustomMessage("invalidateMapSize", list())
         # Then update the map view (the sizing will already be fixed)
