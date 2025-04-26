@@ -57,3 +57,23 @@ build_action_buttons <- function(i) {
     )
   )
 }
+
+#' Build Community Link
+#'
+#' Creates a clickable link for community names in the table.
+#'
+#' @param name The community name to display as link text.
+#' @param code The accession code to pass when the link is clicked.
+#' @return A character string containing the HTML link, or the original name if no code.
+#' @keywords internal
+build_community_link <- function(name, code) {
+  if (is.na(name) || name == "Unknown" || is.na(code)) {
+    return(as.character(name))
+  }
+  # Return a raw HTML string for the clickable link
+  sprintf(
+    '<a href="#" style="color:#2c5443; text-decoration:underline; font-weight:bold;"
+        onclick="Shiny.setInputValue(\'comm_link_click\', \'%s\', {priority: \'event\'}); return false;">%s</a>',
+    code, name
+  )
+}
