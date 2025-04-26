@@ -122,3 +122,41 @@ build_details_view <- function(selected_data) {
     taxa_details = taxa_details_ui
   )
 }
+
+#' Build Community Details View
+#'
+#' Constructs a list of Shiny UI outputs for displaying detailed community information.
+#'
+#' @param community_data A data row representing the selected community.
+#' @return A list of Shiny UI outputs.
+#' @importFrom htmltools tags HTML
+#' @importFrom shiny renderUI
+#' @keywords internal
+build_community_details_view <- function(community_data) {
+  if (is.null(community_data) || nrow(community_data) == 0) {
+    return(list(
+      community_name = shiny::renderUI({
+        htmltools::tags$p("Community details not available")
+      }),
+      community_description = shiny::renderUI({
+        htmltools::tags$p("No description available")
+      })
+    ))
+  }
+
+  # Take first row if multiple are returned
+  community_data <- community_data[1, ]
+
+  list(
+    community_name = shiny::renderUI({
+      htmltools::tags$b(community_data$commname)
+    }),
+    community_description = shiny::renderUI({
+      # The description contains HTML entities that need to be properly rendered
+      htmltools::tags$div(
+        id = "community-description",
+        htmltools::HTML(community_data$commdescription)
+      )
+    })
+  )
+}

@@ -25,6 +25,8 @@ server <- function(input, output, session) {
     selected_accession = shiny::reactiveVal(NULL),
     details_open = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
+    selected_community_accession = shiny::reactiveVal(NULL),
+    detail_type = shiny::reactiveVal(NULL), # Tracks detail type - "plot" or "community"
     pagination = list(
       current_page_size = shiny::reactiveVal(100),
       last_plot_id = shiny::reactiveVal(NULL),
@@ -136,11 +138,57 @@ server <- function(input, output, session) {
         output$plot_quality_details <- details$plot_quality_details
         output$taxaDetails <- details$taxa_details
 
+        # Clear community details
+        output$community_name <- shiny::renderUI(NULL)
+        output$community_description <- shiny::renderUI(NULL)
+
         state$selected_accession(accession_code)
         state$details_open(TRUE)
+        state$detail_type("plot") # Set to plot type
 
         complete("Details ready")
         session$sendCustomMessage("openOverlay", list())
+        session$sendCustomMessage("updateDetailType", list(type = "plot"))
+
+        TRUE
+      }
+    })
+  }
+
+  # New function to handle community details
+  update_and_open_community_details <- function(accession_code) {
+    show_progress("Loading community details...")(function(step, complete) {
+      step(0.2, "Fetching community details")
+
+      result <- veg_bank_api$get_community_details(accession_code)
+
+      if (!result$success) {
+        step(0.3, "Error loading community details")
+        shiny::showNotification("Failed to load community details. Please try again.", type = "error")
+        FALSE
+      } else {
+        step(0.5, "Processing community details")
+
+        details <- build_community_details_view(result$data)
+        output$plot_id_details <- shiny::renderUI(NULL)
+        output$locationDetails <- shiny::renderUI(NULL)
+        output$layout_details <- shiny::renderUI(NULL)
+        output$environmental_details <- shiny::renderUI(NULL)
+        output$methods_details <- shiny::renderUI(NULL)
+        output$plot_quality_details <- shiny::renderUI(NULL)
+        output$taxaDetails <- shiny::renderUI(NULL)
+
+        # Add new outputs for community details
+        output$community_name <- details$community_name
+        output$community_description <- details$community_description
+
+        state$selected_community_accession(accession_code)
+        state$details_open(TRUE)
+        state$detail_type("community") # Set to community type
+
+        complete("Community details ready")
+        session$sendCustomMessage("openOverlay", list())
+        session$sendCustomMessage("updateDetailType", list(type = "community"))
 
         TRUE
       }
@@ -282,7 +330,7 @@ server <- function(input, output, session) {
     state$map_request(idx)
     shiny::updateNavbarPage(session, "page", selected = "Map")
 
-    # Create a self-destroying observer instead of using once=TRUE
+    # Create a self-destroying observer
     map_update_observer <- shiny::observe({
       # Only proceed if we're on the map page
       shiny::req(input$page == "Map")
@@ -290,13 +338,10 @@ server <- function(input, output, session) {
       idx <- state$map_request()
       if (!is.null(idx) && length(idx) > 0) {
         session$sendCustomMessage(type = "closeDropdown", message = list())
-        # First trigger invalidateSize (this avoids the need for a timer)
         session$sendCustomMessage("invalidateMapSize", list())
-        # Then update the map view (the sizing will already be fixed)
         update_map_view(idx)
         state$map_request(NULL)
 
-        # Destroy this observer after it runs
         map_update_observer$destroy()
       }
     })
@@ -323,6 +368,8 @@ server <- function(input, output, session) {
 
     state$details_open(FALSE)
     state$selected_accession(NULL)
+    state$selected_community_accession(NULL) # Reset community accession as well
+    state$detail_type(NULL) # Reset detail type
     session$doBookmark()
   })
 
@@ -333,6 +380,13 @@ server <- function(input, output, session) {
     }
   })
 
+  shiny::observeEvent(input$comm_link_click, {
+    accession_code <- input$comm_link_click
+    if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      update_and_open_community_details(accession_code)
+    }
+  })
+
   shiny::observeEvent(input$search_enter, {
     if (!state$data_loading()) {
       shiny::updateNavbarPage(session, "page", selected = "Table")
@@ -340,10 +394,6 @@ server <- function(input, output, session) {
       fetch_table_data()
     }
   })
-
-  # shiny::observeEvent(input$table_tab_shown, {
-  #   DT::dataTableProxy("dataTable") %>% DT::reloadData()
-  # })
 
   # STATE PERSISTENCE ____________________________________________________________________________
   shiny::onBookmark(function(state_obj) {

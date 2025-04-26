@@ -49,7 +49,24 @@ ui <- function(req) {
             document.getElementById('detail-overlay').style.right = '0px';
         }
       }
-     });"
+     });
+
+    Shiny.addCustomMessageHandler('updateDetailType', function(message) {
+      const type = message.type;
+      const plotCards = document.getElementById('plot-details-cards');
+      const communityCards = document.getElementById('community-details-cards');
+
+      if (plotCards && communityCards) {
+        if (type === 'plot') {
+          plotCards.style.display = 'block';
+          communityCards.style.display = 'none';
+        } else if (type === 'community') {
+          plotCards.style.display = 'none';
+          communityCards.style.display = 'block';
+        }
+      }
+    });
+  "
   ))
 
   btn_script <- htmltools::tags$script(htmltools::HTML(
@@ -64,7 +81,7 @@ ui <- function(req) {
   ))
 
   tab_shown_script <- htmltools::tags$script(htmltools::HTML("
-    $('#page li a[data-bs-toggle=\"tab\"], 
+    $('#page li a[data-bs-toggle=\"tab\"],
       #page li a[data-toggle=\"tab\"]').on('shown.bs.tab', function(e) {
       var targetID = $(e.target).attr('href');
       if (targetID.includes('Table')) {
@@ -132,6 +149,12 @@ custom_theme <- bslib::bs_add_rules(
      }
      .form-control {
          height: 36px;
+     }
+     .detail-section {
+         display: none; /* Hide by default */
+     }
+     #community-description p {
+         margin-bottom: 0.75rem;
      }"
 )
 
@@ -251,13 +274,26 @@ build_detail_overlay <- function() {
     shiny::fluidRow(
       shiny::column(
         12,
-        bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
-        bslib::card(bslib::card_header("Location"), shiny::uiOutput("locationDetails")),
-        bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
-        bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),
-        bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
-        bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
-        bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxaDetails"))
+        # Plot Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "plot-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
+          bslib::card(bslib::card_header("Location"), shiny::uiOutput("locationDetails")),
+          bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
+          bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),
+          bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
+          bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
+          bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxaDetails"))
+        ),
+
+        # Community Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "community-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Community Name"), shiny::uiOutput("community_name")),
+          bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description"))
+        )
       )
     )
   )
