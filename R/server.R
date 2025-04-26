@@ -116,83 +116,13 @@ server <- function(input, output, session) {
     })
   }
 
+  # Replace the separate detail view functions with our generic one
   update_and_open_details <- function(accession_code) {
-    show_progress("Loading details...")(function(step, complete) {
-      step(0.2, "Fetching details")
-
-      result <- veg_bank_api$get_observation_details(accession_code)
-
-      if (!result$success) {
-        step(0.3, "Error loading details")
-        shiny::showNotification("Failed to load details. Please try again.", type = "error")
-        FALSE
-      } else {
-        step(0.5, "Processing details")
-
-        details <- build_details_view(result$data)
-        output$plot_id_details <- details$plot_id_details
-        output$locationDetails <- details$location_details
-        output$layout_details <- details$layout_details
-        output$environmental_details <- details$environmental_details
-        output$methods_details <- details$methods_details
-        output$plot_quality_details <- details$plot_quality_details
-        output$taxaDetails <- details$taxa_details
-
-        # Clear community details
-        output$community_name <- shiny::renderUI(NULL)
-        output$community_description <- shiny::renderUI(NULL)
-
-        state$selected_accession(accession_code)
-        state$details_open(TRUE)
-        state$detail_type("plot") # Set to plot type
-
-        complete("Details ready")
-        session$sendCustomMessage("openOverlay", list())
-        session$sendCustomMessage("updateDetailType", list(type = "plot"))
-
-        TRUE
-      }
-    })
+    show_detail_view("plot", accession_code, state, output, session, veg_bank_api)
   }
 
-  # New function to handle community details
   update_and_open_community_details <- function(accession_code) {
-    show_progress("Loading community details...")(function(step, complete) {
-      step(0.2, "Fetching community details")
-
-      result <- veg_bank_api$get_community_details(accession_code)
-
-      if (!result$success) {
-        step(0.3, "Error loading community details")
-        shiny::showNotification("Failed to load community details. Please try again.", type = "error")
-        FALSE
-      } else {
-        step(0.5, "Processing community details")
-
-        details <- build_community_details_view(result$data)
-        output$plot_id_details <- shiny::renderUI(NULL)
-        output$locationDetails <- shiny::renderUI(NULL)
-        output$layout_details <- shiny::renderUI(NULL)
-        output$environmental_details <- shiny::renderUI(NULL)
-        output$methods_details <- shiny::renderUI(NULL)
-        output$plot_quality_details <- shiny::renderUI(NULL)
-        output$taxaDetails <- shiny::renderUI(NULL)
-
-        # Add new outputs for community details
-        output$community_name <- details$community_name
-        output$community_description <- details$community_description
-
-        state$selected_community_accession(accession_code)
-        state$details_open(TRUE)
-        state$detail_type("community") # Set to community type
-
-        complete("Community details ready")
-        session$sendCustomMessage("openOverlay", list())
-        session$sendCustomMessage("updateDetailType", list(type = "community"))
-
-        TRUE
-      }
-    })
+    show_detail_view("community", accession_code, state, output, session, veg_bank_api)
   }
 
   find_page_with_accession <- function(accession_code, callback) {
