@@ -19,8 +19,7 @@ ui <- function(req) {
 
     Shiny.addCustomMessageHandler('closeDropdown', function(message) {
       // TODO: There has to be a better way to do this
-      // this is a workaround for the bootstrap dropdowns not closing
-      // wait briefly for the navbar to update, then strip all dropdown show states
+      // this workaround for the plot dropdown not closing just strips all dropdown show states
         document.querySelectorAll('.nav-item.dropdown.show').forEach(function(el) {
           el.classList.remove('show');
         });

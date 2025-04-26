@@ -5,7 +5,7 @@
 \alias{veg_bank_api}
 \title{VegBank API Client Module}
 \format{
-An object of class \code{list} of length 3.
+An object of class \code{list} of length 4.
 }
 \usage{
 veg_bank_api
