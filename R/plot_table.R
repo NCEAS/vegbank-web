@@ -124,28 +124,32 @@ plot_table <- (function() {
           list(targets = c(3), width = "45%"),
           list(
             targets = c(4), width = "20%",
-            # Use a rendering function to create links
+            # Simplified rendering function for community links
             render = DT::JS(
-              "function(data, type, row, meta) {
-                    if (type === 'display' && data !== 'Unknown') {
-                      var accCodes = ",
-              jsonlite::toJSON(comm_codes),
-              ";
-                      var accCode = accCodes[meta.row];
-                      if (accCode && accCode !== 'NA') {
-                        return '<a href=\"#\" onclick=\"Shiny.setInputValue(\\'comm_link_click\\', \\'' +
-                               accCode + '\\', {priority: \\'event\\'}); return false;\">' + data + '</a>';
-                      }
-                    }
-                    return data;
-                  }"
+              sprintf(
+                'function(data, type, row, meta) {
+                  // Only modify display type and valid data
+                  if (type !== "display" || data === "Unknown") return data;
+
+                  // Get the accession code for this row
+                  var codes = %s;
+                  var code = codes[meta.row];
+
+                  // Only create link if we have a valid code
+                  if (code && code !== "NA") {
+                    return "<a href=\'#\' onclick=\'Shiny.setInputValue(\\"comm_link_click\\", \\"" +
+                           code + "\\", {priority: \\"event\\"}); return false;\'>" + data + "</a>";
+                  }
+
+                  return data;
+                }',
+                jsonlite::toJSON(comm_codes)
+              )
             )
           )
         )
       )
     )
-
-    return(dt)
   }
 
   list(
