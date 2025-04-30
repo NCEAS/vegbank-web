@@ -71,7 +71,6 @@ plot_table <- (function() {
       escape = FALSE,  # Render all HTML strings
       selection = list(mode = "single", target = "row", selectable = FALSE),
       options = list(
-        dom = "ft",
         pageLength = 100,
         scrollY = "calc(100vh - 300px)",
         scrollX = TRUE,

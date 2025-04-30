@@ -70,12 +70,19 @@ ui <- function(req) {
 
   btn_script <- htmltools::tags$script(htmltools::HTML(
     '$(document).on("click", ".details-btn", function() {
-         var idx = $(this).data("row");
-         Shiny.setInputValue("see_details", idx, {priority:"event"});
+         var plotId = $(this).data("row");
+         Shiny.setInputValue("see_details", plotId, {priority:"event"});
+         return false;
     });
     $(document).on("click", ".map-btn", function() {
          var acc = $(this).data("acc");
          Shiny.setInputValue("show_on_map", acc, {priority:"event"});
+         return false;
+    });
+    $(document).on("click", ".community-link", function() {
+         var acc = $(this).data("acc");
+         Shiny.setInputValue("comm_link_click", acc, {priority:"event"});
+         return false;
     });'
   ))
 
@@ -207,8 +214,7 @@ build_navbar <- function() {
       bslib::nav_panel(
         title = "Table",
         shiny::fluidPage(
-          DT::dataTableOutput("dataTable"),
-          shiny::uiOutput("tablePagination"),
+          DT::dataTableOutput("dataTable")
         )
       ),
       bslib::nav_panel(
