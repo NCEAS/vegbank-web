@@ -1,4 +1,4 @@
-Package: VegBankWeb
+Package: vegbankweb
 Type: Package
 Title: "VegBank Web: A Shiny Application for Vegetation Plot Data"
 Version: 0.1.0
@@ -17,6 +17,7 @@ Imports:
     lubridate (>= 1.8.0),
     htmltools (>= 0.5.2),
     htmlwidgets (>= 1.5.4),
+    httr (>= 1.4.2),
     bslib (>= 0.3.1)
 Encoding: UTF-8
 LazyData: true

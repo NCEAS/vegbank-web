@@ -5,7 +5,7 @@
 #' @param req A Shiny request object.
 #' @return A Shiny tag list.
 ui <- function(req) {
-  shiny::addResourcePath("assets", system.file("shiny/www", package = "VegBankWeb"))
+  shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
   navbar_with_search <- build_navbar()
   overlay <- build_detail_overlay()
@@ -14,7 +14,31 @@ ui <- function(req) {
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
       if (document.getElementById('detail-overlay')) {
         document.getElementById('detail-overlay').style.right = '0px';
-      }     
+      }
+    });
+
+    Shiny.addCustomMessageHandler('closeDropdown', function(message) {
+      // TODO: There has to be a better way to do this
+      // this workaround for the plot dropdown not closing just strips all dropdown show states
+        document.querySelectorAll('.nav-item.dropdown.show').forEach(function(el) {
+          el.classList.remove('show');
+        });
+        document.querySelectorAll('.dropdown-menu.show').forEach(function(el) {
+          el.classList.remove('show');
+        });
+        document.querySelectorAll('.dropdown-toggle[aria-expanded=\"true\"]').forEach(function(el) {
+          el.setAttribute('aria-expanded', 'false');
+        });
+    });
+
+    Shiny.addCustomMessageHandler('invalidateMapSize', function(message) {
+      var mapWidget = HTMLWidgets.find('#map');
+      if (mapWidget) {
+        var map = mapWidget.getMap();
+        if(map) {
+          map.invalidateSize();
+        }
+      }
     });
 
     $(document).ready(function() {
@@ -22,9 +46,26 @@ ui <- function(req) {
       if(params.get('details_open') === 'true') {
         if (document.getElementById('detail-overlay')) {
             document.getElementById('detail-overlay').style.right = '0px';
-        }         
+        }
       }
-     });"
+     });
+
+    Shiny.addCustomMessageHandler('updateDetailType', function(message) {
+      const type = message.type;
+      const plotCards = document.getElementById('plot-details-cards');
+      const communityCards = document.getElementById('community-details-cards');
+
+      if (plotCards && communityCards) {
+        if (type === 'plot') {
+          plotCards.style.display = 'block';
+          communityCards.style.display = 'none';
+        } else if (type === 'community') {
+          plotCards.style.display = 'none';
+          communityCards.style.display = 'block';
+        }
+      }
+    });
+  "
   ))
 
   btn_script <- htmltools::tags$script(htmltools::HTML(
@@ -37,7 +78,20 @@ ui <- function(req) {
          Shiny.setInputValue("show_on_map", acc, {priority:"event"});
     });'
   ))
-  htmltools::tagList(navbar_with_search, overlay, script, btn_script)
+
+  tab_shown_script <- htmltools::tags$script(htmltools::HTML("
+    $('#page li a[data-bs-toggle=\"tab\"],
+      #page li a[data-toggle=\"tab\"]').on('shown.bs.tab', function(e) {
+      var targetID = $(e.target).attr('href');
+      if (targetID.includes('Table')) {
+        Shiny.setInputValue('table_tab_shown', true, {priority:'event'});
+      } else if (targetID.includes('Map')) {
+        Shiny.setInputValue('map_tab_shown', true, {priority:'event'});
+      }
+    });
+  "))
+
+  htmltools::tagList(navbar_with_search, overlay, script, btn_script, tab_shown_script)
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
@@ -94,6 +148,12 @@ custom_theme <- bslib::bs_add_rules(
      }
      .form-control {
          height: 36px;
+     }
+     .detail-section {
+         display: none; /* Hide by default */
+     }
+     #community-description p {
+         margin-bottom: 0.75rem;
      }"
 )
 
@@ -139,43 +199,22 @@ build_navbar <- function() {
               bslib::card_body(shiny::uiOutput("dataSummary"))
             )
           )
-        ),
-        shiny::fluidRow(
-          shiny::column(4, bslib::card(
-            bslib::card_header("Top Places"),
-            bslib::card_body(shiny::plotOutput("topPlaces"))
-          )),
-          shiny::column(4, bslib::card(
-            bslib::card_header("Top Species"),
-            bslib::card_body(shiny::plotOutput("topSpecies"))
-          )),
-          shiny::column(4, bslib::card(
-            bslib::card_header("Most Recent Uploads"),
-            bslib::card_body(shiny::uiOutput("mostRecentUploads"))
-          ))
-        ),
-        shiny::fluidRow(
-          shiny::column(
-            6,
-            bslib::card(
-              bslib::card_header("Authors"),
-              bslib::card_body(plotly::plotlyOutput("authorPie"))
-            )
-          ),
-          shiny::column(
-            6,
-            bslib::card(
-              bslib::card_header("Plot Heatmap"),
-              bslib::card_body(shiny::plotOutput("plotHeatmap"))
-            )
-          )
         )
       )
     ),
     bslib::nav_menu(
       title = "Plots",
-      bslib::nav_panel(title = "Table", DT::dataTableOutput("dataTable")),
-      bslib::nav_panel(title = "Map", leaflet::leafletOutput("map"))
+      bslib::nav_panel(
+        title = "Table",
+        shiny::fluidPage(
+          DT::dataTableOutput("dataTable"),
+          shiny::uiOutput("tablePagination"),
+        )
+      ),
+      bslib::nav_panel(
+        title = "Map",
+        leaflet::leafletOutput("map")
+      )
     ),
     bslib::nav_menu(
       title = "Plants",
@@ -234,13 +273,26 @@ build_detail_overlay <- function() {
     shiny::fluidRow(
       shiny::column(
         12,
-        bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
-        bslib::card(bslib::card_header("Location"), shiny::uiOutput("locationDetails")),
-        bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
-        bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),
-        bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
-        bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
-        bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxaDetails"))
+        # Plot Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "plot-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
+          bslib::card(bslib::card_header("Location"), shiny::uiOutput("locationDetails")),
+          bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
+          bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),
+          bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
+          bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
+          bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxaDetails"))
+        ),
+
+        # Community Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "community-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Community Name"), shiny::uiOutput("community_name")),
+          bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description"))
+        )
       )
     )
   )

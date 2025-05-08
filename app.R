@@ -3,7 +3,7 @@ withr::with_options(new = list(shiny.autoload.r = FALSE), code = {
     sink(stderr(), type = "output")
     tryCatch(
       expr = {
-        library(VegBankWeb)
+        library(vegbankweb)
       },
       error = function(e) {
         pkgload::load_all()
@@ -12,7 +12,7 @@ withr::with_options(new = list(shiny.autoload.r = FALSE), code = {
   } else {
     pkgload::load_all()
   }
-  VegBankWeb::run_app(
+  vegbankweb::run_app(
     options = list(test.mode = TRUE)
   )
 })

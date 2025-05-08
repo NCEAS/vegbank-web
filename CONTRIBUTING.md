@@ -16,7 +16,7 @@ We welcome all types of contributions, including bug fixes, feature
 enhancements, bug reports, documentation, graphics, and many others. You
 might consider contributing by:
 
-- Report a bug or request a new feature in our [issue tracker](https://github.com/NCEAS/vegbankr/issues)
+- Report a bug or request a new feature in our [issue tracker](https://github.com/NCEAS/vegbank-web/issues)
 - Fix a bug and contribute the code with a Pull Request
 - Write or edit some documentation
 - Sharing helpful tips or FAQ-type answers to users or future contributors
@@ -35,9 +35,9 @@ pull-requests](https://help.github.com/articles/about-pull-requests/).
 
 In short:
 
-- add an [issue](https://github.com/NCEAS/vegbankr/issues) describing
+- add an [issue](https://github.com/NCEAS/vegbank-web/issues) describing
   your planned changes, or add a comment to an existing issue;
-- on GitHub, fork the [repository](https://github.com/NCEAS/vegbankr)
+- on GitHub, fork the [repository](https://github.com/NCEAS/vegbank-web)
 - on your computer, clone your forked copy of the repository
 - base your work on the `develop` branch and commit your changes
 - push your branch to your forked repository, and submit a pull-request
@@ -50,7 +50,7 @@ In short:
 ## 🚀 Development Workflow
 
 Development is managed through the git repository at
-https://github.com/NCEAS/vegbankr. The repository is organized into
+https://github.com/NCEAS/vegbank-web. The repository is organized into
 several branches, each with a specific purpose.
 
 **main**. The `main` branch represents the stable branch that is
@@ -148,7 +148,7 @@ gitGraph
    the `develop` branch can be fast-forwarded to sync with `main` to
    start work on the next release.
 3. Releases can be downloaded from the [GitHub releases
-   page](https://github.com/NCEAS/vegbankr/releases).
+   page](https://github.com/NCEAS/vegbank-web/releases).
 
 ## 🔬 Testing
 
@@ -161,7 +161,7 @@ corrupt or bad data. All tests should pass before submitting a PR or
 merging to `develop`.
 
 Tests are automatically run via GitHub Actions. Check the root
-`README.md` file for e GitHub Actions status badge and make sure it
+`README.md` file for the GitHub Actions status badge and make sure it
 says "Passing".
 
 ## 🎨 Code style
