@@ -79,19 +79,7 @@ ui <- function(req) {
     });'
   ))
 
-  tab_shown_script <- htmltools::tags$script(htmltools::HTML("
-    $('#page li a[data-bs-toggle=\"tab\"],
-      #page li a[data-toggle=\"tab\"]').on('shown.bs.tab', function(e) {
-      var targetID = $(e.target).attr('href');
-      if (targetID.includes('Table')) {
-        Shiny.setInputValue('table_tab_shown', true, {priority:'event'});
-      } else if (targetID.includes('Map')) {
-        Shiny.setInputValue('map_tab_shown', true, {priority:'event'});
-      }
-    });
-  "))
-
-  htmltools::tagList(navbar_with_search, overlay, script, btn_script, tab_shown_script)
+  htmltools::tagList(navbar_with_search, overlay, script, btn_script)
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application

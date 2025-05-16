@@ -27,11 +27,6 @@ server <- function(input, output, session) {
     map_request = shiny::reactiveVal(NULL),
     selected_community_accession = shiny::reactiveVal(NULL),
     detail_type = shiny::reactiveVal(NULL), # Tracks detail type - "plot" or "community"
-    # pagination = list(
-    #   current_page_size = shiny::reactiveVal(100),
-    #   last_plot_id = shiny::reactiveVal(NULL),
-    #   has_more_data = shiny::reactiveVal(TRUE)
-    # ),
     plot_data = shiny::reactiveVal(NULL),
     taxa_data = shiny::reactiveVal(NULL)
   )
@@ -40,87 +35,6 @@ server <- function(input, output, session) {
   full_data <- readRDS("inst/shiny/www/plot_obs_minimal_all.RDS")
   state$plot_data(full_data)
   state$taxa_data(readRDS("inst/shiny/www/taxa_top5.RDS"))
-
-  # Create a function to get paginated data
-  get_paginated_data <- function(start = 0, length = 100) {
-    data <- full_data
-    total <- nrow(data)
-
-    # Calculate end point, ensuring we don't exceed data bounds
-    end <- min(start + length - 1, total)
-
-    # Slice just the data we need for this page
-    if (end >= start && start < total) {
-      page_data <- data[seq(start + 1, end + 1), , drop = FALSE]
-      return(list(data = page_data, recordsTotal = total, recordsFiltered = total))
-    } else {
-      return(list(data = data[0, , drop = FALSE], recordsTotal = total, recordsFiltered = total))
-    }
-  }
-
-  # HELPER FUNCTIONS ______________________________________________________________________________
-  # update_pagination_state <- function(data, page_size) {
-  #   if ("has_more" %in% names(data)) {
-  #     state$pagination$has_more_data(data$has_more)
-  #     data <- data$results
-  #   } else {
-  #     state$pagination$has_more_data(nrow(data) >= page_size)
-  #   }
-
-  #   if (nrow(data) > 0) {
-  #     state$pagination$last_plot_id(data$plot_id[nrow(data)])
-  #   }
-
-  #   data
-  # }
-
-  # DATA OPERATIONS _______________________________________________________________________________
-  # fetch_table_data <- function(page_size = NULL, prev_plot_id = NULL, force_refresh = FALSE) {
-  #   data <- state$plot_data()
-  # Don't fetch if already loading
-  # if (state$data_loading()) {
-  #   return(NULL)
-  # }
-
-  # # Mark as loading
-  # state$data_loading(TRUE)
-
-  # page_size <- if (is.null(page_size)) state$pagination$current_page_size() else page_size
-
-  # withProgress(
-  #   message = "Loading table data...",
-  #   value = 0,
-  #   {
-  #     incProgress(0.2, "Fetching data")
-
-  #     result <- veg_bank_api$get_table_data(page_size, prev_plot_id)
-
-  #     if (!result$success) {
-  #       incProgress(0.2, "Error loading data")
-  #       shiny::showNotification("Failed to load data. Please try again.", type = "error")
-  #     } else {
-  #       incProgress(0.3, "Processing data")
-  #       data <- update_pagination_state(result$data, page_size)
-  #       state$data(data)
-  #     }
-
-  #     # Mark as done loading regardless of success/failure
-  #     state$data_loading(FALSE)
-
-  #     incProgress(0.5, "Done")
-  #   }
-  # )
-  # }
-
-  # Separate observer to handle data loading
-  # observeEvent(input$page,
-  #   {
-  #     if (input$page == "Table" && is.null(state$data()) && !state$data_loading()) {
-  #       fetch_table_data()
-  #     }
-  #   },
-  #   ignoreInit = FALSE
-  # )
 
   fetch_map_data <- function() {
     show_progress("Loading map data...")(function(step, complete) {
@@ -149,51 +63,6 @@ server <- function(input, output, session) {
   update_and_open_community_details <- function(accession_code) {
     show_detail_view("community", accession_code, state, output, session, veg_bank_api)
   }
-
-  # find_page_with_accession <- function(accession_code, callback) {
-  #   state$pagination$last_plot_id(NULL)
-
-  #   search_for_accession <- function() {
-  #     current_data <- state$data()
-
-  #     if (!is.null(current_data)) {
-  #       idx <- which(current_data$obsaccessioncode == accession_code)
-  #       if (length(idx) > 0) {
-  #         callback(idx)
-  #         TRUE
-  #       } else if (state$pagination$has_more_data()) {
-  #         fetch_table_data(prev_plot_id = state$pagination$last_plot_id())
-  #         FALSE
-  #       } else {
-  #         message("Accession code not found in any page: ", accession_code)
-  #         TRUE
-  #       }
-  #     } else {
-  #       if (state$pagination$has_more_data()) {
-  #         fetch_table_data(prev_plot_id = state$pagination$last_plot_id())
-  #         FALSE
-  #       } else {
-  #         message("Accession code not found in any page: ", accession_code)
-  #         TRUE
-  #       }
-  #     }
-  #   }
-
-  #   found <- search_for_accession()
-
-  #   if (!found) {
-  #     search_timer <- shiny::reactiveTimer(500)
-  #     shiny::observe({
-  #       search_timer()
-  #       found <- search_for_accession()
-  #       if (found) {
-  #         # Fix the observeEvent.priority issue
-  #         # This should be handled differently - perhaps with priority in observeEvent
-  #         shiny::getDefaultReactiveDomain()$flushQueue()
-  #       }
-  #     })
-  #   }
-  # }
 
   update_map_view <- function(idx) {
     data <- state$data()
@@ -230,110 +99,103 @@ server <- function(input, output, session) {
       ))
     }
 
+    # Pre-generate the action buttons in R - more reliable than JS manipulation
+    action_buttons <- vapply(seq_len(nrow(data)), function(i) {
+      sprintf(
+        '<div class="btn-group btn-group-sm">
+          <button class="btn btn-sm btn-outline-primary" 
+                  onclick="Shiny.setInputValue(\'see_details\', %d, {priority: \'event\'})">Details</button>
+          <button class="btn btn-sm btn-outline-secondary"
+                  onclick="Shiny.setInputValue(\'show_on_map\', %d, {priority: \'event\'})">Map</button>
+         </div>',
+        i, i
+      )
+    }, character(1))
+    
+    # Add the pre-generated buttons as a column
+    data <- cbind(Actions = action_buttons, data)
+
     # Create the datatable with options for large datasets
     DT::datatable(
       data,
       rownames = FALSE,
-      escape = FALSE,
+      escape = FALSE,  # Important: Allow HTML in the Actions column
       selection = list(mode = "single", target = "row", selectable = FALSE),
       options = list(
-        dom = "Bfrtip",
-        buttons = list(
-          list(extend = "csv", filename = "plot_data"),
-          list(extend = "excel", filename = "plot_data"),
-          list(extend = "pdf", filename = "plot_data")
-        ),
+        dom = "frtip",  # Simplified DOM structure
         pageLength = 100,
         scrollY = "calc(100vh - 300px)",
         scrollX = TRUE,
         scrollCollapse = TRUE,
-        autoWidth = TRUE,
-        deferRender = TRUE, # Only create HTML elements when they're needed
-        processing = TRUE, # Show "Processing" indicator
-        searchDelay = 500 # Add delay to search to improve performance
-      ),
-      callback = DT::JS("
-        const addButtons = function(table) {
-          // Add buttons on draw
-          table.on('draw.dt', function() {
-            table.rows().nodes().to$().each(function(i, row) {
-              var rowIdx = table.row(row).index();
-              // Add action buttons
-              $(row).prepend('<td><div class=\"btn-group btn-group-sm\">' +
-                '<button class=\"btn btn-sm btn-outline-primary details-btn\" data-row=\"' + rowIdx + '\">Details</button> ' +
-                '<button class=\"btn btn-sm btn-outline-secondary map-btn\" data-acc=\"' + rowIdx + '\">Map</button>' +
-                '</div></td>');
-            });
-          });
-
-          // Initial draw to add buttons
-          setTimeout(function() { table.draw(); }, 100);
-        }
-        addButtons(table);
-      ")
+        deferRender = TRUE,
+        processing = TRUE,
+        columnDefs = list(
+          # Make the actions column not sortable or searchable
+          list(targets = 0, orderable = FALSE, searchable = FALSE, width = "120px")
+        )
+      )
     )
   })
-
-  # Remove the now unneeded event handler that was causing issues
-  # observeEvent(input$dt_pagination, { ... })
-
-  # output$tablePagination <- shiny::renderUI({
-  #   # Only show pagination UI if we have data
-  #   if (!is.null(state$data())) {
-  #     shiny::fluidRow(
-  #       shiny::column(
-  #         12,
-  #         shiny::div(
-  #           class = "d-flex justify-content-between align-items-center mt-2",
-  #           shiny::div(
-  #             class = "pagination-info",
-  #             shiny::textOutput("paginationStatus")
-  #           ),
-  #           shiny::div(
-  #             class = "pagination-controls",
-  #             shiny::actionButton("prevPage", "Previous", class = "btn btn-outline-secondary"),
-  #             shiny::actionButton("nextPage", "Next", class = "btn btn-outline-primary")
-  #           )
-  #         )
-  #       )
-  #     )
-  #   }
-  # })
-
-  # output$paginationStatus <- shiny::renderText({
-  #   data <- state$data()
-  #   if (is.null(data)) {
-  #     "No data available"
-  #   } else {
-  #     paste0(
-  #       "Showing ", nrow(data), " records",
-  #       if (state$pagination$has_more_data()) " (more available)" else " (end of data)"
-  #     )
-  #   }
-  # })
-
+  
   # output$map <- leaflet::renderLeaflet({
   #   fetch_map_data()
   # })
 
   # EVENT HANDLERS _________________________________________________________________________________
-  # shiny::observeEvent(input$prevPage, {
-  #   if (!state$data_loading()) {
-  #     state$pagination$last_plot_id(NULL)
-  #     fetch_table_data()
-  #   }
-  # })
-
-  # shiny::observeEvent(input$nextPage, {
-  #   if (state$pagination$has_more_data() && !state$data_loading()) {
-  #     # When moving to next page, we need to preserve the last_plot_id
-  #     prev_id <- state$pagination$last_plot_id()
-  #     fetch_table_data(prev_plot_id = prev_id)
-  #   }
-  # })
-
+  shiny::observeEvent(input$see_details, {
+    i <- as.numeric(input$see_details)
+    
+    # Debug print to see what value is coming in
+    print(paste("Details button clicked for row:", i))
+    
+    # Get the data - need to use the reactive to ensure we have the latest data
+    data_table <- state$plot_data()
+    
+    # More robust validation
+    if (is.null(i) || is.na(i) || length(i) == 0 || i < 1 || i > nrow(data_table)) {
+      shiny::showNotification("Invalid row selection", type = "error")
+      return()
+    }
+    
+    # Check if the column exists
+    if (!"data.obsaccessioncode" %in% colnames(data_table)) {
+      shiny::showNotification("Column 'data.obsaccessioncode' not found in data", type = "error")
+      print(paste("Available columns:", paste(colnames(data_table), collapse=", ")))
+      return()
+    }
+    
+    # Get the accession code safely
+    selected_row_accession <- data_table[i, "data.obsaccessioncode"]
+    
+    # Check for valid accession code
+    if (is.null(selected_row_accession) || is.na(selected_row_accession) || selected_row_accession == "") {
+      shiny::showNotification("No accession code found for row: " + i, type = "error")
+      return()
+    }
+    
+    # Set reactive value
+    state$selected_accession(selected_row_accession)
+    
+    # Select the row in the datatable (with error handling)
+    tryCatch({
+      dt_proxy <- DT::dataTableProxy("dataTable")
+      DT::selectRows(dt_proxy, i)
+    }, error = function(e) {
+      print(paste("Error selecting row:", e$message))
+    })
+    
+    # Open the details view
+    update_and_open_details(selected_row_accession)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+  
   shiny::observeEvent(input$show_on_map, {
     idx <- as.numeric(input$show_on_map)
+    
+    # Check for valid index before proceeding
+    if (is.na(idx) || idx < 1) {
+      return()
+    }
+    
     state$map_request(idx)
     shiny::updateNavbarPage(session, "page", selected = "Map")
 
@@ -352,17 +214,7 @@ server <- function(input, output, session) {
         map_update_observer$destroy()
       }
     })
-  })
-
-  shiny::observeEvent(input$see_details, {
-    i <- as.numeric(input$see_details)
-    dt_proxy <- DT::dataTableProxy("dataTable")
-    DT::selectRows(dt_proxy, i, ignore.selectable = TRUE)
-
-    data_table <- state$data()
-    selected_row_accession <- data_table[i, "obsaccessioncode"]
-    update_and_open_details(selected_row_accession)
-  })
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   shiny::observeEvent(input$close_details, {
     data <- state$data()
@@ -377,7 +229,7 @@ server <- function(input, output, session) {
     state$selected_accession(NULL)
     state$selected_community_accession(NULL) # Reset community accession as well
     state$detail_type(NULL) # Reset detail type
-    session$doBookmark()
+    # session$doBookmark()
   })
 
   shiny::observeEvent(input$label_link_click, {
@@ -403,38 +255,38 @@ server <- function(input, output, session) {
   # })
 
   # STATE PERSISTENCE ____________________________________________________________________________
-  shiny::onBookmark(function(state_obj) {
-    state_obj$values$selected_accession <- state$selected_accession()
-    state_obj$values$details_open <- state$details_open()
-    state_obj
-  })
+  # shiny::onBookmark(function(state_obj) {
+  #   state_obj$values$selected_accession <- state$selected_accession()
+  #   state_obj$values$details_open <- state$details_open()
+  #   state_obj
+  # })
 
-  shiny::onBookmarked(function(url) {
-    shiny::updateQueryString(url)
-  })
+  # shiny::onBookmarked(function(url) {
+  #   shiny::updateQueryString(url)
+  # })
 
-  shiny::onRestore(function(state_obj) {
-    if (!is.null(state_obj$values$selected_accession)) {
-      acc <- state_obj$values$selected_accession
-      shiny::observeEvent(state$data(),
-        {
-          update_and_open_details(acc)
+  # shiny::onRestore(function(state_obj) {
+  #   if (!is.null(state_obj$values$selected_accession)) {
+  #     acc <- state_obj$values$selected_accession
+  #     shiny::observeEvent(state$data(),
+  #       {
+  #         update_and_open_details(acc)
 
-          data <- state$data()
-          idx <- match(acc, data$obsaccessioncode)
-          if (!is.na(idx)) {
-            dt_proxy <- DT::dataTableProxy("dataTable")
-            DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
-          }
-        },
-        once = TRUE
-      )
-    }
-    invisible(NULL)
-  })
+  #         data <- state$data()
+  #         idx <- match(acc, data$obsaccessioncode)
+  #         if (!is.na(idx)) {
+  #           dt_proxy <- DT::dataTableProxy("dataTable")
+  #           DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
+  #         }
+  #       },
+  #       once = TRUE
+  #     )
+  #   }
+  #   invisible(NULL)
+  # })
 
-  shiny::observe({
-    shiny::reactiveValuesToList(input)
-    session$doBookmark()
-  })
+  # shiny::observe({
+  #   shiny::reactiveValuesToList(input)
+  #   session$doBookmark()
+  # })
 }
