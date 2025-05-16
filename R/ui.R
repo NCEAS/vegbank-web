@@ -208,7 +208,7 @@ build_navbar <- function() {
         title = "Table",
         shiny::fluidPage(
           DT::dataTableOutput("dataTable"),
-          shiny::uiOutput("tablePagination"),
+          # shiny::uiOutput("tablePagination"),
         )
       ),
       bslib::nav_panel(
