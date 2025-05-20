@@ -31,9 +31,8 @@ server <- function(input, output, session) {
     taxa_data = shiny::reactiveVal(NULL)
   )
 
-  # Load data in a more efficient way - just once at startup
-  full_data <- readRDS("inst/shiny/www/plot_obs_minimal_all.RDS")
-  state$plot_data(full_data)
+  # Load data from local files
+  state$plot_data(readRDS("inst/shiny/www/plot_obs_minimal_all_data.RDS"))
   state$taxa_data(readRDS("inst/shiny/www/taxa_top5.RDS"))
 
   fetch_map_data <- function() {
@@ -53,15 +52,6 @@ server <- function(input, output, session) {
         map
       }
     })
-  }
-
-  # Replace the separate detail view functions with our generic one
-  update_and_open_details <- function(accession_code) {
-    show_detail_view("plot", accession_code, state, output, session, veg_bank_api)
-  }
-
-  update_and_open_community_details <- function(accession_code) {
-    show_detail_view("community", accession_code, state, output, session, veg_bank_api)
   }
 
   update_map_view <- function(idx) {
@@ -86,135 +76,238 @@ server <- function(input, output, session) {
     )
   })
 
-  # Simplify the dataTable implementation to ensure it compiles
   output$dataTable <- DT::renderDataTable({
-    # Create a simplified paginated data approach
-    data <- state$plot_data()
+    withProgress(
+      message = "Compiling table data...",
+      value = 0,
+      {
+        # Join taxa data with plot data
+        plot_data <- state$plot_data()
+        taxa_data <- state$taxa_data()
 
-    # Return early if no data
-    if (is.null(data) || nrow(data) == 0) {
-      return(DT::datatable(
-        data.frame("No Data Available" = "Please try again or check your connection"),
-        options = list(dom = "t")
-      ))
-    }
 
-    # Pre-generate the action buttons in R - more reliable than JS manipulation
-    action_buttons <- vapply(seq_len(nrow(data)), function(i) {
-      sprintf(
-        '<div class="btn-group btn-group-sm">
-          <button class="btn btn-sm btn-outline-primary" 
-                  onclick="Shiny.setInputValue(\'see_details\', %d, {priority: \'event\'})">Details</button>
+        # Return early if no data
+        if (is.null(plot_data) || nrow(plot_data) == 0 ||
+          is.null(taxa_data) || nrow(taxa_data) == 0) {
+          setProgress(1, "Missing data!")
+          shiny::showNotification(
+            "Missing required data. Please try again or check your connection.",
+            type = "error"
+          )
+          return(DT::datatable(
+            data.frame("Missing required data" = "Please try again or check your connection"),
+            options = list(dom = "t")
+          ))
+        }
+
+        setProgress(0.2, "Cleaning author observation codes")
+        n_rows <- nrow(plot_data)
+        
+        author_codes <- if ("authorplotcode" %in% colnames(plot_data)) {
+          # Replace NA or empty values with "Unknown"
+          ifelse(is.na(plot_data$authorplotcode) | plot_data$authorplotcode == "", 
+                 "Not Provided", 
+                 plot_data$authorplotcode)
+        } else {
+          rep("Not Provided", n_rows)
+        }
+        
+        setProgress(0.3, "Cleaning location data")
+        locations <- if ("stateprovince" %in% colnames(plot_data)) {
+          # Replace NA or empty values with "Unknown"
+          ifelse(is.na(plot_data$stateprovince) | plot_data$stateprovince == "", 
+                 "Not Provided", 
+                 plot_data$stateprovince)
+        } else {
+          rep("Not Provided", n_rows)
+        }
+
+        # Process taxa data to create bulleted lists
+        setProgress(0.4, "Creating taxa lists...")
+        data <- dplyr::left_join(plot_data, taxa_data, by = "observation_id")
+
+        taxa_lists <- data %>%
+          dplyr::group_by(observation_id) %>%
+          dplyr::summarize(
+            top_taxa = paste0(
+              '<ul class="taxa-list">',
+              paste0(
+                '<li><a href="#" onclick="Shiny.setInputValue(\'taxa_link_click\', \'',
+                accessioncode, '\', {priority: \'event\'}); return false;">',
+                int_currplantscinamenoauth, "</a> (", maxcover, "%)</li>",
+                collapse = ""
+              ),
+              "</ul>"
+            ),
+            .groups = "drop"
+          )
+
+        # Join the taxa lists back to the plot data
+        data <- dplyr::left_join(plot_data, taxa_lists, by = "observation_id")
+
+        setProgress(0.6, "Creating action buttons...")
+        # Create action buttons
+        action_buttons <- vapply(seq_len(nrow(data)), function(i) {
+          sprintf(
+            '<div class="btn-group btn-group-sm">
+          <button class="btn btn-sm btn-outline-primary"
+            onclick="Shiny.setInputValue(\'see_details\', %d, {priority: \'event\'})">
+              Details
+          </button>
           <button class="btn btn-sm btn-outline-secondary"
-                  onclick="Shiny.setInputValue(\'show_on_map\', %d, {priority: \'event\'})">Map</button>
+            onclick="Shiny.setInputValue(\'show_on_map\', %d, {priority: \'event\'})">
+              Map
+          </button>
          </div>',
-        i, i
-      )
-    }, character(1))
-    
-    # Add the pre-generated buttons as a column
-    data <- cbind(Actions = action_buttons, data)
+            i, i
+          )
+        }, character(1))
 
-    # Create the datatable with options for large datasets
-    DT::datatable(
-      data,
-      rownames = FALSE,
-      escape = FALSE,  # Important: Allow HTML in the Actions column
-      selection = list(mode = "single", target = "row", selectable = FALSE),
-      options = list(
-        dom = "frtip",  # Simplified DOM structure
-        pageLength = 100,
-        scrollY = "calc(100vh - 300px)",
-        scrollX = TRUE,
-        scrollCollapse = TRUE,
-        deferRender = TRUE,
-        processing = TRUE,
-        columnDefs = list(
-          # Make the actions column not sortable or searchable
-          list(targets = 0, orderable = FALSE, searchable = FALSE, width = "120px")
+        # TODO: Create community links
+        community_links <- vapply(seq_len(nrow(data)), function(i) {
+          comm_name <- if (!is.null(data$commname) && !is.na(data$commname[i])) data$commname[i] else "Not Provided"
+          comm_code <- if (!is.null(data$commconceptaccessioncode) && !is.na(data$commconceptaccessioncode[i])) {
+            data$commconceptaccessioncode[i]
+          } else {
+            ""
+          }
+          if (comm_code != "") {
+            sprintf(
+              '<a href="#" onclick="Shiny.setInputValue(\'comm_link_click\', \'%s\', 
+                {priority: \'event\'}); return false;">%s</a>',
+              comm_code, comm_name
+            )
+          } else {
+            comm_name
+          }
+        }, character(1))
+
+        setProgress(0.8, "Building table...")
+
+        # Create a display table with only the desired columns and names
+        display_data <- data.frame(
+          "Actions" = action_buttons,
+          "Author Plot Code" = author_codes,
+          "Location" = locations,
+          "Top Taxa" = data$top_taxa,
+          "Community" = community_links,
+          stringsAsFactors = FALSE,
+          check.names = FALSE
         )
-      )
+
+        # Create the datatable with options for large datasets
+        DT::datatable(
+          display_data,
+          rownames = FALSE,
+          escape = FALSE, # Important: Allow HTML in the Actions column
+          selection = list(mode = "single", target = "row", selectable = FALSE),
+          options = list(
+            dom = "frtip", # Simplified DOM structure
+            pageLength = 100,
+            scrollY = "calc(100vh - 300px)",
+            scrollX = TRUE,
+            scrollCollapse = TRUE,
+            deferRender = TRUE,
+            processing = TRUE,
+            columnDefs = list(
+              list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
+              list(targets = 1, width = "15%"),
+              list(targets = 2, width = "10%"),
+              list(targets = 3, orderable = FALSE, searchable = TRUE, width = "45%"),
+              list(targets = 4, width = "20%")
+            )
+          )
+        )
+      }
     )
   })
-  
+
   # output$map <- leaflet::renderLeaflet({
   #   fetch_map_data()
   # })
 
   # EVENT HANDLERS _________________________________________________________________________________
-  shiny::observeEvent(input$see_details, {
-    i <- as.numeric(input$see_details)
-    
-    # Debug print to see what value is coming in
-    print(paste("Details button clicked for row:", i))
-    
-    # Get the data - need to use the reactive to ensure we have the latest data
-    data_table <- state$plot_data()
-    
-    # More robust validation
-    if (is.null(i) || is.na(i) || length(i) == 0 || i < 1 || i > nrow(data_table)) {
-      shiny::showNotification("Invalid row selection", type = "error")
-      return()
-    }
-    
-    # Check if the column exists
-    if (!"data.obsaccessioncode" %in% colnames(data_table)) {
-      shiny::showNotification("Column 'data.obsaccessioncode' not found in data", type = "error")
-      print(paste("Available columns:", paste(colnames(data_table), collapse=", ")))
-      return()
-    }
-    
-    # Get the accession code safely
-    selected_row_accession <- data_table[i, "data.obsaccessioncode"]
-    
-    # Check for valid accession code
-    if (is.null(selected_row_accession) || is.na(selected_row_accession) || selected_row_accession == "") {
-      shiny::showNotification("No accession code found for row: " + i, type = "error")
-      return()
-    }
-    
-    # Set reactive value
-    state$selected_accession(selected_row_accession)
-    
-    # Select the row in the datatable (with error handling)
-    tryCatch({
-      dt_proxy <- DT::dataTableProxy("dataTable")
-      DT::selectRows(dt_proxy, i)
-    }, error = function(e) {
-      print(paste("Error selecting row:", e$message))
-    })
-    
-    # Open the details view
-    update_and_open_details(selected_row_accession)
-  }, ignoreNULL = TRUE, ignoreInit = TRUE)
-  
-  shiny::observeEvent(input$show_on_map, {
-    idx <- as.numeric(input$show_on_map)
-    
-    # Check for valid index before proceeding
-    if (is.na(idx) || idx < 1) {
-      return()
-    }
-    
-    state$map_request(idx)
-    shiny::updateNavbarPage(session, "page", selected = "Map")
+  shiny::observeEvent(input$see_details,
+    {
+      i <- as.numeric(input$see_details)
+      data_table <- state$plot_data()
 
-    # Create a self-destroying observer
-    map_update_observer <- shiny::observe({
-      # Only proceed if we're on the map page
-      shiny::req(input$page == "Map")
-
-      idx <- state$map_request()
-      if (!is.null(idx) && length(idx) > 0) {
-        session$sendCustomMessage(type = "closeDropdown", message = list())
-        session$sendCustomMessage("invalidateMapSize", list())
-        update_map_view(idx)
-        state$map_request(NULL)
-
-        map_update_observer$destroy()
+      # More robust validation
+      if (is.null(i) || is.na(i) || length(i) == 0 || i < 1 || i > nrow(data_table)) {
+        shiny::showNotification("Invalid row selection", type = "error")
+        return()
       }
-    })
-  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+
+      # Check if the column exists
+      if (!"obsaccessioncode" %in% colnames(data_table)) {
+        shiny::showNotification("Column 'obsaccessioncode' not found in data", type = "error")
+        print(paste("Available columns:", paste(colnames(data_table), collapse = ", ")))
+        return()
+      }
+
+      # Get the accession code safely
+      selected_row_accession <- data_table[i, "obsaccessioncode"]
+
+      # Check for valid accession code
+      if (is.null(selected_row_accession) ||
+        is.na(selected_row_accession) ||
+        selected_row_accession == "") {
+        shiny::showNotification(paste0("No accession code found for row: ", i), type = "error")
+        return()
+      }
+
+      # Set reactive value
+      state$selected_accession(selected_row_accession)
+
+      # Select the row in the datatable (with error handling)
+      tryCatch(
+        {
+          dt_proxy <- DT::dataTableProxy("dataTable")
+          DT::selectRows(dt_proxy, i)
+        },
+        error = function(e) {
+          print(paste("Error selecting row:", e$message))
+        }
+      )
+
+      # Open the details view
+      show_detail_view("plot", selected_row_accession, state, output, session, veg_bank_api)
+    },
+    ignoreNULL = TRUE,
+    ignoreInit = TRUE
+  )
+
+  shiny::observeEvent(input$show_on_map,
+    {
+      idx <- as.numeric(input$show_on_map)
+
+      # Check for valid index before proceeding
+      if (is.na(idx) || idx < 1) {
+        return()
+      }
+
+      state$map_request(idx)
+      shiny::updateNavbarPage(session, "page", selected = "Map")
+
+      # Create a self-destroying observer
+      map_update_observer <- shiny::observe({
+        # Only proceed if we're on the map page
+        shiny::req(input$page == "Map")
+
+        idx <- state$map_request()
+        if (!is.null(idx) && length(idx) > 0) {
+          session$sendCustomMessage(type = "closeDropdown", message = list())
+          session$sendCustomMessage("invalidateMapSize", list())
+          update_map_view(idx)
+          state$map_request(NULL)
+
+          map_update_observer$destroy()
+        }
+      })
+    },
+    ignoreNULL = TRUE,
+    ignoreInit = TRUE
+  )
 
   shiny::observeEvent(input$close_details, {
     data <- state$data()
@@ -235,14 +328,14 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      update_and_open_details(accession_code)
+      show_detail_view("plot", accession_code, state, output, session, veg_bank_api)
     }
   })
 
   shiny::observeEvent(input$comm_link_click, {
     accession_code <- input$comm_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      update_and_open_community_details(accession_code)
+      show_detail_view("community", accession_code, state, output, session, veg_bank_api)
     }
   })
 
