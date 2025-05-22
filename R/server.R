@@ -28,16 +28,13 @@ server <- function(input, output, session) {
     map_request = shiny::reactiveVal(NULL),
     selected_community_accession = shiny::reactiveVal(NULL),
     detail_type = shiny::reactiveVal(NULL) # Tracks detail type - "plot" or "community"
-    # plot_data = shiny::reactiveVal(NULL),
-    # taxa_data = shiny::reactiveVal(NULL)
-    # community_data = shiny::reactiveVal(NULL),
   )
 
   # Load data from local files
   plot_data <- readRDS("inst/shiny/www/plot_obs_minimal_all_data.RDS")
   taxa_data <- readRDS("inst/shiny/www/taxa_top5.RDS")
-  # state$plot_data(readRDS("inst/shiny/www/plot_obs_minimal_all_data.RDS"))
-  # state$taxa_data(readRDS("inst/shiny/www/taxa_top5.RDS"))
+  comm_data <- readRDS("inst/shiny/www/comm_class_minimal_all.RDS")
+  colnames(comm_data)[colnames(comm_data) == "accessioncode"] <- "obsaccessioncode"
 
   fetch_map_data <- function() {
     show_progress("Loading map data...")(function(step, complete) {
@@ -81,8 +78,7 @@ server <- function(input, output, session) {
   })
 
   output$dataTable <- DT::renderDataTable({
-    # plot_table$process_table_data(state$plot_data(), state$taxa_data())
-    plot_table$process_table_data(plot_data, taxa_data)
+    plot_table$process_table_data(plot_data, taxa_data, comm_data)
   })
 
   # output$map <- leaflet::renderLeaflet({
@@ -93,7 +89,6 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$see_details,
     {
       i <- as.numeric(input$see_details)
-      # data_table <- state$plot_data()
       data_table <- plot_data
 
       # More robust validation

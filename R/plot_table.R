@@ -12,10 +12,11 @@ plot_table <- (function() {
     )
   }
 
-  is_missing_data <- function(plot_data, taxa_data) {
+  is_missing_data <- function(plot_data, taxa_data, comm_data) {
     # Return early if no data
     if (is.null(plot_data) || nrow(plot_data) == 0 ||
-          is.null(taxa_data) || nrow(taxa_data) == 0) {
+          is.null(taxa_data) || nrow(taxa_data) == 0 ||
+          is.null(comm_data) || nrow(comm_data) == 0) {
       shiny::showNotification(
         "Missing required data. Please try again or check your connection.",
         type = "error"
@@ -37,37 +38,6 @@ plot_table <- (function() {
     }
   }
 
-  create_taxa_lists <- function(plot_data, taxa_data) {
-    data <- dplyr::left_join(plot_data, taxa_data, by = "observation_id")
-
-    taxa_lists <- data %>%
-      dplyr::group_by(observation_id) %>%
-      dplyr::summarize(
-        top_taxa = paste0(
-          '<ul class="taxa-list">',
-          paste0(
-            "<li>",
-            ifelse(is.na(int_currplantscinamenoauth) & is.na(maxcover),
-              "No Taxa Data",
-              paste0(
-                '<a href="#" onclick="Shiny.setInputValue(\'taxa_link_click\', \'',
-                accessioncode, '\', {priority: \'event\'}); return false;">',
-                ifelse(is.na(int_currplantscinamenoauth), "Unnamed", int_currplantscinamenoauth),
-                "</a> (", maxcover, "%)"
-              )
-            ),
-            "</li>",
-            collapse = ""
-          ),
-          "</ul>"
-        ),
-        .groups = "drop"
-      )
-
-    # Join the taxa lists back to the plot data
-    dplyr::left_join(plot_data, taxa_lists, by = "observation_id")
-  }
-
   create_action_buttons <- function(data) {
     vapply(seq_len(nrow(data)), function(i) {
       sprintf(
@@ -86,49 +56,99 @@ plot_table <- (function() {
     }, character(1))
   }
 
-  create_community_links <- function(data) {
-    vapply(seq_len(nrow(data)), function(i) {
-      comm_name <- if (!is.null(data$commname) && !is.na(data$commname[i])) {
-        data$commname[i]
-      } else {
-        "Not Provided"
-      }
-      comm_code <- if (!is.null(data$commconceptaccessioncode) &&
-                         !is.na(data$commconceptaccessioncode[i])) {
-        data$commconceptaccessioncode[i]
-      } else {
-        ""
-      }
-      if (comm_code != "") {
-        sprintf(
-          '<a href="#" onclick="Shiny.setInputValue(\'comm_link_click\', \'%s\',
-            {priority: \'event\'}); return false;">%s</a>',
-          comm_code, comm_name
-        )
-      } else {
-        comm_name
-      }
-    }, character(1))
+  create_taxa_vectors <- function(plot_data, taxa_data) {
+    # Join plot and taxa data
+    merged <- dplyr::left_join(plot_data, taxa_data, by = "observation_id")
+
+    # Generate HTML for each observation_id
+    taxa_lists <- merged %>%
+      dplyr::group_by(observation_id) %>%
+      dplyr::summarize(
+        top_taxa = {
+          if (all(is.na(int_currplantscinamenoauth)) & all(is.na(maxcover))) {
+            "No Taxa Data"
+          } else {
+            items <- ifelse(
+              is.na(int_currplantscinamenoauth) & is.na(maxcover),
+              "<li>No Taxa Data</li>",
+              paste0(
+                "<li><a href=\"#\" onclick=\"Shiny.setInputValue('taxa_link_click', '",
+                accessioncode,
+                "', {priority: 'event'}); return false;\">",
+                ifelse(is.na(int_currplantscinamenoauth), "Unnamed", int_currplantscinamenoauth),
+                "</a> (",
+                ifelse(is.na(maxcover), "No cover", maxcover),
+                "%)</li>"
+              )
+            )
+            paste0('<ul class="taxa-list">', paste0(items, collapse = ""), "</ul>")
+          }
+        },
+        .groups = "drop"
+      )
+
+    # Return vector in the same order as plot_data
+    result <- rep("No Taxa Data", nrow(plot_data))
+    match_idx <- match(plot_data$observation_id, taxa_lists$observation_id)
+    result[!is.na(match_idx)] <- taxa_lists$top_taxa[match_idx[!is.na(match_idx)]]
+    result
   }
 
-  build_display_data <- function(data, author_codes, locations, community_links, action_buttons) {
+  create_community_vectors <- function(plot_data, comm_data) {
+    # Join plot and community data
+    merged <- dplyr::left_join(plot_data, comm_data, by = "obsaccessioncode")
+
+    # Generate HTML for each obsaccessioncode
+    community_lists <- merged %>%
+      dplyr::group_by(obsaccessioncode) %>%
+      dplyr::summarize(
+        comm_list = {
+          if (all(is.na(commname)) & all(is.na(commconceptaccessioncode))) {
+            "No Community Data"
+          } else {
+            items <- ifelse(
+              is.na(commconceptaccessioncode) & is.na(commname),
+              "<li>No Community Data</li>",
+              paste0(
+                "<li><a href=\"#\" onclick=\"Shiny.setInputValue('comm_link_click', '",
+                commconceptaccessioncode,
+                "', {priority: 'event'}); return false;\">",
+                ifelse(is.na(commname), "Unnamed", commname),
+                "</a></li>"
+              )
+            )
+            paste0('<ul class="comm-list">', paste0(items, collapse = ""), "</ul>")
+          }
+        },
+        .groups = "drop"
+      )
+
+    # Return vector in the same order as plot_data
+    result <- rep("No Community Data", nrow(plot_data))
+    match_idx <- match(plot_data$obsaccessioncode, community_lists$obsaccessioncode)
+    result[!is.na(match_idx)] <- community_lists$comm_list[match_idx[!is.na(match_idx)]]
+    result
+  }
+
+  build_display_data <- function(author_codes, locations, taxa_html, community_html, action_buttons) {
+    # Compose the final table data.frame
     data.frame(
       "Actions" = action_buttons,
       "Author Plot Code" = author_codes,
       "Location" = locations,
-      "Top Taxa" = data$top_taxa,
-      "Community" = community_links,
+      "Top Taxa" = taxa_html,
+      "Community" = community_html,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
   }
 
-  process_table_data <- function(plot_data, taxa_data) {
+  process_table_data <- function(plot_data, taxa_data, comm_data) {
     withProgress(
       message = "Compiling table data...",
       value = 0,
       {
-        if (is_missing_data(plot_data, taxa_data)) {
+        if (is_missing_data(plot_data, taxa_data, comm_data)) {
           return(create_empty_table())
         }
 
@@ -139,18 +159,17 @@ plot_table <- (function() {
         locations <- clean_column_data(plot_data, "stateprovince")
 
         setProgress(0.4, "Creating taxa lists...")
-        data <- create_taxa_lists(plot_data, taxa_data)
+        taxa_html <- create_taxa_vectors(plot_data, taxa_data)
+
+        setProgress(0.5, "Creating community links...")
+        community_html <- create_community_vectors(plot_data, comm_data)
 
         setProgress(0.6, "Creating action buttons...")
-        action_buttons <- create_action_buttons(data)
-
-        setProgress(0.7, "Creating community links...")
-        community_links <- create_community_links(data)
+        action_buttons <- create_action_buttons(plot_data)
 
         setProgress(0.8, "Building table...")
         display_data <- build_display_data(
-          data, author_codes, locations,
-          community_links, action_buttons
+          author_codes, locations, taxa_html, community_html, action_buttons
         )
 
         DT::datatable(
