@@ -20,20 +20,24 @@
 server <- function(input, output, session) {
   # STATE MANAGEMENT ______________________________________________________________________________
   state <- list(
+    # TODO: Why doe these need to be reactive? They never respond to inputs right now.
     data = shiny::reactiveVal(NULL),
     data_loading = shiny::reactiveVal(FALSE), # Track if data is currently loading
     selected_accession = shiny::reactiveVal(NULL),
     details_open = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
     selected_community_accession = shiny::reactiveVal(NULL),
-    detail_type = shiny::reactiveVal(NULL), # Tracks detail type - "plot" or "community"
-    plot_data = shiny::reactiveVal(NULL),
-    taxa_data = shiny::reactiveVal(NULL)
+    detail_type = shiny::reactiveVal(NULL) # Tracks detail type - "plot" or "community"
+    # plot_data = shiny::reactiveVal(NULL),
+    # taxa_data = shiny::reactiveVal(NULL)
+    # community_data = shiny::reactiveVal(NULL),
   )
 
   # Load data from local files
-  state$plot_data(readRDS("inst/shiny/www/plot_obs_minimal_all_data.RDS"))
-  state$taxa_data(readRDS("inst/shiny/www/taxa_top5.RDS"))
+  plot_data <- readRDS("inst/shiny/www/plot_obs_minimal_all_data.RDS")
+  taxa_data <- readRDS("inst/shiny/www/taxa_top5.RDS")
+  # state$plot_data(readRDS("inst/shiny/www/plot_obs_minimal_all_data.RDS"))
+  # state$taxa_data(readRDS("inst/shiny/www/taxa_top5.RDS"))
 
   fetch_map_data <- function() {
     show_progress("Loading map data...")(function(step, complete) {
@@ -77,149 +81,8 @@ server <- function(input, output, session) {
   })
 
   output$dataTable <- DT::renderDataTable({
-    withProgress(
-      message = "Compiling table data...",
-      value = 0,
-      {
-        # Join taxa data with plot data
-        plot_data <- state$plot_data()
-        taxa_data <- state$taxa_data()
-
-
-        # Return early if no data
-        if (is.null(plot_data) || nrow(plot_data) == 0 ||
-          is.null(taxa_data) || nrow(taxa_data) == 0) {
-          setProgress(1, "Missing data!")
-          shiny::showNotification(
-            "Missing required data. Please try again or check your connection.",
-            type = "error"
-          )
-          return(DT::datatable(
-            data.frame("Missing required data" = "Please try again or check your connection"),
-            options = list(dom = "t")
-          ))
-        }
-
-        setProgress(0.2, "Cleaning author observation codes")
-        n_rows <- nrow(plot_data)
-        
-        author_codes <- if ("authorplotcode" %in% colnames(plot_data)) {
-          # Replace NA or empty values with "Unknown"
-          ifelse(is.na(plot_data$authorplotcode) | plot_data$authorplotcode == "", 
-                 "Not Provided", 
-                 plot_data$authorplotcode)
-        } else {
-          rep("Not Provided", n_rows)
-        }
-        
-        setProgress(0.3, "Cleaning location data")
-        locations <- if ("stateprovince" %in% colnames(plot_data)) {
-          # Replace NA or empty values with "Unknown"
-          ifelse(is.na(plot_data$stateprovince) | plot_data$stateprovince == "", 
-                 "Not Provided", 
-                 plot_data$stateprovince)
-        } else {
-          rep("Not Provided", n_rows)
-        }
-
-        # Process taxa data to create bulleted lists
-        setProgress(0.4, "Creating taxa lists...")
-        data <- dplyr::left_join(plot_data, taxa_data, by = "observation_id")
-
-        taxa_lists <- data %>%
-          dplyr::group_by(observation_id) %>%
-          dplyr::summarize(
-            top_taxa = paste0(
-              '<ul class="taxa-list">',
-              paste0(
-                '<li><a href="#" onclick="Shiny.setInputValue(\'taxa_link_click\', \'',
-                accessioncode, '\', {priority: \'event\'}); return false;">',
-                int_currplantscinamenoauth, "</a> (", maxcover, "%)</li>",
-                collapse = ""
-              ),
-              "</ul>"
-            ),
-            .groups = "drop"
-          )
-
-        # Join the taxa lists back to the plot data
-        data <- dplyr::left_join(plot_data, taxa_lists, by = "observation_id")
-
-        setProgress(0.6, "Creating action buttons...")
-        # Create action buttons
-        action_buttons <- vapply(seq_len(nrow(data)), function(i) {
-          sprintf(
-            '<div class="btn-group btn-group-sm">
-          <button class="btn btn-sm btn-outline-primary"
-            onclick="Shiny.setInputValue(\'see_details\', %d, {priority: \'event\'})">
-              Details
-          </button>
-          <button class="btn btn-sm btn-outline-secondary"
-            onclick="Shiny.setInputValue(\'show_on_map\', %d, {priority: \'event\'})">
-              Map
-          </button>
-         </div>',
-            i, i
-          )
-        }, character(1))
-
-        # TODO: Create community links
-        community_links <- vapply(seq_len(nrow(data)), function(i) {
-          comm_name <- if (!is.null(data$commname) && !is.na(data$commname[i])) data$commname[i] else "Not Provided"
-          comm_code <- if (!is.null(data$commconceptaccessioncode) && !is.na(data$commconceptaccessioncode[i])) {
-            data$commconceptaccessioncode[i]
-          } else {
-            ""
-          }
-          if (comm_code != "") {
-            sprintf(
-              '<a href="#" onclick="Shiny.setInputValue(\'comm_link_click\', \'%s\', 
-                {priority: \'event\'}); return false;">%s</a>',
-              comm_code, comm_name
-            )
-          } else {
-            comm_name
-          }
-        }, character(1))
-
-        setProgress(0.8, "Building table...")
-
-        # Create a display table with only the desired columns and names
-        display_data <- data.frame(
-          "Actions" = action_buttons,
-          "Author Plot Code" = author_codes,
-          "Location" = locations,
-          "Top Taxa" = data$top_taxa,
-          "Community" = community_links,
-          stringsAsFactors = FALSE,
-          check.names = FALSE
-        )
-
-        # Create the datatable with options for large datasets
-        DT::datatable(
-          display_data,
-          rownames = FALSE,
-          escape = FALSE, # Important: Allow HTML in the Actions column
-          selection = list(mode = "single", target = "row", selectable = FALSE),
-          options = list(
-            dom = "frtip", # Simplified DOM structure
-            pageLength = 100,
-            scrollY = "calc(100vh - 300px)",
-            scrollX = TRUE,
-            scrollCollapse = TRUE,
-            deferRender = TRUE,
-            processing = TRUE,
-            columnDefs = list(
-              list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
-              list(targets = 1, width = "15%"),
-              list(targets = 2, width = "10%"),
-              list(targets = 3, orderable = FALSE, searchable = TRUE, width = "45%"),
-              list(targets = 4, width = "20%")
-            )
-          )
-        )
-      }
-    )
+    # plot_table$process_table_data(state$plot_data(), state$taxa_data())
+    plot_table$process_table_data(plot_data, taxa_data)
   })
 
   # output$map <- leaflet::renderLeaflet({
@@ -230,7 +93,8 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$see_details,
     {
       i <- as.numeric(input$see_details)
-      data_table <- state$plot_data()
+      # data_table <- state$plot_data()
+      data_table <- plot_data
 
       # More robust validation
       if (is.null(i) || is.na(i) || length(i) == 0 || i < 1 || i > nrow(data_table)) {
