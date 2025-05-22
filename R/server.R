@@ -109,8 +109,8 @@ server <- function(input, output, session) {
 
       # Check for valid accession code
       if (is.null(selected_row_accession) ||
-        is.na(selected_row_accession) ||
-        selected_row_accession == "") {
+            is.na(selected_row_accession) ||
+            selected_row_accession == "") {
         shiny::showNotification(paste0("No accession code found for row: ", i), type = "error")
         return()
       }

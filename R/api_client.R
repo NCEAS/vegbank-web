@@ -67,8 +67,8 @@ veg_bank_api <- (function() {
       process_response(response)
     },
     get_community_details = function(accession_code) {
-      response <- fetch(paste0("/comm_concepts/", accession_code))
+      response <- fetch(paste0("/community-concepts/", accession_code))
       process_response(response)
     }
   )
-})()
+})
