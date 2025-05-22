@@ -133,7 +133,7 @@ build_details_view <- function(selected_data) {
 #' @importFrom shiny renderUI
 #' @keywords internal
 build_community_details_view <- function(community_data) {
-  if (is.null(community_data) || nrow(community_data) == 0) {
+  if (is.null(community_data)) {
     return(list(
       community_name = shiny::renderUI({
         htmltools::tags$p("Community details not available")
@@ -144,18 +144,19 @@ build_community_details_view <- function(community_data) {
     ))
   }
 
-  # Take first row if multiple are returned
-  community_data <- community_data[1, ]
+  # TODO: when api is replaced by VegBankR this should not be necessary
+  community_data <- as.data.frame(community_data) # Converting to data frame prefixes with "data."
+  community_data <- community_data[1, ]  # Get the first row
 
   list(
     community_name = shiny::renderUI({
-      htmltools::tags$b(community_data$commname)
+      htmltools::tags$b(community_data$data.commname)
     }),
     community_description = shiny::renderUI({
       # The description contains HTML entities that need to be properly rendered
       htmltools::tags$div(
         id = "community-description",
-        htmltools::HTML(community_data$commdescription)
+        htmltools::HTML(community_data$data.commdescription)
       )
     })
   )

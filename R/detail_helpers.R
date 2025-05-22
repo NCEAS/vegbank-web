@@ -50,6 +50,7 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
 
     # Generate the appropriate view based on detail type
     if (detail_type == "community") {
+      # Get first row of community data bc multiple rows for multiple classsystems
       details <- build_community_details_view(result$data)
       output$community_name <- details$community_name
       output$community_description <- details$community_description

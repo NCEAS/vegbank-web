@@ -20,8 +20,7 @@
 server <- function(input, output, session) {
   # STATE MANAGEMENT ______________________________________________________________________________
   state <- list(
-    map_request = shiny::reactiveVal(NULL),
-    detail_type = shiny::reactiveVal(NULL) # Tracks detail type - "plot" or "community"
+    map_request = shiny::reactiveVal(NULL)
   )
 
   # Load data from local files
