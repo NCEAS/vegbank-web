@@ -20,13 +20,7 @@
 server <- function(input, output, session) {
   # STATE MANAGEMENT ______________________________________________________________________________
   state <- list(
-    # TODO: Why doe these need to be reactive? They never respond to inputs right now.
-    data = shiny::reactiveVal(NULL),
-    data_loading = shiny::reactiveVal(FALSE), # Track if data is currently loading
-    selected_accession = shiny::reactiveVal(NULL),
-    details_open = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
-    selected_community_accession = shiny::reactiveVal(NULL),
     detail_type = shiny::reactiveVal(NULL) # Tracks detail type - "plot" or "community"
   )
 
@@ -37,7 +31,7 @@ server <- function(input, output, session) {
   colnames(comm_data)[colnames(comm_data) == "accessioncode"] <- "obsaccessioncode"
 
   update_map_view <- function(idx) {
-    data <- state$data()
+    data <- plot_data
     leaflet::leafletProxy("map", session) |>
       plot_map$update_map_view(
         data$longitude[idx],
@@ -70,34 +64,15 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$see_details,
     {
       i <- as.numeric(input$see_details)
-      data_table <- plot_data
-
-      # More robust validation
-      if (is.null(i) || is.na(i) || length(i) == 0 || i < 1 || i > nrow(data_table)) {
-        shiny::showNotification("Invalid row selection", type = "error")
-        return()
-      }
-
-      # Check if the column exists
-      if (!"obsaccessioncode" %in% colnames(data_table)) {
-        shiny::showNotification("Column 'obsaccessioncode' not found in data", type = "error")
-        print(paste("Available columns:", paste(colnames(data_table), collapse = ", ")))
-        return()
-      }
-
-      # Get the accession code safely
-      selected_row_accession <- data_table[i, "obsaccessioncode"]
+      selected_row_accession <- plot_data[i, "obsaccessioncode"]
 
       # Check for valid accession code
       if (is.null(selected_row_accession) ||
-            is.na(selected_row_accession) ||
-            selected_row_accession == "") {
+        is.na(selected_row_accession) ||
+        selected_row_accession == "") {
         shiny::showNotification(paste0("No accession code found for row: ", i), type = "error")
         return()
       }
-
-      # Set reactive value
-      state$selected_accession(selected_row_accession)
 
       # Select the row in the datatable (with error handling)
       tryCatch(
@@ -111,7 +86,7 @@ server <- function(input, output, session) {
       )
 
       # Open the details view
-      show_detail_view("plot", selected_row_accession, state, output, session, veg_bank_api)
+      show_detail_view("plot", selected_row_accession, output, session)
     },
     ignoreNULL = TRUE,
     ignoreInit = TRUE
@@ -122,7 +97,18 @@ server <- function(input, output, session) {
       idx <- as.numeric(input$show_on_map)
 
       # Check for valid index before proceeding
-      if (is.na(idx) || idx < 1) {
+      if (is.na(idx) || idx < 1 || idx > nrow(plot_data)) {
+        return()
+      }
+
+      # Check for valid latitude and longitude
+      lat <- plot_data$latitude[idx]
+      lon <- plot_data$longitude[idx]
+
+      if (is.na(lat) || is.na(lon) || !is.numeric(lat) || !is.numeric(lon)) {
+        shiny::showNotification("Cannot show on map: Missing or invalid coordinates for this plot",
+          type = "warning"
+        )
         return()
       }
 
@@ -149,33 +135,28 @@ server <- function(input, output, session) {
     ignoreInit = TRUE
   )
 
-  shiny::observeEvent(input$close_details, {
-    data <- state$data()
-    idx <- which(data$obsaccessioncode == state$selected_accession())
-
-    if (length(idx) > 0) {
-      dt_proxy <- DT::dataTableProxy("dataTable")
-      DT::selectRows(dt_proxy, idx, ignore.selectable = FALSE)
-    }
-
-    state$details_open(FALSE)
-    state$selected_accession(NULL)
-    state$selected_community_accession(NULL) # Reset community accession as well
-    state$detail_type(NULL) # Reset detail type
-    # session$doBookmark()
-  })
+  # shiny::observeEvent(input$close_details, {
+  #   session$doBookmark()
+  # })
 
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      show_detail_view("plot", accession_code, state, output, session, veg_bank_api)
+      show_detail_view("plot", accession_code, output, session)
     }
   })
 
   shiny::observeEvent(input$comm_link_click, {
     accession_code <- input$comm_link_click
+    # Check for valid accession code
+    if (is.null(accession_code) ||
+      is.na(accession_code) ||
+      accession_code == "") {
+      shiny::showNotification(paste0("No accession code found for that community"), type = "error")
+      return()
+    }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      show_detail_view("community", accession_code, state, output, session, veg_bank_api)
+      show_detail_view("community", accession_code, output, session)
     }
   })
 

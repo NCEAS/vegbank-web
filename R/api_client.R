@@ -71,4 +71,4 @@ veg_bank_api <- (function() {
       process_response(response)
     }
   )
-})
+})()
