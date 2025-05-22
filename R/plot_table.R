@@ -144,30 +144,30 @@ plot_table <- (function() {
   }
 
   process_table_data <- function(plot_data, taxa_data, comm_data) {
-    withProgress(
-      message = "Compiling table data...",
+    shiny::withProgress(
+      message = "Processing table data:",
       value = 0,
       {
         if (is_missing_data(plot_data, taxa_data, comm_data)) {
           return(create_empty_table())
         }
 
-        setProgress(0.2, "Cleaning author observation codes")
+        setProgress(0.2, detail = "Cleaning author observation codes")
         author_codes <- clean_column_data(plot_data, "authorplotcode")
 
-        setProgress(0.3, "Cleaning location data")
+        setProgress(0.3, detail = "Cleaning location data")
         locations <- clean_column_data(plot_data, "stateprovince")
 
-        setProgress(0.4, "Creating taxa lists...")
+        setProgress(0.4, detail = "Creating taxa lists...")
         taxa_html <- create_taxa_vectors(plot_data, taxa_data)
 
-        setProgress(0.5, "Creating community links...")
+        setProgress(0.5, detail = "Creating community links...")
         community_html <- create_community_vectors(plot_data, comm_data)
 
-        setProgress(0.6, "Creating action buttons...")
+        setProgress(0.6, detail = "Creating action buttons...")
         action_buttons <- create_action_buttons(plot_data)
 
-        setProgress(0.8, "Building table...")
+        setProgress(0.8, detail = "Building table...")
         display_data <- build_display_data(
           author_codes, locations, taxa_html, community_html, action_buttons
         )

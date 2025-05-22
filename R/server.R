@@ -36,25 +36,6 @@ server <- function(input, output, session) {
   comm_data <- readRDS("inst/shiny/www/comm_class_minimal_all.RDS")
   colnames(comm_data)[colnames(comm_data) == "accessioncode"] <- "obsaccessioncode"
 
-  fetch_map_data <- function() {
-    show_progress("Loading map data...")(function(step, complete) {
-      step(0.2, "Fetching pins")
-
-      result <- veg_bank_api$get_map_points()
-
-      if (!result$success) {
-        step(0.3, "Error loading map data")
-        plot_map$create_empty_map()
-      } else {
-        step(0.5, "Processing map data")
-        map <- plot_map$process_map_data(result$data)
-
-        complete("Map rendered")
-        map
-      }
-    })
-  }
-
   update_map_view <- function(idx) {
     data <- state$data()
     leaflet::leafletProxy("map", session) |>
@@ -81,9 +62,9 @@ server <- function(input, output, session) {
     plot_table$process_table_data(plot_data, taxa_data, comm_data)
   })
 
-  # output$map <- leaflet::renderLeaflet({
-  #   fetch_map_data()
-  # })
+  output$map <- leaflet::renderLeaflet({
+    plot_map$process_map_data(plot_data)
+  })
 
   # EVENT HANDLERS _________________________________________________________________________________
   shiny::observeEvent(input$see_details,
