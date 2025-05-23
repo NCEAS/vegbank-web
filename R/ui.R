@@ -279,6 +279,7 @@ build_detail_overlay <- function() {
           id = "community-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Community Name"), shiny::uiOutput("community_name")),
+          bslib::card(bslib::card_header("Occurences"), shiny::uiOutput("occurence_count")),
           bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description"))
         )
       )
