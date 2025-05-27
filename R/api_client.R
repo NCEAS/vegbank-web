@@ -48,20 +48,6 @@ veg_bank_api <- (function() {
   }
 
   list(
-    get_table_data = function(page_size, prev_plot_id = NULL) {
-      endpoint <- if (is.null(prev_plot_id)) {
-        paste0("/get_observation_table/", page_size)
-      } else {
-        paste0("/get_observation_table/", page_size, "/", prev_plot_id)
-      }
-
-      response <- fetch(endpoint)
-      process_response(response)
-    },
-    get_map_points = function() {
-      response <- fetch("/get_map_points")
-      process_response(response)
-    },
     get_observation_details = function(accession_code) {
       response <- fetch(paste0("/get_observation_details/", accession_code))
       process_response(response)

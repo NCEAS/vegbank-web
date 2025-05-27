@@ -20,7 +20,10 @@
 server <- function(input, output, session) {
   # STATE MANAGEMENT ______________________________________________________________________________
   state <- list(
-    map_request = shiny::reactiveVal(NULL)
+    map_request = shiny::reactiveVal(NULL),
+    detail_type = shiny::reactiveVal(NULL),
+    selected_accession = shiny::reactiveVal(NULL),
+    details_open = shiny::reactiveVal(FALSE)
   )
 
   # Load data from local files
@@ -84,6 +87,9 @@ server <- function(input, output, session) {
         }
       )
 
+      state$detail_type("plot")
+      state$selected_accession(selected_row_accession)
+      state$details_open(TRUE)
       # Open the details view
       show_detail_view("plot", selected_row_accession, output, session)
     },
@@ -134,13 +140,17 @@ server <- function(input, output, session) {
     ignoreInit = TRUE
   )
 
-  # shiny::observeEvent(input$close_details, {
-  #   session$doBookmark()
-  # })
+  shiny::observeEvent(input$close_details, {
+    state$details_open(FALSE)
+    session$doBookmark()
+  })
 
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      state$detail_type("plot")
+      state$selected_accession(accession_code)
+      state$details_open(TRUE)
       show_detail_view("plot", accession_code, output, session)
     }
   })
@@ -155,51 +165,67 @@ server <- function(input, output, session) {
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      state$detail_type("community")
+      state$selected_accession(accession_code)
+      state$details_open(TRUE)
       show_detail_view("community", accession_code, output, session)
     }
   })
 
-  # shiny::observeEvent(input$search_enter, {
-  #   if (!state$data_loading()) {
-  #     shiny::updateNavbarPage(session, "page", selected = "Table")
-  #     state$pagination$last_plot_id(NULL)
-  #     fetch_table_data()
-  #   }
-  # })
+  # TODO: Add observer for taxa link clicks
+  # TODO: Add observer for search bar
 
   # STATE PERSISTENCE ____________________________________________________________________________
-  # shiny::onBookmark(function(state_obj) {
-  #   state_obj$values$selected_accession <- state$selected_accession()
-  #   state_obj$values$details_open <- state$details_open()
-  #   state_obj
-  # })
+  shiny::onBookmark(function(state_obj) {
+    # Store the current page/tab
+    state_obj$values$current_tab <- input$page
 
-  # shiny::onBookmarked(function(url) {
-  #   shiny::updateQueryString(url)
-  # })
+    # If you have a detail type and want to persist it:
+    state_obj$values$detail_type <- state$detail_type()
+    state_obj$values$selected_accession <- state$selected_accession()
+    state_obj$values$details_open <- state$details_open()
 
-  # shiny::onRestore(function(state_obj) {
-  #   if (!is.null(state_obj$values$selected_accession)) {
-  #     acc <- state_obj$values$selected_accession
-  #     shiny::observeEvent(state$data(),
-  #       {
-  #         update_and_open_details(acc)
+    state_obj
+  })
 
-  #         data <- state$data()
-  #         idx <- match(acc, data$obsaccessioncode)
-  #         if (!is.na(idx)) {
-  #           dt_proxy <- DT::dataTableProxy("dataTable")
-  #           DT::selectRows(dt_proxy, idx, ignore.selectable = TRUE)
-  #         }
-  #       },
-  #       once = TRUE
-  #     )
-  #   }
-  #   invisible(NULL)
-  # })
+  shiny::onBookmarked(function(url) {
+    shiny::updateQueryString(url)
+  })
 
-  # shiny::observe({
-  #   shiny::reactiveValuesToList(input)
-  #   session$doBookmark()
-  # })
+  shiny::onRestore(function(context) {
+    # Restore the tab
+    if (!is.null(context$values$current_tab)) {
+      shiny::updateNavbarPage(session, "page", selected = context$values$current_tab)
+    }
+
+    # Safely reopen the detail overlay
+    if (isTRUE(context$values$details_open)) {
+      detail_open_observer <- shiny::observe({
+        state$detail_type(context$values$detail_type)
+        state$selected_accession(context$values$selected_accession)
+        state$details_open(TRUE)
+        show_detail_view(
+          state$detail_type(),
+          state$selected_accession(),
+          output,
+          session
+        )
+        detail_open_observer$destroy()
+      })
+    }
+
+    invisible(NULL)
+  })
+
+  shiny::observe({
+    shiny::reactiveValuesToList(input)
+    session$doBookmark()
+  })
+
+  # Exclude DataTable inputs from bookmarks (avoids storing the large table state)
+  shiny::setBookmarkExclude(c(
+    "dataTable_rows_selected", "dataTable_rows_all", "dataTable_rows_current",
+    "dataTable_search", "dataTable_state", "dataTable_row_last_clicked",
+    "dataTable_cell_clicked"
+  ))
 }
