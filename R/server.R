@@ -24,9 +24,9 @@ server <- function(input, output, session) {
     detail_type = shiny::reactiveVal(NULL),
     selected_accession = shiny::reactiveVal(NULL),
     details_open = shiny::reactiveVal(FALSE),
-    map_center_lat = shiny::reactiveVal(39.8283),   # Default latitude
-    map_center_lng = shiny::reactiveVal(-98.5795),  # Default longitude
-    map_zoom = shiny::reactiveVal(2)                # Default zoom
+    map_center_lat = shiny::reactiveVal(39.8283), # Default latitude
+    map_center_lng = shiny::reactiveVal(-98.5795), # Default longitude
+    map_zoom = shiny::reactiveVal(2) # Default zoom
   )
 
   # Load data from local files
@@ -65,37 +65,45 @@ server <- function(input, output, session) {
     # Always initially render with default values
     plot_map$process_map_data(plot_data)
   })
-  
+
   # Use a self-destroying observer to handle map initialization from URL
-  map_init_observer <- shiny::observeEvent(session$clientData$url_search, {
-    # Only update map if we have restored state values
-    if (state$map_center_lat() != 39.8283 || 
-        state$map_center_lng() != -98.5795 || 
+  map_init_observer <- shiny::observeEvent(session$clientData$url_search,
+    {
+      # Only update map if we have restored state values
+      if (state$map_center_lat() != 39.8283 ||
+        state$map_center_lng() != -98.5795 ||
         state$map_zoom() != 2) {
-      
-      leaflet::leafletProxy("map", session) |>
-        leaflet::setView(
-          lng = state$map_center_lng(), 
-          lat = state$map_center_lat(), 
-          zoom = state$map_zoom()
-        )
-    }
-    
-    # Destroy this observer after first run
-    map_init_observer$destroy()
-  }, once = TRUE)
+        leaflet::leafletProxy("map", session) |>
+          leaflet::setView(
+            lng = state$map_center_lng(),
+            lat = state$map_center_lat(),
+            zoom = state$map_zoom()
+          )
+      }
+
+      # Destroy this observer after first run
+      map_init_observer$destroy()
+    },
+    once = TRUE
+  )
 
   # Track map state changes without triggering redraws
-  shiny::observeEvent(input$map_zoom, {
-    state$map_zoom(input$map_zoom)
-  }, ignoreInit = TRUE)
-  
-  shiny::observeEvent(input$map_center, {
-    if (!is.null(input$map_center)) {
-      state$map_center_lat(input$map_center$lat)
-      state$map_center_lng(input$map_center$lng)
-    }
-  }, ignoreInit = TRUE)
+  shiny::observeEvent(input$map_zoom,
+    {
+      state$map_zoom(input$map_zoom)
+    },
+    ignoreInit = TRUE
+  )
+
+  shiny::observeEvent(input$map_center,
+    {
+      if (!is.null(input$map_center)) {
+        state$map_center_lat(input$map_center$lat)
+        state$map_center_lng(input$map_center$lng)
+      }
+    },
+    ignoreInit = TRUE
+  )
 
   # EVENT HANDLERS _________________________________________________________________________________
   shiny::observeEvent(input$see_details,
@@ -216,7 +224,7 @@ server <- function(input, output, session) {
     state_obj$values$detail_type <- state$detail_type()
     state_obj$values$selected_accession <- state$selected_accession()
     state_obj$values$details_open <- state$details_open()
-    
+
     # Add map state
     state_obj$values$map_center_lat <- state$map_center_lat()
     state_obj$values$map_center_lng <- state$map_center_lng()
@@ -234,7 +242,7 @@ server <- function(input, output, session) {
     if (!is.null(context$values$current_tab)) {
       shiny::updateNavbarPage(session, "page", selected = context$values$current_tab)
     }
-    
+
     # Restore map state
     if (!is.null(context$values$map_center_lat)) {
       state$map_center_lat(context$values$map_center_lat)
@@ -274,6 +282,7 @@ server <- function(input, output, session) {
   shiny::setBookmarkExclude(c(
     "dataTable_rows_selected", "dataTable_rows_all", "dataTable_rows_current",
     "dataTable_search", "dataTable_state", "dataTable_row_last_clicked",
-    "dataTable_cell_clicked"
+    "dataTable_cell_clicked", "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
+    "map_marker_click", "map_click"
   ))
 }
