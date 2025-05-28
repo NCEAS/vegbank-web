@@ -2,7 +2,7 @@
 % Please edit documentation in R/detail_view.R
 \name{build_details_view}
 \alias{build_details_view}
-\title{Detail View Functions}
+\title{Build Details View}
 \usage{
 build_details_view(selected_data)
 }
@@ -13,21 +13,6 @@ build_details_view(selected_data)
 A list of Shiny UI outputs.
 }
 \description{
-Functions for building the detail view panel.
+Constructs a list of Shiny UI outputs for displaying detailed plot information.
 }
-\keyword{Build}
-\keyword{Constructs}
-\keyword{Details}
-\keyword{Shiny}
-\keyword{UI}
-\keyword{View}
-\keyword{a}
-\keyword{detailed}
-\keyword{displaying}
-\keyword{for}
-\keyword{information.}
 \keyword{internal}
-\keyword{list}
-\keyword{of}
-\keyword{outputs}
-\keyword{plot}

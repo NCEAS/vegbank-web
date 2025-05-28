@@ -9,10 +9,8 @@
 #'
 #' @param detail_type Type of detail to show ("plot" or "community")
 #' @param accession_code The accession code to fetch details for
-#' @param state The application state list
 #' @param output The Shiny output object
 #' @param session The Shiny session object
-#' @param api_client API client to use for fetching details
 #' @return Boolean indicating success or failure
 #' @keywords internal
 show_detail_view <- function(detail_type, accession_code, output, session) {
