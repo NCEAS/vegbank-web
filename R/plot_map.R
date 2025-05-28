@@ -45,29 +45,7 @@ plot_map <- (function() {
     )
   }
 
-  add_zoom_control <- function(map) {
-    map |> htmlwidgets::onRender("
-      function(el, x) {
-        var map = this;
-        var zoomControl = L.control({position: 'bottomleft'});
-        zoomControl.onAdd = function(map) {
-          var div = L.DomUtil.create('div', 'zoom-control');
-          div.style.background = 'white';
-          div.style.padding = '5px';
-          div.style.border = '1px solid #ccc';
-          div.innerHTML = 'Zoom: ' + map.getZoom();
-          return div;
-        };
-        zoomControl.addTo(map);
-        map.on('zoomend', function() {
-          document.getElementsByClassName('zoom-control')[0].innerHTML = 'Zoom: ' + map.getZoom();
-          Shiny.setInputValue('map_zoom', map.getZoom());
-        });
-      }
-    ")
-  }
-
-  process_map_data <- function(map_data) {
+  process_map_data <- function(map_data, center_lat = 39.8283, center_lng = -98.5795, zoom = 2) {
     shiny::withProgress(
       message = "Processing map data:",
       value = 0,
@@ -104,7 +82,7 @@ plot_map <- (function() {
           shiny::setProgress(0.8, detail = "Building map...")
           leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = 2)) |>
             leaflet::setMaxBounds(lng1 = -180, lat1 = -85, lng2 = 180, lat2 = 85) |>
-            leaflet::setView(lng = -98.5795, lat = 39.8283, zoom = 2) |>
+            leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom) |>
             leaflet::addTiles() |>
             leaflet::addMarkers(
               lng = ~longitude,
@@ -130,6 +108,45 @@ plot_map <- (function() {
         }
       }
     )
+  }
+
+  add_zoom_control <- function(map) {
+    map |> htmlwidgets::onRender("
+      function(el, x) {
+        var map = this;
+        var zoomControl = L.control({position: 'bottomleft'});
+        zoomControl.onAdd = function(map) {
+          var div = L.DomUtil.create('div', 'zoom-control');
+          div.style.background = 'white';
+          div.style.padding = '5px';
+          div.style.border = '1px solid #ccc';
+          div.innerHTML = 'Zoom: ' + map.getZoom();
+          return div;
+        };
+        zoomControl.addTo(map);
+        
+        // Use debounce approach for events
+        var updateTimeout;
+        
+        map.on('zoomend', function() {
+          document.getElementsByClassName('zoom-control')[0].innerHTML = 'Zoom: ' + map.getZoom();
+          clearTimeout(updateTimeout);
+          updateTimeout = setTimeout(function() {
+            Shiny.setInputValue('map_zoom', map.getZoom(), {priority: 'event'});
+          }, 300);
+        });
+        
+        map.on('moveend', function() {
+          var center = map.getCenter();
+          clearTimeout(updateTimeout);
+          updateTimeout = setTimeout(function() {
+            Shiny.setInputValue('map_center', 
+                              {lat: center.lat, lng: center.lng}, 
+                              {priority: 'event'});
+          }, 300);
+        });
+      }
+    ")
   }
 
   list(
