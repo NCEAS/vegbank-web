@@ -52,6 +52,10 @@ veg_bank_api <- (function() {
       response <- fetch(paste0("/get_observation_details/", accession_code))
       process_response(response)
     },
+    get_taxon_observation_details = function(accession_code) {
+      response <- fetch(paste0("/taxon-observations/", accession_code))
+      process_response(response)
+    },
     get_community_details = function(accession_code) {
       response <- fetch(paste0("/community-concepts/", accession_code))
       process_response(response)

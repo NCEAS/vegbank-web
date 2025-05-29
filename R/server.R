@@ -215,7 +215,23 @@ server <- function(input, output, session) {
     }
   })
 
-  # TODO: Add observer for taxa link clicks
+  shiny::observeEvent(input$taxa_link_click, {
+    accession_code <- input$taxa_link_click
+    # Check for valid accession code
+    if (is.null(accession_code) ||
+      is.na(accession_code) ||
+      accession_code == "") {
+      progress_handler$show_notification(paste0("No accession code found for that taxon observation"), type = "error")
+      return()
+    }
+    if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      state$detail_type("taxon-observation")
+      state$selected_accession(accession_code)
+      state$details_open(TRUE)
+      show_detail_view("taxon-observation", accession_code, output, session)
+    }
+  })
+
   # TODO: Add observer for search bar
 
   # STATE PERSISTENCE ____________________________________________________________________________

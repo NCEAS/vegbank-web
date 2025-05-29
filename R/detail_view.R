@@ -7,7 +7,7 @@
 #'
 #' Generic function to fetch and display details in the overlay.
 #'
-#' @param detail_type Type of detail to show ("plot" or "community")
+#' @param detail_type Type of detail to show ("plot", "community", or "taxon-observation")
 #' @param accession_code The accession code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
@@ -22,6 +22,8 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       # Determine which API function to call based on detail type
       result <- if (detail_type == "community") {
         veg_bank_api$get_community_details(accession_code)
+      } else if (detail_type == "taxon-observation") {
+        veg_bank_api$get_taxon_observation_details(accession_code)
       } else {
         veg_bank_api$get_observation_details(accession_code)
       }
@@ -47,6 +49,12 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       output$taxaDetails <- shiny::renderUI(NULL)
       output$community_name <- shiny::renderUI(NULL)
       output$community_description <- shiny::renderUI(NULL)
+      output$occurence_count <- shiny::renderUI(NULL)
+      output$taxon_name <- shiny::renderUI(NULL)
+      output$taxon_scientific <- shiny::renderUI(NULL)
+      output$taxon_common <- shiny::renderUI(NULL)
+      output$taxon_coverage <- shiny::renderUI(NULL)
+      output$taxon_identifiers <- shiny::renderUI(NULL)
 
       # Generate the appropriate view based on detail type
       if (detail_type == "community") {
@@ -55,6 +63,13 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
         output$community_name <- details$community_name
         output$community_description <- details$community_description
         output$occurence_count <- details$occurence_count
+      } else if (detail_type == "taxon-observation") {
+        details <- build_taxon_details_view(result$data)
+        output$taxon_name <- details$taxon_name
+        output$taxon_scientific <- details$taxon_scientific
+        output$taxon_common <- details$taxon_common
+        output$taxon_coverage <- details$taxon_coverage
+        output$taxon_identifiers <- details$taxon_identifiers
       } else {
         details <- build_details_view(result$data)
         output$plot_id_details <- details$plot_id_details
@@ -238,6 +253,107 @@ build_community_details_view <- function(community_data) {
       htmltools::tags$p(
         "Number of occurrences: ",
         htmltools::tags$strong(community_data$data.obscount)
+      )
+    })
+  )
+}
+
+#' Build Taxon Details View
+#'
+#' Constructs a list of Shiny UI outputs for displaying detailed taxon information.
+#'
+#' @param taxon_data A data row representing the selected taxon.
+#' @return A list of Shiny UI outputs.
+#' @importFrom htmltools tags HTML
+#' @importFrom shiny renderUI
+#' @keywords internal
+build_taxon_details_view <- function(taxon_data) {
+  if (is.null(taxon_data)) {
+    return(list(
+      taxon_name = shiny::renderUI({
+        htmltools::tags$p("Taxon details not available")
+      }),
+      taxon_scientific = shiny::renderUI({
+        htmltools::tags$p("No scientific name available")
+      }),
+      taxon_common = shiny::renderUI({
+        htmltools::tags$p("No common name available")
+      }),
+      taxon_coverage = shiny::renderUI({
+        htmltools::tags$p("No coverage data available")
+      }),
+      taxon_identifiers = shiny::renderUI({
+        htmltools::tags$p("No identifier information available")
+      })
+    ))
+  }
+
+  # TODO: when api is replaced by VegBankR this should not be necessary
+  taxon_data <- as.data.frame(taxon_data) # Converting to data frame
+
+  list(
+    taxon_name = shiny::renderUI({
+      htmltools::tags$b(taxon_data$data.authorplantname)
+    }),
+    taxon_scientific = shiny::renderUI({
+      htmltools::tags$div(
+        id = "taxon-scientific",
+        htmltools::tags$p(
+          htmltools::tags$strong("Current scientific name: "),
+          htmltools::tags$em(taxon_data$data.int_currplantscinamenoauth)
+        ),
+        htmltools::tags$p(
+          htmltools::tags$strong("Full scientific name: "),
+          htmltools::tags$em(taxon_data$data.int_currplantscifull)
+        ),
+        htmltools::tags$p(
+          htmltools::tags$strong("Original scientific name: "),
+          htmltools::tags$em(taxon_data$data.int_origplantscinamenoauth)
+        ),
+        htmltools::tags$p(
+          htmltools::tags$strong("Full original name: "),
+          htmltools::tags$em(taxon_data$data.int_origplantscifull)
+        )
+      )
+    }),
+    taxon_common = shiny::renderUI({
+      htmltools::tags$div(
+        htmltools::tags$p(
+          htmltools::tags$strong("Current common name: "),
+          taxon_data$data.int_currplantcommon
+        ),
+        htmltools::tags$p(
+          htmltools::tags$strong("Original common name: "),
+          taxon_data$data.int_origplantcommon
+        )
+      )
+    }),
+    taxon_coverage = shiny::renderUI({
+      htmltools::tags$div(
+        htmltools::tags$p(
+          htmltools::tags$strong("Cover percentage: "),
+          paste0(taxon_data$data.maxcover, "%")
+        ),
+        htmltools::tags$p(
+          htmltools::tags$strong("Taxon inference area: "),
+          paste0(taxon_data$data.taxoninferencearea, " m²")
+        )
+      )
+    }),
+    taxon_identifiers = shiny::renderUI({
+      htmltools::tags$div(
+        htmltools::tags$p(
+          htmltools::tags$strong("Taxon Observation ID: "),
+          taxon_data$data.taxonobservation_id
+        ),
+        htmltools::tags$p(
+          htmltools::tags$strong("Current plant code: "),
+          taxon_data$data.int_currplantcode
+        ),
+        htmltools::tags$p(
+          htmltools::tags$strong("Original plant code: "),
+          taxon_data$data.int_origplantcode
+        )
       )
     })
   )

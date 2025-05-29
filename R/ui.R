@@ -54,14 +54,21 @@ ui <- function(req) {
       const type = message.type;
       const plotCards = document.getElementById('plot-details-cards');
       const communityCards = document.getElementById('community-details-cards');
+      const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
 
-      if (plotCards && communityCards) {
+      if (plotCards && communityCards && taxonObservationCards) {
+        // Hide all card types first
+        plotCards.style.display = 'none';
+        communityCards.style.display = 'none';
+        taxonObservationCards.style.display = 'none';
+        
+        // Show the requested type
         if (type === 'plot') {
           plotCards.style.display = 'block';
-          communityCards.style.display = 'none';
         } else if (type === 'community') {
-          plotCards.style.display = 'none';
           communityCards.style.display = 'block';
+        } else if (type === 'taxon-observation') {
+          taxonObservationCards.style.display = 'block';
         }
       }
     });
@@ -281,6 +288,17 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Community Name"), shiny::uiOutput("community_name")),
           bslib::card(bslib::card_header("Occurences"), shiny::uiOutput("occurence_count")),
           bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description"))
+        ),
+        
+        # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "taxon-observation-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Taxon Name"), shiny::uiOutput("taxon_name")),
+          bslib::card(bslib::card_header("Scientific Names"), shiny::uiOutput("taxon_scientific")),
+          bslib::card(bslib::card_header("Common Names"), shiny::uiOutput("taxon_common")),
+          bslib::card(bslib::card_header("Coverage"), shiny::uiOutput("taxon_coverage")),
+          bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("taxon_identifiers"))
         )
       )
     )
