@@ -16,24 +16,37 @@ plot_table <- (function() {
     )
   }
 
+  # Simple notification function with direct test detection
+  show_notification <- function(message, type = "default") {
+    # Simple check: are we in a test environment?
+    in_test <- identical(Sys.getenv("TESTTHAT"), "true") || 
+               identical(getOption("shiny.testmode"), TRUE)
+    
+    if (!in_test) {
+      # Not in testing - show notification in Shiny
+      tryCatch({
+        shiny::showNotification(message, type = type)
+      }, error = function(e) {
+        # Fall back to console message if Shiny notification fails
+        message(paste0("[", type, "] ", message))
+      })
+    } else {
+      # In testing - just log to console
+      message(paste0("[TEST-", type, "] ", message))
+    }
+  }
+  
   is_missing_data <- function(plot_data, taxa_data, comm_data, show_notifications = TRUE) {
     # Return early if no data
     if (is.null(plot_data) || nrow(plot_data) == 0 ||
-      is.null(taxa_data) || nrow(taxa_data) == 0 ||
-      is.null(comm_data) || nrow(comm_data) == 0) {
-      # Only show notification if we're in an interactive context and notifications are enabled
-      if (show_notifications && interactive() && exists("session", inherits = FALSE)) {
-        tryCatch(
-          {
-            shiny::showNotification(
-              "Missing required data. Please try again or check your connection.",
-              type = "error"
-            )
-          },
-          error = function(e) {
-            # Silently fail if notification can't be shown
-            warning("Could not show notification: ", e$message)
-          }
+        is.null(taxa_data) || nrow(taxa_data) == 0 ||
+        is.null(comm_data) || nrow(comm_data) == 0) {
+      
+      # Show notification if enabled using our simplified helper
+      if (show_notifications) {
+        show_notification(
+          "Missing required data. Please try again or check your connection.",
+          type = "error"
         )
       }
       return(TRUE)
@@ -158,61 +171,39 @@ plot_table <- (function() {
     )
   }
 
+  # Fix the progress handling system
   process_table_data <- function(plot_data, taxa_data, comm_data) {
-    # Define setProgress locally if it's not found in the environment
-    if (!exists("setProgress", inherits = FALSE)) {
-      setProgress <- function(value, detail = NULL) {
-        # Try to use shiny's setProgress if available
-        tryCatch(
-          {
-            shiny::setProgress(value, detail = detail)
-          },
-          error = function(e) {
-            # Otherwise silently continue
-          }
-        )
-      }
-    }
-
-    # Use withProgress safely
-    progress_wrapper <- function(expr, message, value) {
-      # Check if we're in a test environment or interactive session
-      if (interactive() && exists("session", inherits = FALSE)) {
-        shiny::withProgress(message = message, value = value, expr)
-      } else {
-        # Just evaluate the expression without progress indicators
-        expr
-      }
-    }
-
-    progress_wrapper(
-      expr = {
-        if (is_missing_data(plot_data, taxa_data, comm_data,
-          show_notifications = interactive() && exists("session", inherits = FALSE)
-        )) {
+    # Check if we're in a Shiny session where withProgress will work
+    in_shiny_session <- !identical(Sys.getenv("TESTTHAT"), "true") && 
+                         !is.null(getDefaultReactiveDomain())
+    
+    # For Shiny sessions, use the full withProgress with direct setProgress calls
+    if (in_shiny_session) {
+      shiny::withProgress(message = "Processing table data", value = 0, {
+        if (is_missing_data(plot_data, taxa_data, comm_data, show_notifications = TRUE)) {
           return(create_empty_table())
         }
-
-        setProgress(0.2, detail = "Cleaning author observation codes")
+        
+        shiny::incProgress(0.2, detail = "Cleaning author observation codes")
         author_codes <- clean_column_data(plot_data, "authorplotcode")
-
-        setProgress(0.3, detail = "Cleaning location data")
+        
+        shiny::incProgress(0.1, detail = "Cleaning location data")
         locations <- clean_column_data(plot_data, "stateprovince")
-
-        setProgress(0.4, detail = "Creating taxa lists...")
+        
+        shiny::incProgress(0.1, detail = "Creating taxa lists...")
         taxa_html <- create_taxa_vectors(plot_data, taxa_data)
-
-        setProgress(0.5, detail = "Creating community links...")
+        
+        shiny::incProgress(0.1, detail = "Creating community links...")
         community_html <- create_community_vectors(plot_data, comm_data)
-
-        setProgress(0.6, detail = "Creating action buttons...")
+        
+        shiny::incProgress(0.1, detail = "Creating action buttons...")
         action_buttons <- create_action_buttons(plot_data)
-
-        setProgress(0.8, detail = "Building table...")
+        
+        shiny::incProgress(0.2, detail = "Building table...")
         display_data <- build_display_data(
           author_codes, locations, taxa_html, community_html, action_buttons
         )
-
+        
         DT::datatable(
           display_data,
           rownames = FALSE,
@@ -235,12 +226,48 @@ plot_table <- (function() {
             )
           )
         )
-      },
-      message = "Processing table data:",
-      value = 0
-    )
+      })
+    } else {
+      # For testing, just process without progress indicators
+      if (is_missing_data(plot_data, taxa_data, comm_data, show_notifications = FALSE)) {
+        return(create_empty_table())
+      }
+      
+      author_codes <- clean_column_data(plot_data, "authorplotcode")
+      locations <- clean_column_data(plot_data, "stateprovince")
+      taxa_html <- create_taxa_vectors(plot_data, taxa_data)
+      community_html <- create_community_vectors(plot_data, comm_data)
+      action_buttons <- create_action_buttons(plot_data)
+      
+      display_data <- build_display_data(
+        author_codes, locations, taxa_html, community_html, action_buttons
+      )
+      
+      DT::datatable(
+        display_data,
+        rownames = FALSE,
+        escape = FALSE,
+        selection = list(mode = "single", target = "row", selectable = FALSE),
+        options = list(
+          dom = "frtip",
+          pageLength = 100,
+          scrollY = "calc(100vh - 300px)",
+          scrollX = TRUE,
+          scrollCollapse = TRUE,
+          deferRender = TRUE,
+          processing = TRUE,
+          columnDefs = list(
+            list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
+            list(targets = 1, width = "15%"),
+            list(targets = 2, width = "10%"),
+            list(targets = 3, orderable = FALSE, searchable = TRUE, width = "45%"),
+            list(targets = 4, width = "20%")
+          )
+        )
+      )
+    }
   }
-
+  
   # Make the functions accessible for testing with environment() approach
   result <- list(
     create_empty_table = create_empty_table,
