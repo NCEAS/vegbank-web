@@ -336,7 +336,7 @@ build_taxon_details_view <- function(taxon_data) {
         ),
         htmltools::tags$p(
           htmltools::tags$strong("Taxon inference area: "),
-          paste0(taxon_data$data.taxoninferencearea, " m²")
+          paste0(taxon_data$data.taxoninferencearea, " m\u00B2") # Replace m² with Unicode escape
         )
       )
     }),

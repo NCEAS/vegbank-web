@@ -45,6 +45,7 @@ test_that("process_map_data creates a map with markers", {
   )
 
   # Set test environment
+  # Use explicit namespace to make dependency clear
   withr::with_envvar(c("TESTTHAT" = "true"), {
     map <- plot_map$process_map_data(test_data)
   })
@@ -69,6 +70,7 @@ test_that("process_map_data handles custom center and zoom", {
   )
   
   # Custom center and zoom
+  # Use explicit namespace to make dependency clear
   withr::with_envvar(c("TESTTHAT" = "true"), {
     map <- plot_map$process_map_data(test_data, center_lat = 35.0, center_lng = -100.0, zoom = 4)
   })

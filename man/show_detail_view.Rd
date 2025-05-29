@@ -7,7 +7,7 @@
 show_detail_view(detail_type, accession_code, output, session)
 }
 \arguments{
-\item{detail_type}{Type of detail to show ("plot" or "community")}
+\item{detail_type}{Type of detail to show ("plot", "community", or "taxon-observation")}
 
 \item{accession_code}{The accession code to fetch details for}
 
