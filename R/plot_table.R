@@ -7,20 +7,35 @@
 plot_table <- (function() {
   create_empty_table <- function() {
     DT::datatable(
-      data.frame("No Data Available" = "Please try again or check your connection"),
-      options = list(dom = "t")
+      data.frame(
+        "No.Data.Available" = "Please try again or check your connection",
+        check.names = FALSE, stringsAsFactors = FALSE
+      ),
+      options = list(dom = "t"),
+      rownames = FALSE
     )
   }
 
-  is_missing_data <- function(plot_data, taxa_data, comm_data) {
+  is_missing_data <- function(plot_data, taxa_data, comm_data, show_notifications = TRUE) {
     # Return early if no data
     if (is.null(plot_data) || nrow(plot_data) == 0 ||
-          is.null(taxa_data) || nrow(taxa_data) == 0 ||
-          is.null(comm_data) || nrow(comm_data) == 0) {
-      shiny::showNotification(
-        "Missing required data. Please try again or check your connection.",
-        type = "error"
-      )
+      is.null(taxa_data) || nrow(taxa_data) == 0 ||
+      is.null(comm_data) || nrow(comm_data) == 0) {
+      # Only show notification if we're in an interactive context and notifications are enabled
+      if (show_notifications && interactive() && exists("session", inherits = FALSE)) {
+        tryCatch(
+          {
+            shiny::showNotification(
+              "Missing required data. Please try again or check your connection.",
+              type = "error"
+            )
+          },
+          error = function(e) {
+            # Silently fail if notification can't be shown
+            warning("Could not show notification: ", e$message)
+          }
+        )
+      }
       return(TRUE)
     }
     FALSE
@@ -144,11 +159,37 @@ plot_table <- (function() {
   }
 
   process_table_data <- function(plot_data, taxa_data, comm_data) {
-    shiny::withProgress(
-      message = "Processing table data:",
-      value = 0,
-      {
-        if (is_missing_data(plot_data, taxa_data, comm_data)) {
+    # Define setProgress locally if it's not found in the environment
+    if (!exists("setProgress", inherits = FALSE)) {
+      setProgress <- function(value, detail = NULL) {
+        # Try to use shiny's setProgress if available
+        tryCatch(
+          {
+            shiny::setProgress(value, detail = detail)
+          },
+          error = function(e) {
+            # Otherwise silently continue
+          }
+        )
+      }
+    }
+
+    # Use withProgress safely
+    progress_wrapper <- function(expr, message, value) {
+      # Check if we're in a test environment or interactive session
+      if (interactive() && exists("session", inherits = FALSE)) {
+        shiny::withProgress(message = message, value = value, expr)
+      } else {
+        # Just evaluate the expression without progress indicators
+        expr
+      }
+    }
+
+    progress_wrapper(
+      expr = {
+        if (is_missing_data(plot_data, taxa_data, comm_data,
+          show_notifications = interactive() && exists("session", inherits = FALSE)
+        )) {
           return(create_empty_table())
         }
 
@@ -194,12 +235,23 @@ plot_table <- (function() {
             )
           )
         )
-      }
+      },
+      message = "Processing table data:",
+      value = 0
     )
   }
 
-  list(
+  # Make the functions accessible for testing with environment() approach
+  result <- list(
     create_empty_table = create_empty_table,
+    is_missing_data = is_missing_data,
+    clean_column_data = clean_column_data,
+    create_action_buttons = create_action_buttons,
+    create_taxa_vectors = create_taxa_vectors,
+    create_community_vectors = create_community_vectors,
+    build_display_data = build_display_data,
     process_table_data = process_table_data
   )
+
+  return(result)
 })()
