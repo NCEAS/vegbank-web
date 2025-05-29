@@ -115,7 +115,7 @@ server <- function(input, output, session) {
       if (is.null(selected_row_accession) ||
         is.na(selected_row_accession) ||
         selected_row_accession == "") {
-        shiny::showNotification(paste0("No accession code found for row: ", i), type = "error")
+        progress_handler$show_notification(paste0("No accession code found for row: ", i), type = "error")
         return()
       }
 
@@ -154,7 +154,7 @@ server <- function(input, output, session) {
       lon <- plot_data$longitude[idx]
 
       if (is.na(lat) || is.na(lon) || !is.numeric(lat) || !is.numeric(lon)) {
-        shiny::showNotification("Cannot show on map: Missing or invalid coordinates for this plot",
+        progress_handler$show_notification("Cannot show on map: Missing or invalid coordinates for this plot",
           type = "warning"
         )
         return()
@@ -204,7 +204,7 @@ server <- function(input, output, session) {
     if (is.null(accession_code) ||
       is.na(accession_code) ||
       accession_code == "") {
-      shiny::showNotification(paste0("No accession code found for that community"), type = "error")
+      progress_handler$show_notification(paste0("No accession code found for that community"), type = "error")
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {

@@ -14,62 +14,67 @@
 #' @return Boolean indicating success or failure
 #' @keywords internal
 show_detail_view <- function(detail_type, accession_code, output, session) {
-  show_progress(paste0("Loading ", detail_type, " details..."))(function(step, complete) {
-    step(0.2, "Fetching details")
+  # Use the shared progress handler for handling progress updates
+  progress_handler$with_safe_progress(
+    expr = {
+      progress_handler$inc_progress(0.2, "Fetching details")
 
-    # Determine which API function to call based on detail type
-    result <- if (detail_type == "community") {
-      veg_bank_api$get_community_details(accession_code)
-    } else {
-      veg_bank_api$get_observation_details(accession_code)
-    }
+      # Determine which API function to call based on detail type
+      result <- if (detail_type == "community") {
+        veg_bank_api$get_community_details(accession_code)
+      } else {
+        veg_bank_api$get_observation_details(accession_code)
+      }
 
-    if (!result$success) {
-      step(0.3, "Error loading details")
-      shiny::showNotification(
-        paste0("Failed to load ", detail_type, " details. Please try again."),
-        type = "error"
-      )
-      return(FALSE)
-    }
+      if (!result$success) {
+        progress_handler$inc_progress(0.3, "Error loading details")
+        progress_handler$show_notification(
+          paste0("Failed to load ", detail_type, " details. Please try again."),
+          type = "error"
+        )
+        return(FALSE)
+      }
 
-    step(0.5, "Processing details")
+      progress_handler$inc_progress(0.3, "Processing details")
 
-    # Clear all output slots
-    output$plot_id_details <- shiny::renderUI(NULL)
-    output$locationDetails <- shiny::renderUI(NULL)
-    output$layout_details <- shiny::renderUI(NULL)
-    output$environmental_details <- shiny::renderUI(NULL)
-    output$methods_details <- shiny::renderUI(NULL)
-    output$plot_quality_details <- shiny::renderUI(NULL)
-    output$taxaDetails <- shiny::renderUI(NULL)
-    output$community_name <- shiny::renderUI(NULL)
-    output$community_description <- shiny::renderUI(NULL)
+      # Clear all output slots
+      output$plot_id_details <- shiny::renderUI(NULL)
+      output$locationDetails <- shiny::renderUI(NULL)
+      output$layout_details <- shiny::renderUI(NULL)
+      output$environmental_details <- shiny::renderUI(NULL)
+      output$methods_details <- shiny::renderUI(NULL)
+      output$plot_quality_details <- shiny::renderUI(NULL)
+      output$taxaDetails <- shiny::renderUI(NULL)
+      output$community_name <- shiny::renderUI(NULL)
+      output$community_description <- shiny::renderUI(NULL)
 
-    # Generate the appropriate view based on detail type
-    if (detail_type == "community") {
-      # Get first row of community data bc multiple rows for multiple classsystems
-      details <- build_community_details_view(result$data)
-      output$community_name <- details$community_name
-      output$community_description <- details$community_description
-      output$occurence_count <- details$occurence_count
-    } else {
-      details <- build_details_view(result$data)
-      output$plot_id_details <- details$plot_id_details
-      output$locationDetails <- details$location_details
-      output$layout_details <- details$layout_details
-      output$environmental_details <- details$environmental_details
-      output$methods_details <- details$methods_details
-      output$plot_quality_details <- details$plot_quality_details
-      output$taxaDetails <- details$taxa_details
-    }
+      # Generate the appropriate view based on detail type
+      if (detail_type == "community") {
+        # Get first row of community data bc multiple rows for multiple classsystems
+        details <- build_community_details_view(result$data)
+        output$community_name <- details$community_name
+        output$community_description <- details$community_description
+        output$occurence_count <- details$occurence_count
+      } else {
+        details <- build_details_view(result$data)
+        output$plot_id_details <- details$plot_id_details
+        output$locationDetails <- details$location_details
+        output$layout_details <- details$layout_details
+        output$environmental_details <- details$environmental_details
+        output$methods_details <- details$methods_details
+        output$plot_quality_details <- details$plot_quality_details
+        output$taxaDetails <- details$taxa_details
+      }
 
-    complete(paste0(detail_type, " details ready"))
-    session$sendCustomMessage("openOverlay", list())
-    session$sendCustomMessage("updateDetailType", list(type = detail_type))
+      progress_handler$inc_progress(0.3, paste0(detail_type, " details ready"))
+      session$sendCustomMessage("openOverlay", list())
+      session$sendCustomMessage("updateDetailType", list(type = detail_type))
 
-    TRUE
-  })
+      TRUE
+    },
+    message = paste0("Loading ", detail_type, " details..."),
+    value = 0.2
+  )
 }
 
 

@@ -16,35 +16,36 @@ plot_table <- (function() {
     )
   }
 
-  # Simple notification function with direct test detection
   show_notification <- function(message, type = "default") {
-    # Simple check: are we in a test environment?
-    in_test <- identical(Sys.getenv("TESTTHAT"), "true") || 
-               identical(getOption("shiny.testmode"), TRUE)
-    
+    in_test <- identical(Sys.getenv("TESTTHAT"), "true") ||
+      identical(getOption("shiny.testmode"), TRUE)
+
     if (!in_test) {
       # Not in testing - show notification in Shiny
-      tryCatch({
-        shiny::showNotification(message, type = type)
-      }, error = function(e) {
-        # Fall back to console message if Shiny notification fails
-        message(paste0("[", type, "] ", message))
-      })
+      tryCatch(
+        {
+          shiny::showNotification(message, type = type)
+        },
+        error = function(e) {
+          # Fall back to console message if Shiny notification fails
+          message(paste0("[", type, "] ", message))
+        }
+      )
     } else {
       # In testing - just log to console
       message(paste0("[TEST-", type, "] ", message))
     }
   }
-  
+
   is_missing_data <- function(plot_data, taxa_data, comm_data, show_notifications = TRUE) {
     # Return early if no data
     if (is.null(plot_data) || nrow(plot_data) == 0 ||
         is.null(taxa_data) || nrow(taxa_data) == 0 ||
         is.null(comm_data) || nrow(comm_data) == 0) {
       
-      # Show notification if enabled using our simplified helper
+      # Show notification if enabled using the shared handler
       if (show_notifications) {
-        show_notification(
+        progress_handler$show_notification(
           "Missing required data. Please try again or check your connection.",
           type = "error"
         )
@@ -173,37 +174,33 @@ plot_table <- (function() {
 
   # Fix the progress handling system
   process_table_data <- function(plot_data, taxa_data, comm_data) {
-    # Check if we're in a Shiny session where withProgress will work
-    in_shiny_session <- !identical(Sys.getenv("TESTTHAT"), "true") && 
-                         !is.null(getDefaultReactiveDomain())
-    
-    # For Shiny sessions, use the full withProgress with direct setProgress calls
-    if (in_shiny_session) {
-      shiny::withProgress(message = "Processing table data", value = 0, {
+    # Use the shared progress handler
+    progress_handler$with_safe_progress(
+      expr = {
         if (is_missing_data(plot_data, taxa_data, comm_data, show_notifications = TRUE)) {
           return(create_empty_table())
         }
-        
-        shiny::incProgress(0.2, detail = "Cleaning author observation codes")
+
+        progress_handler$inc_progress(0.2, detail = "Cleaning author observation codes")
         author_codes <- clean_column_data(plot_data, "authorplotcode")
-        
-        shiny::incProgress(0.1, detail = "Cleaning location data")
+
+        progress_handler$inc_progress(0.1, detail = "Cleaning location data")
         locations <- clean_column_data(plot_data, "stateprovince")
-        
-        shiny::incProgress(0.1, detail = "Creating taxa lists...")
+
+        progress_handler$inc_progress(0.1, detail = "Creating taxa lists...")
         taxa_html <- create_taxa_vectors(plot_data, taxa_data)
-        
-        shiny::incProgress(0.1, detail = "Creating community links...")
+
+        progress_handler$inc_progress(0.1, detail = "Creating community links...")
         community_html <- create_community_vectors(plot_data, comm_data)
-        
-        shiny::incProgress(0.1, detail = "Creating action buttons...")
+
+        progress_handler$inc_progress(0.1, detail = "Creating action buttons...")
         action_buttons <- create_action_buttons(plot_data)
-        
-        shiny::incProgress(0.2, detail = "Building table...")
+
+        progress_handler$inc_progress(0.2, detail = "Building table...")
         display_data <- build_display_data(
           author_codes, locations, taxa_html, community_html, action_buttons
         )
-        
+
         DT::datatable(
           display_data,
           rownames = FALSE,
@@ -226,46 +223,10 @@ plot_table <- (function() {
             )
           )
         )
-      })
-    } else {
-      # For testing, just process without progress indicators
-      if (is_missing_data(plot_data, taxa_data, comm_data, show_notifications = FALSE)) {
-        return(create_empty_table())
-      }
-      
-      author_codes <- clean_column_data(plot_data, "authorplotcode")
-      locations <- clean_column_data(plot_data, "stateprovince")
-      taxa_html <- create_taxa_vectors(plot_data, taxa_data)
-      community_html <- create_community_vectors(plot_data, comm_data)
-      action_buttons <- create_action_buttons(plot_data)
-      
-      display_data <- build_display_data(
-        author_codes, locations, taxa_html, community_html, action_buttons
-      )
-      
-      DT::datatable(
-        display_data,
-        rownames = FALSE,
-        escape = FALSE,
-        selection = list(mode = "single", target = "row", selectable = FALSE),
-        options = list(
-          dom = "frtip",
-          pageLength = 100,
-          scrollY = "calc(100vh - 300px)",
-          scrollX = TRUE,
-          scrollCollapse = TRUE,
-          deferRender = TRUE,
-          processing = TRUE,
-          columnDefs = list(
-            list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
-            list(targets = 1, width = "15%"),
-            list(targets = 2, width = "10%"),
-            list(targets = 3, orderable = FALSE, searchable = TRUE, width = "45%"),
-            list(targets = 4, width = "20%")
-          )
-        )
-      )
-    }
+      },
+      message = "Processing table data",
+      value = 0
+    )
   }
   
   # Make the functions accessible for testing with environment() approach
