@@ -230,6 +230,9 @@ build_community_details_view <- function(community_data) {
       }),
       community_description = shiny::renderUI({
         htmltools::tags$p("No description available")
+      }),
+      occurence_count = shiny::renderUI({
+        htmltools::tags$p("No occurrences available")
       })
     ))
   }

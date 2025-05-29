@@ -49,13 +49,13 @@ test_that("process_map_data creates a map with markers", {
   withr::with_envvar(c("TESTTHAT" = "true"), {
     map <- plot_map$process_map_data(test_data)
   })
-  
+
   # Just check that the map is created successfully
   expect_true(inherits(map, "leaflet"))
 
   # Check that there's at least one call in the map object
   expect_true(length(map$x$calls) > 0)
-  
+
   # Skip detailed marker data tests that depend on a specific implementation
   skip("Skipping marker data tests that depend on specific leaflet structure")
 })
@@ -68,7 +68,7 @@ test_that("process_map_data handles custom center and zoom", {
     obsaccessioncode = c("ACC_NYC"),
     stringsAsFactors = FALSE
   )
-  
+
   # Custom center and zoom
   # Use explicit namespace to make dependency clear
   withr::with_envvar(c("TESTTHAT" = "true"), {
@@ -77,7 +77,7 @@ test_that("process_map_data handles custom center and zoom", {
 
   # Just check that the map is created successfully
   expect_true(inherits(map, "leaflet"))
-  
+
   # Skip detailed structure tests that depend on a specific implementation
   skip("Skipping view call tests that depend on specific leaflet structure")
 })
