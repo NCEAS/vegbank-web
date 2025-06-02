@@ -1,10 +1,11 @@
 #' VegBank API Client Module
 #'
 #' Provides functions for interacting with the VegBank API.
-#' @keywords internal
-
+#'
 #' @importFrom httr GET status_code content
 #' @importFrom jsonlite validate fromJSON
+#'
+#' @noRd
 veg_bank_api <- (function() {
   base_url <- "http://127.0.0.1:28015"
 

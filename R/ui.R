@@ -4,6 +4,8 @@
 #'
 #' @param req A Shiny request object.
 #' @return A Shiny tag list.
+#'
+#' @noRd
 ui <- function(req) {
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
@@ -61,7 +63,7 @@ ui <- function(req) {
         plotCards.style.display = 'none';
         communityCards.style.display = 'none';
         taxonObservationCards.style.display = 'none';
-        
+
         // Show the requested type
         if (type === 'plot') {
           plotCards.style.display = 'block';
@@ -94,7 +96,8 @@ ui <- function(req) {
 #' Defines a bslib theme with custom rules.
 #'
 #' @return A Bootstrap theme object.
-#' @keywords internal
+#'
+#' @noRd
 custom_theme <- bslib::bs_theme(
   bg = "#FFFFFF",
   fg = "#19201d",
@@ -157,7 +160,8 @@ custom_theme <- bslib::bs_add_rules(
 #' Constructs and returns the navigation bar to be used in the UI.
 #'
 #' @return A Shiny tag list representing the navigation bar.
-#' @keywords internal
+#'
+#' @noRd
 build_navbar <- function() {
   search_div <- htmltools::tags$li(
     class = "nav-item",
@@ -253,7 +257,8 @@ build_navbar <- function() {
 #' Constructs the overlay panel that displays detailed plot information.
 #'
 #' @return A Shiny tag representing the detail overlay.
-#' @keywords internal
+#'
+#' @noRd
 build_detail_overlay <- function() {
   htmltools::tags$div(
     id = "detail-overlay",
@@ -289,7 +294,7 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Occurences"), shiny::uiOutput("occurence_count")),
           bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description"))
         ),
-        
+
         # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility
         htmltools::tags$div(
           id = "taxon-observation-details-cards",

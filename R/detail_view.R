@@ -1,7 +1,7 @@
 #' Detail View Functions
 #'
 #' Functions for building the detail view panel.
-#' @keywords internal
+
 
 #' Show Detail View
 #'
@@ -12,7 +12,8 @@
 #' @param output The Shiny output object
 #' @param session The Shiny session object
 #' @return Boolean indicating success or failure
-#' @keywords internal
+#'
+#' @noRd
 show_detail_view <- function(detail_type, accession_code, output, session) {
   # Use the shared progress handler for handling progress updates
   progress_handler$with_safe_progress(
@@ -101,7 +102,8 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
 #' @return A list of Shiny UI outputs.
 #' @importFrom htmltools tags
 #' @importFrom shiny renderUI
-#' @keywords internal
+#'
+#' @noRd
 build_details_view <- function(selected_data) {
   # Mapping internal field names to their display names.
   display_names <- list(
@@ -221,7 +223,8 @@ build_details_view <- function(selected_data) {
 #' @return A list of Shiny UI outputs.
 #' @importFrom htmltools tags HTML
 #' @importFrom shiny renderUI
-#' @keywords internal
+#'
+#' @noRd
 build_community_details_view <- function(community_data) {
   if (is.null(community_data)) {
     return(list(
@@ -269,7 +272,8 @@ build_community_details_view <- function(community_data) {
 #' @return A list of Shiny UI outputs.
 #' @importFrom htmltools tags HTML
 #' @importFrom shiny renderUI
-#' @keywords internal
+#'
+#' @noRd
 build_taxon_details_view <- function(taxon_data) {
   if (is.null(taxon_data)) {
     return(list(

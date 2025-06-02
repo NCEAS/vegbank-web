@@ -5,7 +5,9 @@
 #' @param input Shiny input object.
 #' @param output Shiny output object.
 #' @param session Shiny session object.
+#'
 #' @return Called for its side effects.
+#'
 #' @importFrom ggplot2 .data
 #' @importFrom shiny reactiveVal observeEvent observe req renderUI renderText showNotification
 #'             updateNavbarPage invalidateLater reactiveValuesToList onBookmark onBookmarked
@@ -14,6 +16,8 @@
 #' @importFrom htmltools tags
 #' @importFrom leaflet renderLeaflet leafletProxy
 #' @importFrom utils head
+#'
+#' @noRd
 
 # ================= MAIN SERVER FUNCTION =================
 

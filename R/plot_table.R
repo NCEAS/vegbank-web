@@ -1,9 +1,10 @@
 #' Table Data Functions Module
 #'
 #' Provides functions for creating and manipulating the plot data table.
-#' @keywords internal
-
+#'
 #' @importFrom DT datatable
+#'
+#' @noRd
 plot_table <- (function() {
   create_empty_table <- function() {
     DT::datatable(

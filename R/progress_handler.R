@@ -1,34 +1,34 @@
 #' Progress and Notification Handler Module
 #'
 #' Provides functions for handling progress indicators and notifications in a test-safe way.
-#' @keywords internal
 
-#' Check if current environment is a test environment 
-#' 
+
+#' Check if current environment is a test environment
+#'
 #' @return Boolean indicating if the current environment is a test
-#' @keywords internal
-#' @export
+#'
+#' @noRd
 ph_is_in_test_env <- function() {
   identical(Sys.getenv("TESTTHAT"), "true") ||
     identical(getOption("shiny.testmode"), TRUE)
 }
 
 #' Check if current environment is an interactive Shiny session
-#' 
+#'
 #' @return Boolean indicating if the current environment is an interactive Shiny session
-#' @keywords internal
-#' @export
+#'
+#' @noRd
 ph_is_in_shiny_session <- function() {
   !ph_is_in_test_env() && !is.null(shiny::getDefaultReactiveDomain())
 }
 
 #' Show a notification in a test-safe way
-#' 
+#'
 #' @param message The message to display
 #' @param type The notification type (default, error, warning, message)
 #' @return Invisible NULL
-#' @keywords internal
-#' @export
+#'
+#' @noRd
 ph_show_notification <- function(message, type = "default") {
   if (!ph_is_in_test_env()) {
     # Not in testing - show notification in Shiny
@@ -49,13 +49,13 @@ ph_show_notification <- function(message, type = "default") {
 }
 
 #' Safely execute a function with progress indicator
-#' 
+#'
 #' @param expr The expression to execute
 #' @param message The progress message to display
 #' @param value The initial progress value
 #' @return The result of evaluating expr
-#' @keywords internal
-#' @export
+#'
+#' @noRd
 ph_with_safe_progress <- function(expr, message = "Processing...", value = 0) {
   if (ph_is_in_shiny_session()) {
     # In Shiny session - use withProgress
@@ -67,12 +67,12 @@ ph_with_safe_progress <- function(expr, message = "Processing...", value = 0) {
 }
 
 #' Increment progress in a test-safe way
-#' 
+#'
 #' @param amount The amount to increment
 #' @param detail The detail message
 #' @return Invisible NULL
-#' @keywords internal
-#' @export
+#'
+#' @noRd
 ph_inc_progress <- function(amount, detail = NULL) {
   if (ph_is_in_shiny_session()) {
     shiny::incProgress(amount, detail = detail)

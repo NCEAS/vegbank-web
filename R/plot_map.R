@@ -1,14 +1,15 @@
 #' Map Functions Module
 #'
 #' Provides functions for creating and manipulating leaflet maps.
-#' @keywords internal
-
+#' 
 #' @importFrom leaflet leafletOptions setMaxBounds addTiles addControl addMarkers
 #'             setView clearPopups addPopups labelOptions markerClusterOptions
 #' @importFrom htmlwidgets onRender
 #' @importFrom dplyr arrange group_by summarize n
 #' @importFrom htmltools HTML
 #' @importFrom ggplot2 .data
+#'
+#' @noRd
 plot_map <- (function() {
   create_empty_map <- function() {
     leaflet::leaflet(options = leaflet::leafletOptions(minZoom = 2)) |>
