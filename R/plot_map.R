@@ -46,29 +46,6 @@ plot_map <- (function() {
     )
   }
 
-  # Simple notification function with direct test detection (same as plot_table)
-  show_notification <- function(message, type = "default") {
-    # Simple check: are we in a test environment?
-    in_test <- identical(Sys.getenv("TESTTHAT"), "true") ||
-      identical(getOption("shiny.testmode"), TRUE)
-
-    if (!in_test) {
-      # Not in testing - show notification in Shiny
-      tryCatch(
-        {
-          shiny::showNotification(message, type = type)
-        },
-        error = function(e) {
-          # Fall back to console message if Shiny notification fails
-          message(paste0("[", type, "] ", message))
-        }
-      )
-    } else {
-      # In testing - just log to console
-      message(paste0("[TEST-", type, "] ", message))
-    }
-  }
-
   # Modify process_map_data to use the shared progress handler
   process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.8283, zoom = 2) {
     # Use test environment detection from shared handler

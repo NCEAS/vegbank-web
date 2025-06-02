@@ -16,34 +16,12 @@ plot_table <- (function() {
       rownames = FALSE
     )
   }
-
-  show_notification <- function(message, type = "default") {
-    in_test <- identical(Sys.getenv("TESTTHAT"), "true") ||
-      identical(getOption("shiny.testmode"), TRUE)
-
-    if (!in_test) {
-      # Not in testing - show notification in Shiny
-      tryCatch(
-        {
-          shiny::showNotification(message, type = type)
-        },
-        error = function(e) {
-          # Fall back to console message if Shiny notification fails
-          message(paste0("[", type, "] ", message))
-        }
-      )
-    } else {
-      # In testing - just log to console
-      message(paste0("[TEST-", type, "] ", message))
-    }
-  }
-
+  
   is_missing_data <- function(plot_data, taxa_data, comm_data, show_notifications = TRUE) {
     # Return early if no data
     if (is.null(plot_data) || nrow(plot_data) == 0 ||
-        is.null(taxa_data) || nrow(taxa_data) == 0 ||
-        is.null(comm_data) || nrow(comm_data) == 0) {
-      
+      is.null(taxa_data) || nrow(taxa_data) == 0 ||
+      is.null(comm_data) || nrow(comm_data) == 0) {
       # Show notification if enabled using the shared handler
       if (show_notifications) {
         progress_handler$show_notification(
@@ -229,7 +207,7 @@ plot_table <- (function() {
       value = 0
     )
   }
-  
+
   # Make the functions accessible for testing with environment() approach
   result <- list(
     create_empty_table = create_empty_table,
