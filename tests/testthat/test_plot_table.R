@@ -1,5 +1,5 @@
 test_that("create_empty_table returns a DataTable object", {
-  empty_table <- plot_table$create_empty_table()
+  empty_table <- create_empty_table()
   expect_true(inherits(empty_table, "datatables"))
   expect_true(inherits(empty_table$x$data, "data.frame"))
   expect_equal(colnames(empty_table$x$data), "No.Data.Available")
@@ -7,17 +7,17 @@ test_that("create_empty_table returns a DataTable object", {
 
 test_that("is_missing_data correctly identifies missing data", {
   # Missing plot data
-  expect_true(plot_table$is_missing_data(NULL, data.frame(), data.frame(), show_notifications = FALSE))
-  expect_true(plot_table$is_missing_data(data.frame(), data.frame(), data.frame(), show_notifications = FALSE))
+  expect_true(is_missing_data(NULL, data.frame(), data.frame(), show_notifications = FALSE))
+  expect_true(is_missing_data(data.frame(), data.frame(), data.frame(), show_notifications = FALSE))
 
   # Missing taxa data
-  expect_true(plot_table$is_missing_data(data.frame(a = 1), NULL, data.frame(), show_notifications = FALSE))
+  expect_true(is_missing_data(data.frame(a = 1), NULL, data.frame(), show_notifications = FALSE))
 
   # Missing community data
-  expect_true(plot_table$is_missing_data(data.frame(a = 1), data.frame(b = 2), NULL, show_notifications = FALSE))
+  expect_true(is_missing_data(data.frame(a = 1), data.frame(b = 2), NULL, show_notifications = FALSE))
 
   # All data present
-  expect_false(plot_table$is_missing_data(
+  expect_false(is_missing_data(
     data.frame(a = 1),
     data.frame(b = 2),
     data.frame(c = 3),
@@ -32,11 +32,11 @@ test_that("clean_column_data handles missing columns and values", {
   )
 
   # Test with existing column
-  result <- plot_table$clean_column_data(test_data, "col1")
+  result <- clean_column_data(test_data, "col1")
   expect_equal(result, c("value1", "Not Provided", "Not Provided"))
 
   # Test with non-existent column
-  result <- plot_table$clean_column_data(test_data, "col2")
+  result <- clean_column_data(test_data, "col2")
   expect_equal(result, rep("Not Provided", nrow(test_data)))
 })
 
@@ -46,7 +46,7 @@ test_that("create_action_buttons generates HTML buttons", {
     stringsAsFactors = FALSE
   )
 
-  buttons <- plot_table$create_action_buttons(test_data)
+  buttons <- create_action_buttons(test_data)
   expect_equal(length(buttons), 2)
   expect_true(grepl('onclick="Shiny.setInputValue\\(\'see_details\', 1, ', buttons[1]))
   expect_true(grepl('onclick="Shiny.setInputValue\\(\'show_on_map\', 2, ', buttons[2]))
@@ -67,7 +67,7 @@ test_that("create_taxa_vectors creates HTML taxa lists", {
     stringsAsFactors = FALSE
   )
 
-  result <- plot_table$create_taxa_vectors(plot_data, taxa_data)
+  result <- create_taxa_vectors(plot_data, taxa_data)
   expect_equal(length(result), 2)
   expect_true(grepl("taxa-list", result[1]))
   expect_true(grepl("Taxon1", result[1]))
@@ -88,7 +88,7 @@ test_that("create_community_vectors creates HTML community lists", {
     stringsAsFactors = FALSE
   )
 
-  result <- plot_table$create_community_vectors(plot_data, comm_data)
+  result <- create_community_vectors(plot_data, comm_data)
   expect_equal(length(result), 2)
   expect_true(grepl("comm-list", result[1]))
   expect_true(grepl("Community1", result[1]))
@@ -103,7 +103,7 @@ test_that("build_display_data creates correct data frame", {
   community_html <- c("<comm1>", "<comm2>")
   action_buttons <- c("<btn1>", "<btn2>")
 
-  result <- plot_table$build_display_data(
+  result <- build_display_data(
     author_codes, locations, taxa_html, community_html, action_buttons
   )
 
@@ -147,7 +147,7 @@ test_that("process_table_data returns a DataTable with correct structure", {
 
   testthat::with_mocked_bindings(
     {
-      result <- plot_table$process_table_data(plot_data, taxa_data, comm_data)
+      result <- process_table_data(plot_data, taxa_data, comm_data)
       expect_true(inherits(result, "datatables"))
       expect_equal(nrow(result$x$data), 1)
       expect_equal(ncol(result$x$data), 5)

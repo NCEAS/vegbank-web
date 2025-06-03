@@ -1,7 +1,7 @@
 #' Map Functions Module
 #'
 #' Provides functions for creating and manipulating leaflet maps.
-#' 
+#'
 #' @importFrom leaflet leafletOptions setMaxBounds addTiles addControl addMarkers
 #'             setView clearPopups addPopups labelOptions markerClusterOptions
 #' @importFrom htmlwidgets onRender
@@ -90,7 +90,7 @@ process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.82
         if (nrow(valid_points) == 0) {
           progress_handler$inc_progress(0.8, detail = "No valid points found")
           return(create_empty_map() |>
-                 leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom))
+            leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom))
         }
         progress_handler$inc_progress(0.3, detail = "Grouping plots by location...")
         data_grouped <- valid_points |>

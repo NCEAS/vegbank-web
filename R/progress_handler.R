@@ -9,8 +9,7 @@
 #'
 #' @noRd
 ph_is_in_test_env <- function() {
-  identical(Sys.getenv("TESTTHAT"), "true") ||
-    identical(getOption("shiny.testmode"), TRUE)
+  isTRUE(getOption("shiny.testmode")) || isTRUE(getOption("shiny.testmode"))
 }
 
 #' Check if current environment is an interactive Shiny session

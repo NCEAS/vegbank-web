@@ -1,5 +1,5 @@
 test_that("create_empty_map returns a leaflet map", {
-  empty_map <- plot_map$create_empty_map()
+  empty_map <- create_empty_map()
   expect_true(inherits(empty_map, "leaflet"))
   expect_true(inherits(empty_map$x, "list"))
   expect_equal(empty_map$x$options$minZoom, 2)
@@ -7,13 +7,13 @@ test_that("create_empty_map returns a leaflet map", {
 
 test_that("create_marker_popup creates correct HTML", {
   # Single observation
-  single_popup <- plot_map$create_marker_popup("Plot1", "ACC1", 1)
+  single_popup <- create_marker_popup("Plot1", "ACC1", 1)
   expect_true(grepl("<strong>1 Observation</strong>", single_popup))
   expect_true(grepl("onclick=\"Shiny.setInputValue\\('label_link_click',\\s*'ACC1'", single_popup))
   expect_true(grepl(">Plot1</a>", single_popup))
 
   # Multiple observations
-  multi_popup <- plot_map$create_marker_popup(
+  multi_popup <- create_marker_popup(
     c("Plot1", "Plot2"),
     c("ACC1", "ACC2"),
     2
@@ -26,11 +26,11 @@ test_that("create_marker_popup creates correct HTML", {
 
 test_that("process_map_data handles empty input", {
   # Test with NULL data
-  empty_map <- plot_map$process_map_data(NULL)
+  empty_map <- process_map_data(NULL)
   expect_true(inherits(empty_map, "leaflet"))
 
   # Test with empty data frame
-  empty_map <- plot_map$process_map_data(data.frame())
+  empty_map <- process_map_data(data.frame())
   expect_true(inherits(empty_map, "leaflet"))
 })
 
@@ -47,7 +47,7 @@ test_that("process_map_data creates a map with markers", {
   # Set test environment
   # Use explicit namespace to make dependency clear
   withr::with_envvar(c("TESTTHAT" = "true"), {
-    map <- plot_map$process_map_data(test_data)
+    map <- process_map_data(test_data)
   })
 
   # Just check that the map is created successfully
@@ -72,7 +72,7 @@ test_that("process_map_data handles custom center and zoom", {
   # Custom center and zoom
   # Use explicit namespace to make dependency clear
   withr::with_envvar(c("TESTTHAT" = "true"), {
-    map <- plot_map$process_map_data(test_data, center_lat = 35.0, center_lng = -100.0, zoom = 4)
+    map <- process_map_data(test_data, center_lat = 35.0, center_lng = -100.0, zoom = 4)
   })
 
   # Just check that the map is created successfully
@@ -87,7 +87,7 @@ test_that("add_zoom_control adds onRender function to map", {
   map <- leaflet::leaflet()
 
   # Add zoom control
-  map_with_control <- plot_map$add_zoom_control(map)
+  map_with_control <- add_zoom_control(map)
 
   # Check that onRender is added
   expect_true(!is.null(map_with_control$jsHooks$render))
@@ -99,11 +99,11 @@ test_that("add_zoom_control adds onRender function to map", {
 
 test_that("update_map_view creates proper function", {
   # Since update_map_view is a function factory, we can test the function exists
-  expect_true(is.function(plot_map$update_map_view))
+  expect_true(is.function(update_map_view))
 
   # We can't easily test the proxy function directly without a Shiny session,
   # but we can check the function signature
-  fn_args <- formals(plot_map$update_map_view)
+  fn_args <- formals(update_map_view)
   expect_equal(names(fn_args), c("map_proxy", "lng", "lat", "label", "zoom"))
   expect_equal(fn_args$zoom, 18)
 })
