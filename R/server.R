@@ -39,10 +39,10 @@ server <- function(input, output, session) {
   comm_data <- readRDS("inst/shiny/www/comm_class_minimal_all.RDS")
   colnames(comm_data)[colnames(comm_data) == "accessioncode"] <- "obsaccessioncode"
 
-  update_map_view <- function(idx) {
+  move_map_to_obs <- function(idx) {
     data <- plot_data
     leaflet::leafletProxy("map", session) |>
-      plot_map$update_map_view(
+      update_map_view(
         data$longitude[idx],
         data$latitude[idx],
         paste("Plot", data$authorobscode[idx], "is here!")
@@ -62,12 +62,12 @@ server <- function(input, output, session) {
   })
 
   output$dataTable <- DT::renderDataTable({
-    plot_table$process_table_data(plot_data, taxa_data, comm_data)
+    process_table_data(plot_data, taxa_data, comm_data)
   })
 
   output$map <- leaflet::renderLeaflet({
     # Always initially render with default values
-    plot_map$process_map_data(plot_data)
+    process_map_data(plot_data)
   })
 
   # Use a self-destroying observer to handle map initialization from URL
@@ -176,7 +176,7 @@ server <- function(input, output, session) {
         if (!is.null(idx) && length(idx) > 0) {
           session$sendCustomMessage(type = "closeDropdown", message = list())
           session$sendCustomMessage("invalidateMapSize", list())
-          update_map_view(idx)
+          move_map_to_obs(idx)
           state$map_request(NULL)
 
           map_update_observer$destroy()
