@@ -146,16 +146,10 @@ test_that("process_table_data returns a DataTable with correct structure", {
   )
 
   # Use our mock shiny functions
-  testthat::with_mocked_bindings(
-    {
-      result <- process_table_data(plot_data, taxa_data, comm_data)
-      expect_true(inherits(result, "datatables"))
-      expect_equal(nrow(result$x$data), 1)
-      expect_equal(ncol(result$x$data), 5)
-    },
-    withProgress = mock_with_progress,
-    incProgress = mock_inc_progress,
-    showNotification = mock_show_notification,
-    .package = "shiny"
-  )
+  with_mock_shiny_notifications({
+    result <- process_table_data(plot_data, taxa_data, comm_data)
+    expect_true(inherits(result, "datatables"))
+    expect_equal(nrow(result$x$data), 1)
+    expect_equal(ncol(result$x$data), 5)
+  })
 })
