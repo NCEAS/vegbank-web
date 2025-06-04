@@ -25,16 +25,15 @@ test_that("create_marker_popup creates correct HTML", {
 })
 
 test_that("process_map_data handles empty input", {
-  with_mock_shiny_notifications(
-    {
-      # Test with NULL data
-      empty_map <- process_map_data(NULL)
-      expect_true(inherits(empty_map, "leaflet"))
+  with_mock_shiny_notifications({
+    # Test with NULL data
+    empty_map <- process_map_data(NULL)
+    expect_true(inherits(empty_map, "leaflet"))
 
-      # Test with empty data frame
-      empty_map <- process_map_data(data.frame())
-      expect_true(inherits(empty_map, "leaflet"))
-    })
+    # Test with empty data frame
+    empty_map <- process_map_data(data.frame())
+    expect_true(inherits(empty_map, "leaflet"))
+  })
 })
 
 test_that("process_map_data creates a map with markers", {
@@ -47,17 +46,13 @@ test_that("process_map_data creates a map with markers", {
     stringsAsFactors = FALSE
   )
 
-  with_mock_shiny_notifications(
-    {
-      map <- process_map_data(test_data)
-      # Just check that the map is created successfully
-      expect_true(inherits(map, "leaflet"))
-      # Check that there's at least one call in the map object
-      expect_true(length(map$x$calls) > 0)
-      # Skip detailed marker data tests that depend on a specific implementation
-      skip("Skipping marker data tests that depend on specific leaflet structure")
-    }
-  )
+  with_mock_shiny_notifications({
+    map <- process_map_data(test_data)
+    # Just check that the map is created successfully
+    expect_true(inherits(map, "leaflet"))
+    # Check that there's at least one call in the map object
+    expect_true(length(map$x$calls) > 0)
+  })
 })
 
 test_that("process_map_data handles custom center and zoom", {
@@ -69,15 +64,11 @@ test_that("process_map_data handles custom center and zoom", {
     stringsAsFactors = FALSE
   )
 
-  with_mock_shiny_notifications(
-    {
-      map <- process_map_data(test_data, center_lat = 35.0, center_lng = -100.0, zoom = 4)
-      # Just check that the map is created successfully
-      expect_true(inherits(map, "leaflet"))
-      # Skip detailed structure tests that depend on a specific implementation
-      skip("Skipping view call tests that depend on specific leaflet structure")
-    }
-  )
+  with_mock_shiny_notifications({
+    map <- process_map_data(test_data, center_lat = 35.0, center_lng = -100.0, zoom = 4)
+    # Just check that the map is created successfully
+    expect_true(inherits(map, "leaflet"))
+  })
 })
 
 test_that("add_zoom_control adds onRender function to map", {
