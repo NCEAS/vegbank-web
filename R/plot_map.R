@@ -20,125 +20,68 @@
 #' @param zoom Initial zoom level
 #' @noRd
 process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.8283, zoom = 2) {
-  # Use test environment detection from shared handler
-  if (progress_handler$is_in_test_env()) {
-    if (is.null(map_data) || nrow(map_data) == 0) {
-      return(create_empty_map())
-    }
-    valid_points <- subset(map_data, !is.na(map_data$latitude) & !is.na(map_data$longitude))
-    if (nrow(valid_points) == 0) {
-      return(create_empty_map())
-    }
-    data_grouped <- valid_points |>
-      dplyr::arrange(.data$authorobscode) |>
-      dplyr::group_by(.data$latitude, .data$longitude) |>
-      dplyr::summarize(
-        obs_count = dplyr::n(),
-        authorobscode_label = create_marker_popup(
-          .data$authorobscode,
-          .data$obsaccessioncode,
-          dplyr::n()
-        ),
-        .groups = "drop"
-      )
-    result <- leaflet::leaflet(options = leaflet::leafletOptions(minZoom = 2))
-    result <- leaflet::setMaxBounds(result,
-      lng1 = -180, lat1 = -85,
-      lng2 = 180, lat2 = 85
-    )
-    result <- leaflet::addTiles(result)
-    result <- leaflet::setView(result,
-      lng = center_lng,
-      lat = center_lat,
-      zoom = zoom
-    )
-    result <- leaflet::addMarkers(
-      result,
-      data = data_grouped,
-      lng = ~longitude,
-      lat = ~latitude,
-      layerId = ~ paste(latitude, longitude, sep = ", "),
-      label = ~ authorobscode_label |> lapply(htmltools::HTML),
-      labelOptions = leaflet::labelOptions(
-        noHide = TRUE,
-        clickable = TRUE,
-        direction = "bottom",
-        style = list(
-          "color" = "#2c5443",
-          "font-weight" = "bold",
-          "padding" = "3px 8px",
-          "background" = "white",
-          "border" = "1px solid #2c5443",
-          "border-radius" = "3px"
+  progress_handler$with_safe_progress(
+    expr = {
+      if (is.null(map_data) || nrow(map_data) == 0) {
+        progress_handler$show_notification(
+          "Missing required data. Please try again or check your connection.",
+          type = "error"
         )
-      ),
-      clusterOptions = leaflet::markerClusterOptions(disableClusteringAtZoom = 17)
-    )
-    return(result)
-  } else {
-    progress_handler$with_safe_progress(
-      expr = {
-        if (is.null(map_data) || nrow(map_data) == 0) {
-          progress_handler$show_notification(
-            "Missing required data. Please try again or check your connection.",
-            type = "error"
-          )
-          return(create_empty_map())
-        }
-        progress_handler$inc_progress(0.2, detail = "Filtering valid points...")
-        valid_points <- subset(map_data, !is.na(map_data$latitude) & !is.na(map_data$longitude))
-        if (nrow(valid_points) == 0) {
-          progress_handler$inc_progress(0.8, detail = "No valid points found")
-          return(create_empty_map() |>
-            leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom))
-        }
-        progress_handler$inc_progress(0.3, detail = "Grouping plots by location...")
-        data_grouped <- valid_points |>
-          dplyr::arrange(.data$authorobscode) |>
-          dplyr::group_by(.data$latitude, .data$longitude) |>
-          dplyr::summarize(
-            obs_count = dplyr::n(),
-            authorobscode_label = create_marker_popup(
-              .data$authorobscode,
-              .data$obsaccessioncode,
-              dplyr::n()
-            ),
-            .groups = "drop"
-          )
-        progress_handler$inc_progress(0.3, detail = "Building map...")
-        leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = 2)) |>
-          leaflet::setMaxBounds(lng1 = -180, lat1 = -85, lng2 = 180, lat2 = 85) |>
-          leaflet::addTiles() |>
-          leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom) |>
-          leaflet::addMarkers(
-            lng = ~longitude,
-            lat = ~latitude,
-            layerId = ~ paste(latitude, longitude, sep = ", "),
-            label = ~ authorobscode_label |> lapply(htmltools::HTML),
-            labelOptions = leaflet::labelOptions(
-              noHide = TRUE,
-              clickable = TRUE,
-              direction = "bottom",
-              style = list(
-                "color" = "#2c5443",
-                "font-weight" = "bold",
-                "padding" = "3px 8px",
-                "background" = "white",
-                "border" = "1px solid #2c5443",
-                "border-radius" = "3px"
-              )
-            ),
-            clusterOptions = leaflet::markerClusterOptions(disableClusteringAtZoom = 17)
-          ) |>
-          add_zoom_control()
-      },
-      message = "Processing map data",
-      value = 0
-    )
-  }
+        return(create_empty_map())
+      }
+      progress_handler$inc_progress(0.2, detail = "Filtering valid points...")
+      valid_points <- subset(map_data, !is.na(map_data$latitude) & !is.na(map_data$longitude))
+      if (nrow(valid_points) == 0) {
+        progress_handler$inc_progress(0.8, detail = "No valid points found")
+        return(create_empty_map() |>
+                 leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom))
+      }
+      progress_handler$inc_progress(0.3, detail = "Grouping plots by location...")
+      data_grouped <- valid_points |>
+        dplyr::arrange(.data$authorobscode) |>
+        dplyr::group_by(.data$latitude, .data$longitude) |>
+        dplyr::summarize(
+          obs_count = dplyr::n(),
+          authorobscode_label = create_marker_popup(
+            .data$authorobscode,
+            .data$obsaccessioncode,
+            dplyr::n()
+          ),
+          .groups = "drop"
+        )
+      progress_handler$inc_progress(0.3, detail = "Building map...")
+      leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = 2)) |>
+        leaflet::setMaxBounds(lng1 = -180, lat1 = -85, lng2 = 180, lat2 = 85) |>
+        leaflet::addTiles() |>
+        leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom) |>
+        leaflet::addMarkers(
+          lng = ~longitude,
+          lat = ~latitude,
+          layerId = ~ paste(latitude, longitude, sep = ", "),
+          label = ~ authorobscode_label |> lapply(htmltools::HTML),
+          labelOptions = leaflet::labelOptions(
+            noHide = TRUE,
+            clickable = TRUE,
+            direction = "bottom",
+            style = list(
+              "color" = "#2c5443",
+              "font-weight" = "bold",
+              "padding" = "3px 8px",
+              "background" = "white",
+              "border" = "1px solid #2c5443",
+              "border-radius" = "3px"
+            )
+          ),
+          clusterOptions = leaflet::markerClusterOptions(disableClusteringAtZoom = 17)
+        ) |>
+        add_zoom_control()
+    },
+    message = "Processing map data",
+    value = 0
+  )
 }
 
-#' Update the map view and show a popup at a given location
+#' Move the map and show a popup at a given location
 #' @param map_proxy A leaflet proxy object
 #' @param lng Longitude
 #' @param lat Latitude

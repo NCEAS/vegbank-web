@@ -1,6 +1,6 @@
 #' Detail View Functions
 #'
-#' Functions for building the detail view panel.
+#' Functions for building the detail view overlay for various entities
 
 
 #' Show Detail View
@@ -57,6 +57,7 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       output$taxon_coverage <- shiny::renderUI(NULL)
       output$taxon_identifiers <- shiny::renderUI(NULL)
 
+      # TODO: This should be a switch case for clarity
       # Generate the appropriate view based on detail type
       if (detail_type == "community") {
         # Get first row of community data bc multiple rows for multiple classsystems
@@ -72,7 +73,7 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
         output$taxon_coverage <- details$taxon_coverage
         output$taxon_identifiers <- details$taxon_identifiers
       } else {
-        details <- build_details_view(result$data)
+        details <- build_plot_obs_details_view(result$data)
         output$plot_id_details <- details$plot_id_details
         output$locationDetails <- details$location_details
         output$layout_details <- details$layout_details
@@ -94,17 +95,17 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
 }
 
 
-#' Build Details View
+#' Build Plot Observation Details View
 #'
-#' Constructs a list of Shiny UI outputs for displaying detailed plot information.
+#' Constructs a list of Shiny UI outputs for displaying detailed plot observation information.
 #'
-#' @param selected_data A data row representing the selected plot.
+#' @param observation_data A data row representing the selected plot.
 #' @return A list of Shiny UI outputs.
 #' @importFrom htmltools tags
 #' @importFrom shiny renderUI
 #'
 #' @noRd
-build_details_view <- function(selected_data) {
+build_plot_obs_details_view <- function(observation_data) {
   # Mapping internal field names to their display names.
   display_names <- list(
     authorplotcode = "Author Plot Code",
@@ -152,7 +153,7 @@ build_details_view <- function(selected_data) {
 
   safe_render_details <- function(fields) {
     shiny::renderUI({
-      values <- lapply(selected_data[fields], function(x) {
+      values <- lapply(observation_data[fields], function(x) {
         if (is.null(x) || all(is.na(x))) "Not recorded" else x
       })
       create_table(values, col_names = display_names)
@@ -162,7 +163,7 @@ build_details_view <- function(selected_data) {
   taxa_details_ui <- shiny::renderUI({
     tryCatch(
       {
-        taxa <- selected_data[["taxa"]]
+        taxa <- observation_data[["taxa"]]
         if (is.null(taxa)) {
           "No taxa recorded"
         }
