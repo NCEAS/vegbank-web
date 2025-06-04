@@ -11,22 +11,22 @@
 #' @param comm_data Data frame of community data
 #' @noRd
 process_table_data <- function(plot_data, taxa_data, comm_data) {
-  progress_handler$with_safe_progress(
+  shiny::withProgress(
     expr = {
       if (is_missing_data(plot_data, taxa_data, comm_data, show_notifications = TRUE)) {
         return(create_empty_table())
       }
-      progress_handler$inc_progress(0.2, detail = "Cleaning author observation codes")
+      shiny::incProgress(0.2, detail = "Cleaning author observation codes")
       author_codes <- clean_column_data(plot_data, "authorplotcode")
-      progress_handler$inc_progress(0.1, detail = "Cleaning location data")
+      shiny::incProgress(0.1, detail = "Cleaning location data")
       locations <- clean_column_data(plot_data, "stateprovince")
-      progress_handler$inc_progress(0.1, detail = "Creating taxa lists...")
+      shiny::incProgress(0.1, detail = "Creating taxa lists...")
       taxa_html <- create_taxa_vectors(plot_data, taxa_data)
-      progress_handler$inc_progress(0.1, detail = "Creating community links...")
+      shiny::incProgress(0.1, detail = "Creating community links...")
       community_html <- create_community_vectors(plot_data, comm_data)
-      progress_handler$inc_progress(0.1, detail = "Creating action buttons...")
+      shiny::incProgress(0.1, detail = "Creating action buttons...")
       action_buttons <- create_action_buttons(plot_data)
-      progress_handler$inc_progress(0.2, detail = "Building table...")
+      shiny::incProgress(0.2, detail = "Building table...")
       display_data <- build_display_data(
         author_codes, locations, taxa_html, community_html, action_buttons
       )
@@ -87,7 +87,7 @@ is_missing_data <- function(plot_data, taxa_data, comm_data, show_notifications 
     is.null(taxa_data) || nrow(taxa_data) == 0 ||
     is.null(comm_data) || nrow(comm_data) == 0) {
     if (show_notifications) {
-      progress_handler$show_notification(
+      shiny::showNotification(
         "Missing required data. Please try again or check your connection.",
         type = "error"
       )

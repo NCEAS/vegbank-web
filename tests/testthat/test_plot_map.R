@@ -25,13 +25,21 @@ test_that("create_marker_popup creates correct HTML", {
 })
 
 test_that("process_map_data handles empty input", {
-  # Test with NULL data
-  empty_map <- process_map_data(NULL)
-  expect_true(inherits(empty_map, "leaflet"))
+  testthat::with_mocked_bindings(
+    {
+      # Test with NULL data
+      empty_map <- process_map_data(NULL)
+      expect_true(inherits(empty_map, "leaflet"))
 
-  # Test with empty data frame
-  empty_map <- process_map_data(data.frame())
-  expect_true(inherits(empty_map, "leaflet"))
+      # Test with empty data frame
+      empty_map <- process_map_data(data.frame())
+      expect_true(inherits(empty_map, "leaflet"))
+    },
+    withProgress = mock_with_progress,
+    incProgress = mock_inc_progress,
+    showNotification = mock_show_notification,
+    .package = "shiny"
+  )
 })
 
 test_that("process_map_data creates a map with markers", {
@@ -44,20 +52,21 @@ test_that("process_map_data creates a map with markers", {
     stringsAsFactors = FALSE
   )
 
-  # Set test environment
-  # Use explicit namespace to make dependency clear
-  withr::with_envvar(c("TESTTHAT" = "true"), {
-    map <- process_map_data(test_data)
-  })
-
-  # Just check that the map is created successfully
-  expect_true(inherits(map, "leaflet"))
-
-  # Check that there's at least one call in the map object
-  expect_true(length(map$x$calls) > 0)
-
-  # Skip detailed marker data tests that depend on a specific implementation
-  skip("Skipping marker data tests that depend on specific leaflet structure")
+  testthat::with_mocked_bindings(
+    {
+      map <- process_map_data(test_data)
+      # Just check that the map is created successfully
+      expect_true(inherits(map, "leaflet"))
+      # Check that there's at least one call in the map object
+      expect_true(length(map$x$calls) > 0)
+      # Skip detailed marker data tests that depend on a specific implementation
+      skip("Skipping marker data tests that depend on specific leaflet structure")
+    },
+    withProgress = mock_with_progress,
+    incProgress = mock_inc_progress,
+    showNotification = mock_show_notification,
+    .package = "shiny"
+  )
 })
 
 test_that("process_map_data handles custom center and zoom", {
@@ -69,17 +78,19 @@ test_that("process_map_data handles custom center and zoom", {
     stringsAsFactors = FALSE
   )
 
-  # Custom center and zoom
-  # Use explicit namespace to make dependency clear
-  withr::with_envvar(c("TESTTHAT" = "true"), {
-    map <- process_map_data(test_data, center_lat = 35.0, center_lng = -100.0, zoom = 4)
-  })
-
-  # Just check that the map is created successfully
-  expect_true(inherits(map, "leaflet"))
-
-  # Skip detailed structure tests that depend on a specific implementation
-  skip("Skipping view call tests that depend on specific leaflet structure")
+  testthat::with_mocked_bindings(
+    {
+      map <- process_map_data(test_data, center_lat = 35.0, center_lng = -100.0, zoom = 4)
+      # Just check that the map is created successfully
+      expect_true(inherits(map, "leaflet"))
+      # Skip detailed structure tests that depend on a specific implementation
+      skip("Skipping view call tests that depend on specific leaflet structure")
+    },
+    withProgress = mock_with_progress,
+    incProgress = mock_inc_progress,
+    showNotification = mock_show_notification,
+    .package = "shiny"
+  )
 })
 
 test_that("add_zoom_control adds onRender function to map", {

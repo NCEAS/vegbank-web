@@ -154,39 +154,44 @@ test_that("show_detail_view handles API errors", {
   # Skip on CRAN
   skip_on_cran()
 
-  # Setup test environment
   notification_captured <- NULL
 
-  # Replace with mocks temporarily
-  temp_env <- new.env()
-  assign("veg_bank_api", list(
+  # Assign veg_bank_api mock to global environment
+  old_api <- if (exists("veg_bank_api", envir = .GlobalEnv)) get("veg_bank_api", envir = .GlobalEnv) else NULL
+  mock_api <- list(
     get_observation_details = function(accession_code) {
       list(success = FALSE, error = "Test error")
     }
-  ), envir = temp_env)
-
-  assign("progress_handler", list(
-    show_notification = function(message, type) {
-      notification_captured <<- list(message = message, type = type)
-    },
-    inc_progress = function(...) {},
-    with_safe_progress = function(expr, message, value) { expr }
-  ), envir = temp_env)
-
-  # Run test with properly named mock bindings
-  testthat::with_mocked_bindings(
-    {
-      # Call function
-      result <- show_detail_view("plot", "TEST123", mock_output, mock_session)
-
-      # Verify results
-      expect_false(result)
-      expect_equal(notification_captured$type, "error")
-      expect_true(grepl("Failed to load plot details", notification_captured$message))
-    },
-    veg_bank_api = temp_env$veg_bank_api,
-    progress_handler = temp_env$progress_handler
   )
+  assign("veg_bank_api", mock_api, envir = .GlobalEnv)
+  withr::defer({
+    if (!is.null(old_api)) assign("veg_bank_api", old_api, envir = .GlobalEnv) else rm(veg_bank_api, envir = .GlobalEnv)
+  })
+
+  # Patch notification and progress functions globally
+  local_show_notification <- function(message, type = "default", ...) {
+    notification_captured <<- list(message = message, type = type)
+    invisible(NULL)
+  }
+  assign("showNotification", local_show_notification, envir = .GlobalEnv)
+  assign("withProgress", mock_with_progress, envir = .GlobalEnv)
+  assign("incProgress", mock_inc_progress, envir = .GlobalEnv)
+  withr::defer({
+    rm(showNotification, envir = .GlobalEnv)
+    rm(withProgress, envir = .GlobalEnv)
+    rm(incProgress, envir = .GlobalEnv)
+  })
+
+  # Use a real mock Shiny session
+  session <- shiny::MockShinySession$new()
+
+  # Call function
+  result <- show_detail_view("plot", "TEST123", mock_output, session)
+
+  # Verify results
+  expect_false(result)
+  expect_equal(notification_captured$type, "error")
+  expect_true(grepl("Failed to load plot details", notification_captured$message))
 })
 
 test_that("show_detail_view handles success case for plot details", {
@@ -196,19 +201,17 @@ test_that("show_detail_view handles success case for plot details", {
   # Setup test environment
   messages_captured <- list()
 
-  # Replace with mocks temporarily
-  temp_env <- new.env()
-  assign("veg_bank_api", list(
+  # Assign veg_bank_api mock to global environment
+  old_api <- if (exists("veg_bank_api", envir = .GlobalEnv)) get("veg_bank_api", envir = .GlobalEnv) else NULL
+  mock_api <- list(
     get_observation_details = function(accession_code) {
       list(success = TRUE, data = mock_plot_data)
     }
-  ), envir = temp_env)
-
-  assign("progress_handler", list(
-    show_notification = function(...) {},
-    inc_progress = function(...) {},
-    with_safe_progress = function(expr, message, value) { expr }
-  ), envir = temp_env)
+  )
+  assign("veg_bank_api", mock_api, envir = .GlobalEnv)
+  withr::defer({
+    if (!is.null(old_api)) assign("veg_bank_api", old_api, envir = .GlobalEnv) else rm(veg_bank_api, envir = .GlobalEnv)
+  })
 
   # Create a fake session
   session <- list(
@@ -220,10 +223,8 @@ test_that("show_detail_view handles success case for plot details", {
   # Create a mock output with tracking
   output <- new.env()
 
-  # Run test with properly named mock bindings
   testthat::with_mocked_bindings(
     {
-      # Call function
       result <- show_detail_view("plot", "TEST123", output, session)
 
       # Verify results
@@ -232,7 +233,9 @@ test_that("show_detail_view handles success case for plot details", {
       expect_true(!is.null(messages_captured$updateDetailType))
       expect_equal(messages_captured$updateDetailType$type, "plot")
     },
-    veg_bank_api = temp_env$veg_bank_api,
-    progress_handler = temp_env$progress_handler
+    withProgress = mock_with_progress,
+    incProgress = mock_inc_progress,
+    showNotification = mock_show_notification,
+    .package = "shiny"
   )
 })

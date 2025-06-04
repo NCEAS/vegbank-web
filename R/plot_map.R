@@ -20,23 +20,23 @@
 #' @param zoom Initial zoom level
 #' @noRd
 process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.8283, zoom = 2) {
-  progress_handler$with_safe_progress(
+  shiny::withProgress(
     expr = {
       if (is.null(map_data) || nrow(map_data) == 0) {
-        progress_handler$show_notification(
+        shiny::showNotification(
           "Missing required data. Please try again or check your connection.",
           type = "error"
         )
         return(create_empty_map())
       }
-      progress_handler$inc_progress(0.2, detail = "Filtering valid points...")
+      shiny::incProgress(0.2, detail = "Filtering valid points...")
       valid_points <- subset(map_data, !is.na(map_data$latitude) & !is.na(map_data$longitude))
       if (nrow(valid_points) == 0) {
-        progress_handler$inc_progress(0.8, detail = "No valid points found")
+        shiny::incProgress(0.8, detail = "No valid points found")
         return(create_empty_map() |>
                  leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom))
       }
-      progress_handler$inc_progress(0.3, detail = "Grouping plots by location...")
+      shiny::incProgress(0.3, detail = "Grouping plots by location...")
       data_grouped <- valid_points |>
         dplyr::arrange(.data$authorobscode) |>
         dplyr::group_by(.data$latitude, .data$longitude) |>
@@ -49,7 +49,7 @@ process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.82
           ),
           .groups = "drop"
         )
-      progress_handler$inc_progress(0.3, detail = "Building map...")
+      shiny::incProgress(0.3, detail = "Building map...")
       leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = 2)) |>
         leaflet::setMaxBounds(lng1 = -180, lat1 = -85, lng2 = 180, lat2 = 85) |>
         leaflet::addTiles() |>

@@ -118,8 +118,8 @@ test_that("build_display_data creates correct data frame", {
 })
 
 test_that("process_table_data returns a DataTable with correct structure", {
-  # Skip if no interactive session to avoid Shiny progress bar issues
-  skip_if_not(interactive())
+  # Skip if not running locally
+  skip_on_cran()
 
   # Create minimal test data
   plot_data <- data.frame(
@@ -145,6 +145,7 @@ test_that("process_table_data returns a DataTable with correct structure", {
     stringsAsFactors = FALSE
   )
 
+  # Use our mock shiny functions
   testthat::with_mocked_bindings(
     {
       result <- process_table_data(plot_data, taxa_data, comm_data)
@@ -152,8 +153,9 @@ test_that("process_table_data returns a DataTable with correct structure", {
       expect_equal(nrow(result$x$data), 1)
       expect_equal(ncol(result$x$data), 5)
     },
-    withProgress = function(expr, ...) expr,
-    setProgress = function(...) NULL,
+    withProgress = mock_with_progress,
+    incProgress = mock_inc_progress,
+    showNotification = mock_show_notification,
     .package = "shiny"
   )
 })

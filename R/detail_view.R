@@ -15,10 +15,10 @@
 #'
 #' @noRd
 show_detail_view <- function(detail_type, accession_code, output, session) {
-  # Use the shared progress handler for handling progress updates
-  progress_handler$with_safe_progress(
+  # Use native Shiny progress functions
+  shiny::withProgress(
     expr = {
-      progress_handler$inc_progress(0.2, "Fetching details")
+      shiny::incProgress(0.2, "Fetching details")
 
       # Determine which API function to call based on detail type
       result <- if (detail_type == "community") {
@@ -30,15 +30,15 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       }
 
       if (!result$success) {
-        progress_handler$inc_progress(0.3, "Error loading details")
-        progress_handler$show_notification(
+        shiny::incProgress(0.3, "Error loading details")
+        shiny::showNotification(
           paste0("Failed to load ", detail_type, " details. Please try again."),
           type = "error"
         )
         return(FALSE)
       }
 
-      progress_handler$inc_progress(0.3, "Processing details")
+      shiny::incProgress(0.3, "Processing details")
 
       # Clear all output slots
       output$plot_id_details <- shiny::renderUI(NULL)
@@ -83,7 +83,7 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
         output$taxaDetails <- details$taxa_details
       }
 
-      progress_handler$inc_progress(0.3, paste0(detail_type, " details ready"))
+      shiny::incProgress(0.3, paste0(detail_type, " details ready"))
       session$sendCustomMessage("openOverlay", list())
       session$sendCustomMessage("updateDetailType", list(type = detail_type))
 
