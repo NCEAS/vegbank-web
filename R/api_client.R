@@ -1,10 +1,11 @@
 #' VegBank API Client Module
 #'
 #' Provides functions for interacting with the VegBank API.
-#' @keywords internal
-
+#'
 #' @importFrom httr GET status_code content
 #' @importFrom jsonlite validate fromJSON
+#'
+#' @noRd
 veg_bank_api <- (function() {
   base_url <- "http://127.0.0.1:28015"
 
@@ -48,26 +49,16 @@ veg_bank_api <- (function() {
   }
 
   list(
-    get_table_data = function(page_size, prev_plot_id = NULL) {
-      endpoint <- if (is.null(prev_plot_id)) {
-        paste0("/get_observation_table/", page_size)
-      } else {
-        paste0("/get_observation_table/", page_size, "/", prev_plot_id)
-      }
-
-      response <- fetch(endpoint)
-      process_response(response)
-    },
-    get_map_points = function() {
-      response <- fetch("/get_map_points")
-      process_response(response)
-    },
     get_observation_details = function(accession_code) {
       response <- fetch(paste0("/get_observation_details/", accession_code))
       process_response(response)
     },
+    get_taxon_observation_details = function(accession_code) {
+      response <- fetch(paste0("/taxon-observations/", accession_code))
+      process_response(response)
+    },
     get_community_details = function(accession_code) {
-      response <- fetch(paste0("/comm_concepts/", accession_code))
+      response <- fetch(paste0("/community-concepts/", accession_code))
       process_response(response)
     }
   )

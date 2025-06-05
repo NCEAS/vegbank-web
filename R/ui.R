@@ -4,6 +4,8 @@
 #'
 #' @param req A Shiny request object.
 #' @return A Shiny tag list.
+#'
+#' @noRd
 ui <- function(req) {
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
@@ -54,14 +56,21 @@ ui <- function(req) {
       const type = message.type;
       const plotCards = document.getElementById('plot-details-cards');
       const communityCards = document.getElementById('community-details-cards');
+      const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
 
-      if (plotCards && communityCards) {
+      if (plotCards && communityCards && taxonObservationCards) {
+        // Hide all card types first
+        plotCards.style.display = 'none';
+        communityCards.style.display = 'none';
+        taxonObservationCards.style.display = 'none';
+
+        // Show the requested type
         if (type === 'plot') {
           plotCards.style.display = 'block';
-          communityCards.style.display = 'none';
         } else if (type === 'community') {
-          plotCards.style.display = 'none';
           communityCards.style.display = 'block';
+        } else if (type === 'taxon-observation') {
+          taxonObservationCards.style.display = 'block';
         }
       }
     });
@@ -79,19 +88,7 @@ ui <- function(req) {
     });'
   ))
 
-  tab_shown_script <- htmltools::tags$script(htmltools::HTML("
-    $('#page li a[data-bs-toggle=\"tab\"],
-      #page li a[data-toggle=\"tab\"]').on('shown.bs.tab', function(e) {
-      var targetID = $(e.target).attr('href');
-      if (targetID.includes('Table')) {
-        Shiny.setInputValue('table_tab_shown', true, {priority:'event'});
-      } else if (targetID.includes('Map')) {
-        Shiny.setInputValue('map_tab_shown', true, {priority:'event'});
-      }
-    });
-  "))
-
-  htmltools::tagList(navbar_with_search, overlay, script, btn_script, tab_shown_script)
+  htmltools::tagList(navbar_with_search, overlay, script, btn_script)
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
@@ -99,7 +96,8 @@ ui <- function(req) {
 #' Defines a bslib theme with custom rules.
 #'
 #' @return A Bootstrap theme object.
-#' @keywords internal
+#'
+#' @noRd
 custom_theme <- bslib::bs_theme(
   bg = "#FFFFFF",
   fg = "#19201d",
@@ -162,7 +160,8 @@ custom_theme <- bslib::bs_add_rules(
 #' Constructs and returns the navigation bar to be used in the UI.
 #'
 #' @return A Shiny tag list representing the navigation bar.
-#' @keywords internal
+#'
+#' @noRd
 build_navbar <- function() {
   search_div <- htmltools::tags$li(
     class = "nav-item",
@@ -208,7 +207,7 @@ build_navbar <- function() {
         title = "Table",
         shiny::fluidPage(
           DT::dataTableOutput("dataTable"),
-          shiny::uiOutput("tablePagination"),
+          # shiny::uiOutput("tablePagination"),
         )
       ),
       bslib::nav_panel(
@@ -258,7 +257,8 @@ build_navbar <- function() {
 #' Constructs the overlay panel that displays detailed plot information.
 #'
 #' @return A Shiny tag representing the detail overlay.
-#' @keywords internal
+#'
+#' @noRd
 build_detail_overlay <- function() {
   htmltools::tags$div(
     id = "detail-overlay",
@@ -291,7 +291,19 @@ build_detail_overlay <- function() {
           id = "community-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Community Name"), shiny::uiOutput("community_name")),
+          bslib::card(bslib::card_header("Occurences"), shiny::uiOutput("occurence_count")),
           bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description"))
+        ),
+
+        # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "taxon-observation-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Taxon Name"), shiny::uiOutput("taxon_name")),
+          bslib::card(bslib::card_header("Scientific Names"), shiny::uiOutput("taxon_scientific")),
+          bslib::card(bslib::card_header("Common Names"), shiny::uiOutput("taxon_common")),
+          bslib::card(bslib::card_header("Coverage"), shiny::uiOutput("taxon_coverage")),
+          bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("taxon_identifiers"))
         )
       )
     )
