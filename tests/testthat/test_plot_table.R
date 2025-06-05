@@ -6,23 +6,24 @@ test_that("create_empty_table returns a DataTable object", {
 })
 
 test_that("is_missing_data correctly identifies missing data", {
-  # Missing plot data
-  expect_true(is_missing_data(NULL, data.frame(), data.frame(), show_notifications = FALSE))
-  expect_true(is_missing_data(data.frame(), data.frame(), data.frame(), show_notifications = FALSE))
+  with_mock_shiny_notifications({
+    # Missing plot data
+    expect_true(is_missing_data(NULL, data.frame(), data.frame()))
+    expect_true(is_missing_data(data.frame(), data.frame(), data.frame()))
 
-  # Missing taxa data
-  expect_true(is_missing_data(data.frame(a = 1), NULL, data.frame(), show_notifications = FALSE))
+    # Missing taxa data
+    expect_true(is_missing_data(data.frame(a = 1), NULL, data.frame()))
 
-  # Missing community data
-  expect_true(is_missing_data(data.frame(a = 1), data.frame(b = 2), NULL, show_notifications = FALSE))
+    # Missing community data
+    expect_true(is_missing_data(data.frame(a = 1), data.frame(b = 2), NULL))
 
-  # All data present
-  expect_false(is_missing_data(
-    data.frame(a = 1),
-    data.frame(b = 2),
-    data.frame(c = 3),
-    show_notifications = FALSE
-  ))
+    # All data present
+    expect_false(is_missing_data(
+      data.frame(a = 1),
+      data.frame(b = 2),
+      data.frame(c = 3)
+    ))
+  })
 })
 
 test_that("clean_column_data handles missing columns and values", {
@@ -108,8 +109,10 @@ test_that("build_display_data creates correct data frame", {
   )
 
   expect_equal(nrow(result), 2)
-  expect_equal(colnames(result),
-               c("Actions", "Author Plot Code", "Location", "Top Taxa", "Community"))
+  expect_equal(
+    colnames(result),
+    c("Actions", "Author Plot Code", "Location", "Top Taxa", "Community")
+  )
   expect_equal(result$Actions, action_buttons)
   expect_equal(result$`Author Plot Code`, author_codes)
   expect_equal(result$Location, locations)

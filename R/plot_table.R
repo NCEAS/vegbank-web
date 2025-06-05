@@ -13,7 +13,7 @@
 process_table_data <- function(plot_data, taxa_data, comm_data) {
   shiny::withProgress(
     expr = {
-      if (is_missing_data(plot_data, taxa_data, comm_data, show_notifications = TRUE)) {
+      if (is_missing_data(plot_data, taxa_data, comm_data)) {
         return(create_empty_table())
       }
       shiny::incProgress(0.2, detail = "Cleaning author observation codes")
@@ -80,18 +80,15 @@ create_empty_table <- function() {
 #' @param plot_data Data frame of plot data
 #' @param taxa_data Data frame of taxa data
 #' @param comm_data Data frame of community data
-#' @param show_notifications Logical, show notification if TRUE
 #' @noRd
-is_missing_data <- function(plot_data, taxa_data, comm_data, show_notifications = TRUE) {
+is_missing_data <- function(plot_data, taxa_data, comm_data) {
   if (is.null(plot_data) || nrow(plot_data) == 0 ||
     is.null(taxa_data) || nrow(taxa_data) == 0 ||
     is.null(comm_data) || nrow(comm_data) == 0) {
-    if (show_notifications) {
-      shiny::showNotification(
-        "Missing required data. Please try again or check your connection.",
-        type = "error"
-      )
-    }
+    shiny::showNotification(
+      "Missing required data. Please try again or check your connection.",
+      type = "error"
+    )
     return(TRUE)
   }
   FALSE
