@@ -109,7 +109,7 @@ build_plot_obs_details_view <- function(observation_data) {
   # Mapping internal field names to their display names.
   display_names <- list(
     authorplotcode = "Author Plot Code",
-    authorobscode = "Author Observation Code",
+    author_obs_code = "Author Observation Code",
     area = "Area",
     permanence = "Permanent",
     elevation = "Elevation",
@@ -199,7 +199,7 @@ build_plot_obs_details_view <- function(observation_data) {
   })
 
   list(
-    plot_id_details = safe_render_details(c("authorobscode", "authorplotcode")),
+    plot_id_details = safe_render_details(c("author_obs_code", "authorplotcode")),
     location_details = safe_render_details(c(
       "confidentialitytext", "latitude", "longitude",
       "locationnarrative", "stateprovince", "country"
@@ -247,19 +247,19 @@ build_community_details_view <- function(community_data) {
 
   list(
     community_name = shiny::renderUI({
-      htmltools::tags$b(community_data$data.commname)
+      htmltools::tags$b(community_data$data.comm_name)
     }),
     community_description = shiny::renderUI({
       # The description contains HTML entities that need to be properly rendered
       htmltools::tags$div(
         id = "community-description",
-        htmltools::HTML(community_data$data.commdescription)
+        htmltools::HTML(community_data$data.comm_description)
       )
     }),
     occurence_count = shiny::renderUI({
       htmltools::tags$p(
         "Number of occurrences: ",
-        htmltools::tags$strong(community_data$data.obscount)
+        htmltools::tags$strong(community_data$data.obs_count)
       )
     })
   )
@@ -301,26 +301,26 @@ build_taxon_details_view <- function(taxon_data) {
 
   list(
     taxon_name = shiny::renderUI({
-      htmltools::tags$b(taxon_data$data.authorplantname)
+      htmltools::tags$b(taxon_data$data.author_plant_name)
     }),
     taxon_scientific = shiny::renderUI({
       htmltools::tags$div(
         id = "taxon-scientific",
         htmltools::tags$p(
           htmltools::tags$strong("Current scientific name: "),
-          htmltools::tags$em(taxon_data$data.int_currplantscinamenoauth)
+          htmltools::tags$em(taxon_data$data.int_curr_plant_sci_name_no_auth)
         ),
         htmltools::tags$p(
           htmltools::tags$strong("Full scientific name: "),
-          htmltools::tags$em(taxon_data$data.int_currplantscifull)
+          htmltools::tags$em(taxon_data$data.int_curr_plant_sci_full)
         ),
         htmltools::tags$p(
           htmltools::tags$strong("Original scientific name: "),
-          htmltools::tags$em(taxon_data$data.int_origplantscinamenoauth)
+          htmltools::tags$em(taxon_data$data.int_orig_plant_sci_name_no_auth)
         ),
         htmltools::tags$p(
           htmltools::tags$strong("Full original name: "),
-          htmltools::tags$em(taxon_data$data.int_origplantscifull)
+          htmltools::tags$em(taxon_data$data.int_orig_plant_sci_full)
         )
       )
     }),
@@ -328,11 +328,11 @@ build_taxon_details_view <- function(taxon_data) {
       htmltools::tags$div(
         htmltools::tags$p(
           htmltools::tags$strong("Current common name: "),
-          taxon_data$data.int_currplantcommon
+          taxon_data$data.int_curr_plant_common
         ),
         htmltools::tags$p(
           htmltools::tags$strong("Original common name: "),
-          taxon_data$data.int_origplantcommon
+          taxon_data$data.int_orig_plant_common
         )
       )
     }),
@@ -340,11 +340,11 @@ build_taxon_details_view <- function(taxon_data) {
       htmltools::tags$div(
         htmltools::tags$p(
           htmltools::tags$strong("Cover percentage: "),
-          paste0(taxon_data$data.maxcover, "%")
+          paste0(taxon_data$data.max_cover, "%")
         ),
         htmltools::tags$p(
           htmltools::tags$strong("Taxon inference area: "),
-          paste0(taxon_data$data.taxoninferencearea, " m\u00B2") # Replace m² with Unicode escape
+          paste0(taxon_data$data.taxon_inference_area, " m\u00B2") # Replace m² with Unicode escape
         )
       )
     }),
@@ -352,15 +352,15 @@ build_taxon_details_view <- function(taxon_data) {
       htmltools::tags$div(
         htmltools::tags$p(
           htmltools::tags$strong("Taxon Observation ID: "),
-          taxon_data$data.taxonobservation_id
+          taxon_data$data.taxon_observation_id
         ),
         htmltools::tags$p(
           htmltools::tags$strong("Current plant code: "),
-          taxon_data$data.int_currplantcode
+          taxon_data$data.int_curr_plant_code
         ),
         htmltools::tags$p(
           htmltools::tags$strong("Original plant code: "),
-          taxon_data$data.int_origplantcode
+          taxon_data$data.int_orig_plant_code
         )
       )
     })

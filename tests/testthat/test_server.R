@@ -1,6 +1,6 @@
 test_that("build_plot_obs_details_view returns a list of outputs", {
   row_data <- data.frame(
-    authorobscode = "A1", authorplotcode = "P1",
+    author_obs_code = "A1", authorplotcode = "P1",
     taxa = I(list(data.frame(authorplantname = "Sp", cover = 10))),
     stringsAsFactors = FALSE
   )

@@ -6,9 +6,16 @@
 
 #' Main function to process and build the plot table
 #'
-#' @param plot_data Data frame of plot data
-#' @param taxa_data Data frame of taxa data
-#' @param comm_data Data frame of community data
+#' @param plot_data Data frame of plot observation data
+#' @param taxa_data Data frame of taxon obseration data
+#' @param comm_data Data frame of community classification data
+#' @returns A DT datatable object ready for display in a Shiny app
+#'
+#' @importFrom DT datatable
+#' @importFrom shiny withProgress incProgress showNotification
+#' @importFrom dplyr left_join group_by summarize
+#' @importFrom htmltools HTML
+#'
 #' @noRd
 process_table_data <- function(plot_data, taxa_data, comm_data) {
   shiny::withProgress(
@@ -62,6 +69,8 @@ process_table_data <- function(plot_data, taxa_data, comm_data) {
 
 #' Create an empty DT table for missing data
 #'
+#' @returns A DT datatable with a message indicating no data is available
+#'
 #' @importFrom DT datatable
 #' @noRd
 create_empty_table <- function() {
@@ -77,9 +86,10 @@ create_empty_table <- function() {
 
 #' Check if any required data is missing
 #'
-#' @param plot_data Data frame of plot data
-#' @param taxa_data Data frame of taxa data
-#' @param comm_data Data frame of community data
+#' @param plot_data Data frame of plot observation data
+#' @param taxa_data Data frame of taxon obseration data
+#' @param comm_data Data frame of community classification data
+#' @returns TRUE if any data is missing, FALSE otherwise
 #' @noRd
 is_missing_data <- function(plot_data, taxa_data, comm_data) {
   if (is.null(plot_data) || nrow(plot_data) == 0 ||
@@ -95,6 +105,10 @@ is_missing_data <- function(plot_data, taxa_data, comm_data) {
 }
 
 #' Clean a column in plot data, replacing NA/empty with 'Not Provided'
+#'
+#' @param plot_data Data frame of plot observation data
+#' @param column_name Name of the column to clean
+#' @returns A character vector with cleaned data
 #' @noRd
 clean_column_data <- function(plot_data, column_name) {
   if (column_name %in% colnames(plot_data)) {
@@ -108,6 +122,9 @@ clean_column_data <- function(plot_data, column_name) {
 }
 
 #' Create action buttons for each row
+#'
+#' @param data Data frame of plot observation data
+#' @returns A character vector of HTML strings for action buttons
 #' @noRd
 create_action_buttons <- function(data) {
   vapply(seq_len(nrow(data)), function(i) {
@@ -128,26 +145,32 @@ create_action_buttons <- function(data) {
 }
 
 #' Create HTML vectors for taxa lists
+#'
+#' @param plot_data Data frame of plot observation data
+#' @param taxa_data Data frame of taxon observation data
+#' @returns A character vector of HTML strings for top taxa by max cover for each plot observation
+#'
+#' @importFrom dplyr left_join group_by summarize
 #' @noRd
 create_taxa_vectors <- function(plot_data, taxa_data) {
   merged <- dplyr::left_join(plot_data, taxa_data, by = "observation_id")
-  taxa_lists <- merged %>%
-    dplyr::group_by(observation_id) %>%
+  taxa_lists <- merged |>
+    dplyr::group_by(.data$observation_id) |>
     dplyr::summarize(
       top_taxa = {
-        if (all(is.na(int_currplantscinamenoauth)) & all(is.na(maxcover))) {
+        if (all(is.na(.data$int_curr_plant_sci_name_no_auth)) & all(is.na(.data$max_cover))) {
           "No Taxa Data"
         } else {
           items <- ifelse(
-            is.na(int_currplantscinamenoauth) & is.na(maxcover),
+            is.na(.data$int_curr_plant_sci_name_no_auth) & is.na(.data$max_cover),
             "<li>No Taxa Data</li>",
             paste0(
               "<li><a href=\"#\" onclick=\"Shiny.setInputValue('taxa_link_click', '",
-              accessioncode,
+              .data$taxon_observation_accession_code,
               "', {priority: 'event'}); return false;\">",
-              ifelse(is.na(int_currplantscinamenoauth), "Unnamed", int_currplantscinamenoauth),
+              ifelse(is.na(.data$int_curr_plant_sci_name_no_auth), "Unnamed", .data$int_curr_plant_sci_name_no_auth),
               "</a> (",
-              ifelse(is.na(maxcover), "No cover", maxcover),
+              ifelse(is.na(.data$max_cover), "No cover", .data$max_cover),
               "%)</li>"
             )
           )
@@ -163,24 +186,30 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
 }
 
 #' Create HTML vectors for community lists
+#'
+#' @param plot_data Data frame of plot observation data
+#' @param comm_data Data frame of community classification data
+#' @returns A character vector of HTML strings for community lists
+#'
+#' @importFrom dplyr left_join group_by summarize
 #' @noRd
 create_community_vectors <- function(plot_data, comm_data) {
-  merged <- dplyr::left_join(plot_data, comm_data, by = "obsaccessioncode")
-  community_lists <- merged %>%
-    dplyr::group_by(obsaccessioncode) %>%
+  merged <- dplyr::left_join(plot_data, comm_data, by = "obs_accession_code")
+  community_lists <- merged |>
+    dplyr::group_by(.data$obs_accession_code) |>
     dplyr::summarize(
       comm_list = {
-        if (all(is.na(commname)) & all(is.na(commconceptaccessioncode))) {
+        if (all(is.na(.data$comm_name)) & all(is.na(.data$comm_concept_accession_code))) {
           "No Community Data"
         } else {
           items <- ifelse(
-            is.na(commconceptaccessioncode) & is.na(commname),
+            is.na(.data$comm_concept_accession_code) & is.na(.data$comm_name),
             "<li>No Community Data</li>",
             paste0(
               "<li><a href=\"#\" onclick=\"Shiny.setInputValue('comm_link_click', '",
-              commconceptaccessioncode,
+              .data$comm_concept_accession_code,
               "', {priority: 'event'}); return false;\">",
-              ifelse(is.na(commname), "Unnamed", commname),
+              ifelse(is.na(.data$comm_name), "Unnamed", .data$comm_name),
               "</a></li>"
             )
           )
@@ -190,12 +219,19 @@ create_community_vectors <- function(plot_data, comm_data) {
       .groups = "drop"
     )
   result <- rep("No Community Data", nrow(plot_data))
-  match_idx <- match(plot_data$obsaccessioncode, community_lists$obsaccessioncode)
+  match_idx <- match(plot_data$obs_accession_code, community_lists$obs_accession_code)
   result[!is.na(match_idx)] <- community_lists$comm_list[match_idx[!is.na(match_idx)]]
   result
 }
 
 #' Build the final display data.frame for the table
+#'
+#' @param author_codes Vector of cleaned author plot codes
+#' @param locations Vector of cleaned location data
+#' @param taxa_html Vector of HTML strings for taxa lists
+#' @param community_html Vector of HTML strings for community lists
+#' @param action_buttons Vector of HTML strings for action buttons
+#' @returns A data frame ready for display in a DT table
 #' @noRd
 build_display_data <- function(author_codes, locations, taxa_html, community_html, action_buttons) {
   data.frame(

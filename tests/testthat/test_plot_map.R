@@ -41,8 +41,8 @@ test_that("process_map_data creates a map with markers", {
   test_data <- data.frame(
     latitude = c(40.7128, 34.0522),
     longitude = c(-74.0060, -118.2437),
-    authorobscode = c("NYC", "LA"),
-    obsaccessioncode = c("ACC_NYC", "ACC_LA"),
+    author_obs_code = c("NYC", "LA"),
+    obs_accession_code = c("ACC_NYC", "ACC_LA"),
     stringsAsFactors = FALSE
   )
 
@@ -59,8 +59,8 @@ test_that("process_map_data handles custom center and zoom", {
   test_data <- data.frame(
     latitude = c(40.7128),
     longitude = c(-74.0060),
-    authorobscode = c("NYC"),
-    obsaccessioncode = c("ACC_NYC"),
+    author_obs_code = c("NYC"),
+    obs_accession_code = c("ACC_NYC"),
     stringsAsFactors = FALSE
   )
 

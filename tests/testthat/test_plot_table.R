@@ -62,9 +62,9 @@ test_that("create_taxa_vectors creates HTML taxa lists", {
 
   taxa_data <- data.frame(
     observation_id = c(1, 1, 2),
-    int_currplantscinamenoauth = c("Taxon1", "Taxon2", NA),
-    maxcover = c(10, 20, NA),
-    accessioncode = c("ACC1", "ACC2", "ACC3"),
+    int_curr_plant_sci_name_no_auth = c("Taxon1", "Taxon2", NA),
+    max_cover = c(10, 20, NA),
+    accession_code = c("ACC1", "ACC2", "ACC3"),
     stringsAsFactors = FALSE
   )
 
@@ -78,14 +78,14 @@ test_that("create_taxa_vectors creates HTML taxa lists", {
 test_that("create_community_vectors creates HTML community lists", {
   # Create test data
   plot_data <- data.frame(
-    obsaccessioncode = c("ACC1", "ACC2"),
+    obs_accession_code = c("ACC1", "ACC2"),
     stringsAsFactors = FALSE
   )
 
   comm_data <- data.frame(
-    obsaccessioncode = c("ACC1", "ACC2"),
+    obs_accession_code = c("ACC1", "ACC2"),
     commname = c("Community1", NA),
-    commconceptaccessioncode = c("COMM1", NA),
+    commconceptaccession_code = c("COMM1", NA),
     stringsAsFactors = FALSE
   )
 
@@ -127,7 +127,7 @@ test_that("process_table_data returns a DataTable with correct structure", {
   # Create minimal test data
   plot_data <- data.frame(
     observation_id = 1,
-    obsaccessioncode = "ACC1",
+    obs_accession_code = "ACC1",
     authorplotcode = "Plot1",
     stateprovince = "State1",
     stringsAsFactors = FALSE
@@ -135,16 +135,16 @@ test_that("process_table_data returns a DataTable with correct structure", {
 
   taxa_data <- data.frame(
     observation_id = 1,
-    int_currplantscinamenoauth = "Taxon1",
-    maxcover = 10,
-    accessioncode = "ACC1",
+    int_curr_plant_sci_name_no_auth = "Taxon1",
+    max_cover = 10,
+    accession_code = "ACC1",
     stringsAsFactors = FALSE
   )
 
   comm_data <- data.frame(
-    obsaccessioncode = "ACC1",
+    obs_accession_code = "ACC1",
     commname = "Community1",
-    commconceptaccessioncode = "COMM1",
+    commconceptaccession_code = "COMM1",
     stringsAsFactors = FALSE
   )
 

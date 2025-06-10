@@ -16,12 +16,34 @@
 #' @importFrom htmltools tags
 #' @importFrom leaflet renderLeaflet leafletProxy
 #' @importFrom utils head
+#' @importFrom devtools load_all
+#' @import vegbankr
 #'
 #' @noRd
 
 # ================= MAIN SERVER FUNCTION =================
 
+VBR_PATH <- "/Users/dariangill/git/vegbankr"
+ALL_RECORDS <- 200000
+
 server <- function(input, output, session) {
+  # Load local VegBankR package
+  if (!requireNamespace("devtools", quietly = TRUE)) {
+    stop("Please install the 'devtools' package to load the local VegBankR package")
+  }
+
+  # Load the local vegbankr package
+  tryCatch(
+    {
+      message("Loading vegbankr package from local source...")
+      devtools::load_all(VBR_PATH)
+      message("vegbankr package loaded successfully.")
+    },
+    error = function(e) {
+      message("Failed to load vegbankr package: ", e$message)
+    }
+  )
+
   # STATE MANAGEMENT ______________________________________________________________________________
   state <- list(
     map_request = shiny::reactiveVal(NULL),
@@ -33,11 +55,11 @@ server <- function(input, output, session) {
     map_zoom = shiny::reactiveVal(2) # Default zoom
   )
 
-  # Load data from local files
-  plot_data <- readRDS("inst/shiny/www/plot_obs_minimal_all_data.RDS")
-  taxa_data <- readRDS("inst/shiny/www/taxa_top5.RDS")
-  comm_data <- readRDS("inst/shiny/www/comm_class_minimal_all.RDS")
-  colnames(comm_data)[colnames(comm_data) == "accessioncode"] <- "obsaccessioncode"
+  # Load data from vegbankr
+  vegbankr::set_vb_base_url("http://localhost", port = 8080)
+  plot_data <- vegbankr::get_all_plot_observations(limit = 100, detail = "minimal")
+  taxa_data <- vegbankr::get_all_taxon_observations(limit = 100, detail = "minimal")
+  comm_data <- vegbankr::get_all_community_classifications(limit = 100, detail = "minimal")
 
   move_map_to_obs <- function(idx) {
     data <- plot_data
@@ -45,7 +67,7 @@ server <- function(input, output, session) {
       update_map_view(
         data$longitude[idx],
         data$latitude[idx],
-        paste("Plot", data$authorobscode[idx], "is here!")
+        paste("Plot", data$author_obs_code[idx], "is here!")
       )
   }
 
@@ -113,7 +135,7 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$see_details,
     {
       i <- as.numeric(input$see_details)
-      selected_row_accession <- plot_data[i, "obsaccessioncode"]
+      selected_row_accession <- plot_data[i, "obs_accession_code"]
 
       # Check for valid accession code
       if (is.null(selected_row_accession) ||

@@ -15,7 +15,7 @@ mock_session <- list(
 
 # Mock test data
 mock_plot_data <- list(
-  authorobscode = "TEST123",
+  author_obs_code = "TEST123",
   authorplotcode = "Plot 123",
   latitude = 40.7128,
   longitude = -74.0060,
@@ -49,13 +49,13 @@ mock_community_data <- list(
 mock_taxon_data <- list(
   data = list(
     authorplantname = "Test Plant",
-    int_currplantscinamenoauth = "Scientific name",
+    int_curr_plant_sci_name_no_auth = "Scientific name",
     int_currplantscifull = "Scientific name L.",
     int_origplantscinamenoauth = "Original name",
     int_origplantscifull = "Original name Auth.",
     int_currplantcommon = "Common plant",
     int_origplantcommon = "Old common name",
-    maxcover = 75,
+    max_cover = 75,
     taxoninferencearea = 100,
     taxonobservation_id = "TX123",
     int_currplantcode = "CODE1",
