@@ -214,14 +214,14 @@ server <- function(input, output, session) {
     if (is.null(accession_code) ||
       is.na(accession_code) ||
       accession_code == "") {
-      shiny::showNotification(paste0("No accession code found for that community"), type = "error")
+      shiny::showNotification(paste0("No accession code found for that community concept"), type = "error")
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("community-classification")
+      state$detail_type("community-concept")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
-      show_detail_view("community-classification", "VB.Cl.1553.2948", output, session) # TODO!!! REMOVE Example accession code
+      show_detail_view("community-concept", accession_code, output, session)
     }
   })
 

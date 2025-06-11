@@ -17,6 +17,7 @@ Imports:
     htmlwidgets (>= 1.5.4),
     httr (>= 1.4.2),
     bslib (>= 0.3.1),
+    tidyr (>= 1.1.4),
     vegbankr
 Encoding: UTF-8
 LazyData: true

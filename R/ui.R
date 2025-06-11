@@ -70,7 +70,7 @@ ui <- function(req) {
         if (type === 'plot-observation') {
           console.log('Showing plot details');
           plotCards.style.display = 'block';
-        } else if (type === 'community-classification') {
+        } else if (type === 'community-concept') {
           console.log('Showing community details');
           communityCards.style.display = 'block';
         } else if (type === 'taxon-observation') {
@@ -298,7 +298,8 @@ build_detail_overlay <- function() {
           class = "detail-section",
           bslib::card(bslib::card_header("Community Name"), shiny::uiOutput("community_name")),
           bslib::card(bslib::card_header("Occurences"), shiny::uiOutput("occurence_count")),
-          bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description"))
+          bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description")),
+          bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("community_aliases"))
         ),
 
         # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility

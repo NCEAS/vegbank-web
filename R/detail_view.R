@@ -7,7 +7,7 @@
 #'
 #' Generic function to fetch and display details in the overlay.
 #'
-#' @param detail_type Type of detail to show ("plot-observation", "community-classification", or "taxon-observation")
+#' @param detail_type Type of detail to show ("plot-observation", "community-concept", or "taxon-observation")
 #' @param accession_code The accession code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
@@ -21,7 +21,7 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       shiny::incProgress(0.3, "Fetching details")
 
       result <- switch(detail_type,
-        "community-classification" = vegbankr::get_community_concept(accession_code),
+        "community-concept" = vegbankr::get_community_concept(accession_code),
         "taxon-observation" = vegbankr::get_taxon_observation(accession_code),
         "plot-observation" = vegbankr::get_plot_observation_details(accession_code)
       )
@@ -54,12 +54,13 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
 
       # Generate the appropriate view based on detail type
       switch(detail_type,
-        "community-classification" = {
+        "community-concept" = {
           shiny::incProgress(0.5, "Processing community details")
           details <- build_community_details_view(result)
           output$community_name <- details$community_name
           output$community_description <- details$community_description
           output$occurence_count <- details$occurence_count
+          output$community_aliases <- details$community_aliases
         },
         "taxon-observation" = {
           shiny::incProgress(0.5, "Processing taxon details")
@@ -239,9 +240,10 @@ build_plot_obs_details_view <- function(result) {
 #'
 #' @importFrom htmltools tags HTML
 #' @importFrom shiny renderUI
+#' @importFrom tidyr pivot_wider
 #' @noRd
 build_community_details_view <- function(result) {
-  if (is.null(result)) {
+  if (is.null(result) || nrow(result) == 0) {
     return(list(
       community_name = shiny::renderUI({
         htmltools::tags$p("Community details not available")
@@ -251,27 +253,43 @@ build_community_details_view <- function(result) {
       }),
       occurence_count = shiny::renderUI({
         htmltools::tags$p("No occurrences available")
+      }),
+      community_aliases = shiny::renderUI({
+        htmltools::tags$p("No aliases available")
       })
     ))
   }
 
+  scientific_class <- subset(result, class_system == "Scientific")
+  
+  # Create aliases dataframe with each class_system as a column
+  aliases <- tidyr::pivot_wider(
+    data = result[, c("class_system", "comm_name")],
+    names_from = "class_system",
+    values_from = "comm_name"
+  )
+
   list(
     community_name = shiny::renderUI({
-      htmltools::tags$b(result$comm_name)
+      htmltools::tags$b(scientific_class$comm_name)
+    }),
+    occurence_count = shiny::renderUI({
+      htmltools::tags$p(
+        "Number of occurrences: ",
+        htmltools::tags$strong(scientific_class$obs_count)
+      )
     }),
     community_description = shiny::renderUI({
       # The description contains HTML entities that need to be properly rendered
       htmltools::tags$div(
         id = "community-description",
-        htmltools::HTML(result$comm_description)
+        htmltools::HTML(scientific_class$comm_description)
       )
     }),
-    occurence_count = shiny::renderUI({
-      htmltools::tags$p(
-        "Number of occurrences: ",
-        htmltools::tags$strong(result$obs_count)
-      )
-    })
+    community_aliases = safe_render_details(
+      colnames(aliases),
+      aliases
+    )
   )
 }
 
