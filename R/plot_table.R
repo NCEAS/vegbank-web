@@ -24,9 +24,9 @@ process_table_data <- function(plot_data, taxa_data, comm_data) {
         return(create_empty_table())
       }
       shiny::incProgress(0.2, detail = "Cleaning author observation codes")
-      author_codes <- clean_column_data(plot_data, "authorplotcode")
+      author_codes <- clean_column_data(plot_data, "author_plot_code")
       shiny::incProgress(0.1, detail = "Cleaning location data")
-      locations <- clean_column_data(plot_data, "stateprovince")
+      locations <- clean_column_data(plot_data, "state_province")
       shiny::incProgress(0.1, detail = "Creating taxa lists...")
       taxa_html <- create_taxa_vectors(plot_data, taxa_data)
       shiny::incProgress(0.1, detail = "Creating community links...")
