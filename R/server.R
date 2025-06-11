@@ -24,25 +24,9 @@
 # ================= MAIN SERVER FUNCTION =================
 
 VBR_PATH <- "/Users/dariangill/git/vegbankr"
-ALL_RECORDS <- 200000
+ALL_RECORDS <- 100000000
 
 server <- function(input, output, session) {
-  # Load local VegBankR package
-  if (!requireNamespace("devtools", quietly = TRUE)) {
-    stop("Please install the 'devtools' package to load the local VegBankR package")
-  }
-
-  # Load the local vegbankr package
-  tryCatch(
-    {
-      message("Loading vegbankr package from local source...")
-      devtools::load_all(VBR_PATH)
-      message("vegbankr package loaded successfully.")
-    },
-    error = function(e) {
-      message("Failed to load vegbankr package: ", e$message)
-    }
-  )
 
   # STATE MANAGEMENT ______________________________________________________________________________
   state <- list(
@@ -56,7 +40,7 @@ server <- function(input, output, session) {
   )
 
   # Load data from vegbankr
-  vegbankr::set_vb_base_url("http://localhost", port = 8080)
+  vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
   plot_data <- vegbankr::get_all_plot_observations(limit = 100, detail = "minimal")
   taxa_data <- vegbankr::get_all_taxon_observations(limit = 100, detail = "minimal")
   comm_data <- vegbankr::get_all_community_classifications(limit = 100, detail = "minimal")
@@ -156,11 +140,11 @@ server <- function(input, output, session) {
         }
       )
 
-      state$detail_type("plot")
+      state$detail_type("plot-observation")
       state$selected_accession(selected_row_accession)
       state$details_open(TRUE)
       # Open the details view
-      show_detail_view("plot", selected_row_accession, output, session)
+      show_detail_view("plot-observation", selected_row_accession, output, session)
     },
     ignoreNULL = TRUE,
     ignoreInit = TRUE
@@ -217,10 +201,10 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("plot")
+      state$detail_type("plot-observation")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
-      show_detail_view("plot", accession_code, output, session)
+      show_detail_view("plot-observation", accession_code, output, session)
     }
   })
 
@@ -234,10 +218,10 @@ server <- function(input, output, session) {
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("community")
+      state$detail_type("community-classification")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
-      show_detail_view("community", accession_code, output, session)
+      show_detail_view("community-classification", "VB.Cl.1553.2948", output, session) # TODO!!! REMOVE Example accession code
     }
   })
 

@@ -58,6 +58,8 @@ ui <- function(req) {
       const communityCards = document.getElementById('community-details-cards');
       const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
 
+      console.log('Updating detail type to:', type);
+
       if (plotCards && communityCards && taxonObservationCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
@@ -65,11 +67,14 @@ ui <- function(req) {
         taxonObservationCards.style.display = 'none';
 
         // Show the requested type
-        if (type === 'plot') {
+        if (type === 'plot-observation') {
+          console.log('Showing plot details');
           plotCards.style.display = 'block';
-        } else if (type === 'community') {
+        } else if (type === 'community-classification') {
+          console.log('Showing community details');
           communityCards.style.display = 'block';
         } else if (type === 'taxon-observation') {
+          console.log('Showing taxon observation details');
           taxonObservationCards.style.display = 'block';
         }
       }
@@ -278,12 +283,13 @@ build_detail_overlay <- function() {
           id = "plot-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
-          bslib::card(bslib::card_header("Location"), shiny::uiOutput("locationDetails")),
+          bslib::card(bslib::card_header("Location"), shiny::uiOutput("location_details")),
           bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
           bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),
           bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
           bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
-          bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxaDetails"))
+          bslib::card(bslib::card_header("Communities"), shiny::uiOutput("communities_details")),
+          bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxa_details"))
         ),
 
         # Community Details Cards - wrapped in a div with class for toggling visibility
@@ -300,9 +306,8 @@ build_detail_overlay <- function() {
           id = "taxon-observation-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Taxon Name"), shiny::uiOutput("taxon_name")),
-          bslib::card(bslib::card_header("Scientific Names"), shiny::uiOutput("taxon_scientific")),
-          bslib::card(bslib::card_header("Common Names"), shiny::uiOutput("taxon_common")),
           bslib::card(bslib::card_header("Coverage"), shiny::uiOutput("taxon_coverage")),
+          bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("taxon_aliases")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("taxon_identifiers"))
         )
       )
