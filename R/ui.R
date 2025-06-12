@@ -19,20 +19,6 @@ ui <- function(req) {
       }
     });
 
-    Shiny.addCustomMessageHandler('closeDropdown', function(message) {
-      // TODO: There has to be a better way to do this
-      // this workaround for the plot dropdown not closing just strips all dropdown show states
-        document.querySelectorAll('.nav-item.dropdown.show').forEach(function(el) {
-          el.classList.remove('show');
-        });
-        document.querySelectorAll('.dropdown-menu.show').forEach(function(el) {
-          el.classList.remove('show');
-        });
-        document.querySelectorAll('.dropdown-toggle[aria-expanded=\"true\"]').forEach(function(el) {
-          el.setAttribute('aria-expanded', 'false');
-        });
-    });
-
     Shiny.addCustomMessageHandler('invalidateMapSize', function(message) {
       var mapWidget = HTMLWidgets.find('#map');
       if (mapWidget) {
@@ -206,45 +192,21 @@ build_navbar <- function() {
         )
       )
     ),
-    bslib::nav_menu(
+    bslib::nav_panel(
+      title = "Map",
+      leaflet::leafletOutput("map")
+    ),
+    bslib::nav_panel(
       title = "Plots",
-      bslib::nav_panel(
-        title = "Table",
-        shiny::fluidPage(
-          DT::dataTableOutput("dataTable"),
-          # shiny::uiOutput("tablePagination"),
-        )
-      ),
-      bslib::nav_panel(
-        title = "Map",
-        leaflet::leafletOutput("map")
+      shiny::fluidPage(
+        DT::dataTableOutput("plot_table"),
       )
     ),
-    bslib::nav_menu(
-      title = "Plants",
-      bslib::nav_panel(title = "Table"),
-      bslib::nav_panel(title = "Map")
-    ),
-    bslib::nav_menu(
-      title = "Communities",
-      bslib::nav_panel(title = "Table"),
-      bslib::nav_panel(title = "Map")
-    ),
-    bslib::nav_menu(
-      title = "Places",
-      bslib::nav_panel(title = "Table"),
-      bslib::nav_panel(title = "Map")
-    ),
-    bslib::nav_menu(
-      title = "People",
-      bslib::nav_panel(title = "Table"),
-      bslib::nav_panel(title = "Map")
-    ),
-    bslib::nav_menu(
-      title = "Projects",
-      bslib::nav_panel(title = "Table"),
-      bslib::nav_panel(title = "Map")
-    ),
+    bslib::nav_panel(title = "Plants"),
+    bslib::nav_panel(title = "Communities"),
+    bslib::nav_panel(title = "Places"),
+    bslib::nav_panel(title = "People"),
+    bslib::nav_panel(title = "Projects"),
     bslib::nav_menu(
       title = "About",
       align = "right",

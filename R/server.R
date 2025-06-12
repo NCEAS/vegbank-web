@@ -27,7 +27,6 @@ VBR_PATH <- "/Users/dariangill/git/vegbankr"
 ALL_RECORDS <- 100000000
 
 server <- function(input, output, session) {
-
   # STATE MANAGEMENT ______________________________________________________________________________
   state <- list(
     map_request = shiny::reactiveVal(NULL),
@@ -67,7 +66,7 @@ server <- function(input, output, session) {
     )
   })
 
-  output$dataTable <- DT::renderDataTable({
+  output$plot_table <- DT::renderDataTable({
     process_table_data(plot_data, taxa_data, comm_data)
   })
 
@@ -129,16 +128,7 @@ server <- function(input, output, session) {
         return()
       }
 
-      # Select the row in the datatable (with error handling)
-      tryCatch(
-        {
-          dt_proxy <- DT::dataTableProxy("dataTable")
-          DT::selectRows(dt_proxy, i)
-        },
-        error = function(e) {
-          print(paste("Error selecting row:", e$message))
-        }
-      )
+      # TODO: Select the row in the datatable (with error handling)
 
       state$detail_type("plot-observation")
       state$selected_accession(selected_row_accession)
@@ -180,7 +170,6 @@ server <- function(input, output, session) {
 
         idx <- state$map_request()
         if (!is.null(idx) && length(idx) > 0) {
-          session$sendCustomMessage(type = "closeDropdown", message = list())
           session$sendCustomMessage("invalidateMapSize", list())
           move_map_to_obs(idx)
           state$map_request(NULL)
