@@ -59,7 +59,7 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
           details <- build_community_details_view(result)
           output$community_name <- details$community_name
           output$community_description <- details$community_description
-          output$occurence_count <- details$occurence_count
+          output$observation_count <- details$observation_count
           output$community_aliases <- details$community_aliases
         },
         "taxon-observation" = {
@@ -251,8 +251,8 @@ build_community_details_view <- function(result) {
       community_description = shiny::renderUI({
         htmltools::tags$p("No description available")
       }),
-      occurence_count = shiny::renderUI({
-        htmltools::tags$p("No occurrences available")
+      observation_count = shiny::renderUI({
+        htmltools::tags$p("No observations available")
       }),
       community_aliases = shiny::renderUI({
         htmltools::tags$p("No aliases available")
@@ -273,9 +273,9 @@ build_community_details_view <- function(result) {
     community_name = shiny::renderUI({
       htmltools::tags$b(scientific_class$comm_name)
     }),
-    occurence_count = shiny::renderUI({
+    observation_count = shiny::renderUI({
       htmltools::tags$p(
-        "Number of occurrences: ",
+        "Number of observations: ",
         htmltools::tags$strong(scientific_class$obs_count)
       )
     }),
@@ -362,45 +362,41 @@ build_taxon_details_view <- function(result) {
   )
 }
 
-safe_render_details <- function(fields, dataframe) {
-  # Mapping internal field names to their display names.
-  display_names <- list(
-    author_plot_code = "Author Plot Code",
-    author_obs_code = "Author Observation Code",
-    area = "Area",
-    permanence = "Permanent",
-    elevation = "Elevation",
-    slope_aspect = "Slope Aspect",
-    slope_gradient = "Slope Gradient",
-    confidentiality_text = "Confidentiality Status",
-    latitude = "Latitude",
-    longitude = "Longitude",
-    location_narrative = "Location Description",
-    state_province = "State/Province",
-    country = "Country",
-    obs_start_date = "Observation Start Date",
-    project_name = "Project Name",
-    cover_type = "Cover Type",
-    stratum_method_name = "Stratum Method",
-    stratum_method_description = "Stratum Method Description",
-    taxon_observation_area = "Taxon Observation Area",
-    auto_taxon_cover = "Taxon Cover Automatically Calculated",
-    plot_validation_level = "Plot Validation Level",
-    plot_validation_level_descr = "Validation Level",
-    int_curr_plant_code = "Current Plant Code",
-    int_orig_plant_code = "Original Plant Code",
-    int_curr_plant_common = "Current Common Name",
-    int_orig_plant_common = "Original Common Name",
-    int_curr_plant_sci_name_no_auth = "Current Scientific Name (No Auth)",
-    int_curr_plant_sci_full = "Current Full Scientific Name",
-    int_orig_plant_sci_name_no_auth = "Original Scientific Name (No Auth)",
-    int_orig_plant_sci_full = "Original Full Scientific Name",
-    taxon_observation_id = "Taxon Observation ID",
-    int_curr_plant_code = "Current Plant Code",
-    int_orig_plant_code = "Original Plant Code",
-    taxon_inference_area = "Taxon Inference Area"
-  )
+#' Read Display Names from Lookup Table
+#'
+#' Reads display names from the display_name_lookup.txt file
+#'
+#' @return A named vector where names are snake_case field names and values are display names
+#' @noRd
+get_field_display_names <- function() {
+  file_path <- system.file("shiny/www/display_name_lookup.txt", package = "vegbankWeb")
+  
+  # If running in development mode and file not found in package
+  if (file_path == "") {
+    pkg_root <- tryCatch({
+      rprojroot::find_package_root_file()
+    }, error = function(e) {
+      getwd()
+    })
+    file_path <- file.path(pkg_root, "inst/shiny/www/display_name_lookup.txt")
+  }
+  
+  # Read lookup table
+  if (file.exists(file_path)) {
+    lookup <- utils::read.csv(file_path, stringsAsFactors = FALSE, comment.char = "/")
+    # Create a named vector: snake_case -> display
+    display_names <- setNames(lookup$display, lookup$snake)
+    return(display_names)
+  } else {
+    warning("Display name lookup file not found: ", file_path)
+    return(c())
+  }
+}
 
+safe_render_details <- function(fields, dataframe) {
+  # Read display names from the lookup file
+  display_names <- get_field_display_names()
+  
   shiny::renderUI({
     # First check if all fields exist
     valid_fields <- fields[fields %in% colnames(dataframe)]
@@ -426,7 +422,7 @@ create_table <- function(details, col_names) {
     class = "table table-sm table-striped table-hover",
     htmltools::tags$tbody(
       lapply(names(details), function(name) {
-        display_name <- if (!is.null(col_names[[name]])) col_names[[name]] else name
+        display_name <- if (name %in% names(col_names)) col_names[[name]] else name
         htmltools::tags$tr(
           htmltools::tags$td(htmltools::tags$strong(display_name)),
           htmltools::tags$td(class = "text-end", details[[name]])
