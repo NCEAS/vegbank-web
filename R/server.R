@@ -23,9 +23,6 @@
 
 # ================= MAIN SERVER FUNCTION =================
 
-VBR_PATH <- "/Users/dariangill/git/vegbankr"
-ALL_RECORDS <- 100000000
-
 server <- function(input, output, session) {
   # STATE MANAGEMENT ______________________________________________________________________________
   state <- list(
@@ -39,10 +36,18 @@ server <- function(input, output, session) {
   )
 
   # Load data from vegbankr
+  vegbankr::vb_debug()
   vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
-  plot_data <- vegbankr::get_all_plot_observations(limit = 100, detail = "minimal")
-  taxa_data <- vegbankr::get_all_taxon_observations(limit = 100, detail = "minimal")
-  comm_data <- vegbankr::get_all_community_classifications(limit = 100, detail = "minimal")
+  num_plots <- vegbankr::get_page_details(vegbankr::get_all_plot_observations(limit = 0, detail = "minimal"))["count_reported"]
+  num_comm <- vegbankr::get_page_details(vegbankr::get_all_community_classifications(limit = 0, detail = "minimal"))["count_reported"]
+  plot_data <- vegbankr::get_all_plot_observations(limit = num_plots, detail = "minimal")
+  comm_data <- vegbankr::get_all_community_classifications(limit = num_comm, detail = "minimal")
+  # TODO: Taxa leads to 504 gateway timeout even when batched at around offset 360000
+  #       and returns 0s for get_page_details, so we're pulling from a local file until
+  #       we can allign pagination between plot obs, taxon obs, and community classifications.
+  # num_taxa <- vegbankr::get_page_details(vegbankr::get_all_taxon_observations(limit = 0, detail = "minimal"))["count_reported"]
+  # taxa_data <- vegbankr::get_all_taxon_observations(limit = ALL_RECORDS, detail = "minimal")
+  taxa_data <- readRDS(system.file("shiny/www/taxa_top5.RDS"))
 
   move_map_to_obs <- function(idx) {
     data <- plot_data
