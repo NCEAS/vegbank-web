@@ -47,7 +47,7 @@ server <- function(input, output, session) {
   #       we can allign pagination between plot obs, taxon obs, and community classifications.
   # num_taxa <- vegbankr::get_page_details(vegbankr::get_all_taxon_observations(limit = 0, detail = "minimal"))["count_reported"]
   # taxa_data <- vegbankr::get_all_taxon_observations(limit = ALL_RECORDS, detail = "minimal")
-  taxa_data <- readRDS(system.file("shiny/www/taxa_top5.RDS"))
+  taxa_data <- readRDS("inst/cached_data/taxon_obs_top_5.RDS")
 
   move_map_to_obs <- function(idx) {
     data <- plot_data
