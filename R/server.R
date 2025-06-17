@@ -38,16 +38,40 @@ server <- function(input, output, session) {
   # Load data from vegbankr
   vegbankr::vb_debug()
   vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
-  num_plots <- vegbankr::get_page_details(vegbankr::get_all_plot_observations(limit = 0, detail = "minimal"))["count_reported"]
-  num_comm <- vegbankr::get_page_details(vegbankr::get_all_community_classifications(limit = 0, detail = "minimal"))["count_reported"]
-  plot_data <- vegbankr::get_all_plot_observations(limit = num_plots, detail = "minimal")
-  comm_data <- vegbankr::get_all_community_classifications(limit = num_comm, detail = "minimal")
-  # TODO: Taxa leads to 504 gateway timeout even when batched at around offset 360000
-  #       and returns 0s for get_page_details, so we're pulling from a local file until
-  #       we can allign pagination between plot obs, taxon obs, and community classifications.
-  # num_taxa <- vegbankr::get_page_details(vegbankr::get_all_taxon_observations(limit = 0, detail = "minimal"))["count_reported"]
-  # taxa_data <- vegbankr::get_all_taxon_observations(limit = ALL_RECORDS, detail = "minimal")
-  taxa_data <- readRDS("inst/cached_data/taxon_obs_top_5.RDS")
+
+  plot_data <- shiny::withProgress(message = "Fetching plot observations...", value = 0, {
+    num_plots <- vegbankr::get_page_details(vegbankr::get_all_plot_observations(limit = 0, detail = "minimal"))["count_reported"]
+    shiny::incProgress(0.5)
+    vegbankr::get_all_plot_observations(limit = num_plots, detail = "minimal")
+  })
+
+  comm_data <- shiny::withProgress(message = "Fetching community classifications...", value = 0, {
+    num_comm <- vegbankr::get_page_details(vegbankr::get_all_community_classifications(limit = 0, detail = "minimal"))["count_reported"]
+    shiny::incProgress(0.5)
+    vegbankr::get_all_community_classifications(limit = num_comm, detail = "minimal")
+  })
+
+  taxa_file_path <- "inst/cached_data/taxon_obs_top_5.RDS"
+  if (!file.exists(taxa_file_path)) {
+    # If file doesn't exist, show notification and create empty data frame (fetching untenable)
+    shiny::showNotification(
+      paste0("Taxa cache not found: ", taxa_file_path),
+      type = "error",
+      duration = NULL
+    )
+    taxa_data <- data.frame()
+    # TODO: Taxa leads to 504 gateway timeout even when batched at around offset 360000
+    #       and returns 0s for get_page_details, so we're pulling from a local file until
+    #       we can allign pagination between plot obs, taxon obs, and community classifications.
+    # num_taxa <- vegbankr::get_page_details(vegbankr::get_all_taxon_observations(limit = 0, detail = "minimal"))["count_reported"]
+    # taxa_data <- vegbankr::get_all_taxon_observations(limit = ALL_RECORDS, detail = "minimal")
+  } else {
+    taxa_data <- shiny::withProgress(message = "Reading taxon observations...", value = 0, {
+      result <- readRDS(taxa_file_path)
+      shiny::incProgress(1)
+      result
+    })
+  }
 
   move_map_to_obs <- function(idx) {
     data <- plot_data
