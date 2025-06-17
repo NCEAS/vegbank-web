@@ -309,14 +309,11 @@ build_taxon_details_view <- function(result) {
       taxon_name = shiny::renderUI({
         htmltools::tags$p("Taxon details not available")
       }),
-      taxon_scientific = shiny::renderUI({
-        htmltools::tags$p("No scientific name available")
-      }),
-      taxon_common = shiny::renderUI({
-        htmltools::tags$p("No common name available")
-      }),
       taxon_coverage = shiny::renderUI({
         htmltools::tags$p("No coverage data available")
+      }),
+      taxon_aliases = shiny::renderUI({
+        htmltools::tags$p("No aliases available") 
       }),
       taxon_identifiers = shiny::renderUI({
         htmltools::tags$p("No identifier information available")

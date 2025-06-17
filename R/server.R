@@ -53,7 +53,6 @@ server <- function(input, output, session) {
 
   taxa_file_path <- "inst/cached_data/taxon_obs_top_5.RDS"
   if (!file.exists(taxa_file_path)) {
-    # If file doesn't exist, show notification and create empty data frame (fetching untenable)
     shiny::showNotification(
       paste0("Taxa cache not found: ", taxa_file_path),
       type = "error",

@@ -65,6 +65,7 @@ test_that("create_taxa_vectors creates HTML taxa lists", {
     int_curr_plant_sci_name_no_auth = c("Taxon1", "Taxon2", NA),
     max_cover = c(10, 20, NA),
     accession_code = c("ACC1", "ACC2", "ACC3"),
+    taxon_observation_accession_code = c("ACC1", "ACC2", "ACC3"),
     stringsAsFactors = FALSE
   )
 
@@ -84,8 +85,8 @@ test_that("create_community_vectors creates HTML community lists", {
 
   comm_data <- data.frame(
     obs_accession_code = c("ACC1", "ACC2"),
-    commname = c("Community1", NA),
-    commconceptaccession_code = c("COMM1", NA),
+    comm_name = c("Community1", NA),
+    comm_concept_accession_code = c("COMM1", NA),
     stringsAsFactors = FALSE
   )
 
@@ -128,8 +129,8 @@ test_that("process_table_data returns a DataTable with correct structure", {
   plot_data <- data.frame(
     observation_id = 1,
     obs_accession_code = "ACC1",
-    authorplotcode = "Plot1",
-    stateprovince = "State1",
+    author_plot_code = "Plot1", # Fixed from authorplotcode
+    state_province = "State1", # Fixed from stateprovince
     stringsAsFactors = FALSE
   )
 
@@ -138,13 +139,14 @@ test_that("process_table_data returns a DataTable with correct structure", {
     int_curr_plant_sci_name_no_auth = "Taxon1",
     max_cover = 10,
     accession_code = "ACC1",
+    taxon_observation_accession_code = "TAXA1",
     stringsAsFactors = FALSE
   )
 
   comm_data <- data.frame(
     obs_accession_code = "ACC1",
-    commname = "Community1",
-    commconceptaccession_code = "COMM1",
+    comm_name = "Community1",
+    comm_concept_accession_code = "COMM1",
     stringsAsFactors = FALSE
   )
 
