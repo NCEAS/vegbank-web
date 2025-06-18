@@ -28,7 +28,7 @@ get_last_notification <- function() {
   if (length(notifications) > 0) {
     return(notifications[[length(notifications)]])
   }
-  return(NULL)
+  NULL
 }
 
 #' Reset stored notifications

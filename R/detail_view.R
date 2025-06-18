@@ -389,10 +389,10 @@ get_field_display_names <- function() {
     lookup <- utils::read.csv(file_path, stringsAsFactors = FALSE, comment.char = "/")
     # Create a named vector: snake_case -> display
     display_names <- setNames(lookup$display, lookup$snake)
-    return(display_names)
+    display_names
   } else {
     warning("Display name lookup file not found: ", file_path)
-    return(c())
+    c()
   }
 }
 

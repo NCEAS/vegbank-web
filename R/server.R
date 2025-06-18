@@ -172,6 +172,9 @@ server <- function(input, output, session) {
 
       # Check for valid index before proceeding
       if (is.na(idx) || idx < 1 || idx > nrow(plot_data)) {
+        shiny::showNotification("Cannot show on map: Missing or invalid index for this row",
+          type = "warning"
+        )
         return()
       }
 

@@ -164,13 +164,13 @@ mock_vegbank_api_error <- function(output, session) {
     code = {
       # Create local versions of the API functions that return errors
       get_plot_observation_details <- function(accession_code) {
-        return(list()) # Empty list simulates API error
+        list() # Empty list simulates API error
       }
       get_community_concept <- function(accession_code) {
-        return(list())
+        list()
       }
       get_taxon_observation <- function(accession_code) {
-        return(list())
+        list()
       }
 
       with_mock_shiny_notifications({
