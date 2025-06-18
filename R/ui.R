@@ -154,21 +154,6 @@ custom_theme <- bslib::bs_add_rules(
 #'
 #' @noRd
 build_navbar <- function() {
-  search_div <- htmltools::tags$li(
-    class = "nav-item",
-    htmltools::tags$div(
-      class = "navbar-form",
-      shiny::textInput(inputId = "search", label = "", value = "", placeholder = "Search"),
-      htmltools::tags$script(htmltools::HTML(
-        "$(document).on('keypress', '#search', function(e) {
-           if(e.which == 13){
-             Shiny.setInputValue('search_enter', $(this).val(), {priority:'event'});
-           }
-         });"
-      ))
-    )
-  )
-
   navbar <- bslib::page_navbar(
     id = "page",
     theme = custom_theme,
@@ -216,7 +201,6 @@ build_navbar <- function() {
       )
     )
   )
-  htmltools::tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
 }
 
 #' Build Detail Overlay for Vegbank UI

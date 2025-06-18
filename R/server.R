@@ -50,6 +50,9 @@ server <- function(input, output, session) {
     vegbankr::get_all_community_classifications(limit = num_comm, detail = "minimal")
   })
 
+  # TODO: Taxa leads to 504 gateway timeout even when batched at around offset 360000
+  #       and returns 0s for get_page_details, so we're pulling from a local file until
+  #       we can allign pagination between plot obs, taxon obs, and community classifications.
   taxa_file_path <- "inst/cached_data/taxon_obs_top_5.RDS"
   if (!file.exists(taxa_file_path)) {
     shiny::showNotification(
@@ -58,11 +61,6 @@ server <- function(input, output, session) {
       duration = NULL
     )
     taxa_data <- data.frame()
-    # TODO: Taxa leads to 504 gateway timeout even when batched at around offset 360000
-    #       and returns 0s for get_page_details, so we're pulling from a local file until
-    #       we can allign pagination between plot obs, taxon obs, and community classifications.
-    # num_taxa <- vegbankr::get_page_details(vegbankr::get_all_taxon_observations(limit = 0, detail = "minimal"))["count_reported"]
-    # taxa_data <- vegbankr::get_all_taxon_observations(limit = ALL_RECORDS, detail = "minimal")
   } else {
     taxa_data <- shiny::withProgress(message = "Reading taxon observations...", value = 0, {
       result <- readRDS(taxa_file_path)
@@ -258,8 +256,6 @@ server <- function(input, output, session) {
       show_detail_view("taxon-observation", accession_code, output, session)
     }
   })
-
-  # TODO: Add observer for search bar
 
   # STATE PERSISTENCE ____________________________________________________________________________
   shiny::onBookmark(function(state_obj) {
