@@ -195,7 +195,7 @@ build_plot_obs_details_view <- function(result) {
         "location_narrative",
         "state_province",
         "country"
-      ), 
+      ),
       result$plot_observation
     ),
     layout_details = safe_render_details(
@@ -260,8 +260,8 @@ build_community_details_view <- function(result) {
     ))
   }
 
-  scientific_class <- subset(result, class_system == "Scientific")
-  
+  scientific_class <- subset(result, result$class_system == "Scientific")
+
   # Create aliases dataframe with each class_system as a column
   aliases <- tidyr::pivot_wider(
     data = result[, c("class_system", "comm_name")],
@@ -280,7 +280,7 @@ build_community_details_view <- function(result) {
       )
     }),
     community_description = shiny::renderUI({
-      # The description contains HTML entities that need to be properly rendered
+      # The description contains HTML entities <i></i> that need to be properly rendered
       htmltools::tags$div(
         id = "community-description",
         htmltools::HTML(scientific_class$comm_description)
@@ -313,7 +313,7 @@ build_taxon_details_view <- function(result) {
         htmltools::tags$p("No coverage data available")
       }),
       taxon_aliases = shiny::renderUI({
-        htmltools::tags$p("No aliases available") 
+        htmltools::tags$p("No aliases available")
       }),
       taxon_identifiers = shiny::renderUI({
         htmltools::tags$p("No identifier information available")
@@ -364,20 +364,26 @@ build_taxon_details_view <- function(result) {
 #' Reads display names from the display_name_lookup.txt file
 #'
 #' @return A named vector where names are snake_case field names and values are display names
+#'
+#' @importFrom stats setNames
+#' @importFrom utils read.csv
 #' @noRd
 get_field_display_names <- function() {
   file_path <- system.file("shiny/www/display_name_lookup.txt", package = "vegbankWeb")
-  
+
   # If running in development mode and file not found in package
   if (file_path == "") {
-    pkg_root <- tryCatch({
-      rprojroot::find_package_root_file()
-    }, error = function(e) {
-      getwd()
-    })
+    pkg_root <- tryCatch(
+      {
+        rprojroot::find_package_root_file()
+      },
+      error = function(e) {
+        getwd()
+      }
+    )
     file_path <- file.path(pkg_root, "inst/shiny/www/display_name_lookup.txt")
   }
-  
+
   # Read lookup table
   if (file.exists(file_path)) {
     lookup <- utils::read.csv(file_path, stringsAsFactors = FALSE, comment.char = "/")
@@ -393,7 +399,7 @@ get_field_display_names <- function() {
 safe_render_details <- function(fields, dataframe) {
   # Read display names from the lookup file
   display_names <- get_field_display_names()
-  
+
   shiny::renderUI({
     # First check if all fields exist
     valid_fields <- fields[fields %in% colnames(dataframe)]

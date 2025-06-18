@@ -131,10 +131,10 @@ test_that("build_taxon_details_view handles NULL data gracefully", {
 
   # It should return a list with placeholder components
   expect_type(result, "list")
-  
+
   # Use expect_true to check that all required components exist
   expect_true(all(c("taxon_name", "taxon_coverage", "taxon_aliases", "taxon_identifiers") %in% names(result)))
-  
+
   # Each component should be a render function
   expect_true(inherits(result$taxon_name, "shiny.render.function"))
   expect_true(inherits(result$taxon_coverage, "shiny.render.function"))
@@ -147,7 +147,7 @@ test_that("build_taxon_details_view formats taxon data correctly", {
 
   # Test structure and types
   expect_type(result, "list")
-  
+
   # Check that all expected keys are present (order doesn't matter)
   expect_true(all(c("taxon_name", "taxon_coverage", "taxon_aliases", "taxon_identifiers") %in% names(result)))
 
@@ -163,7 +163,7 @@ mock_vegbank_api_error <- function(output, session) {
     env = environment(show_detail_view),
     code = {
       # Create local versions of the API functions that return errors
-      get_plot_observation_details <- function(accession_code) { 
+      get_plot_observation_details <- function(accession_code) {
         return(list()) # Empty list simulates API error
       }
       get_community_concept <- function(accession_code) {
@@ -172,18 +172,18 @@ mock_vegbank_api_error <- function(output, session) {
       get_taxon_observation <- function(accession_code) {
         return(list())
       }
-      
+
       with_mock_shiny_notifications({
         # Call the function with our mock functions in its environment
         result <- show_detail_view("plot-observation", "TEST123", output, session)
-        
+
         # Check that the error was handled correctly
         expect_false(result)
-        
+
         # Check notifications
         notifications <- get_mock_notifications()
         expect_true(length(notifications) > 0)
-        
+
         # If we have notifications, check the content
         if (length(notifications) > 0) {
           error_notification <- notifications[[1]]
@@ -197,66 +197,70 @@ mock_vegbank_api_error <- function(output, session) {
 test_that("show_detail_view handles API errors appropriately", {
   # Skip on CRAN
   skip_on_cran()
-  
+
   # Create a fresh session and output for this test
   test_output <- new.env()
   test_session <- list(
     sendCustomMessage = function(type, message) {},
     messages = list()
   )
-  
-  with_mocked_bindings({
-    with_mock_shiny_notifications({
-      result <- show_detail_view("plot-observation", "TEST123", test_output, test_session)
-      
-      # Verify results
-      expect_false(result)
-      
-      # Check notifications
-      notifications <- get_mock_notifications()
-      expect_true(length(notifications) > 0)
-      
-      # Verify the notification contains the error message
-      error_notification <- notifications[[1]]
-      expect_equal(error_notification$type, "error")
-    })
-  },
-  get_plot_observation_details = function(accession_code) list(), 
-  get_community_concept = function(accession_code) list(),
-  get_taxon_observation = function(accession_code) list(),
-  .package = "vegbankr")
+
+  with_mocked_bindings(
+    {
+      with_mock_shiny_notifications({
+        result <- show_detail_view("plot-observation", "TEST123", test_output, test_session)
+
+        # Verify results
+        expect_false(result)
+
+        # Check notifications
+        notifications <- get_mock_notifications()
+        expect_true(length(notifications) > 0)
+
+        # Verify the notification contains the error message
+        error_notification <- notifications[[1]]
+        expect_equal(error_notification$type, "error")
+      })
+    },
+    get_plot_observation_details = function(accession_code) list(),
+    get_community_concept = function(accession_code) list(),
+    get_taxon_observation = function(accession_code) list(),
+    .package = "vegbankr"
+  )
 })
 
 test_that("show_detail_view handles success case for plot details", {
   # Skip on CRAN
   skip_on_cran()
-  
+
   # Setup test environment
   messages_captured <- list()
-  
+
   # Create a modified session with message capturing
   fake_session <- list(
     sendCustomMessage = function(type, message) {
       messages_captured[[type]] <<- message
     }
   )
-  
+
   # Create a mock output
   fake_output <- new.env()
-  
-  with_mocked_bindings({
-    with_mock_shiny_notifications({
-      result <- show_detail_view("plot-observation", "TEST123", fake_output, fake_session)
-      
-      # Verify results
-      expect_true(result)
-      expect_true(!is.null(messages_captured$openOverlay))
-      expect_true(!is.null(messages_captured$updateDetailType))
-      expect_equal(messages_captured$updateDetailType$type, "plot-observation")
-    })
-  },
-  get_plot_observation_details = function(accession_code) mock_plot_data,
-  get_community_concept = function(accession_code) list(),
-  get_taxon_observation = function(accession_code) list(),
-  .package = "vegbankr")
+
+  with_mocked_bindings(
+    {
+      with_mock_shiny_notifications({
+        result <- show_detail_view("plot-observation", "TEST123", fake_output, fake_session)
+
+        # Verify results
+        expect_true(result)
+        expect_true(!is.null(messages_captured$openOverlay))
+        expect_true(!is.null(messages_captured$updateDetailType))
+        expect_equal(messages_captured$updateDetailType$type, "plot-observation")
+      })
+    },
+    get_plot_observation_details = function(accession_code) mock_plot_data,
+    get_community_concept = function(accession_code) list(),
+    get_taxon_observation = function(accession_code) list(),
+    .package = "vegbankr"
+  )
 })

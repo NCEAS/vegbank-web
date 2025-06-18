@@ -16,7 +16,6 @@
 #' @importFrom htmltools tags
 #' @importFrom leaflet renderLeaflet leafletProxy
 #' @importFrom utils head
-#' @importFrom devtools load_all
 #' @import vegbankr
 #'
 #' @noRd
@@ -85,12 +84,13 @@ server <- function(input, output, session) {
   # RENDER UI ELEMENTS __________________________________________________________________
   output$dataSummary <- shiny::renderUI({
     htmltools::tags$p(
-      "Vegbank is a database of vegetation plot data. Navigate to the 'Plots > Table' tab ",
+      "Vegbank is a database of vegetation plot data. Navigate to the Plots tab ",
       "to browse the available plot data. Each row in the table represents a plot observation.",
-      "You can also view the plot locations on a map by navigating to the 'Plots > Map' tab. ",
+      "You can also view the plot locations on a map by navigating to the 'Map' tab. ",
       "Clicking on the see details button in a row in the table or a link in the pin label on the ",
       "map will display detailed information about that plot observation including information ",
-      "about the plot location, species observed, and other details."
+      "about the plot location, species observed, and other details. Clicking on a taxon or community",
+      " link will open a detailed view of that plant observation or community concept.",
     )
   })
 
@@ -323,9 +323,9 @@ server <- function(input, output, session) {
 
   # Exclude DataTable inputs from bookmarks (avoids storing the large table state)
   shiny::setBookmarkExclude(c(
-    "dataTable_rows_selected", "dataTable_rows_all", "dataTable_rows_current",
-    "dataTable_search", "dataTable_state", "dataTable_row_last_clicked",
-    "dataTable_cell_clicked", "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
+    "plot_table_rows_selected", "plot_table_rows_all", "plot_table_rows_current",
+    "plot_table_search", "plot_table_state", "plot_table_row_last_clicked",
+    "plot_table_cell_clicked", "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
     "map_marker_click", "map_click"
   ))
 }
