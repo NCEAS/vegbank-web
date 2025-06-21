@@ -39,15 +39,17 @@ server <- function(input, output, session) {
   vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
 
   plot_data <- shiny::withProgress(message = "Fetching plot observations...", value = 0, {
-    num_plots <- vegbankr::get_page_details(vegbankr::get_all_plot_observations(limit = 0, detail = "minimal"))["count_reported"]
-    shiny::incProgress(0.5)
-    vegbankr::get_all_plot_observations(limit = num_plots, detail = "minimal")
+    readRDS("inst/cached_data/plot_obs_minimal_all.RDS")
+    # num_plots <- vegbankr::get_page_details(vegbankr::get_all_plot_observations(limit = 0, detail = "minimal"))["count_reported"]
+    # shiny::incProgress(0.5)
+    # vegbankr::get_all_plot_observations(limit = num_plots, detail = "minimal")
   })
 
   comm_data <- shiny::withProgress(message = "Fetching community classifications...", value = 0, {
-    num_comm <- vegbankr::get_page_details(vegbankr::get_all_community_classifications(limit = 0, detail = "minimal"))["count_reported"]
-    shiny::incProgress(0.5)
-    vegbankr::get_all_community_classifications(limit = num_comm, detail = "minimal")
+    readRDS("inst/cached_data/comm_class_minimal_all.RDS")
+    # num_comm <- vegbankr::get_page_details(vegbankr::get_all_community_classifications(limit = 0, detail = "minimal"))["count_reported"]
+    # shiny::incProgress(0.5)
+    # vegbankr::get_all_community_classifications(limit = num_comm, detail = "minimal")
   })
 
   # TODO: Taxa leads to 504 gateway timeout even when batched at around offset 360000

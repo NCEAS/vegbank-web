@@ -416,11 +416,11 @@ safe_render_details <- function(fields, dataframe) {
       if (is.logical(x)) ifelse(x, "Yes", "No") else x
     })
 
-    create_table(values, col_names = display_names)
+    create_detail_table(values, col_names = display_names)
   })
 }
 
-create_table <- function(details, col_names) {
+create_detail_table <- function(details, col_names) {
   htmltools::tags$table(
     class = "table table-sm table-striped table-hover",
     htmltools::tags$tbody(
