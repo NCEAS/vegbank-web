@@ -38,38 +38,41 @@ server <- function(input, output, session) {
   vegbankr::vb_debug()
   vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
 
-  plot_data <- shiny::withProgress(message = "Fetching plot observations...", value = 0, {
-    readRDS("inst/cached_data/plot_obs_minimal_all.RDS")
-    # num_plots <- vegbankr::get_page_details(vegbankr::get_all_plot_observations(limit = 0, detail = "minimal"))["count_reported"]
-    # shiny::incProgress(0.5)
-    # vegbankr::get_all_plot_observations(limit = num_plots, detail = "minimal")
-  })
+  shiny::withProgress(message = "Fetching data...", value = 0, {
+    shiny::incProgress(0.2, detail = "Loading plot observations...")
+    plot_data <- readRDS("inst/cached_data/plot_obs_minimal_all.RDS")
+      # num_plots <- vegbankr::get_page_details(vegbankr::get_all_plot_observations(limit = 0, detail = "minimal"))["count_reported"]
+      # shiny::incProgress(0.5)
+      # vegbankr::get_all_plot_observations(limit = num_plots, detail = "minimal")
 
-  comm_data <- shiny::withProgress(message = "Fetching community classifications...", value = 0, {
-    readRDS("inst/cached_data/comm_class_minimal_all.RDS")
-    # num_comm <- vegbankr::get_page_details(vegbankr::get_all_community_classifications(limit = 0, detail = "minimal"))["count_reported"]
-    # shiny::incProgress(0.5)
-    # vegbankr::get_all_community_classifications(limit = num_comm, detail = "minimal")
-  })
+    shiny::incProgress(0.2, detail = "Loading community classifications...")
+    comm_class_data <- readRDS("inst/cached_data/comm_class_minimal_all.RDS")
+      # num_comm <- vegbankr::get_page_details(vegbankr::get_all_community_classifications(limit = 0, detail = "minimal"))["count_reported"]
+      # shiny::incProgress(0.5)
+      # vegbankr::get_all_community_classifications(limit = num_comm, detail = "minimal")
 
-  # TODO: Taxa leads to 504 gateway timeout even when batched at around offset 360000
-  #       and returns 0s for get_page_details, so we're pulling from a local file until
-  #       we can allign pagination between plot obs, taxon obs, and community classifications.
-  taxa_file_path <- "inst/cached_data/taxon_obs_top_5.RDS"
-  if (!file.exists(taxa_file_path)) {
-    shiny::showNotification(
-      paste0("Taxa cache not found: ", taxa_file_path),
-      type = "error",
-      duration = NULL
-    )
-    taxa_data <- data.frame()
-  } else {
-    taxa_data <- shiny::withProgress(message = "Reading taxon observations...", value = 0, {
-      result <- readRDS(taxa_file_path)
-      shiny::incProgress(1)
-      result
-    })
-  }
+    shiny::incProgress(0.2, detail = "Loading community concepts...")
+    comm_concept_data <- readRDS("inst/cached_data/comm_concept_full_all.RDS")
+      # num_comm_concepts <- vegbankr::get_page_details(vegbankr::get_all_community_concepts(limit = 0, detail = "minimal"))["count_reported"]
+      # shiny::incProgress(0.5)
+      # vegbankr::get_all_community_concepts(limit = num_comm_concepts, detail = "minimal")
+
+    # TODO: Taxa leads to 504 gateway timeout even when batched at around offset 360000
+    #       and returns 0s for get_page_details, so we're pulling from a local file until
+    #       we can allign pagination between plot obs, taxon obs, and community classifications.
+    taxa_file_path <- "inst/cached_data/taxon_obs_top_5.RDS"
+    if (!file.exists(taxa_file_path)) {
+      shiny::showNotification(
+        paste0("Taxa cache not found: ", taxa_file_path),
+        type = "error",
+        duration = NULL
+      )
+      taxa_data <- data.frame()
+    } else {
+      shiny::incProgress(0.2, detail = "Loading taxon observations...")
+      taxa_data <- readRDS(taxa_file_path)
+    }
+  })
 
   move_map_to_obs <- function(idx) {
     data <- plot_data
@@ -95,7 +98,11 @@ server <- function(input, output, session) {
   })
 
   output$plot_table <- DT::renderDataTable({
-    process_table_data(plot_data, taxa_data, comm_data)
+    build_plot_table(plot_data, taxa_data, comm_class_data)
+  })
+
+  output$comm_table <- DT::renderDataTable({
+    build_community_table(comm_concept_data)
   })
 
   output$map <- leaflet::renderLeaflet({

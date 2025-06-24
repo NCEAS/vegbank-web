@@ -188,7 +188,12 @@ build_navbar <- function() {
       )
     ),
     bslib::nav_panel(title = "Plants"),
-    bslib::nav_panel(title = "Communities"),
+    bslib::nav_panel(
+      title = "Communities",
+      shiny::fluidPage(
+        DT::dataTableOutput("comm_table"),
+      )
+    ),
     bslib::nav_panel(title = "Places"),
     bslib::nav_panel(title = "People"),
     bslib::nav_panel(title = "Projects"),

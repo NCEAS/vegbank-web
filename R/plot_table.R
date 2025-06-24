@@ -1,7 +1,7 @@
 #' Table Data Functions Module
 #'
 #' Provides functions for creating and manipulating the plot data table.
-#' 
+#'
 #' @importFrom DT datatable
 #' @importFrom shiny withProgress incProgress showNotification
 #' @importFrom dplyr left_join group_by summarize
@@ -16,15 +16,15 @@
 #' @param comm_data Data frame of community classification data
 #' @returns A DT datatable object ready for display in a Shiny app
 #' @export
-process_table_data <- function(plot_data, taxa_data, comm_data) {
+build_plot_table <- function(plot_data, taxa_data, comm_data) {
   data_sources <- list(
     plot_data = plot_data,
     taxa_data = taxa_data,
     comm_data = comm_data
   )
-  
+
   required_sources <- c("plot_data", "taxa_data", "comm_data")
-  
+
   table_config <- list(
     column_defs = list(
       list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
@@ -35,7 +35,7 @@ process_table_data <- function(plot_data, taxa_data, comm_data) {
     ),
     progress_message = "Processing plot table data"
   )
-  
+
   create_table(
     data_sources = data_sources,
     required_sources = required_sources,
@@ -53,25 +53,25 @@ process_plot_data <- function(data_sources) {
   plot_data <- data_sources$plot_data
   taxa_data <- data_sources$taxa_data
   comm_data <- data_sources$comm_data
-  
+
   shiny::incProgress(0.2, detail = "Cleaning author observation codes")
   author_codes <- clean_column_data(plot_data, "author_plot_code")
-  
+
   shiny::incProgress(0.1, detail = "Cleaning location data")
   locations <- clean_column_data(plot_data, "state_province")
-  
+
   shiny::incProgress(0.1, detail = "Creating taxa lists...")
   taxa_html <- create_taxa_vectors(plot_data, taxa_data)
-  
+
   shiny::incProgress(0.1, detail = "Creating community links...")
   community_html <- create_community_vectors(plot_data, comm_data)
-  
+
   shiny::incProgress(0.1, detail = "Creating action buttons...")
   action_buttons <- create_action_buttons(plot_data, list(
     list(id = "see_details", label = "Details", class = "btn-outline-primary"),
     list(id = "show_on_map", label = "Map", class = "btn-outline-secondary")
   ))
-  
+
   shiny::incProgress(0.2, detail = "Building table...")
   data.frame(
     "Actions" = action_buttons,

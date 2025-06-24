@@ -20,15 +20,15 @@ create_table <- function(data_sources, required_sources, process_function, table
       if (is_any_data_missing(data_sources, required_sources)) {
         return(create_empty_table(table_config$empty_message))
       }
-      
+
       shiny::incProgress(0.2, detail = "Processing data sources")
-      
+
       # Process the data with the provided function
       display_data <- process_function(data_sources)
-      
+
       # Default column definitions
       column_defs <- table_config$column_defs %||% list()
-      
+
       DT::datatable(
         display_data,
         rownames = FALSE,
@@ -60,16 +60,16 @@ create_table <- function(data_sources, required_sources, process_function, table
 #' @export
 is_any_data_missing <- function(data_sources, required_sources, error_message = NULL) {
   is_missing <- FALSE
-  
+
   for (source in required_sources) {
-    if (!source %in% names(data_sources) || 
-        is.null(data_sources[[source]]) || 
-        nrow(data_sources[[source]]) == 0) {
+    if (!source %in% names(data_sources) ||
+      is.null(data_sources[[source]]) ||
+      nrow(data_sources[[source]]) == 0) {
       is_missing <- TRUE
       break
     }
   }
-  
+
   if (is_missing) {
     shiny::showNotification(
       error_message %||% "Missing required data. Please try again or check your connection.",
@@ -131,7 +131,7 @@ create_action_buttons <- function(data, actions) {
         action$label
       )
     }, character(1))
-    
+
     sprintf(
       '<div class="btn-group btn-group-sm">%s</div>',
       paste(buttons, collapse = "")

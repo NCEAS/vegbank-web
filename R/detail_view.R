@@ -45,7 +45,7 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       output$taxa_details <- shiny::renderUI(NULL) # Changed from taxaDetails
       output$community_name <- shiny::renderUI(NULL)
       output$community_description <- shiny::renderUI(NULL)
-      output$occurence_count <- shiny::renderUI(NULL)
+      output$observation_count <- shiny::renderUI(NULL)
       output$taxon_name <- shiny::renderUI(NULL)
       output$taxon_scientific <- shiny::renderUI(NULL)
       output$taxon_common <- shiny::renderUI(NULL)

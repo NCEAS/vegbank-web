@@ -121,7 +121,7 @@ test_that("build_display_data creates correct data frame", {
   expect_equal(result$Community, community_html)
 })
 
-test_that("process_table_data returns a DataTable with correct structure", {
+test_that("build_plot_table returns a DataTable with correct structure", {
   # Skip if not running locally
   skip_on_cran()
 
@@ -152,7 +152,7 @@ test_that("process_table_data returns a DataTable with correct structure", {
 
   # Use our mock shiny functions
   with_mock_shiny_notifications({
-    result <- process_table_data(plot_data, taxa_data, comm_data)
+    result <- build_plot_table(plot_data, taxa_data, comm_data)
     expect_true(inherits(result, "datatables"))
     expect_equal(nrow(result$x$data), 1)
     expect_equal(ncol(result$x$data), 5)
