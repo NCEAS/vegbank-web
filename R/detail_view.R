@@ -369,20 +369,7 @@ build_taxon_details_view <- function(result) {
 #' @importFrom utils read.csv
 #' @noRd
 get_field_display_names <- function() {
-  file_path <- system.file("shiny/www/display_name_lookup.txt", package = "vegbankWeb")
-
-  # If running in development mode and file not found in package
-  if (file_path == "") {
-    pkg_root <- tryCatch(
-      {
-        rprojroot::find_package_root_file()
-      },
-      error = function(e) {
-        getwd()
-      }
-    )
-    file_path <- file.path(pkg_root, "inst/shiny/www/display_name_lookup.txt")
-  }
+  file_path <- system.file("shiny/www/display_name_lookup.txt", package = "vegbankweb")
 
   # Read lookup table
   if (file.exists(file_path)) {
