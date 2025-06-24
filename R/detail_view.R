@@ -7,7 +7,7 @@
 #'
 #' Generic function to fetch and display details in the overlay.
 #'
-#' @param detail_type Type of detail to show ("plot", "community", or "taxon-observation")
+#' @param detail_type Type of detail to show ("plot-observation", "community-concept", or "taxon-observation")
 #' @param accession_code The accession code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
@@ -18,19 +18,16 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
   # Use native Shiny progress functions
   shiny::withProgress(
     expr = {
-      shiny::incProgress(0.2, "Fetching details")
+      shiny::incProgress(0.3, "Fetching details")
 
-      # Determine which API function to call based on detail type
-      result <- if (detail_type == "community") {
-        veg_bank_api$get_community_details(accession_code)
-      } else if (detail_type == "taxon-observation") {
-        veg_bank_api$get_taxon_observation_details(accession_code)
-      } else {
-        veg_bank_api$get_observation_details(accession_code)
-      }
+      result <- switch(detail_type,
+        "community-concept" = vegbankr::get_community_concept(accession_code),
+        "taxon-observation" = vegbankr::get_taxon_observation(accession_code),
+        "plot-observation" = vegbankr::get_plot_observation_details(accession_code)
+      )
 
-      if (!result$success) {
-        shiny::incProgress(0.3, "Error loading details")
+      if (length(result) == 0) {
+        shiny::incProgress(0.4, "Error loading details")
         shiny::showNotification(
           paste0("Failed to load ", detail_type, " details. Please try again."),
           type = "error"
@@ -38,16 +35,14 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
         return(FALSE)
       }
 
-      shiny::incProgress(0.3, "Processing details")
-
-      # Clear all output slots
+      # Clear all output slots - ENSURE NAMES MATCH WHAT'S IN THE UI
       output$plot_id_details <- shiny::renderUI(NULL)
-      output$locationDetails <- shiny::renderUI(NULL)
+      output$location_details <- shiny::renderUI(NULL) # Changed from locationDetails
       output$layout_details <- shiny::renderUI(NULL)
       output$environmental_details <- shiny::renderUI(NULL)
       output$methods_details <- shiny::renderUI(NULL)
       output$plot_quality_details <- shiny::renderUI(NULL)
-      output$taxaDetails <- shiny::renderUI(NULL)
+      output$taxa_details <- shiny::renderUI(NULL) # Changed from taxaDetails
       output$community_name <- shiny::renderUI(NULL)
       output$community_description <- shiny::renderUI(NULL)
       output$occurence_count <- shiny::renderUI(NULL)
@@ -57,33 +52,39 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       output$taxon_coverage <- shiny::renderUI(NULL)
       output$taxon_identifiers <- shiny::renderUI(NULL)
 
-      # TODO: This should be a switch case for clarity
       # Generate the appropriate view based on detail type
-      if (detail_type == "community") {
-        # Get first row of community data bc multiple rows for multiple classsystems
-        details <- build_community_details_view(result$data)
-        output$community_name <- details$community_name
-        output$community_description <- details$community_description
-        output$occurence_count <- details$occurence_count
-      } else if (detail_type == "taxon-observation") {
-        details <- build_taxon_details_view(result$data)
-        output$taxon_name <- details$taxon_name
-        output$taxon_scientific <- details$taxon_scientific
-        output$taxon_common <- details$taxon_common
-        output$taxon_coverage <- details$taxon_coverage
-        output$taxon_identifiers <- details$taxon_identifiers
-      } else {
-        details <- build_plot_obs_details_view(result$data)
-        output$plot_id_details <- details$plot_id_details
-        output$locationDetails <- details$location_details
-        output$layout_details <- details$layout_details
-        output$environmental_details <- details$environmental_details
-        output$methods_details <- details$methods_details
-        output$plot_quality_details <- details$plot_quality_details
-        output$taxaDetails <- details$taxa_details
-      }
+      switch(detail_type,
+        "community-concept" = {
+          shiny::incProgress(0.5, "Processing community details")
+          details <- build_community_details_view(result)
+          output$community_name <- details$community_name
+          output$community_description <- details$community_description
+          output$observation_count <- details$observation_count
+          output$community_aliases <- details$community_aliases
+        },
+        "taxon-observation" = {
+          shiny::incProgress(0.5, "Processing taxon details")
+          details <- build_taxon_details_view(result)
+          output$taxon_name <- details$taxon_name
+          output$taxon_aliases <- details$taxon_aliases
+          output$taxon_coverage <- details$taxon_coverage
+          output$taxon_identifiers <- details$taxon_identifiers
+        },
+        "plot-observation" = {
+          shiny::incProgress(0.5, "Processing plot observation details")
+          details <- build_plot_obs_details_view(result)
+          output$plot_id_details <- details$plot_id_details
+          output$location_details <- details$location_details
+          output$layout_details <- details$layout_details
+          output$environmental_details <- details$environmental_details
+          output$methods_details <- details$methods_details
+          output$plot_quality_details <- details$plot_quality_details
+          output$taxa_details <- details$taxa_details
+          output$communities_details <- details$communities_details
+        }
+      )
 
-      shiny::incProgress(0.3, paste0(detail_type, " details ready"))
+      shiny::incProgress(0.6, paste0("Details ready"))
       session$sendCustomMessage("openOverlay", list())
       session$sendCustomMessage("updateDetailType", list(type = detail_type))
 
@@ -94,82 +95,23 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
   )
 }
 
-
 #' Build Plot Observation Details View
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed plot observation information.
 #'
-#' @param observation_data A data row representing the selected plot.
+#' @param result A list of 3 dataframes (plot_observation, taxa, and communities)
 #' @return A list of Shiny UI outputs.
+#'
 #' @importFrom htmltools tags
 #' @importFrom shiny renderUI
-#'
 #' @noRd
-build_plot_obs_details_view <- function(observation_data) {
-  # Mapping internal field names to their display names.
-  display_names <- list(
-    authorplotcode = "Author Plot Code",
-    authorobscode = "Author Observation Code",
-    area = "Area",
-    permanence = "Permanent",
-    elevation = "Elevation",
-    slopeaspect = "Slope Aspect",
-    slopegradient = "Slope Gradient",
-    confidentialitystatus = "Confidentiality Status",
-    confidentialitytext = "Confidentiality Status",
-    latitude = "Latitude",
-    longitude = "Longitude",
-    locationnarrative = "Location Description",
-    stateprovince = "State/Province",
-    country = "Country",
-    obsstartdate = "Observation Start Date",
-    project_id = "Project ID",
-    projectname = "Project Name",
-    covermethod_id = "Cover Method ID",
-    covertype = "Cover Type",
-    stratummethod_id = "Stratum Method ID",
-    stratummethodname = "Stratum Method",
-    stratummethoddescription = "Stratum Method Description",
-    taxonobservationarea = "Taxon Observation Area",
-    autotaxoncover = "Taxon Cover Automatically Calculated",
-    plotvalidationlevel = "Plot Validation Level",
-    plotvalidationleveldescr = "Validation Level"
-  )
-
-  create_table <- function(details, col_names) {
-    htmltools::tags$table(
-      class = "table table-sm table-striped table-hover",
-      htmltools::tags$tbody(
-        lapply(names(details), function(name) {
-          display_name <- if (!is.null(col_names[[name]])) col_names[[name]] else name
-          htmltools::tags$tr(
-            htmltools::tags$td(htmltools::tags$strong(display_name)),
-            htmltools::tags$td(class = "text-end", details[[name]])
-          )
-        })
-      )
-    )
-  }
-
-  safe_render_details <- function(fields) {
-    shiny::renderUI({
-      values <- lapply(observation_data[fields], function(x) {
-        if (is.null(x) || all(is.na(x))) "Not recorded" else x
-      })
-      create_table(values, col_names = display_names)
-    })
-  }
-
+build_plot_obs_details_view <- function(result) {
   taxa_details_ui <- shiny::renderUI({
     tryCatch(
       {
-        taxa <- observation_data[["taxa"]]
-        if (is.null(taxa)) {
-          "No taxa recorded"
-        }
-        if (!is.data.frame(taxa)) taxa <- as.data.frame(taxa)
-        if (nrow(taxa) == 0) {
-          "No taxa recorded"
+        taxa <- result$taxa
+        if (is.null(taxa) || nrow(taxa) == 0) {
+          return(htmltools::tags$p("No taxa recorded"))
         }
 
         taxa$cover <- as.numeric(taxa$cover)
@@ -177,7 +119,7 @@ build_plot_obs_details_view <- function(observation_data) {
         rows <- lapply(seq_len(nrow(sorted_taxa)), function(i) {
           row <- sorted_taxa[i, ]
           htmltools::tags$tr(
-            htmltools::tags$td(row$authorplantname),
+            htmltools::tags$td(row$int_curr_plant_sci_name_no_auth),
             htmltools::tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
           )
         })
@@ -185,7 +127,7 @@ build_plot_obs_details_view <- function(observation_data) {
           class = "table table-sm table-striped table-hover",
           htmltools::tags$thead(
             htmltools::tags$tr(
-              htmltools::tags$th("Author Plant Name"),
+              htmltools::tags$th("Scientific Name"),
               htmltools::tags$th("Cover")
             )
           ),
@@ -198,21 +140,94 @@ build_plot_obs_details_view <- function(observation_data) {
     )
   })
 
+  communities_details_ui <- shiny::renderUI({
+    tryCatch(
+      {
+        communities <- result$communities
+        if (is.null(communities) || nrow(communities) == 0) {
+          return(htmltools::tags$p("No communities recorded"))
+        }
+
+        rows <- lapply(seq_len(nrow(communities)), function(i) {
+          row <- communities[i, ]
+          htmltools::tags$tr(
+            htmltools::tags$td(
+              htmltools::tags$a(
+                href = "#",
+                onclick = sprintf(
+                  "Shiny.setInputValue('comm_link_click', '%s', {priority: 'event'}); return false;",
+                  row$accession_code
+                ),
+                row$comm_name
+              )
+            )
+          )
+        })
+        htmltools::tags$table(
+          class = "table table-sm table-striped table-hover",
+          htmltools::tags$thead(
+            htmltools::tags$tr(
+              htmltools::tags$th("Community Classification")
+            )
+          ),
+          htmltools::tags$tbody(rows)
+        )
+      },
+      error = function(e) {
+        paste("Error processing communities:", e$message)
+      }
+    )
+  })
+
   list(
-    plot_id_details = safe_render_details(c("authorobscode", "authorplotcode")),
-    location_details = safe_render_details(c(
-      "confidentialitytext", "latitude", "longitude",
-      "locationnarrative", "stateprovince", "country"
-    )),
-    layout_details = safe_render_details(c("area", "permanence")),
-    environmental_details = safe_render_details(c("elevation", "slopeaspect", "slopegradient")),
+    plot_id_details = safe_render_details(
+      c(
+        "author_obs_code",
+        "author_plot_code"
+      ),
+      result$plot_observation
+    ),
+    location_details = safe_render_details(
+      c(
+        "confidentiality_text",
+        "latitude",
+        "longitude",
+        "location_narrative",
+        "state_province",
+        "country"
+      ),
+      result$plot_observation
+    ),
+    layout_details = safe_render_details(
+      c(
+        "area",
+        "permanence"
+      ),
+      result$plot_observation
+    ),
+    environmental_details = safe_render_details(
+      c(
+        "elevation",
+        "slope_aspect",
+        "slope_gradient"
+      ),
+      result$plot_observation
+    ),
     methods_details = safe_render_details(c(
-      "obsstartdate", "projectname", "covertype",
-      "stratummethodname", "stratummethoddescription",
-      "taxonobservationarea", "autotaxoncover"
-    )),
-    plot_quality_details = safe_render_details("plotvalidationleveldescr"),
-    taxa_details = taxa_details_ui
+      "obs_start_date",
+      "project_name",
+      "cover_type",
+      "stratum_method_name",
+      "stratum_method_description",
+      "taxon_observation_area",
+      "auto_taxon_cover"
+    ), result$plot_observation),
+    plot_quality_details = safe_render_details(
+      "plot_validation_level_descr",
+      result$plot_observation
+    ),
+    taxa_details = taxa_details_ui,
+    communities_details = communities_details_ui
   )
 }
 
@@ -220,14 +235,15 @@ build_plot_obs_details_view <- function(observation_data) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed community information.
 #'
-#' @param community_data A data row representing the selected community.
+#' @param result A data frame returned by vebankr::get_community_details()
 #' @return A list of Shiny UI outputs.
+#'
 #' @importFrom htmltools tags HTML
 #' @importFrom shiny renderUI
-#'
+#' @importFrom tidyr pivot_wider
 #' @noRd
-build_community_details_view <- function(community_data) {
-  if (is.null(community_data)) {
+build_community_details_view <- function(result) {
+  if (is.null(result) || nrow(result) == 0) {
     return(list(
       community_name = shiny::renderUI({
         htmltools::tags$p("Community details not available")
@@ -235,33 +251,45 @@ build_community_details_view <- function(community_data) {
       community_description = shiny::renderUI({
         htmltools::tags$p("No description available")
       }),
-      occurence_count = shiny::renderUI({
-        htmltools::tags$p("No occurrences available")
+      observation_count = shiny::renderUI({
+        htmltools::tags$p("No observations available")
+      }),
+      community_aliases = shiny::renderUI({
+        htmltools::tags$p("No aliases available")
       })
     ))
   }
 
-  # TODO: when api is replaced by VegBankR this should not be necessary
-  community_data <- as.data.frame(community_data) # Converting to data frame prefixes with "data."
-  community_data <- community_data[1, ]  # Get the first row
+  scientific_class <- subset(result, result$class_system == "Scientific")
+
+  # Create aliases dataframe with each class_system as a column
+  aliases <- tidyr::pivot_wider(
+    data = result[, c("class_system", "comm_name")],
+    names_from = "class_system",
+    values_from = "comm_name"
+  )
 
   list(
     community_name = shiny::renderUI({
-      htmltools::tags$b(community_data$data.commname)
+      htmltools::tags$b(scientific_class$comm_name)
+    }),
+    observation_count = shiny::renderUI({
+      htmltools::tags$p(
+        "Number of observations: ",
+        htmltools::tags$strong(scientific_class$obs_count)
+      )
     }),
     community_description = shiny::renderUI({
-      # The description contains HTML entities that need to be properly rendered
+      # The description contains HTML entities <i></i> that need to be properly rendered
       htmltools::tags$div(
         id = "community-description",
-        htmltools::HTML(community_data$data.commdescription)
+        htmltools::HTML(scientific_class$comm_description)
       )
     }),
-    occurence_count = shiny::renderUI({
-      htmltools::tags$p(
-        "Number of occurrences: ",
-        htmltools::tags$strong(community_data$data.obscount)
-      )
-    })
+    community_aliases = safe_render_details(
+      colnames(aliases),
+      aliases
+    )
   )
 }
 
@@ -269,26 +297,23 @@ build_community_details_view <- function(community_data) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed taxon information.
 #'
-#' @param taxon_data A data row representing the selected taxon.
+#' @param result A data frame returned by vebankr::get_taxon_observation_details()
 #' @return A list of Shiny UI outputs.
+#'
 #' @importFrom htmltools tags HTML
 #' @importFrom shiny renderUI
-#'
 #' @noRd
-build_taxon_details_view <- function(taxon_data) {
-  if (is.null(taxon_data)) {
+build_taxon_details_view <- function(result) {
+  if (is.null(result)) {
     return(list(
       taxon_name = shiny::renderUI({
         htmltools::tags$p("Taxon details not available")
       }),
-      taxon_scientific = shiny::renderUI({
-        htmltools::tags$p("No scientific name available")
-      }),
-      taxon_common = shiny::renderUI({
-        htmltools::tags$p("No common name available")
-      }),
       taxon_coverage = shiny::renderUI({
         htmltools::tags$p("No coverage data available")
+      }),
+      taxon_aliases = shiny::renderUI({
+        htmltools::tags$p("No aliases available")
       }),
       taxon_identifiers = shiny::renderUI({
         htmltools::tags$p("No identifier information available")
@@ -296,73 +321,103 @@ build_taxon_details_view <- function(taxon_data) {
     ))
   }
 
-  # TODO: when api is replaced by VegBankR this should not be necessary
-  taxon_data <- as.data.frame(taxon_data) # Converting to data frame
-
   list(
     taxon_name = shiny::renderUI({
-      htmltools::tags$b(taxon_data$data.authorplantname)
-    }),
-    taxon_scientific = shiny::renderUI({
-      htmltools::tags$div(
-        id = "taxon-scientific",
-        htmltools::tags$p(
-          htmltools::tags$strong("Current scientific name: "),
-          htmltools::tags$em(taxon_data$data.int_currplantscinamenoauth)
-        ),
-        htmltools::tags$p(
-          htmltools::tags$strong("Full scientific name: "),
-          htmltools::tags$em(taxon_data$data.int_currplantscifull)
-        ),
-        htmltools::tags$p(
-          htmltools::tags$strong("Original scientific name: "),
-          htmltools::tags$em(taxon_data$data.int_origplantscinamenoauth)
-        ),
-        htmltools::tags$p(
-          htmltools::tags$strong("Full original name: "),
-          htmltools::tags$em(taxon_data$data.int_origplantscifull)
-        )
-      )
-    }),
-    taxon_common = shiny::renderUI({
-      htmltools::tags$div(
-        htmltools::tags$p(
-          htmltools::tags$strong("Current common name: "),
-          taxon_data$data.int_currplantcommon
-        ),
-        htmltools::tags$p(
-          htmltools::tags$strong("Original common name: "),
-          taxon_data$data.int_origplantcommon
-        )
-      )
+      htmltools::tags$b(result$author_plant_name)
     }),
     taxon_coverage = shiny::renderUI({
       htmltools::tags$div(
         htmltools::tags$p(
           htmltools::tags$strong("Cover percentage: "),
-          paste0(taxon_data$data.maxcover, "%")
+          paste0(result$max_cover, "%")
         ),
         htmltools::tags$p(
           htmltools::tags$strong("Taxon inference area: "),
-          paste0(taxon_data$data.taxoninferencearea, " m\u00B2") # Replace m² with Unicode escape
+          paste0(result$taxon_inference_area, " m\u00B2") # Replace m² with Unicode escape
         )
       )
     }),
-    taxon_identifiers = shiny::renderUI({
-      htmltools::tags$div(
-        htmltools::tags$p(
-          htmltools::tags$strong("Taxon Observation ID: "),
-          taxon_data$data.taxonobservation_id
-        ),
-        htmltools::tags$p(
-          htmltools::tags$strong("Current plant code: "),
-          taxon_data$data.int_currplantcode
-        ),
-        htmltools::tags$p(
-          htmltools::tags$strong("Original plant code: "),
-          taxon_data$data.int_origplantcode
-        )
-      )
+    taxon_aliases = safe_render_details(
+      c(
+        "int_curr_plant_common",
+        "int_curr_plant_sci_name_no_auth",
+        "int_curr_plant_sci_full",
+        "int_orig_plant_common",
+        "int_orig_plant_sci_name_no_auth",
+        "int_orig_plant_sci_full"
+      ),
+      result
+    ),
+    taxon_identifiers = safe_render_details(
+      c(
+        "taxon_observation_id",
+        "int_curr_plant_code",
+        "int_orig_plant_code"
+      ),
+      result
+    )
+  )
+}
+
+#' Read Display Names from Lookup Table
+#'
+#' Reads display names from the display_name_lookup.txt file
+#'
+#' @return A named vector where names are snake_case field names and values are display names
+#'
+#' @importFrom stats setNames
+#' @importFrom utils read.csv
+#' @noRd
+get_field_display_names <- function() {
+  file_path <- system.file("shiny/www/display_name_lookup.txt", package = "vegbankweb")
+
+  # Read lookup table
+  if (file.exists(file_path)) {
+    lookup <- utils::read.csv(file_path, stringsAsFactors = FALSE, comment.char = "/")
+    # Create a named vector: snake_case -> display
+    display_names <- setNames(lookup$display, lookup$snake)
+    display_names
+  } else {
+    warning("Display name lookup file not found: ", file_path)
+    c()
+  }
+}
+
+safe_render_details <- function(fields, dataframe) {
+  # Read display names from the lookup file
+  display_names <- get_field_display_names()
+
+  shiny::renderUI({
+    # First check if all fields exist
+    valid_fields <- fields[fields %in% colnames(dataframe)]
+    if (length(valid_fields) == 0) {
+      return(htmltools::tags$p("No data available for this section"))
+    }
+
+    values <- lapply(dataframe[valid_fields], function(x) {
+      if (is.null(x) || all(is.na(x))) "Not recorded" else x
     })
+
+    # Convert logical values to human-readable text
+    values <- lapply(values, function(x) {
+      if (is.logical(x)) ifelse(x, "Yes", "No") else x
+    })
+
+    create_table(values, col_names = display_names)
+  })
+}
+
+create_table <- function(details, col_names) {
+  htmltools::tags$table(
+    class = "table table-sm table-striped table-hover",
+    htmltools::tags$tbody(
+      lapply(names(details), function(name) {
+        display_name <- if (name %in% names(col_names)) col_names[[name]] else name
+        htmltools::tags$tr(
+          htmltools::tags$td(htmltools::tags$strong(display_name)),
+          htmltools::tags$td(class = "text-end", details[[name]])
+        )
+      })
+    )
   )
 }

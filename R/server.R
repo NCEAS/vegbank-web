@@ -16,6 +16,7 @@
 #' @importFrom htmltools tags
 #' @importFrom leaflet renderLeaflet leafletProxy
 #' @importFrom utils head
+#' @import vegbankr
 #'
 #' @noRd
 
@@ -33,11 +34,40 @@ server <- function(input, output, session) {
     map_zoom = shiny::reactiveVal(2) # Default zoom
   )
 
-  # Load data from local files
-  plot_data <- readRDS("inst/shiny/www/plot_obs_minimal_all_data.RDS")
-  taxa_data <- readRDS("inst/shiny/www/taxa_top5.RDS")
-  comm_data <- readRDS("inst/shiny/www/comm_class_minimal_all.RDS")
-  colnames(comm_data)[colnames(comm_data) == "accessioncode"] <- "obsaccessioncode"
+  # Load data from vegbankr
+  vegbankr::vb_debug()
+  vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
+
+  plot_data <- shiny::withProgress(message = "Fetching plot observations...", value = 0, {
+    num_plots <- vegbankr::get_page_details(vegbankr::get_all_plot_observations(limit = 0, detail = "minimal"))["count_reported"]
+    shiny::incProgress(0.5)
+    vegbankr::get_all_plot_observations(limit = num_plots, detail = "minimal")
+  })
+
+  comm_data <- shiny::withProgress(message = "Fetching community classifications...", value = 0, {
+    num_comm <- vegbankr::get_page_details(vegbankr::get_all_community_classifications(limit = 0, detail = "minimal"))["count_reported"]
+    shiny::incProgress(0.5)
+    vegbankr::get_all_community_classifications(limit = num_comm, detail = "minimal")
+  })
+
+  # TODO: Taxa leads to 504 gateway timeout even when batched at around offset 360000
+  #       and returns 0s for get_page_details, so we're pulling from a local file until
+  #       we can allign pagination between plot obs, taxon obs, and community classifications.
+  taxa_file_path <- "inst/cached_data/taxon_obs_top_5.RDS"
+  if (!file.exists(taxa_file_path)) {
+    shiny::showNotification(
+      paste0("Taxa cache not found: ", taxa_file_path),
+      type = "error",
+      duration = NULL
+    )
+    taxa_data <- data.frame()
+  } else {
+    taxa_data <- shiny::withProgress(message = "Reading taxon observations...", value = 0, {
+      result <- readRDS(taxa_file_path)
+      shiny::incProgress(1)
+      result
+    })
+  }
 
   move_map_to_obs <- function(idx) {
     data <- plot_data
@@ -45,23 +75,24 @@ server <- function(input, output, session) {
       update_map_view(
         data$longitude[idx],
         data$latitude[idx],
-        paste("Plot", data$authorobscode[idx], "is here!")
+        paste("Plot", data$author_obs_code[idx], "is here!")
       )
   }
 
   # RENDER UI ELEMENTS __________________________________________________________________
   output$dataSummary <- shiny::renderUI({
     htmltools::tags$p(
-      "Vegbank is a database of vegetation plot data. Navigate to the 'Plots > Table' tab ",
+      "Vegbank is a database of vegetation plot data. Navigate to the Plots tab ",
       "to browse the available plot data. Each row in the table represents a plot observation.",
-      "You can also view the plot locations on a map by navigating to the 'Plots > Map' tab. ",
+      "You can also view the plot locations on a map by navigating to the 'Map' tab. ",
       "Clicking on the see details button in a row in the table or a link in the pin label on the ",
       "map will display detailed information about that plot observation including information ",
-      "about the plot location, species observed, and other details."
+      "about the plot location, species observed, and other details. Clicking on a taxon or community",
+      " link will open a detailed view of that plant observation or community concept.",
     )
   })
 
-  output$dataTable <- DT::renderDataTable({
+  output$plot_table <- DT::renderDataTable({
     process_table_data(plot_data, taxa_data, comm_data)
   })
 
@@ -113,7 +144,7 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$see_details,
     {
       i <- as.numeric(input$see_details)
-      selected_row_accession <- plot_data[i, "obsaccessioncode"]
+      selected_row_accession <- plot_data[i, "obs_accession_code"]
 
       # Check for valid accession code
       if (is.null(selected_row_accession) ||
@@ -123,22 +154,13 @@ server <- function(input, output, session) {
         return()
       }
 
-      # Select the row in the datatable (with error handling)
-      tryCatch(
-        {
-          dt_proxy <- DT::dataTableProxy("dataTable")
-          DT::selectRows(dt_proxy, i)
-        },
-        error = function(e) {
-          print(paste("Error selecting row:", e$message))
-        }
-      )
+      # TODO: Select the row in the datatable (with error handling)
 
-      state$detail_type("plot")
+      state$detail_type("plot-observation")
       state$selected_accession(selected_row_accession)
       state$details_open(TRUE)
       # Open the details view
-      show_detail_view("plot", selected_row_accession, output, session)
+      show_detail_view("plot-observation", selected_row_accession, output, session)
     },
     ignoreNULL = TRUE,
     ignoreInit = TRUE
@@ -150,6 +172,9 @@ server <- function(input, output, session) {
 
       # Check for valid index before proceeding
       if (is.na(idx) || idx < 1 || idx > nrow(plot_data)) {
+        shiny::showNotification("Cannot show on map: Missing or invalid index for this row",
+          type = "warning"
+        )
         return()
       }
 
@@ -174,7 +199,6 @@ server <- function(input, output, session) {
 
         idx <- state$map_request()
         if (!is.null(idx) && length(idx) > 0) {
-          session$sendCustomMessage(type = "closeDropdown", message = list())
           session$sendCustomMessage("invalidateMapSize", list())
           move_map_to_obs(idx)
           state$map_request(NULL)
@@ -195,10 +219,10 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("plot")
+      state$detail_type("plot-observation")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
-      show_detail_view("plot", accession_code, output, session)
+      show_detail_view("plot-observation", accession_code, output, session)
     }
   })
 
@@ -208,14 +232,14 @@ server <- function(input, output, session) {
     if (is.null(accession_code) ||
       is.na(accession_code) ||
       accession_code == "") {
-      shiny::showNotification(paste0("No accession code found for that community"), type = "error")
+      shiny::showNotification(paste0("No accession code found for that community concept"), type = "error")
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("community")
+      state$detail_type("community-concept")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
-      show_detail_view("community", accession_code, output, session)
+      show_detail_view("community-concept", accession_code, output, session)
     }
   })
 
@@ -235,8 +259,6 @@ server <- function(input, output, session) {
       show_detail_view("taxon-observation", accession_code, output, session)
     }
   })
-
-  # TODO: Add observer for search bar
 
   # STATE PERSISTENCE ____________________________________________________________________________
   shiny::onBookmark(function(state_obj) {
@@ -300,9 +322,9 @@ server <- function(input, output, session) {
 
   # Exclude DataTable inputs from bookmarks (avoids storing the large table state)
   shiny::setBookmarkExclude(c(
-    "dataTable_rows_selected", "dataTable_rows_all", "dataTable_rows_current",
-    "dataTable_search", "dataTable_state", "dataTable_row_last_clicked",
-    "dataTable_cell_clicked", "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
+    "plot_table_rows_selected", "plot_table_rows_all", "plot_table_rows_current",
+    "plot_table_search", "plot_table_state", "plot_table_row_last_clicked",
+    "plot_table_cell_clicked", "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
     "map_marker_click", "map_click"
   ))
 }

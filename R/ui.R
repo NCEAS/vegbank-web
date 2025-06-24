@@ -19,20 +19,6 @@ ui <- function(req) {
       }
     });
 
-    Shiny.addCustomMessageHandler('closeDropdown', function(message) {
-      // TODO: There has to be a better way to do this
-      // this workaround for the plot dropdown not closing just strips all dropdown show states
-        document.querySelectorAll('.nav-item.dropdown.show').forEach(function(el) {
-          el.classList.remove('show');
-        });
-        document.querySelectorAll('.dropdown-menu.show').forEach(function(el) {
-          el.classList.remove('show');
-        });
-        document.querySelectorAll('.dropdown-toggle[aria-expanded=\"true\"]').forEach(function(el) {
-          el.setAttribute('aria-expanded', 'false');
-        });
-    });
-
     Shiny.addCustomMessageHandler('invalidateMapSize', function(message) {
       var mapWidget = HTMLWidgets.find('#map');
       if (mapWidget) {
@@ -58,6 +44,8 @@ ui <- function(req) {
       const communityCards = document.getElementById('community-details-cards');
       const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
 
+      console.log('Updating detail type to:', type);
+
       if (plotCards && communityCards && taxonObservationCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
@@ -65,11 +53,14 @@ ui <- function(req) {
         taxonObservationCards.style.display = 'none';
 
         // Show the requested type
-        if (type === 'plot') {
+        if (type === 'plot-observation') {
+          console.log('Showing plot details');
           plotCards.style.display = 'block';
-        } else if (type === 'community') {
+        } else if (type === 'community-concept') {
+          console.log('Showing community details');
           communityCards.style.display = 'block';
         } else if (type === 'taxon-observation') {
+          console.log('Showing taxon observation details');
           taxonObservationCards.style.display = 'block';
         }
       }
@@ -163,21 +154,6 @@ custom_theme <- bslib::bs_add_rules(
 #'
 #' @noRd
 build_navbar <- function() {
-  search_div <- htmltools::tags$li(
-    class = "nav-item",
-    htmltools::tags$div(
-      class = "navbar-form",
-      shiny::textInput(inputId = "search", label = "", value = "", placeholder = "Search"),
-      htmltools::tags$script(htmltools::HTML(
-        "$(document).on('keypress', '#search', function(e) {
-           if(e.which == 13){
-             Shiny.setInputValue('search_enter', $(this).val(), {priority:'event'});
-           }
-         });"
-      ))
-    )
-  )
-
   navbar <- bslib::page_navbar(
     id = "page",
     theme = custom_theme,
@@ -201,45 +177,21 @@ build_navbar <- function() {
         )
       )
     ),
-    bslib::nav_menu(
+    bslib::nav_panel(
+      title = "Map",
+      leaflet::leafletOutput("map")
+    ),
+    bslib::nav_panel(
       title = "Plots",
-      bslib::nav_panel(
-        title = "Table",
-        shiny::fluidPage(
-          DT::dataTableOutput("dataTable"),
-          # shiny::uiOutput("tablePagination"),
-        )
-      ),
-      bslib::nav_panel(
-        title = "Map",
-        leaflet::leafletOutput("map")
+      shiny::fluidPage(
+        DT::dataTableOutput("plot_table"),
       )
     ),
-    bslib::nav_menu(
-      title = "Plants",
-      bslib::nav_panel(title = "Table"),
-      bslib::nav_panel(title = "Map")
-    ),
-    bslib::nav_menu(
-      title = "Communities",
-      bslib::nav_panel(title = "Table"),
-      bslib::nav_panel(title = "Map")
-    ),
-    bslib::nav_menu(
-      title = "Places",
-      bslib::nav_panel(title = "Table"),
-      bslib::nav_panel(title = "Map")
-    ),
-    bslib::nav_menu(
-      title = "People",
-      bslib::nav_panel(title = "Table"),
-      bslib::nav_panel(title = "Map")
-    ),
-    bslib::nav_menu(
-      title = "Projects",
-      bslib::nav_panel(title = "Table"),
-      bslib::nav_panel(title = "Map")
-    ),
+    bslib::nav_panel(title = "Plants"),
+    bslib::nav_panel(title = "Communities"),
+    bslib::nav_panel(title = "Places"),
+    bslib::nav_panel(title = "People"),
+    bslib::nav_panel(title = "Projects"),
     bslib::nav_menu(
       title = "About",
       align = "right",
@@ -249,7 +201,6 @@ build_navbar <- function() {
       )
     )
   )
-  htmltools::tagQuery(navbar)$find("ul#page")$append(search_div)$allTags()
 }
 
 #' Build Detail Overlay for Vegbank UI
@@ -278,12 +229,13 @@ build_detail_overlay <- function() {
           id = "plot-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
-          bslib::card(bslib::card_header("Location"), shiny::uiOutput("locationDetails")),
+          bslib::card(bslib::card_header("Location"), shiny::uiOutput("location_details")),
           bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
           bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),
           bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
           bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
-          bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxaDetails"))
+          bslib::card(bslib::card_header("Communities"), shiny::uiOutput("communities_details")),
+          bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxa_details"))
         ),
 
         # Community Details Cards - wrapped in a div with class for toggling visibility
@@ -291,8 +243,9 @@ build_detail_overlay <- function() {
           id = "community-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Community Name"), shiny::uiOutput("community_name")),
-          bslib::card(bslib::card_header("Occurences"), shiny::uiOutput("occurence_count")),
-          bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description"))
+          bslib::card(bslib::card_header("Occurrences"), shiny::uiOutput("observation_count")),
+          bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description")),
+          bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("community_aliases"))
         ),
 
         # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility
@@ -300,9 +253,8 @@ build_detail_overlay <- function() {
           id = "taxon-observation-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Taxon Name"), shiny::uiOutput("taxon_name")),
-          bslib::card(bslib::card_header("Scientific Names"), shiny::uiOutput("taxon_scientific")),
-          bslib::card(bslib::card_header("Common Names"), shiny::uiOutput("taxon_common")),
           bslib::card(bslib::card_header("Coverage"), shiny::uiOutput("taxon_coverage")),
+          bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("taxon_aliases")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("taxon_identifiers"))
         )
       )

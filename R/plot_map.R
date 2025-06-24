@@ -1,15 +1,6 @@
 #' Map Functions Module
 #'
 #' Provides functions for creating and manipulating leaflet maps.
-#'
-#' @importFrom leaflet leafletOptions setMaxBounds addTiles addControl addMarkers
-#'             setView clearPopups addPopups labelOptions markerClusterOptions
-#' @importFrom htmlwidgets onRender
-#' @importFrom dplyr arrange group_by summarize n
-#' @importFrom htmltools HTML
-#' @importFrom ggplot2 .data
-#'
-#' @noRd
 
 # ---- App-facing functions ----
 
@@ -18,6 +9,14 @@
 #' @param center_lng Longitude for map center
 #' @param center_lat Latitude for map center
 #' @param zoom Initial zoom level
+#' @returns A leaflet map object containing clustered markers for each plot location with a list of
+#'          observations in their labels
+#'
+#' @importFrom leaflet leaflet leafletOptions setMaxBounds addTiles addMarkers markerClusterOptions
+#' @importFrom dplyr arrange group_by summarize n
+#' @importFrom htmltools HTML
+#' @importFrom shiny withProgress incProgress showNotification
+#' @importFrom htmlwidgets onRender
 #' @noRd
 process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.8283, zoom = 2) {
   shiny::withProgress(
@@ -34,17 +33,17 @@ process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.82
       if (nrow(valid_points) == 0) {
         shiny::incProgress(0.8, detail = "No valid points found")
         return(create_empty_map() |>
-                 leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom))
+          leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom))
       }
       shiny::incProgress(0.3, detail = "Grouping plots by location...")
       data_grouped <- valid_points |>
-        dplyr::arrange(.data$authorobscode) |>
+        dplyr::arrange(.data$author_obs_code) |>
         dplyr::group_by(.data$latitude, .data$longitude) |>
         dplyr::summarize(
           obs_count = dplyr::n(),
-          authorobscode_label = create_marker_popup(
-            .data$authorobscode,
-            .data$obsaccessioncode,
+          author_obs_code_label = create_marker_popup(
+            .data$author_obs_code,
+            .data$obs_accession_code,
             dplyr::n()
           ),
           .groups = "drop"
@@ -58,7 +57,7 @@ process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.82
           lng = ~longitude,
           lat = ~latitude,
           layerId = ~ paste(latitude, longitude, sep = ", "),
-          label = ~ authorobscode_label |> lapply(htmltools::HTML),
+          label = ~ author_obs_code_label |> lapply(htmltools::HTML),
           labelOptions = leaflet::labelOptions(
             noHide = TRUE,
             clickable = TRUE,
@@ -87,6 +86,9 @@ process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.82
 #' @param lat Latitude
 #' @param label Popup label (HTML)
 #' @param zoom Zoom level (default 18)
+#' @returns A leaflet map proxy with updated view and popup
+#'
+#' @importFrom leaflet setView clearPopups addPopups
 #' @noRd
 update_map_view <- function(map_proxy, lng, lat, label, zoom = 18) {
   map_proxy |>
@@ -102,6 +104,9 @@ update_map_view <- function(map_proxy, lng, lat, label, zoom = 18) {
 # ---- Helpers below (internal module use only) ----
 
 #' Create an empty leaflet map with a 'Data unavailable' message
+#'
+#' @returns An empty leaflet map with a message indicating that data is unavailable.
+#'
 #' @importFrom leaflet leaflet leafletOptions setMaxBounds addTiles addControl
 #' @noRd
 create_empty_map <- function() {
@@ -115,8 +120,9 @@ create_empty_map <- function() {
 
 #' Create a marker popup HTML for a group of observations
 #' @param obs_codes Character vector of author observation codes
-#' @param accession_codes Character vector of accession codes
-#' @param count Integer, number of observations
+#' @param accession_codes Character vector of plot observation accession codes
+#' @param count Integer, number of observations for that plot
+#' @returns A string containing HTML for the popup label
 #' @noRd
 create_marker_popup <- function(obs_codes, accession_codes, count) {
   paste0(
@@ -143,6 +149,9 @@ create_marker_popup <- function(obs_codes, accession_codes, count) {
 
 #' Add a custom zoom control to a leaflet map
 #' @param map A leaflet map object
+#' @returns The leaflet map object with a zoom control added
+#'
+#' @importFrom htmlwidgets onRender
 #' @noRd
 add_zoom_control <- function(map) {
   map |> htmlwidgets::onRender("
