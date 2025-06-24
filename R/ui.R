@@ -68,10 +68,16 @@ ui <- function(req) {
   "
   ))
 
+  # $(document).on("click", ".details-btn", function() {
+  #      var idx = $(this).data("row");
+  #      Shiny.setInputValue("see_details", idx, {priority:"event"});
+  # });
+
   btn_script <- htmltools::tags$script(htmltools::HTML(
     '$(document).on("click", ".details-btn", function() {
-         var idx = $(this).data("row");
-         Shiny.setInputValue("see_details", idx, {priority:"event"});
+      var id = $(this).data("id");
+      var value = $(this).data("value"); 
+      Shiny.setInputValue(id, value, {priority:"event"});
     });
     $(document).on("click", ".map-btn", function() {
          var acc = $(this).data("acc");

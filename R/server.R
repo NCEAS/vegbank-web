@@ -333,7 +333,10 @@ server <- function(input, output, session) {
   shiny::setBookmarkExclude(c(
     "plot_table_rows_selected", "plot_table_rows_all", "plot_table_rows_current",
     "plot_table_search", "plot_table_state", "plot_table_row_last_clicked",
-    "plot_table_cell_clicked", "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
+    "plot_table_cell_clicked", "comm_table_rows_selected", "comm_table_rows_all",
+    "comm_table_rows_current", "comm_table_search", "comm_table_state",
+    "comm_table_row_last_clicked", "comm_table_cell_clicked",
+    "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
     "map_marker_click", "map_click"
   ))
 }

@@ -39,7 +39,6 @@ build_community_table <- function(community_data) {
 #' @noRd
 process_community_data <- function(data_sources) {
   community_data <- data_sources$community_data
-  # reference_data <- data_sources$reference_data
 
   shiny::incProgress(0.2, detail = "Cleaning community names")
   comm_names <- clean_column_data(community_data, "default_name")
@@ -50,32 +49,23 @@ process_community_data <- function(data_sources) {
   shiny::incProgress(0.2, detail = "Cleaning observation counts")
   obs_count <- clean_column_data(community_data, "obs_count")
 
-  # shiny::incProgress(0.2, detail = "Processing reference data")
-  # reference_html <- create_reference_vectors(community_data, reference_data)
-
   shiny::incProgress(0.1, detail = "Creating action buttons")
   action_buttons <- create_action_buttons(community_data, list(
-    list(id = "see_details", label = "Details", class = "btn-outline-primary")
-    # list(id = "related_plots", label = "SeePlots", class = "btn-outline-info")
+    list(input_id = "comm_link_click", input_value = 'accession_code', label = "Details", class = "btn-outline-primary")
   ))
-
-  # shiny::incProgress(0.1, detail = "Processing dates")
-  # dates <- clean_column_data(community_data, "comm_name_date_entered")
 
   shiny::incProgress(0.2, detail = "Building table...")
   data.frame(
     "Actions" = action_buttons,
     "Name" = comm_names,
-    # "References" = reference_html,
     "Observations" = obs_count,
     "Description" = comm_desc,
-    # "Last Updated" = dates,
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
 }
 
-#' Create HTML vectors for reference lists
+#' TODO: Create HTML vectors for reference lists
 #'
 #' @param community_data Data frame of community data
 #' @param reference_data Data frame of reference data

@@ -68,8 +68,8 @@ process_plot_data <- function(data_sources) {
 
   shiny::incProgress(0.1, detail = "Creating action buttons...")
   action_buttons <- create_action_buttons(plot_data, list(
-    list(id = "see_details", label = "Details", class = "btn-outline-primary"),
-    list(id = "show_on_map", label = "Map", class = "btn-outline-secondary")
+    list(input_id = "see_details", label = "Details", class = "btn-outline-primary"),
+    list(input_id = "show_on_map", label = "Map", class = "btn-outline-secondary")
   ))
 
   shiny::incProgress(0.2, detail = "Building table...")

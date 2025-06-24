@@ -123,11 +123,20 @@ clean_column_data <- function(data, column_name, default_value = "Not Provided")
 create_action_buttons <- function(data, actions) {
   vapply(seq_len(nrow(data)), function(i) {
     buttons <- vapply(actions, function(action) {
+      # Get value (row index or column value)
+      value <- if (!is.null(action$input_value) && action$input_value %in% names(data)) {
+        as.character(data[[action$input_value]][i])
+      } else {
+        as.character(i)
+      }
+
+      # Create button with data attributes instead of onclick
       sprintf(
-        '<button class="btn btn-sm %s" onclick="Shiny.setInputValue(\'%s\', %d, {priority: \'event\'})">%s</button>',
+        '<button class="btn btn-sm %s" onclick="Shiny.setInputValue(\'%s\', \'%s\', {priority: \'event\'})">
+        %s</button>',
         action$class %||% "btn-outline-primary",
-        action$id,
-        i,
+        action$input_id,
+        htmltools::htmlEscape(value),
         action$label
       )
     }, character(1))
