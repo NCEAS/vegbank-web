@@ -235,6 +235,23 @@ server <- function(input, output, session) {
     }
   })
 
+  shiny::observeEvent(input$comm_class_link_click, {
+    accession_code <- input$comm_class_link_click
+    # Check for valid accession code
+    if (is.null(accession_code) ||
+      is.na(accession_code) ||
+      accession_code == "") {
+      shiny::showNotification(paste0("No accession code found for that community classification"), type = "error")
+      return()
+    }
+    if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      state$detail_type("community-classification")
+      state$selected_accession(accession_code)
+      state$details_open(TRUE)
+      show_detail_view("community-classification", accession_code, output, session)
+    }
+  })
+
   shiny::observeEvent(input$comm_link_click, {
     accession_code <- input$comm_link_click
     # Check for valid accession code

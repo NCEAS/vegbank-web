@@ -141,15 +141,15 @@ create_community_vectors <- function(plot_data, comm_data) {
     dplyr::group_by(.data$obs_accession_code) |>
     dplyr::summarize(
       comm_list = {
-        if (all(is.na(.data$comm_name)) & all(is.na(.data$comm_concept_accession_code))) {
+        if (all(is.na(.data$comm_name)) & all(is.na(.data$comm_class_accession_code))) {
           "No Community Data"
         } else {
           items <- ifelse(
-            is.na(.data$comm_concept_accession_code) & is.na(.data$comm_name),
+            is.na(.data$comm_class_accession_code) & is.na(.data$comm_name),
             "<li>No Community Data</li>",
             paste0(
-              "<li><a href=\"#\" onclick=\"Shiny.setInputValue('comm_link_click', '",
-              .data$comm_concept_accession_code,
+              "<li><a href=\"#\" onclick=\"Shiny.setInputValue('comm_class_link_click', '",
+              .data$comm_class_accession_code,
               "', {priority: 'event'}); return false;\">",
               ifelse(is.na(.data$comm_name), "Unnamed", .data$comm_name),
               "</a></li>"

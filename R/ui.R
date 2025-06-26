@@ -41,15 +41,17 @@ ui <- function(req) {
     Shiny.addCustomMessageHandler('updateDetailType', function(message) {
       const type = message.type;
       const plotCards = document.getElementById('plot-details-cards');
-      const communityCards = document.getElementById('community-details-cards');
+      const communityConceptCards = document.getElementById('community-concept-details-cards');
+      const communityClassificationCards = document.getElementById('community-classification-details-cards');
       const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
 
       console.log('Updating detail type to:', type);
 
-      if (plotCards && communityCards && taxonObservationCards) {
+      if (plotCards && communityConceptCards && communityClassificationCards && taxonObservationCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
-        communityCards.style.display = 'none';
+        communityConceptCards.style.display = 'none';
+        communityClassificationCards.style.display = 'none';
         taxonObservationCards.style.display = 'none';
 
         // Show the requested type
@@ -58,7 +60,10 @@ ui <- function(req) {
           plotCards.style.display = 'block';
         } else if (type === 'community-concept') {
           console.log('Showing community details');
-          communityCards.style.display = 'block';
+          communityConceptCards.style.display = 'block';
+        } else if (type === 'community-classification') {
+          console.log('Showing taxon observation details');
+          communityClassificationCards.style.display = 'block';
         } else if (type === 'taxon-observation') {
           console.log('Showing taxon observation details');
           taxonObservationCards.style.display = 'block';
@@ -68,24 +73,7 @@ ui <- function(req) {
   "
   ))
 
-  # $(document).on("click", ".details-btn", function() {
-  #      var idx = $(this).data("row");
-  #      Shiny.setInputValue("see_details", idx, {priority:"event"});
-  # });
-
-  btn_script <- htmltools::tags$script(htmltools::HTML(
-    '$(document).on("click", ".details-btn", function() {
-      var id = $(this).data("id");
-      var value = $(this).data("value"); 
-      Shiny.setInputValue(id, value, {priority:"event"});
-    });
-    $(document).on("click", ".map-btn", function() {
-         var acc = $(this).data("acc");
-         Shiny.setInputValue("show_on_map", acc, {priority:"event"});
-    });'
-  ))
-
-  htmltools::tagList(navbar_with_search, overlay, script, btn_script)
+  htmltools::tagList(navbar_with_search, overlay, script)
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
@@ -251,12 +239,20 @@ build_detail_overlay <- function() {
 
         # Community Details Cards - wrapped in a div with class for toggling visibility
         htmltools::tags$div(
-          id = "community-details-cards",
+          id = "community-concept-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Community Name"), shiny::uiOutput("community_name")),
           bslib::card(bslib::card_header("Occurrences"), shiny::uiOutput("observation_count")),
           bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description")),
           bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("community_aliases"))
+        ),
+
+        # Community Classification Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "community-classification-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Observation Details"), shiny::uiOutput("observation_details")),
+          bslib::card(bslib::card_header("Community Interpretation"), shiny::uiOutput("community_interpretation"))
         ),
 
         # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility
