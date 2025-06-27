@@ -260,7 +260,7 @@ build_comm_class_details_view <- function(result) {
       }),
       community_interpretation = shiny::renderUI({
         htmltools::tags$p("No description available")
-      }),
+      })
     ))
   }
 
