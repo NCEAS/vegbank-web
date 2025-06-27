@@ -273,7 +273,7 @@ build_comm_class_details_view <- function(result) {
     }),
     community_interpretation = shiny::renderUI({
       safe_render_details(
-        c("comm_concept_id", "class_fit", "class_confidence", "comm_authority_id, type"),
+        c("comm_concept_id", "class_fit", "class_confidence", "comm_authority_id", "type"),
         result
       )
     })

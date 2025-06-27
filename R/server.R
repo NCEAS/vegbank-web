@@ -55,7 +55,7 @@ server <- function(input, output, session) {
     comm_concept_data <- load_data_type(
       "community concepts",
       "inst/cached_data/comm_concept_full_all.RDS",
-      vegbankr::get_all_community_concepts,
+      vegbankr::get_all_community_concepts
     )
 
     taxa_data <- load_data_type(
@@ -363,7 +363,7 @@ server <- function(input, output, session) {
 #'
 #' @return A data frame with the loaded data or an empty data frame if loading fails.
 #' @noRd
-load_data_type <- function(data_type, file_path, api_function, api_params = list(), use_api = TRUE) {
+load_data_type <- function(data_type, file_path, api_function, api_params = list(), use_api = FALSE) {
   shiny::incProgress(0.2, detail = paste0("Loading ", data_type, "..."))
   # Special case for taxon observations (known API issues)
   if (use_api && data_type == "taxon observations") {
