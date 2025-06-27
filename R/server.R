@@ -366,7 +366,7 @@ server <- function(input, output, session) {
 load_data_type <- function(data_type, file_path, api_function, api_params = list(), use_api = TRUE) {
   shiny::incProgress(0.2, detail = paste0("Loading ", data_type, "..."))
   # Special case for taxon observations (known API issues)
-  if (data_type == "taxon observations") {
+  if (use_api && data_type == "taxon observations") {
     shiny::showNotification(
       "Taxa API requests may timeout - using cached data instead",
       type = "warning", duration = 5
