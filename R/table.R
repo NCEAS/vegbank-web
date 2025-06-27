@@ -1,10 +1,7 @@
 #' Generalized Table Functions Module
 #'
 #' Provides common table functions that can be used across different data types.
-#'
-#' @importFrom DT datatable
-#' @importFrom shiny withProgress incProgress showNotification
-#' @importFrom htmltools HTML
+
 
 #' Create a table with the given configuration
 #'
@@ -13,7 +10,7 @@
 #' @param process_function Function to process the data into display format
 #' @param table_config List with table configuration options
 #' @returns A DT datatable object ready for display in a Shiny app
-#' @export
+#' @noRd
 create_table <- function(data_sources, required_sources, process_function, table_config = list()) {
   shiny::withProgress(
     expr = {
@@ -57,7 +54,7 @@ create_table <- function(data_sources, required_sources, process_function, table
 #' @param required_sources Character vector of keys in data_sources that must be present
 #' @param error_message Optional custom error message
 #' @returns TRUE if any required data is missing, FALSE otherwise
-#' @export
+#' @noRd
 is_any_data_missing <- function(data_sources, required_sources, error_message = NULL) {
   is_missing <- FALSE
 
@@ -84,7 +81,7 @@ is_any_data_missing <- function(data_sources, required_sources, error_message = 
 #'
 #' @param message Optional custom message to display
 #' @returns A DT datatable with a message indicating no data is available
-#' @export
+#' @noRd
 create_empty_table <- function(message = NULL) {
   DT::datatable(
     data.frame(
@@ -102,7 +99,7 @@ create_empty_table <- function(message = NULL) {
 #' @param column_name Name of the column to clean
 #' @param default_value Value to use for NA/empty values
 #' @returns A character vector with cleaned data
-#' @export
+#' @noRd
 clean_column_data <- function(data, column_name, default_value = "Not Provided") {
   if (column_name %in% colnames(data)) {
     ifelse(is.na(data[[column_name]]) | data[[column_name]] == "",
@@ -119,7 +116,7 @@ clean_column_data <- function(data, column_name, default_value = "Not Provided")
 #' @param data Data frame
 #' @param actions List of action definitions, each with id, label, and class
 #' @returns A character vector of HTML strings for action buttons
-#' @export
+#' @noRd
 create_action_buttons <- function(data, actions) {
   vapply(seq_len(nrow(data)), function(i) {
     buttons <- vapply(actions, function(action) {

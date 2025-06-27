@@ -6,7 +6,7 @@
 #'
 #' @param community_data Data frame of community data
 #' @returns A DT datatable object ready for display in a Shiny app
-#' @export
+#' @noRd
 build_community_table <- function(community_data) {
   data_sources <- list(
     community_data = community_data

@@ -1,13 +1,6 @@
-#' Table Data Functions Module
+#' Plot Table Functions Module
 #'
 #' Provides functions for creating and manipulating the plot data table.
-#'
-#' @importFrom DT datatable
-#' @importFrom shiny withProgress incProgress showNotification
-#' @importFrom dplyr left_join group_by summarize
-#' @importFrom htmltools HTML
-
-# ---- App-facing functions ----
 
 #' Main function to process and build the plot table
 #'
@@ -15,7 +8,7 @@
 #' @param taxa_data Data frame of taxon obseration data
 #' @param comm_data Data frame of community classification data
 #' @returns A DT datatable object ready for display in a Shiny app
-#' @export
+#' @noRd
 build_plot_table <- function(plot_data, taxa_data, comm_data) {
   data_sources <- list(
     plot_data = plot_data,
