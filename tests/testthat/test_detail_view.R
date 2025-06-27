@@ -1,4 +1,4 @@
-# Tests for detail_view.R
+# Tests for detail_view
 
 # Create mock objects for testing
 mock_output <- local({
