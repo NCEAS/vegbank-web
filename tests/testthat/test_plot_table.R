@@ -14,11 +14,11 @@ test_that("clean_column_data handles missing columns and values", {
 
   # Test with existing column - adjust expectations to match actual behavior
   result <- clean_column_data(test_data, "col1")
-  expect_equal(result, c("value1", NA, "")) # Updated to expect actual values, not "Not Provided"
+  expect_equal(result, c("value1", "Not Provided", "Not Provided"))
 
   # Test with non-existent column
   result <- clean_column_data(test_data, "col2")
-  expect_null(result) # Updated to expect NULL for non-existent columns
+  expect_equal(result, c("Not Provided", "Not Provided", "Not Provided"))
 })
 
 test_that("create_action_buttons generates output", {

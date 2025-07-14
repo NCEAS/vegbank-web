@@ -58,18 +58,19 @@ create_table <- function(data_sources, required_sources, process_function, table
 is_any_data_missing <- function(data_sources, required_sources, error_message = NULL) {
   is_missing <- FALSE
 
-  for (source in required_sources) {
-    if (!source %in% names(data_sources) ||
-      is.null(data_sources[[source]]) ||
-      nrow(data_sources[[source]]) == 0) {
-      is_missing <- TRUE
-      break
+  is_missing <- sapply(
+    required_sources,
+    function(source) {
+      is.null(data_sources[[source]]) || nrow(data_sources[[source]]) == 0
     }
-  }
+  )
 
-  if (is_missing) {
+  if (any(is_missing)) {
     shiny::showNotification(
-      error_message %||% "Missing required data. Please try again or check your connection.",
+      error_message %||% paste(
+        "Missing required data sources:",
+        paste(required_sources[is_missing], collapse = ",  Please try again or check your connection.")
+      ),
       type = "error"
     )
     return(TRUE)
@@ -102,10 +103,7 @@ create_empty_table <- function(message = NULL) {
 #' @noRd
 clean_column_data <- function(data, column_name, default_value = "Not Provided") {
   if (column_name %in% colnames(data)) {
-    ifelse(is.na(data[[column_name]]) | data[[column_name]] == "",
-      default_value,
-      data[[column_name]]
-    )
+    dplyr::coalesce(dplyr::na_if(as.character(data[[column_name]]), ""), default_value)
   } else {
     rep(default_value, nrow(data))
   }

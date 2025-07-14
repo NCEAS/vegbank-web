@@ -48,24 +48,24 @@ test_that("process_community_data correctly formats community data", {
     stringsAsFactors = FALSE
   )
 
-  # All elements must be named in with_mocked_bindings
-  with_mocked_bindings(
-    clean_column_data = function(data, column) { data[[column]] },
-    create_action_buttons = function(data, actions) { rep("Action HTML", nrow(data)) },
-    .env = asNamespace("vegbankweb"),
-    {
-      with_mock_shiny_notifications({
-        result <- process_community_data(list(community_data = test_data))
-        expect_s3_class(result, "data.frame")
-        expect_equal(ncol(result), 4)
-        expect_equal(nrow(result), 2)
-        expect_equal(colnames(result), c("Actions", "Name", "Observations", "Description"))
-        expect_equal(result$Name, c("Test Community 1", "Test Community 2"))
-        expect_equal(result$Observations, c(10, 20))
-        expect_equal(result$Description, c("Description 1", "Description 2"))
-      })
+  local_mocked_bindings(
+    clean_column_data = function(data, column) {
+      data[[column]]
+    },
+    create_action_buttons = function(data, actions) {
+      rep("Action HTML", nrow(data))
     }
   )
+  with_mock_shiny_notifications({
+    result <- process_community_data(list(community_data = test_data))
+    expect_s3_class(result, "data.frame")
+    expect_equal(ncol(result), 4)
+    expect_equal(nrow(result), 2)
+    expect_equal(colnames(result), c("Actions", "Name", "Observations", "Description"))
+    expect_equal(result$Name, c("Test Community 1", "Test Community 2"))
+    expect_equal(result$Observations, c(10, 20))
+    expect_equal(result$Description, c("Description 1", "Description 2"))
+  })
 })
 
 test_that("create_reference_vectors formats references correctly", {

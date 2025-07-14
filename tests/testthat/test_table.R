@@ -86,7 +86,6 @@ test_that("create_action_buttons generates HTML buttons correctly", {
 })
 
 test_that("clean_column_data handles all cases correctly", {
-  skip("Skipping clean_column_data tests as I can't figure out why they fail")
   # Test data with various data types and edge cases
   test_data <- data.frame(
     string_col = c("value", NA_character_, "", "  ", "normal"),
