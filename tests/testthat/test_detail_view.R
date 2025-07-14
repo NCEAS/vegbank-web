@@ -1,4 +1,4 @@
-# Tests for detail_view.R
+# Tests for detail_view
 
 # Create mock objects for testing
 mock_output <- local({
@@ -93,9 +93,9 @@ test_that("build_plot_obs_details_view formats plot data correctly", {
   expect_true(inherits(result$location_details, "shiny.render.function"))
 })
 
-test_that("build_community_details_view handles NULL data gracefully", {
+test_that("build_comm_concept_details_view handles NULL data gracefully", {
   # When NULL data is provided
-  result <- build_community_details_view(NULL)
+  result <- build_comm_concept_details_view(NULL)
 
   # It should return a list with placeholder components
   expect_type(result, "list")
@@ -108,8 +108,8 @@ test_that("build_community_details_view handles NULL data gracefully", {
   expect_true(inherits(result$community_name, "shiny.render.function"))
 })
 
-test_that("build_community_details_view formats community data correctly", {
-  result <- build_community_details_view(mock_community_data)
+test_that("build_comm_concept_details_view formats community data correctly", {
+  result <- build_comm_concept_details_view(mock_community_data)
 
   # Test structure and types
   expect_type(result, "list")

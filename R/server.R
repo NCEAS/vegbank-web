@@ -38,36 +38,33 @@ server <- function(input, output, session) {
   vegbankr::vb_debug()
   vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
 
-  plot_data <- shiny::withProgress(message = "Fetching plot observations...", value = 0, {
-    num_plots <- vegbankr::get_page_details(vegbankr::get_all_plot_observations(limit = 0, detail = "minimal"))["count_reported"]
-    shiny::incProgress(0.5)
-    vegbankr::get_all_plot_observations(limit = num_plots, detail = "minimal")
-  })
-
-  comm_data <- shiny::withProgress(message = "Fetching community classifications...", value = 0, {
-    num_comm <- vegbankr::get_page_details(vegbankr::get_all_community_classifications(limit = 0, detail = "minimal"))["count_reported"]
-    shiny::incProgress(0.5)
-    vegbankr::get_all_community_classifications(limit = num_comm, detail = "minimal")
-  })
-
-  # TODO: Taxa leads to 504 gateway timeout even when batched at around offset 360000
-  #       and returns 0s for get_page_details, so we're pulling from a local file until
-  #       we can allign pagination between plot obs, taxon obs, and community classifications.
-  taxa_file_path <- "inst/cached_data/taxon_obs_top_5.RDS"
-  if (!file.exists(taxa_file_path)) {
-    shiny::showNotification(
-      paste0("Taxa cache not found: ", taxa_file_path),
-      type = "error",
-      duration = NULL
+  shiny::withProgress(message = "Fetching data...", value = 0, {
+    plot_data <- load_data_type(
+      "plot observations",
+      "inst/cached_data/plot_obs_minimal_all.RDS",
+      vegbankr::get_all_plot_observations,
+      list(detail = "minimal")
     )
-    taxa_data <- data.frame()
-  } else {
-    taxa_data <- shiny::withProgress(message = "Reading taxon observations...", value = 0, {
-      result <- readRDS(taxa_file_path)
-      shiny::incProgress(1)
-      result
-    })
-  }
+
+    comm_class_data <- load_data_type(
+      "community classifications",
+      "inst/cached_data/comm_class_minimal_all.RDS",
+      vegbankr::get_all_community_classifications
+    )
+
+    comm_concept_data <- load_data_type(
+      "community concepts",
+      "inst/cached_data/comm_concept_full_all.RDS",
+      vegbankr::get_all_community_concepts
+    )
+
+    taxa_data <- load_data_type(
+      "taxon observations",
+      "inst/cached_data/taxon_obs_top_5.RDS",
+      vegbankr::get_all_taxon_observations,
+      list(limit = 5) # Limit to top 5 taxa
+    )
+  })
 
   move_map_to_obs <- function(idx) {
     data <- plot_data
@@ -93,7 +90,11 @@ server <- function(input, output, session) {
   })
 
   output$plot_table <- DT::renderDataTable({
-    process_table_data(plot_data, taxa_data, comm_data)
+    build_plot_table(plot_data, taxa_data, comm_class_data)
+  })
+
+  output$comm_table <- DT::renderDataTable({
+    build_community_table(comm_concept_data)
   })
 
   output$map <- leaflet::renderLeaflet({
@@ -226,6 +227,23 @@ server <- function(input, output, session) {
     }
   })
 
+  shiny::observeEvent(input$comm_class_link_click, {
+    accession_code <- input$comm_class_link_click
+    # Check for valid accession code
+    if (is.null(accession_code) ||
+      is.na(accession_code) ||
+      accession_code == "") {
+      shiny::showNotification(paste0("No accession code found for that community classification"), type = "error")
+      return()
+    }
+    if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      state$detail_type("community-classification")
+      state$selected_accession(accession_code)
+      state$details_open(TRUE)
+      show_detail_view("community-classification", accession_code, output, session)
+    }
+  })
+
   shiny::observeEvent(input$comm_link_click, {
     accession_code <- input$comm_link_click
     # Check for valid accession code
@@ -324,7 +342,81 @@ server <- function(input, output, session) {
   shiny::setBookmarkExclude(c(
     "plot_table_rows_selected", "plot_table_rows_all", "plot_table_rows_current",
     "plot_table_search", "plot_table_state", "plot_table_row_last_clicked",
-    "plot_table_cell_clicked", "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
+    "plot_table_cell_clicked", "comm_table_rows_selected", "comm_table_rows_all",
+    "comm_table_rows_current", "comm_table_search", "comm_table_state",
+    "comm_table_row_last_clicked", "comm_table_cell_clicked",
+    "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
     "map_marker_click", "map_click"
   ))
+}
+
+# Helper function to load data types with API fallback
+# This function will try to load data from the API first, and if it fails, it
+# will fall back to reading from a cached RDS file.
+# If the API is not used, it will only read from the cached file.
+# Returns a data frame with the loaded data or an empty data frame if loading fails.
+#'
+#' @param data_type Name of the data type being loaded (for progress messages)
+#' @param file_path Path to the cached RDS file
+#' @param api_function The vegbankr API function to call
+#' @param api_params Additional parameters to pass to the API function
+#'
+#' @return A data frame with the loaded data or an empty data frame if loading fails.
+#' @noRd
+load_data_type <- function(data_type, file_path, api_function, api_params = list(), use_api = FALSE) {
+  shiny::incProgress(0.2, detail = paste0("Loading ", data_type, "..."))
+  # Special case for taxon observations (known API issues)
+  if (use_api && data_type == "taxon observations") {
+    shiny::showNotification(
+      "Taxa API requests may timeout - using cached data instead",
+      type = "warning", duration = 5
+    )
+    return(read_from_cache(data_type, file_path))
+  }
+
+  # For other data types, use API if requested
+  if (use_api) {
+    tryCatch(
+      {
+        # Call the API function with parameters
+        params <- list(limit = 0)
+        params <- modifyList(params, api_params)
+
+        # Get total count first
+        count_call <- do.call(api_function, params)
+        num_items <- vegbankr::get_page_details(count_call)["count_reported"]
+
+        # Now get all data
+        params$limit <- num_items
+        do.call(api_function, params)
+      },
+      error = function(e) {
+        shiny::showNotification(
+          paste0("Error fetching ", data_type, " from API: ", e$message),
+          type = "error", duration = 5
+        )
+        read_from_cache(data_type, file_path)
+      }
+    )
+  } else {
+    read_from_cache(data_type, file_path)
+  }
+}
+
+#' This function checks if the specified file exists and reads it as an RDS file.
+#' If the file does not exist, it shows an error notification and returns an empty data frame.
+#' @param data_type Name of the data type being loaded (for error messages)
+#' @param file_path Path to the cached RDS file
+#' @return A data frame with the loaded data or an empty data frame if loading fails.
+#' @noRd
+read_from_cache <- function(data_type, file_path) {
+  if (file.exists(file_path)) {
+    readRDS(file_path)
+  } else {
+    shiny::showNotification(
+      paste0(data_type, " cache not found: ", file_path),
+      type = "error", duration = 5
+    )
+    data.frame()
+  }
 }

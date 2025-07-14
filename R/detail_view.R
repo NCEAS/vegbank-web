@@ -7,7 +7,8 @@
 #'
 #' Generic function to fetch and display details in the overlay.
 #'
-#' @param detail_type Type of detail to show ("plot-observation", "community-concept", or "taxon-observation")
+#' @param detail_type Type of detail to show ("plot-observation", "community-concept", 
+#' community-classification, or "taxon-observation")
 #' @param accession_code The accession code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
@@ -21,6 +22,7 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       shiny::incProgress(0.3, "Fetching details")
 
       result <- switch(detail_type,
+        "community-classification" = vegbankr::get_community_classification(accession_code),
         "community-concept" = vegbankr::get_community_concept(accession_code),
         "taxon-observation" = vegbankr::get_taxon_observation(accession_code),
         "plot-observation" = vegbankr::get_plot_observation_details(accession_code)
@@ -45,18 +47,26 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       output$taxa_details <- shiny::renderUI(NULL) # Changed from taxaDetails
       output$community_name <- shiny::renderUI(NULL)
       output$community_description <- shiny::renderUI(NULL)
-      output$occurence_count <- shiny::renderUI(NULL)
+      output$observation_count <- shiny::renderUI(NULL)
       output$taxon_name <- shiny::renderUI(NULL)
       output$taxon_scientific <- shiny::renderUI(NULL)
       output$taxon_common <- shiny::renderUI(NULL)
       output$taxon_coverage <- shiny::renderUI(NULL)
       output$taxon_identifiers <- shiny::renderUI(NULL)
+      output$observation_details <- shiny::renderUI(NULL)
+      output$community_interpretation <- shiny::renderUI(NULL)
 
       # Generate the appropriate view based on detail type
       switch(detail_type,
+        "community-classification" = {
+          shiny::incProgress(0.5, "Processing community classification details")
+          details <- build_comm_class_details_view(result)
+          output$observation_details <- details$observation_details
+          output$community_interpretation <- details$community_interpretation
+        },
         "community-concept" = {
           shiny::incProgress(0.5, "Processing community details")
-          details <- build_community_details_view(result)
+          details <- build_comm_concept_details_view(result)
           output$community_name <- details$community_name
           output$community_description <- details$community_description
           output$observation_count <- details$observation_count
@@ -231,18 +241,57 @@ build_plot_obs_details_view <- function(result) {
   )
 }
 
-#' Build Community Details View
+#' Build Community Classifiaction Details View
 #'
-#' Constructs a list of Shiny UI outputs for displaying detailed community information.
+#' Constructs a list of Shiny UI outputs for displaying detailed community classification information.
 #'
-#' @param result A data frame returned by vebankr::get_community_details()
+#' @param result A data frame returned by vebankr::get_community_classification()
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
 #' @importFrom shiny renderUI
 #' @importFrom tidyr pivot_wider
 #' @noRd
-build_community_details_view <- function(result) {
+build_comm_class_details_view <- function(result) {
+  if (is.null(result) || nrow(result) == 0) {
+    return(list(
+      observation_details = shiny::renderUI({
+        htmltools::tags$p("Community details not available")
+      }),
+      community_interpretation = shiny::renderUI({
+        htmltools::tags$p("No description available")
+      })
+    ))
+  }
+
+  list(
+    observation_details = shiny::renderUI({
+      safe_render_details(
+        c("comm_class_accession_code", "inspection", "table_analysis", "multivariate_analysis"),
+        result
+      )
+    }),
+    community_interpretation = shiny::renderUI({
+      safe_render_details(
+        c("comm_concept_id", "class_fit", "class_confidence", "comm_authority_id", "type"),
+        result
+      )
+    })
+  )
+}
+
+#' Build Community Concept Details View
+#'
+#' Constructs a list of Shiny UI outputs for displaying detailed community concept information.
+#'
+#' @param result A data frame returned by vebankr::get_community_concept()
+#' @return A list of Shiny UI outputs.
+#'
+#' @importFrom htmltools tags HTML
+#' @importFrom shiny renderUI
+#' @importFrom tidyr pivot_wider
+#' @noRd
+build_comm_concept_details_view <- function(result) {
   if (is.null(result) || nrow(result) == 0) {
     return(list(
       community_name = shiny::renderUI({
@@ -403,11 +452,11 @@ safe_render_details <- function(fields, dataframe) {
       if (is.logical(x)) ifelse(x, "Yes", "No") else x
     })
 
-    create_table(values, col_names = display_names)
+    create_detail_table(values, col_names = display_names)
   })
 }
 
-create_table <- function(details, col_names) {
+create_detail_table <- function(details, col_names) {
   htmltools::tags$table(
     class = "table table-sm table-striped table-hover",
     htmltools::tags$tbody(
