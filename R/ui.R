@@ -188,9 +188,13 @@ build_navbar <- function() {
         DT::dataTableOutput("comm_table"),
       )
     ),
-    bslib::nav_panel(title = "Places"),
     bslib::nav_panel(title = "People"),
-    bslib::nav_panel(title = "Projects"),
+    bslib::nav_panel(
+      title = "Projects",
+      shiny::fluidPage(
+        DT::dataTableOutput("proj_table"),
+      )
+    ),
     bslib::nav_menu(
       title = "About",
       align = "right",
