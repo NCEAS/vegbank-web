@@ -68,7 +68,7 @@ server <- function(input, output, session) {
     project_data <- load_data_type(
       "projects",
       "inst/cached_data/projects_all.RDS",
-      vegbankr::get_all_cprojects
+      vegbankr::get_all_projects
     )
   })
 
