@@ -288,6 +288,23 @@ server <- function(input, output, session) {
     }
   })
 
+  shiny::observeEvent(input$proj_link_click, {
+    accession_code <- input$proj_link_click
+    # Check for valid accession code
+    if (is.null(accession_code) ||
+      is.na(accession_code) ||
+      accession_code == "") {
+      shiny::showNotification(paste0("No accession code found for that project"), type = "error")
+      return()
+    }
+    if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      state$detail_type("project")
+      state$selected_accession(accession_code)
+      state$details_open(TRUE)
+      show_detail_view("project", accession_code, output, session)
+    }
+  })
+
   # STATE PERSISTENCE ____________________________________________________________________________
   shiny::onBookmark(function(state_obj) {
     state_obj$values$current_tab <- input$page
