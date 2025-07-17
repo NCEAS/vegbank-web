@@ -57,7 +57,7 @@ process_project_data <- function(data_sources) {
   start_date <- clean_column_data(project_data, "start_date")
 
   shiny::incProgress(0.15, detail = "Cleaning end dates")
-  end_date <- clean_column_data(project_data, "stop_date") # Fix: Use correct column name "stop_date" instead of "end_date"
+  stop_date <- clean_column_data(project_data, "stop_date") # Fix: Use correct column name "stop_date" instead of "end_date"
 
   shiny::incProgress(0.15, detail = "Cleaning most recent dates")
   last_added_date <- clean_column_data(project_data, "last_plot_added_date")
