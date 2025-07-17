@@ -71,7 +71,7 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
           output$project_description <- details$project_description
           output$project_dates <- details$project_dates
           output$project_contributors <- details$project_contributors
-          output$project_observations <- details$observation_count
+          output$project_observations <- details$project_observations
         },
         "community-classification" = {
           shiny::incProgress(0.5, "Processing community classification details")
@@ -393,7 +393,7 @@ build_project_details_view <- function(result) {
     project_name = shiny::renderUI({
       htmltools::tags$b(result$project_name)
     }),
-    observation_count = shiny::renderUI({
+    project_observations = shiny::renderUI({
       # TODO: Add classified plots
       htmltools::tags$p(
         "Number of observations: ",
