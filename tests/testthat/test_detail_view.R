@@ -89,6 +89,19 @@ mock_project_data <- data.frame(
   stringsAsFactors = FALSE
 )
 
+# Create mock party data for testing
+mock_party_data <- data.frame(
+  party_id = 123,
+  given_name = "John",
+  middle_name = "Q",
+  surname = "Public",
+  salutation = "Dr.",
+  organization_name = "Example Organization",
+  contact_instructions = "Email: john.public@example.org",
+  party_accession_code = "VB.Py.123.PUBLIC",
+  stringsAsFactors = FALSE
+)
+
 test_that("build_plot_obs_details_view handles NULL data gracefully", {
   # When NULL data is provided
   result <- build_plot_obs_details_view(NULL)
@@ -247,6 +260,40 @@ test_that("build_project_details_view formats project data correctly", {
   expect_true(inherits(result$project_description, "shiny.render.function"))
   expect_true(inherits(result$project_observations, "shiny.render.function"))
   expect_true(inherits(result$project_dates, "shiny.render.function"))
+})
+
+test_that("build_party_details_view handles NULL data gracefully", {
+  # When NULL data is provided
+  result <- build_party_details_view(NULL)
+
+  # It should return a list with placeholder components
+  expect_type(result, "list")
+  expect_setequal(names(result), c(
+    "party_name", "party_organization", "party_contact", "party_projects"
+  ))
+
+  # Each component should be a render function
+  expect_true(inherits(result$party_name, "shiny.render.function"))
+  expect_true(inherits(result$party_organization, "shiny.render.function"))
+  expect_true(inherits(result$party_contact, "shiny.render.function"))
+  expect_true(inherits(result$party_projects, "shiny.render.function"))
+})
+
+test_that("build_party_details_view formats party data correctly", {
+  result <- build_party_details_view(mock_party_data)
+
+  # Test structure and types
+  expect_type(result, "list")
+  # Verify names in any order
+  expect_setequal(names(result), c(
+    "party_name", "party_organization", "party_contact", "party_projects"
+  ))
+
+  # Each component should be a render function
+  expect_true(inherits(result$party_name, "shiny.render.function"))
+  expect_true(inherits(result$party_organization, "shiny.render.function"))
+  expect_true(inherits(result$party_contact, "shiny.render.function"))
+  expect_true(inherits(result$party_projects, "shiny.render.function"))
 })
 
 
@@ -423,6 +470,40 @@ test_that("show_detail_view handles community classification data correctly", {
       })
     },
     get_community_classification = function(accession_code) mock_comm_class_data,
+    .package = "vegbankr"
+  )
+})
+
+test_that("show_detail_view handles party data correctly", {
+  # Skip on CRAN
+  skip_on_cran()
+
+  # Setup test environment
+  messages_captured <- list()
+
+  # Create a modified session with message capturing
+  fake_session <- list(
+    sendCustomMessage = function(type, message) {
+      messages_captured[[type]] <<- message
+    }
+  )
+
+  # Create a mock output
+  fake_output <- new.env()
+
+  with_mocked_bindings(
+    {
+      with_mock_shiny_notifications({
+        result <- show_detail_view("party", "PARTY123", fake_output, fake_session)
+
+        # Verify results
+        expect_true(result)
+        expect_true(!is.null(messages_captured$openOverlay))
+        expect_true(!is.null(messages_captured$updateDetailType))
+        expect_equal(messages_captured$updateDetailType$type, "party")
+      })
+    },
+    get_party = function(accession_code) mock_party_data,
     .package = "vegbankr"
   )
 })
