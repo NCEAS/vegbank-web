@@ -40,7 +40,7 @@ mock_plot_data <- list(
   )
 )
 
-mock_community_data <- data.frame(
+mock_comm_concept_data <- data.frame(
   comm_name = "Test Community",
   comm_description = "Test <em>description</em> with HTML",
   obs_count = 42,
@@ -61,6 +61,32 @@ mock_taxon_data <- list(
   taxon_observation_id = "TX123",
   int_curr_plant_code = "CODE1",
   int_orig_plant_code = "CODE2"
+)
+
+# Create mock community classification data for testing
+mock_comm_class_data <- data.frame(
+  comm_class_accession_code = "CLASS123",
+  inspection = "Visual inspection",
+  table_analysis = TRUE,
+  multivariate_analysis = FALSE,
+  comm_concept_id = 456,
+  class_fit = "Good",
+  class_confidence = "High",
+  comm_authority_id = "AUTH789",
+  type = "Standard",
+  stringsAsFactors = FALSE
+)
+
+# Create mock project data for testing
+mock_project_data <- data.frame(
+  project_id = 123,
+  project_name = "Test Project",
+  project_description = "A test project description",
+  start_date = "2021-01-01",
+  stop_date = "2022-12-31",
+  obs_count = 42,
+  last_plot_added_date = "2022-10-15",
+  stringsAsFactors = FALSE
 )
 
 test_that("build_plot_obs_details_view handles NULL data gracefully", {
@@ -109,7 +135,7 @@ test_that("build_comm_concept_details_view handles NULL data gracefully", {
 })
 
 test_that("build_comm_concept_details_view formats community data correctly", {
-  result <- build_comm_concept_details_view(mock_community_data)
+  result <- build_comm_concept_details_view(mock_comm_concept_data)
 
   # Test structure and types
   expect_type(result, "list")
@@ -123,6 +149,36 @@ test_that("build_comm_concept_details_view formats community data correctly", {
   expect_true(inherits(result$community_name, "shiny.render.function"))
   expect_true(inherits(result$community_description, "shiny.render.function"))
   expect_true(inherits(result$observation_count, "shiny.render.function"))
+})
+
+test_that("build_comm_class_details_view handles NULL data gracefully", {
+  # When NULL data is provided
+  result <- build_comm_class_details_view(NULL)
+
+  # It should return a list with placeholder components
+  expect_type(result, "list")
+  expect_named(result, c(
+    "observation_details", "community_interpretation"
+  ))
+
+  # Each component should be a render function
+  expect_true(inherits(result$observation_details, "shiny.render.function"))
+  expect_true(inherits(result$community_interpretation, "shiny.render.function"))
+})
+
+test_that("build_comm_class_details_view formats classification data correctly", {
+  result <- build_comm_class_details_view(mock_comm_class_data)
+
+  # Test structure and types
+  expect_type(result, "list")
+  # Verify names in any order
+  expect_setequal(names(result), c(
+    "observation_details", "community_interpretation"
+  ))
+
+  # Each component should be a render function
+  expect_true(inherits(result$observation_details, "shiny.render.function"))
+  expect_true(inherits(result$community_interpretation, "shiny.render.function"))
 })
 
 test_that("build_taxon_details_view handles NULL data gracefully", {
@@ -155,6 +211,44 @@ test_that("build_taxon_details_view formats taxon data correctly", {
   expect_true(inherits(result$taxon_name, "shiny.render.function"))
   expect_true(inherits(result$taxon_coverage, "shiny.render.function"))
 })
+
+test_that("build_project_details_view handles NULL data gracefully", {
+  # When NULL data is provided
+  result <- build_project_details_view(NULL)
+
+  # It should return a list with placeholder components
+  expect_type(result, "list")
+  expect_setequal(names(result), c(
+    "project_name", "project_description",
+    "project_dates", "project_contributors", "project_observations"
+  ))
+
+  # Each component should be a render function
+  expect_true(inherits(result$project_name, "shiny.render.function"))
+  expect_true(inherits(result$project_description, "shiny.render.function"))
+  expect_true(inherits(result$project_dates, "shiny.render.function"))
+  expect_true(inherits(result$project_contributors, "shiny.render.function"))
+  expect_true(inherits(result$project_observations, "shiny.render.function"))
+})
+
+test_that("build_project_details_view formats project data correctly", {
+  result <- build_project_details_view(mock_project_data)
+
+  # Test structure and types
+  expect_type(result, "list")
+  # Verify names in any order
+  expect_setequal(names(result), c(
+    "project_name", "project_observations", "project_description",
+    "project_contributors", "project_dates"
+  ))
+
+  # Each component should be a render function
+  expect_true(inherits(result$project_name, "shiny.render.function"))
+  expect_true(inherits(result$project_description, "shiny.render.function"))
+  expect_true(inherits(result$project_observations, "shiny.render.function"))
+  expect_true(inherits(result$project_dates, "shiny.render.function"))
+})
+
 
 # Create a custom mock for show_detail_view tests
 mock_vegbank_api_error <- function(output, session) {
@@ -262,5 +356,137 @@ test_that("show_detail_view handles success case for plot details", {
     get_community_concept = function(accession_code) list(),
     get_taxon_observation = function(accession_code) list(),
     .package = "vegbankr"
+  )
+})
+
+test_that("show_detail_view handles project data correctly", {
+  # Skip on CRAN
+  skip_on_cran()
+
+  # Setup test environment
+  messages_captured <- list()
+
+  # Create a modified session with message capturing
+  fake_session <- list(
+    sendCustomMessage = function(type, message) {
+      messages_captured[[type]] <<- message
+    }
+  )
+
+  # Create a mock output
+  fake_output <- new.env()
+
+  with_mocked_bindings(
+    {
+      with_mock_shiny_notifications({
+        result <- show_detail_view("project", "PROJ123", fake_output, fake_session)
+
+        # Verify results
+        expect_true(result)
+        expect_true(!is.null(messages_captured$openOverlay))
+        expect_true(!is.null(messages_captured$updateDetailType))
+        expect_equal(messages_captured$updateDetailType$type, "project")
+      })
+    },
+    get_project = function(accession_code) mock_project_data,
+    .package = "vegbankr"
+  )
+})
+
+test_that("show_detail_view handles community classification data correctly", {
+  # Skip on CRAN
+  skip_on_cran()
+
+  # Setup test environment
+  messages_captured <- list()
+
+  # Create a modified session with message capturing
+  fake_session <- list(
+    sendCustomMessage = function(type, message) {
+      messages_captured[[type]] <<- message
+    }
+  )
+
+  # Create a mock output
+  fake_output <- new.env()
+
+  with_mocked_bindings(
+    {
+      with_mock_shiny_notifications({
+        result <- show_detail_view("community-classification", "CLASS123", fake_output, fake_session)
+
+        # Verify results
+        expect_true(result)
+        expect_true(!is.null(messages_captured$openOverlay))
+        expect_true(!is.null(messages_captured$updateDetailType))
+        expect_equal(messages_captured$updateDetailType$type, "community-classification")
+      })
+    },
+    get_community_classification = function(accession_code) mock_comm_class_data,
+    .package = "vegbankr"
+  )
+})
+
+test_that("create_detail_table correctly formats data into HTML table", {
+  # Create test data
+  test_details <- list(
+    field1 = "Value 1",
+    field2 = "Value 2",
+    field3 = "Value 3"
+  )
+
+  display_names <- c(field1 = "Display Name 1", field2 = "Display Name 2")
+
+  # Test function
+  result <- create_detail_table(test_details, display_names)
+
+  # Verify structure
+  expect_s3_class(result, "shiny.tag")
+  expect_equal(result$name, "table")
+  expect_equal(result$attribs$class, "table table-sm table-striped table-hover")
+
+  # Convert to character to check content
+  result_text <- as.character(result)
+
+  # Check for display names and values
+  expect_true(grepl("Display Name 1", result_text))
+  expect_true(grepl("Display Name 2", result_text))
+  expect_true(grepl("field3", result_text)) # This should use the original name
+  expect_true(grepl("Value 1", result_text))
+  expect_true(grepl("Value 2", result_text))
+  expect_true(grepl("Value 3", result_text))
+})
+
+test_that("safe_render_details handles valid and invalid fields gracefully", {
+  # Create test data with some fields
+  test_data <- data.frame(
+    field1 = "Value 1",
+    field2 = "Value 2",
+    field3 = NA,
+    stringsAsFactors = FALSE
+  )
+
+  # Mock get_field_display_names
+  with_mocked_bindings(
+    get_field_display_names = function() {
+      c(field1 = "Display Name 1", field2 = "Display Name 2", field3 = "Display Name 3")
+    },
+    {
+      # Test with valid fields
+      valid_result <- safe_render_details(c("field1", "field2"), test_data)
+      expect_s3_class(valid_result, "shiny.render.function")
+
+      # Test with invalid fields
+      invalid_result <- safe_render_details(c("non_existent_field"), test_data)
+      expect_s3_class(invalid_result, "shiny.render.function")
+
+      # Test with mixed valid and invalid fields
+      mixed_result <- safe_render_details(c("field1", "non_existent_field"), test_data)
+      expect_s3_class(mixed_result, "shiny.render.function")
+
+      # Test with NA values
+      na_result <- safe_render_details(c("field3"), test_data)
+      expect_s3_class(na_result, "shiny.render.function")
+    }
   )
 })

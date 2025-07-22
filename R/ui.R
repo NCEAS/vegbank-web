@@ -44,15 +44,19 @@ ui <- function(req) {
       const communityConceptCards = document.getElementById('community-concept-details-cards');
       const communityClassificationCards = document.getElementById('community-classification-details-cards');
       const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
+      const projectCards = document.getElementById('project-details-cards');
 
       console.log('Updating detail type to:', type);
 
-      if (plotCards && communityConceptCards && communityClassificationCards && taxonObservationCards) {
+      if (plotCards && communityConceptCards && communityClassificationCards && 
+      taxonObservationCards && projectCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
         communityClassificationCards.style.display = 'none';
         taxonObservationCards.style.display = 'none';
+        projectCards.style.display = 'none';
+
 
         // Show the requested type
         if (type === 'plot-observation') {
@@ -67,6 +71,9 @@ ui <- function(req) {
         } else if (type === 'taxon-observation') {
           console.log('Showing taxon observation details');
           taxonObservationCards.style.display = 'block';
+        } else if (type === 'project') {
+          console.log('Showing project details');
+          projectCards.style.display = 'block';
         }
       }
     });
@@ -188,9 +195,13 @@ build_navbar <- function() {
         DT::dataTableOutput("comm_table"),
       )
     ),
-    bslib::nav_panel(title = "Places"),
     bslib::nav_panel(title = "People"),
-    bslib::nav_panel(title = "Projects"),
+    bslib::nav_panel(
+      title = "Projects",
+      shiny::fluidPage(
+        DT::dataTableOutput("proj_table"),
+      )
+    ),
     bslib::nav_menu(
       title = "About",
       align = "right",
@@ -253,6 +264,17 @@ build_detail_overlay <- function() {
           class = "detail-section",
           bslib::card(bslib::card_header("Observation Details"), shiny::uiOutput("observation_details")),
           bslib::card(bslib::card_header("Community Interpretation"), shiny::uiOutput("community_interpretation"))
+        ),
+
+        # Project Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "project-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Project Name"), shiny::uiOutput("project_name")),
+          bslib::card(bslib::card_header("Description"), shiny::uiOutput("project_description")),
+          bslib::card(bslib::card_header("Dates"), shiny::uiOutput("project_dates")),
+          bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("project_contributors")),
+          bslib::card(bslib::card_header("Plot Observation Count"), shiny::uiOutput("project_observations"))
         ),
 
         # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility

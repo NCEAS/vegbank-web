@@ -7,8 +7,8 @@
 #'
 #' Generic function to fetch and display details in the overlay.
 #'
-#' @param detail_type Type of detail to show ("plot-observation", "community-concept", 
-#' community-classification, or "taxon-observation")
+#' @param detail_type Type of detail to show ("plot-observation", "community-concept",
+#' "community-classification", "project", or "taxon-observation")
 #' @param accession_code The accession code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
@@ -25,7 +25,8 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
         "community-classification" = vegbankr::get_community_classification(accession_code),
         "community-concept" = vegbankr::get_community_concept(accession_code),
         "taxon-observation" = vegbankr::get_taxon_observation(accession_code),
-        "plot-observation" = vegbankr::get_plot_observation_details(accession_code)
+        "plot-observation" = vegbankr::get_plot_observation_details(accession_code),
+        "project" = vegbankr::get_project(accession_code)
       )
 
       if (length(result) == 0) {
@@ -39,12 +40,12 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
 
       # Clear all output slots - ENSURE NAMES MATCH WHAT'S IN THE UI
       output$plot_id_details <- shiny::renderUI(NULL)
-      output$location_details <- shiny::renderUI(NULL) # Changed from locationDetails
+      output$location_details <- shiny::renderUI(NULL)
       output$layout_details <- shiny::renderUI(NULL)
       output$environmental_details <- shiny::renderUI(NULL)
       output$methods_details <- shiny::renderUI(NULL)
       output$plot_quality_details <- shiny::renderUI(NULL)
-      output$taxa_details <- shiny::renderUI(NULL) # Changed from taxaDetails
+      output$taxa_details <- shiny::renderUI(NULL)
       output$community_name <- shiny::renderUI(NULL)
       output$community_description <- shiny::renderUI(NULL)
       output$observation_count <- shiny::renderUI(NULL)
@@ -55,9 +56,23 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       output$taxon_identifiers <- shiny::renderUI(NULL)
       output$observation_details <- shiny::renderUI(NULL)
       output$community_interpretation <- shiny::renderUI(NULL)
+      output$project_name <- shiny::renderUI(NULL)
+      output$project_description <- shiny::renderUI(NULL)
+      output$project_dates <- shiny::renderUI(NULL)
+      output$project_contributors <- shiny::renderUI(NULL)
+      output$project_observations <- shiny::renderUI(NULL)
 
       # Generate the appropriate view based on detail type
       switch(detail_type,
+        "project" = {
+          shiny::incProgress(0.5, "Processing project details")
+          details <- build_project_details_view(result)
+          output$project_name <- details$project_name
+          output$project_description <- details$project_description
+          output$project_dates <- details$project_dates
+          output$project_contributors <- details$project_contributors
+          output$project_observations <- details$project_observations
+        },
         "community-classification" = {
           shiny::incProgress(0.5, "Processing community classification details")
           details <- build_comm_class_details_view(result)
@@ -338,6 +353,67 @@ build_comm_concept_details_view <- function(result) {
     community_aliases = safe_render_details(
       colnames(aliases),
       aliases
+    )
+  )
+}
+
+#' Build Project Details View
+#'
+#' Constructs a list of Shiny UI outputs for displaying detailed project information.
+#'
+#' @param result A data frame returned by vebankr::get_project()
+#' @return A list of Shiny UI outputs.
+#'
+#' @importFrom htmltools tags HTML
+#' @importFrom shiny renderUI
+#' @importFrom tidyr pivot_wider
+#' @noRd
+build_project_details_view <- function(result) {
+  if (is.null(result) || nrow(result) == 0) {
+    return(list(
+      project_name = shiny::renderUI({
+        htmltools::tags$p("project details not available")
+      }),
+      project_description = shiny::renderUI({
+        htmltools::tags$p("No description available")
+      }),
+      project_dates = shiny::renderUI({
+        htmltools::tags$p("No dates available")
+      }),
+      project_observations = shiny::renderUI({
+        htmltools::tags$p("No observations available")
+      }),
+      project_contributors = shiny::renderUI({
+        htmltools::tags$p("No contributors available")
+      })
+    ))
+  }
+
+  list(
+    project_name = shiny::renderUI({
+      htmltools::tags$b(result$project_name)
+    }),
+    project_observations = shiny::renderUI({
+      # TODO: Add classified plots
+      htmltools::tags$p(
+        "Number of observations: ",
+        htmltools::tags$strong(result$obs_count)
+      )
+    }),
+    project_description = shiny::renderUI({
+      # The description contains HTML entities <i></i> that need to be properly rendered
+      htmltools::tags$div(
+        id = "project-description",
+        htmltools::HTML(result$project_description)
+      )
+    }),
+    project_contributors = shiny::renderUI({
+      # TODO: Handle contributors
+      htmltools::tags$p("No contributors available")
+    }),
+    project_dates = safe_render_details(
+      c("start_date", "stop_date", "last_plot_added_date"),
+      result
     )
   )
 }

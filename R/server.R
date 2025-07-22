@@ -64,6 +64,12 @@ server <- function(input, output, session) {
       vegbankr::get_all_taxon_observations,
       list(limit = 5) # Limit to top 5 taxa
     )
+
+    project_data <- load_data_type(
+      "projects",
+      "inst/cached_data/projects_all.RDS",
+      vegbankr::get_all_projects
+    )
   })
 
   move_map_to_obs <- function(idx) {
@@ -95,6 +101,10 @@ server <- function(input, output, session) {
 
   output$comm_table <- DT::renderDataTable({
     build_community_table(comm_concept_data)
+  })
+
+  output$proj_table <- DT::renderDataTable({
+    build_project_table(project_data)
   })
 
   output$map <- leaflet::renderLeaflet({
@@ -278,6 +288,23 @@ server <- function(input, output, session) {
     }
   })
 
+  shiny::observeEvent(input$proj_link_click, {
+    accession_code <- input$proj_link_click
+    # Check for valid accession code
+    if (is.null(accession_code) ||
+      is.na(accession_code) ||
+      accession_code == "") {
+      shiny::showNotification(paste0("No accession code found for that project"), type = "error")
+      return()
+    }
+    if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      state$detail_type("project")
+      state$selected_accession(accession_code)
+      state$details_open(TRUE)
+      show_detail_view("project", accession_code, output, session)
+    }
+  })
+
   # STATE PERSISTENCE ____________________________________________________________________________
   shiny::onBookmark(function(state_obj) {
     state_obj$values$current_tab <- input$page
@@ -342,8 +369,10 @@ server <- function(input, output, session) {
   shiny::setBookmarkExclude(c(
     "plot_table_rows_selected", "plot_table_rows_all", "plot_table_rows_current",
     "plot_table_search", "plot_table_state", "plot_table_row_last_clicked",
-    "plot_table_cell_clicked", "comm_table_rows_selected", "comm_table_rows_all",
-    "comm_table_rows_current", "comm_table_search", "comm_table_state",
+    "plot_table_cell_clicked", "proj_table_rows_selected", "proj_table_rows_all",
+    "proj_table_rows_current", "proj_table_search", "proj_table_state",
+    "proj_table_row_last_clicked", "proj_table_cell_clicked", "comm_table_rows_selected",
+    "comm_table_rows_all", "comm_table_rows_current", "comm_table_search", "comm_table_state",
     "comm_table_row_last_clicked", "comm_table_cell_clicked",
     "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
     "map_marker_click", "map_click"
