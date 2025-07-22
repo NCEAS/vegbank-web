@@ -45,18 +45,19 @@ ui <- function(req) {
       const communityClassificationCards = document.getElementById('community-classification-details-cards');
       const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
       const projectCards = document.getElementById('project-details-cards');
+      const partyCards = document.getElementById('party-details-cards');
 
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards && 
-      taxonObservationCards && projectCards) {
+      taxonObservationCards && projectCards && partyCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
         communityClassificationCards.style.display = 'none';
         taxonObservationCards.style.display = 'none';
         projectCards.style.display = 'none';
-
+        partyCards.style.display = 'none';
 
         // Show the requested type
         if (type === 'plot-observation') {
@@ -66,7 +67,7 @@ ui <- function(req) {
           console.log('Showing community details');
           communityConceptCards.style.display = 'block';
         } else if (type === 'community-classification') {
-          console.log('Showing taxon observation details');
+          console.log('Showing community classification details');
           communityClassificationCards.style.display = 'block';
         } else if (type === 'taxon-observation') {
           console.log('Showing taxon observation details');
@@ -74,6 +75,9 @@ ui <- function(req) {
         } else if (type === 'project') {
           console.log('Showing project details');
           projectCards.style.display = 'block';
+        } else if (type === 'party') {
+          console.log('Showing party details');
+          partyCards.style.display = 'block';
         }
       }
     });
@@ -195,7 +199,12 @@ build_navbar <- function() {
         DT::dataTableOutput("comm_table"),
       )
     ),
-    bslib::nav_panel(title = "People"),
+    bslib::nav_panel(
+      title = "People",
+      shiny::fluidPage(
+        DT::dataTableOutput("party_table"),
+      )
+    ),
     bslib::nav_panel(
       title = "Projects",
       shiny::fluidPage(
@@ -285,6 +294,16 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Coverage"), shiny::uiOutput("taxon_coverage")),
           bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("taxon_aliases")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("taxon_identifiers"))
+        ),
+        
+        # Party Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "party-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Name"), shiny::uiOutput("party_name")),
+          bslib::card(bslib::card_header("Organization"), shiny::uiOutput("party_organization")),
+          bslib::card(bslib::card_header("Contact Information"), shiny::uiOutput("party_contact")),
+          bslib::card(bslib::card_header("Projects"), shiny::uiOutput("party_projects"))
         )
       )
     )

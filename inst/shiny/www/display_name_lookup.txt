@@ -637,3 +637,12 @@ volume,volume,Volume
 waterdepth,water_depth,Water Depth
 watersalinity,water_salinity,Water Salinity
 xml,xml,XML
+
+givenname,given_name,Given Name
+middlename,middle_name,Middle Name
+surname,surname,Surname
+salutation,salutation,Salutation
+organizationname,organization_name,Organization
+contactinstructions,contact_instructions,Contact Instructions
+partyid,party_id,Party ID
+partyaccessioncode,party_accession_code,Party Accession Code
