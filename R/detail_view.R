@@ -273,7 +273,7 @@ build_plot_obs_details_view <- function(result) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed community classification information.
 #'
-#' @param result A data frame returned by vebankr::get_community_classification()
+#' @param result A data frame returned by vegbankr::get_community_classification()
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
@@ -312,7 +312,7 @@ build_comm_class_details_view <- function(result) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed community concept information.
 #'
-#' @param result A data frame returned by vebankr::get_community_concept()
+#' @param result A data frame returned by vegbankr::get_community_concept()
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
@@ -374,7 +374,7 @@ build_comm_concept_details_view <- function(result) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed project information.
 #'
-#' @param result A data frame returned by vebankr::get_project()
+#' @param result A data frame returned by vegbankr::get_project()
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
@@ -435,7 +435,7 @@ build_project_details_view <- function(result) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed taxon information.
 #'
-#' @param result A data frame returned by vebankr::get_taxon_observation_details()
+#' @param result A data frame returned by vegbankr::get_taxon_observation_details()
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
@@ -501,7 +501,7 @@ build_taxon_details_view <- function(result) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed party information.
 #'
-#' @param result A data frame returned by vebankr::get_party()
+#' @param result A data frame returned by vegbankr::get_party()
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
