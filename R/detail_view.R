@@ -8,7 +8,7 @@
 #' Generic function to fetch and display details in the overlay.
 #'
 #' @param detail_type Type of detail to show ("plot-observation", "community-concept",
-#' community-classification, project, or "taxon-observation")
+#' "community-classification", "project", or "taxon-observation")
 #' @param accession_code The accession code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
