@@ -15,7 +15,7 @@ build_party_table <- function(party_data) {
 
   party_table_config <- list(
     column_defs = list(
-      list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
+      list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
       list(targets = 1, width = "20%"), # Given Name
       list(targets = 2, width = "20%"), # Surname
       list(targets = 3, width = "30%"), # Organization

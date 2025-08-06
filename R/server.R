@@ -61,8 +61,7 @@ server <- function(input, output, session) {
     taxa_data <- load_data_type(
       "taxon observations",
       "inst/cached_data/taxon_obs_top_5.RDS",
-      vegbankr::get_all_taxon_observations,
-      list(limit = 5) # Limit to top 5 taxa
+      vegbankr::get_all_taxon_observations
     )
 
     project_data <- load_data_type(
@@ -422,13 +421,13 @@ server <- function(input, output, session) {
 #'
 #' @importFrom utils modifyList
 #' @noRd
-load_data_type <- function(data_type, file_path, api_function, api_params = list(), use_api = FALSE) {
+load_data_type <- function(data_type, file_path, api_function, api_params = list(), use_api = TRUE) {
   shiny::incProgress(0.2, detail = paste0("Loading ", data_type, "..."))
-  # Special case for taxon observations (known API issues)
+  # Special case for taxon observations (count was too slow so cannot fetch all and have to read from cache)
   if (use_api && data_type == "taxon observations") {
     shiny::showNotification(
-      "Taxa API requests may timeout - using cached data instead",
-      type = "warning", duration = 5
+      "Taxa API requests don't return a count - using cached data instead",
+      type = "warning", duration = NULL
     )
     return(read_from_cache(data_type, file_path))
   }
@@ -443,7 +442,7 @@ load_data_type <- function(data_type, file_path, api_function, api_params = list
 
         # Get total count first
         count_call <- do.call(api_function, params)
-        num_items <- vegbankr::get_page_details(count_call)
+        num_items <- vegbankr::get_page_details(count_call)[["count_reported"]]
 
         # Now get all data
         params$limit <- num_items
@@ -452,7 +451,7 @@ load_data_type <- function(data_type, file_path, api_function, api_params = list
       error = function(e) {
         shiny::showNotification(
           paste0("Error fetching ", data_type, " from API: ", e$message),
-          type = "error", duration = 5
+          type = "error", duration = NULL
         )
         read_from_cache(data_type, file_path)
       }
@@ -474,7 +473,7 @@ read_from_cache <- function(data_type, file_path) {
   } else {
     shiny::showNotification(
       paste0(data_type, " cache not found: ", file_path),
-      type = "error", duration = 5
+      type = "error", duration = NULL
     )
     data.frame()
   }
