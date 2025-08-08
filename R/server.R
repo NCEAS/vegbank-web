@@ -421,7 +421,7 @@ server <- function(input, output, session) {
 #'
 #' @importFrom utils modifyList
 #' @noRd
-load_data_type <- function(data_type, file_path, api_function, api_params = list(), use_api = TRUE) {
+load_data_type <- function(data_type, file_path, api_function, api_params = list(), use_api = FALSE) {
   shiny::incProgress(0.2, detail = paste0("Loading ", data_type, "..."))
   # Special case for taxon observations (count was too slow so cannot fetch all and have to read from cache)
   if (use_api && data_type == "taxon observations") {

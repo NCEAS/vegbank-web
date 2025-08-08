@@ -18,24 +18,17 @@ Documentation is a work in progress, and can be found ...
 
 This is a [Shiny App](https://shiny.posit.co/) built using the [Shiny R package](https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/). 
 
-The app is currently configured to read from a local file or hit an api running on kubernetes for data. If you don't have access to kubernetes you ask a team member for the all_states_plot_obs.json file, place it in your www directory, and can revise the `server.R` code read its path.
+The app is currently configured to read from inst/cached_data RDS files by default, or hit an api running on kubernetes for data if you set the use_api parameter for load_data_type in server.R to TRUE.
 
-To run the app locally with full access to the api, you'll need to connect to the `dev-vegbank` kubernetes context and port forward the vegbankdb pod with a rotating name (not the postgresql pod) as follows: 
+To run the app locally, run the following commands your IDE terminal: 
 
-*Note: your pod name will be different from this example command.*
 ```
-~ % kubectl config use-context dev-vegbank
+~ % R
 
-~ % kubectl get pods
-(Sample pod name output)
-NAME                         READY   STATUS    RESTARTS   AGE
-vegbankdb-5d796654c4-wrdzf   1/1     Running   0          28h
-vegbankdb-postgresql-0       1/1     Running   0          28h
+~ % devtools::load_all()
 
-~ % kubectl port-forward vegbankdb-5d796654c4-wrdzf 28015:80
+~ % vegbankweb::run_app()
 ```
-
-Once the API pod is port-forwarded you can run the app in the R environment of your choice (RStudio, VsCode with the Shiny extension, and  seem to be popular options).
 
 ## License
 ```
