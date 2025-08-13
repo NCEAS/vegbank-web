@@ -26,7 +26,8 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
         "community-concept" = vegbankr::get_community_concept(accession_code),
         "taxon-observation" = vegbankr::get_taxon_observation(accession_code),
         "plot-observation" = vegbankr::get_plot_observation_details(accession_code),
-        "project" = vegbankr::get_project(accession_code)
+        "project" = vegbankr::get_project(accession_code),
+        "party" = vegbankr::get_party(accession_code)
       )
 
       if (length(result) == 0) {
@@ -61,6 +62,10 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       output$project_dates <- shiny::renderUI(NULL)
       output$project_contributors <- shiny::renderUI(NULL)
       output$project_observations <- shiny::renderUI(NULL)
+      output$party_name <- shiny::renderUI(NULL)
+      output$party_organization <- shiny::renderUI(NULL)
+      output$party_contact <- shiny::renderUI(NULL)
+      output$party_projects <- shiny::renderUI(NULL)
 
       # Generate the appropriate view based on detail type
       switch(detail_type,
@@ -72,6 +77,14 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
           output$project_dates <- details$project_dates
           output$project_contributors <- details$project_contributors
           output$project_observations <- details$project_observations
+        },
+        "party" = {
+          shiny::incProgress(0.5, "Processing party details")
+          details <- build_party_details_view(result)
+          output$party_name <- details$party_name
+          output$party_organization <- details$party_organization
+          output$party_contact <- details$party_contact
+          output$party_projects <- details$party_projects
         },
         "community-classification" = {
           shiny::incProgress(0.5, "Processing community classification details")
@@ -260,7 +273,7 @@ build_plot_obs_details_view <- function(result) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed community classification information.
 #'
-#' @param result A data frame returned by vebankr::get_community_classification()
+#' @param result A data frame returned by vegbankr::get_community_classification()
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
@@ -299,7 +312,7 @@ build_comm_class_details_view <- function(result) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed community concept information.
 #'
-#' @param result A data frame returned by vebankr::get_community_concept()
+#' @param result A data frame returned by vegbankr::get_community_concept()
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
@@ -361,7 +374,7 @@ build_comm_concept_details_view <- function(result) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed project information.
 #'
-#' @param result A data frame returned by vebankr::get_project()
+#' @param result A data frame returned by vegbankr::get_project()
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
@@ -422,7 +435,7 @@ build_project_details_view <- function(result) {
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed taxon information.
 #'
-#' @param result A data frame returned by vebankr::get_taxon_observation_details()
+#' @param result A data frame returned by vegbankr::get_taxon_observation_details()
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
@@ -481,6 +494,74 @@ build_taxon_details_view <- function(result) {
       ),
       result
     )
+  )
+}
+
+#' Build Party Details View
+#'
+#' Constructs a list of Shiny UI outputs for displaying detailed party information.
+#'
+#' @param result A data frame returned by vegbankr::get_party()
+#' @return A list of Shiny UI outputs.
+#'
+#' @importFrom htmltools tags HTML
+#' @importFrom shiny renderUI
+#' @noRd
+build_party_details_view <- function(result) {
+  if (is.null(result) || nrow(result) == 0) {
+    return(list(
+      party_name = shiny::renderUI({
+        htmltools::tags$p("Party details not available")
+      }),
+      party_organization = shiny::renderUI({
+        htmltools::tags$p("No organization available")
+      }),
+      party_contact = shiny::renderUI({
+        htmltools::tags$p("No contact information available")
+      }),
+      party_projects = shiny::renderUI({
+        htmltools::tags$p("No projects available")
+      })
+    ))
+  }
+
+  # Format full name based on available parts
+  full_name <- paste(
+    ifelse(is.na(result$salutation), "", paste0(result$salutation, " ")),
+    ifelse(is.na(result$given_name), "", result$given_name),
+    ifelse(is.na(result$middle_name), "", paste0(" ", result$middle_name)),
+    ifelse(is.na(result$surname), "", paste0(" ", result$surname))
+  )
+  
+  full_name <- trimws(full_name)
+  if (full_name == "") {
+    if (!is.na(result$organization_name)) {
+      full_name <- result$organization_name
+    } else {
+      full_name <- "Unknown Name"
+    }
+  }
+
+  list(
+    party_name = shiny::renderUI({
+      htmltools::tags$b(full_name)
+    }),
+    party_organization = shiny::renderUI({
+      if (is.na(result$organization_name)) {
+        htmltools::tags$p("No organization specified")
+      } else {
+        htmltools::tags$p(result$organization_name)
+      }
+    }),
+    party_contact = safe_render_details(
+      c("contact_instructions"),
+      result
+    ),
+    party_projects = shiny::renderUI({
+      # Note: This is a placeholder. In a real implementation, you would fetch
+      # the projects associated with this party from the API
+      htmltools::tags$p("Associated projects would be displayed here")
+    })
   )
 }
 

@@ -1,8 +1,15 @@
 test_that("create_empty_table returns a DataTable object", {
+  # Test basic functionality
   empty_table <- create_empty_table()
   expect_true(inherits(empty_table, "datatables"))
   expect_true(inherits(empty_table$x$data, "data.frame"))
   expect_equal(colnames(empty_table$x$data), "No.Data.Available")
+  
+  # Test with a custom message
+  custom_table <- create_empty_table("Custom message")
+  expect_true(inherits(custom_table, "datatables"))
+  expect_equal(colnames(custom_table$x$data), "No.Data.Available")
+  expect_equal(custom_table$x$data$`No.Data.Available`, "Custom message")
 })
 
 

@@ -61,14 +61,19 @@ server <- function(input, output, session) {
     taxa_data <- load_data_type(
       "taxon observations",
       "inst/cached_data/taxon_obs_top_5.RDS",
-      vegbankr::get_all_taxon_observations,
-      list(limit = 5) # Limit to top 5 taxa
+      vegbankr::get_all_taxon_observations
     )
 
     project_data <- load_data_type(
       "projects",
       "inst/cached_data/projects_all.RDS",
       vegbankr::get_all_projects
+    )
+
+    party_data <- load_data_type(
+      "parties",
+      "inst/cached_data/parties_all.RDS",
+      vegbankr::get_all_parties
     )
   })
 
@@ -105,6 +110,10 @@ server <- function(input, output, session) {
 
   output$proj_table <- DT::renderDataTable({
     build_project_table(project_data)
+  })
+
+  output$party_table <- DT::renderDataTable({
+    build_party_table(party_data)
   })
 
   output$map <- leaflet::renderLeaflet({
@@ -305,6 +314,23 @@ server <- function(input, output, session) {
     }
   })
 
+  shiny::observeEvent(input$party_link_click, {
+    accession_code <- input$party_link_click
+    # Check for valid accession code
+    if (is.null(accession_code) ||
+      is.na(accession_code) ||
+      accession_code == "") {
+      shiny::showNotification(paste0("No accession code found for that party"), type = "error")
+      return()
+    }
+    if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      state$detail_type("party")
+      state$selected_accession(accession_code)
+      state$details_open(TRUE)
+      show_detail_view("party", accession_code, output, session)
+    }
+  })
+
   # STATE PERSISTENCE ____________________________________________________________________________
   shiny::onBookmark(function(state_obj) {
     state_obj$values$current_tab <- input$page
@@ -373,7 +399,9 @@ server <- function(input, output, session) {
     "proj_table_rows_current", "proj_table_search", "proj_table_state",
     "proj_table_row_last_clicked", "proj_table_cell_clicked", "comm_table_rows_selected",
     "comm_table_rows_all", "comm_table_rows_current", "comm_table_search", "comm_table_state",
-    "comm_table_row_last_clicked", "comm_table_cell_clicked",
+    "comm_table_row_last_clicked", "comm_table_cell_clicked", "party_table_rows_selected",
+    "party_table_rows_all", "party_table_rows_current", "party_table_search", "party_table_state",
+    "party_table_row_last_clicked", "party_table_cell_clicked",
     "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
     "map_marker_click", "map_click"
   ))
@@ -389,16 +417,17 @@ server <- function(input, output, session) {
 #' @param file_path Path to the cached RDS file
 #' @param api_function The vegbankr API function to call
 #' @param api_params Additional parameters to pass to the API function
-#'
 #' @return A data frame with the loaded data or an empty data frame if loading fails.
+#'
+#' @importFrom utils modifyList
 #' @noRd
 load_data_type <- function(data_type, file_path, api_function, api_params = list(), use_api = FALSE) {
   shiny::incProgress(0.2, detail = paste0("Loading ", data_type, "..."))
-  # Special case for taxon observations (known API issues)
+  # Special case for taxon observations (count was too slow so cannot fetch all and have to read from cache)
   if (use_api && data_type == "taxon observations") {
     shiny::showNotification(
-      "Taxa API requests may timeout - using cached data instead",
-      type = "warning", duration = 5
+      "Taxa API requests don't return a count - using cached data instead",
+      type = "warning", duration = NULL
     )
     return(read_from_cache(data_type, file_path))
   }
@@ -413,7 +442,7 @@ load_data_type <- function(data_type, file_path, api_function, api_params = list
 
         # Get total count first
         count_call <- do.call(api_function, params)
-        num_items <- vegbankr::get_page_details(count_call)["count_reported"]
+        num_items <- vegbankr::get_page_details(count_call)[["count_reported"]]
 
         # Now get all data
         params$limit <- num_items
@@ -422,7 +451,7 @@ load_data_type <- function(data_type, file_path, api_function, api_params = list
       error = function(e) {
         shiny::showNotification(
           paste0("Error fetching ", data_type, " from API: ", e$message),
-          type = "error", duration = 5
+          type = "error", duration = NULL
         )
         read_from_cache(data_type, file_path)
       }
@@ -444,7 +473,7 @@ read_from_cache <- function(data_type, file_path) {
   } else {
     shiny::showNotification(
       paste0(data_type, " cache not found: ", file_path),
-      type = "error", duration = 5
+      type = "error", duration = NULL
     )
     data.frame()
   }

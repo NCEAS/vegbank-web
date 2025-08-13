@@ -40,6 +40,8 @@ build_project_table <- function(project_data) {
 #'
 #' @param data_sources List containing project_data
 #' @returns A data frame ready for display
+#'
+#' @importFrom shiny incProgress
 #' @noRd
 process_project_data <- function(data_sources) {
   project_data <- data_sources$project_data
@@ -65,14 +67,17 @@ process_project_data <- function(data_sources) {
   # TODO: Classified Plots & States / Provinces columns
 
   shiny::incProgress(0.1, detail = "Creating action buttons")
-  action_buttons <- create_action_buttons(project_data, list(
+  action_buttons <- create_action_buttons(
+    project_data,
     list(
-      input_id = "proj_link_click",
-      input_value = "project_accession_code",
-      label = "Details",
-      class = "btn-outline-primary"
+      list(
+        input_id = "proj_link_click",
+        input_value = "project_accession_code",
+        label = "Details",
+        class = "btn-outline-primary"
+      )
     )
-  ))
+  )
 
   shiny::incProgress(0.2, detail = "Building table...")
   data.frame(
