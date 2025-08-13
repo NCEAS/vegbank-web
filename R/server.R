@@ -165,11 +165,7 @@ server <- function(input, output, session) {
     {
       i <- as.numeric(input$see_details)
       selected_row_accession <- plot_data[i, "obs_accession_code"]
-
-      # Check for valid accession code
-      if (is.null(selected_row_accession) ||
-        is.na(selected_row_accession) ||
-        selected_row_accession == "") {
+      if (is.null(selected_row_accession) || is.na(selected_row_accession) || selected_row_accession == "") {
         shiny::showNotification(paste0("No accession code found for row: ", i), type = "error")
         return()
       }
@@ -188,10 +184,10 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$show_on_map,
     {
-      idx <- as.numeric(input$show_on_map)
+      i <- as.numeric(input$show_on_map)
 
       # Check for valid index before proceeding
-      if (is.na(idx) || idx < 1 || idx > nrow(plot_data)) {
+      if (is.na(i) || i < 1 || i > nrow(plot_data)) {
         shiny::showNotification("Cannot show on map: Missing or invalid index for this row",
           type = "warning"
         )
@@ -199,8 +195,8 @@ server <- function(input, output, session) {
       }
 
       # Check for valid latitude and longitude
-      lat <- plot_data$latitude[idx]
-      lon <- plot_data$longitude[idx]
+      lat <- plot_data$latitude[i]
+      lon <- plot_data$longitude[i]
 
       if (is.na(lat) || is.na(lon) || !is.numeric(lat) || !is.numeric(lon)) {
         shiny::showNotification("Cannot show on map: Missing or invalid coordinates for this plot",
@@ -209,7 +205,7 @@ server <- function(input, output, session) {
         return()
       }
 
-      state$map_request(idx)
+      state$map_request(i)
       shiny::updateNavbarPage(session, "page", selected = "Map")
 
       # Create a self-destroying observer
@@ -248,19 +244,14 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$comm_class_link_click, {
     accession_code <- input$comm_class_link_click
-    # Check for valid accession code
-    if (is.null(accession_code) ||
-      is.na(accession_code) ||
-      accession_code == "") {
+    if (is.null(accession_code) || is.na(accession_code) || accession_code == "") {
       shiny::showNotification(paste0("No accession code found for that community classification"), type = "error")
       return()
     }
-    if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("community-classification")
-      state$selected_accession(accession_code)
-      state$details_open(TRUE)
-      show_detail_view("community-classification", accession_code, output, session)
-    }
+    state$detail_type("community-classification")
+    state$selected_accession(accession_code)
+    state$details_open(TRUE)
+    show_detail_view("community-classification", accession_code, output, session)
   })
 
   shiny::observeEvent(input$comm_link_click, {
@@ -282,19 +273,14 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$taxa_link_click, {
     accession_code <- input$taxa_link_click
-    # Check for valid accession code
-    if (is.null(accession_code) ||
-      is.na(accession_code) ||
-      accession_code == "") {
+    if (is.null(accession_code) || is.na(accession_code) || accession_code == "") {
       shiny::showNotification(paste0("No accession code found for that taxon observation"), type = "error")
       return()
     }
-    if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("taxon-observation")
-      state$selected_accession(accession_code)
-      state$details_open(TRUE)
-      show_detail_view("taxon-observation", accession_code, output, session)
-    }
+    state$detail_type("taxon-observation")
+    state$selected_accession(accession_code)
+    state$details_open(TRUE)
+    show_detail_view("taxon-observation", accession_code, output, session)
   })
 
   shiny::observeEvent(input$proj_link_click, {

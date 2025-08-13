@@ -23,8 +23,38 @@ build_plot_table <- function(plot_data, taxa_data, comm_data) {
       list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
       list(targets = 1, width = "15%"),
       list(targets = 2, width = "10%"),
-      list(targets = 3, orderable = FALSE, searchable = TRUE, width = "45%"),
-      list(targets = 4, width = "20%")
+      list(
+        targets = 3, orderable = FALSE, searchable = TRUE, width = "45%",
+        render = DT::JS(
+          "function(data, type, row, meta) {",
+          "  if(type === 'display') {",
+          "    if(!data || data.length === 0) return 'No Taxa Data';",
+          "    var items = data.map(function(t) {",
+          "      if(!t.code && !t.name) return '<li>No Taxa Data</li>';",
+          "      return '<li><a href=\"#\" class=\"taxa-link\" onclick=\"Shiny.setInputValue(\\'taxa_link_click\\', \\'' + t.code + '\\', {priority: \\'event\\'});\">' + (t.name || 'Unnamed') + ' (' + (t.cover || 'No cover') + '%)</a></li>';",
+          "    });",
+          "    return '<ul class=\"taxa-list\">' + items.join('') + '</ul>';",
+          "  }",
+          "  return data;",
+          "}"
+        )
+      ),
+      list(
+        targets = 4, width = "20%",
+        render = DT::JS(
+          "function(data, type, row, meta) {",
+          "  if(type === 'display') {",
+          "    if(!data || data.length === 0) return 'No Community Data';",
+          "    var items = data.map(function(c) {",
+          "      if(!c.code && !c.name) return '<li>No Community Data</li>';",
+          "      return '<li><a href=\"#\" class=\"comm-link\" onclick=\"Shiny.setInputValue(\\'comm_class_link_click\\', \\'' + c.code + '\\', {priority: \\'event\\'});\">' + (c.name || 'Unnamed') + '</a></li>';",
+          "    });",
+          "    return '<ul class=\"comm-list\">' + items.join('') + '</ul>';",
+          "  }",
+          "  return data;",
+          "}"
+        )
+      )
     ),
     progress_message = "Processing plot table data"
   )
@@ -53,11 +83,11 @@ process_plot_data <- function(data_sources) {
   shiny::incProgress(0.1, detail = "Cleaning location data")
   locations <- clean_column_data(plot_data, "state_province")
 
-  shiny::incProgress(0.1, detail = "Creating taxa lists...")
-  taxa_html <- create_taxa_vectors(plot_data, taxa_data)
+  shiny::incProgress(0.1, detail = "Aggregating taxa data...")
+  taxa_data_list <- create_taxa_vectors(plot_data, taxa_data)
 
-  shiny::incProgress(0.1, detail = "Creating community links...")
-  community_html <- create_community_vectors(plot_data, comm_data)
+  shiny::incProgress(0.1, detail = "Aggregating community data...")
+  community_data_list <- create_community_vectors(plot_data, comm_data)
 
   shiny::incProgress(0.1, detail = "Creating action buttons...")
   action_buttons <- create_action_buttons(plot_data, list(
@@ -70,8 +100,8 @@ process_plot_data <- function(data_sources) {
     "Actions" = action_buttons,
     "Author Plot Code" = author_codes,
     "Location" = locations,
-    "Top Taxa" = taxa_html,
-    "Community" = community_html,
+    "Top Taxa" = I(taxa_data_list),
+    "Community" = I(community_data_list),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
@@ -87,36 +117,31 @@ process_plot_data <- function(data_sources) {
 #'
 #' @importFrom dplyr left_join group_by summarize
 #' @noRd
+#' TODO: Can this be done on each page render on a callback?
 create_taxa_vectors <- function(plot_data, taxa_data) {
   merged <- dplyr::left_join(plot_data, taxa_data, by = "observation_id")
   taxa_lists <- merged |>
     dplyr::group_by(.data$observation_id) |>
     dplyr::summarize(
-      top_taxa = {
+      taxa = list(
         if (all(is.na(.data$int_curr_plant_sci_name_no_auth)) & all(is.na(.data$max_cover))) {
-          "No Taxa Data"
+          list()
         } else {
-          items <- ifelse(
-            is.na(.data$int_curr_plant_sci_name_no_auth) & is.na(.data$max_cover),
-            "<li>No Taxa Data</li>",
-            paste0(
-              "<li><a href=\"#\" onclick=\"Shiny.setInputValue('taxa_link_click', '",
-              .data$taxon_observation_accession_code,
-              "', {priority: 'event'}); return false;\">",
-              ifelse(is.na(.data$int_curr_plant_sci_name_no_auth), "Unnamed", .data$int_curr_plant_sci_name_no_auth),
-              "</a> (",
-              ifelse(is.na(.data$max_cover), "No cover", .data$max_cover),
-              "%)</li>"
+          lapply(seq_along(.data$taxon_observation_accession_code), function(i) {
+            list(
+              code = .data$taxon_observation_accession_code[i],
+              name = .data$int_curr_plant_sci_name_no_auth[i],
+              cover = .data$max_cover[i]
             )
-          )
-          paste0('<ul class="taxa-list">', paste0(items, collapse = ""), "</ul>")
+          })
         }
-      },
+      ),
       .groups = "drop"
     )
-  result <- rep("No Taxa Data", nrow(plot_data))
+  result <- vector("list", nrow(plot_data))
   match_idx <- match(plot_data$observation_id, taxa_lists$observation_id)
-  result[!is.na(match_idx)] <- taxa_lists$top_taxa[match_idx[!is.na(match_idx)]]
+  result[!is.na(match_idx)] <- taxa_lists$taxa[match_idx[!is.na(match_idx)]]
+  result[sapply(result, is.null)] <- list(list())
   result
 }
 
@@ -133,28 +158,23 @@ create_community_vectors <- function(plot_data, comm_data) {
   community_lists <- merged |>
     dplyr::group_by(.data$obs_accession_code) |>
     dplyr::summarize(
-      comm_list = {
+      communities = list(
         if (all(is.na(.data$comm_name)) & all(is.na(.data$comm_class_accession_code))) {
-          "No Community Data"
+          list()
         } else {
-          items <- ifelse(
-            is.na(.data$comm_class_accession_code) & is.na(.data$comm_name),
-            "<li>No Community Data</li>",
-            paste0(
-              "<li><a href=\"#\" onclick=\"Shiny.setInputValue('comm_class_link_click', '",
-              .data$comm_class_accession_code,
-              "', {priority: 'event'}); return false;\">",
-              ifelse(is.na(.data$comm_name), "Unnamed", .data$comm_name),
-              "</a></li>"
+          lapply(seq_along(.data$comm_class_accession_code), function(i) {
+            list(
+              code = .data$comm_class_accession_code[i],
+              name = .data$comm_name[i]
             )
-          )
-          paste0('<ul class="comm-list">', paste0(items, collapse = ""), "</ul>")
+          })
         }
-      },
+      ),
       .groups = "drop"
     )
-  result <- rep("No Community Data", nrow(plot_data))
+  result <- vector("list", nrow(plot_data))
   match_idx <- match(plot_data$obs_accession_code, community_lists$obs_accession_code)
-  result[!is.na(match_idx)] <- community_lists$comm_list[match_idx[!is.na(match_idx)]]
+  result[!is.na(match_idx)] <- community_lists$communities[match_idx[!is.na(match_idx)]]
+  result[sapply(result, is.null)] <- list(list())
   result
 }
