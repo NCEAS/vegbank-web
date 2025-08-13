@@ -24,30 +24,30 @@ build_plot_table <- function(plot_data, taxa_data, comm_data) {
       list(targets = 1, width = "15%"),
       list(targets = 2, width = "10%"),
       list(
-        targets = 3, orderable = FALSE, searchable = TRUE, width = "45%",
+        targets = 3, orderable = FALSE, searchable = TRUE, width = "25%",
         render = DT::JS(
           "function(data, type, row, meta) {",
           "  if(type === 'display') {",
           "    if(!data || data.length === 0) return 'No Taxa Data';",
           "    var items = data.map(function(t) {",
-          "      if(!t.code && !t.name) return '<li>No Taxa Data</li>';",
-          "      return '<li><a href=\"#\" class=\"taxa-link\" onclick=\"Shiny.setInputValue(\\'taxa_link_click\\', \\'' + t.code + '\\', {priority: \\'event\\'});\">' + (t.name || 'Unnamed') + ' (' + (t.cover || 'No cover') + '%)</a></li>';",
+          "      if(!t.code && !t.name) return '<div style=\"margin-bottom: 4px;\">No Taxa Data</div>';",
+          "      return '<div style=\"display: flex; justify-content: space-between; margin-bottom: 4px;\"><a href=\"#\" class=\"taxa-link\" onclick=\"Shiny.setInputValue(\\'taxa_link_click\\', \\'' + t.code + '\\', {priority: \\'event\\'});\" style=\"text-align: left;\">' + (t.name || 'Unnamed') + '</a><span style=\"text-align: right; margin-left: 10px; font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-variant-numeric: tabular-nums;\">' + (t.cover || 'No cover ') + '%</span></div>';",
           "    });",
-          "    return '<ul class=\"taxa-list\">' + items.join('') + '</ul>';",
+          "    return '<div class=\"taxa-list\">' + items.join('') + '</div>';",
           "  }",
           "  return data;",
           "}"
         )
       ),
       list(
-        targets = 4, width = "20%",
+        targets = 4, width = "40%",
         render = DT::JS(
           "function(data, type, row, meta) {",
           "  if(type === 'display') {",
           "    if(!data || data.length === 0) return 'No Community Data';",
           "    var items = data.map(function(c) {",
           "      if(!c.code && !c.name) return '<li>No Community Data</li>';",
-          "      return '<li><a href=\"#\" class=\"comm-link\" onclick=\"Shiny.setInputValue(\\'comm_class_link_click\\', \\'' + c.code + '\\', {priority: \\'event\\'});\">' + (c.name || 'Unnamed') + '</a></li>';",
+          "      return '<div style=\"margin-bottom: 4px;\"><a href=\"#\" class=\"comm-link\" onclick=\"Shiny.setInputValue(\\'comm_class_link_click\\', \\'' + c.code + '\\', {priority: \\'event\\'});\">' + (c.name || 'Unnamed') + '</a></div>';",
           "    });",
           "    return '<ul class=\"comm-list\">' + items.join('') + '</ul>';",
           "  }",
@@ -131,7 +131,7 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
             list(
               code = .data$taxon_observation_accession_code[i],
               name = .data$int_curr_plant_sci_name_no_auth[i],
-              cover = .data$max_cover[i]
+              cover = round(.data$max_cover[i], 2)
             )
           })
         }
