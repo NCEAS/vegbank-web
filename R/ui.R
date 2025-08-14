@@ -100,24 +100,24 @@ custom_theme <- bslib::bs_theme(
   info = "#2c5443",
   primary = "#72b9a2",
   secondary = "#72b9a2",
-  base_font = bslib::font_google("Inter", wght = c(400, 500, 600, 700)),
-  heading_font = bslib::font_google("Inter", wght = c(400, 500, 600, 700))
+  base_font = bslib::font_google("Inter Tight", wght = c(400, 500, 600, 700)),
+  heading_font = bslib::font_google("Inter Tight", wght = c(400, 500, 600, 700))
 )
 custom_theme <- bslib::bs_add_rules(
   custom_theme,
-  "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  "@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap');
    
    :root {
-     --bs-font-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+     --bs-font-sans-serif: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
    }
    
    *, *::before, *::after {
-     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+     font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
      font-variant-numeric: tabular-nums;
    }
    
    body {
-     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+     font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
      font-variant-numeric: tabular-nums !important;
    }
    
@@ -125,7 +125,7 @@ custom_theme <- bslib::bs_add_rules(
      background-color: #2c5443; 
      color: #FFFFFF; 
      font-weight: bold;
-     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+     font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
    }
    .navbar {
        min-height: 56px !important;
@@ -143,7 +143,7 @@ custom_theme <- bslib::bs_add_rules(
        padding: 0;
        display: flex;
        align-items: center;
-       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
    }
    .navbar-brand img {
        height: 30px;
@@ -164,7 +164,7 @@ custom_theme <- bslib::bs_add_rules(
    }
    .form-control {
        height: 36px;
-       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
        font-variant-numeric: tabular-nums !important;
    }
    .detail-section {
@@ -175,21 +175,42 @@ custom_theme <- bslib::bs_add_rules(
    }
    /* DataTables specific styling */
    .dataTables_wrapper, .dataTables_wrapper * {
-       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
        font-variant-numeric: tabular-nums !important;
    }
    .dataTables_wrapper table td, .dataTables_wrapper table th {
-       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
        font-variant-numeric: tabular-nums !important;
    }
    /* Buttons */
    .btn {
-       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
        font-variant-numeric: tabular-nums !important;
    }
    /* Cards */
    .card, .card * {
-       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+       font-variant-numeric: tabular-nums !important;
+   }
+   
+   /* Leaflet map styling */
+   .leaflet-popup-content, .leaflet-popup-content * {
+       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+       font-variant-numeric: tabular-nums !important;
+   }
+   
+   .leaflet-tooltip, .leaflet-tooltip * {
+       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+       font-variant-numeric: tabular-nums !important;
+   }
+   
+   .leaflet-control, .leaflet-control * {
+       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+       font-variant-numeric: tabular-nums !important;
+   }
+   
+   .zoom-control {
+       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
        font-variant-numeric: tabular-nums !important;
    }"
 )
