@@ -20,7 +20,21 @@ build_plot_table <- function(plot_data, taxa_data, comm_data) {
 
   table_config <- list(
     column_defs = list(
-      list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
+      list(
+        targets = 0, orderable = FALSE, searchable = FALSE, width = "10%",
+        render = DT::JS(
+          "function(data, type, row, meta) {",
+          "  if(type === 'display') {",
+          "    if(!data || typeof data !== 'object') return '<span>No Data</span>';",
+          "    var code = data.code || '';",
+          "    var count = data.count || '';",
+          "    if(!code) return '<span>No Accession Code</span>';",
+          "    return '<div class=\"btn-group btn-group-sm\"><button class=\"btn btn-sm btn-outline-primary\" onclick=\"Shiny.setInputValue(\\'see_obs_details\\', \\'' + code + '\\', {priority: \\'event\\'});\">Details</button><button class=\"btn btn-sm btn-outline-secondary\" onclick=\"Shiny.setInputValue(\\'show_on_map\\', \\'' + count + '\\', {priority: \\'event\\'});\">Map</button></div>';",
+          "  }",
+          "  return data;",
+          "}"
+        )
+      ),
       list(targets = 1, width = "15%"),
       list(targets = 2, width = "10%"),
       list(
@@ -89,15 +103,12 @@ process_plot_data <- function(data_sources) {
   shiny::incProgress(0.1, detail = "Aggregating community data...")
   community_data_list <- create_community_vectors(plot_data, comm_data)
 
-  shiny::incProgress(0.1, detail = "Creating action buttons...")
-  action_buttons <- create_action_buttons(plot_data, list(
-    list(input_id = "see_details", label = "Details", class = "btn-outline-primary"),
-    list(input_id = "show_on_map", label = "Map", class = "btn-outline-secondary")
-  ))
+  shiny::incProgress(0.1, detail = "Aggregating button data...")
+  action_data_list <- create_plot_action_buttons(plot_data)
 
   shiny::incProgress(0.2, detail = "Building table...")
   data.frame(
-    "Actions" = action_buttons,
+    "Actions" = I(action_data_list),
     "Author Plot Code" = author_codes,
     "Location" = locations,
     "Top Taxa" = I(taxa_data_list),
@@ -109,11 +120,26 @@ process_plot_data <- function(data_sources) {
 
 # ---- Helpers below (internal module use only) ----
 
-#' Create HTML vectors for taxa lists
+#' Create action buttons for each plot row
+#' 
+#' @param plot_data Data frame of plot observation data
+#' @param actions List of action button specifications
+#' @returns A list of action button HTML strings for each row
+#' @noRd
+create_plot_action_buttons <- function(plot_data) {
+  lapply(seq_len(nrow(plot_data)), function(i) {
+    list(
+      code = plot_data$obs_accession_code[i],
+      count = i # This is used for indexing to get lat and long later, should we just add them now?
+    )
+  })
+}
+
+#' Create data vectors for taxa lists
 #'
 #' @param plot_data Data frame of plot observation data
 #' @param taxa_data Data frame of taxon observation data
-#' @returns A character vector of HTML strings for top taxa by max cover for each plot observation
+#' @returns A vector of lists containing top taxa ordered by max cover for each plot observation
 #'
 #' @importFrom dplyr left_join group_by summarize
 #' @noRd
@@ -138,6 +164,7 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
       ),
       .groups = "drop"
     )
+  # Match index to plot_data to avoid duplicates / NAs where no taxa exist
   result <- vector("list", nrow(plot_data))
   match_idx <- match(plot_data$observation_id, taxa_lists$observation_id)
   result[!is.na(match_idx)] <- taxa_lists$taxa[match_idx[!is.na(match_idx)]]
@@ -145,11 +172,11 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
   result
 }
 
-#' Create HTML vectors for community lists
+#' Create data vectors for community lists
 #'
 #' @param plot_data Data frame of plot observation data
 #' @param comm_data Data frame of community classification data
-#' @returns A character vector of HTML strings for community lists
+#' @returns A vector lists of community names and codes for each plot observation
 #'
 #' @importFrom dplyr left_join group_by summarize
 #' @noRd
@@ -172,6 +199,7 @@ create_community_vectors <- function(plot_data, comm_data) {
       ),
       .groups = "drop"
     )
+  # Match index to plot_data to avoid duplicates / NAs where no communities exist
   result <- vector("list", nrow(plot_data))
   match_idx <- match(plot_data$obs_accession_code, community_lists$obs_accession_code)
   result[!is.na(match_idx)] <- community_lists$communities[match_idx[!is.na(match_idx)]]

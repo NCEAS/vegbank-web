@@ -161,26 +161,24 @@ server <- function(input, output, session) {
   )
 
   # EVENT HANDLERS _________________________________________________________________________________
-  shiny::observeEvent(input$see_details,
-    {
-      i <- as.numeric(input$see_details)
-      selected_row_accession <- plot_data[i, "obs_accession_code"]
-      if (is.null(selected_row_accession) || is.na(selected_row_accession) || selected_row_accession == "") {
-        shiny::showNotification(paste0("No accession code found for row: ", i), type = "error")
-        return()
-      }
+  shiny::observeEvent(input$see_obs_details, {
+    accession_code <- input$see_obs_details
+    if (is.null(accession_code) || is.na(accession_code) || accession_code == "") {
+      shiny::showNotification(
+        paste0("No accession code found for that plot observation: ", accession_code),
+        type = "error"
+      )
+      return()
+    }
 
-      # TODO: Select the row in the datatable (with error handling)
+    # TODO: Select the row in the datatable (with error handling)
 
-      state$detail_type("plot-observation")
-      state$selected_accession(selected_row_accession)
-      state$details_open(TRUE)
-      # Open the details view
-      show_detail_view("plot-observation", selected_row_accession, output, session)
-    },
-    ignoreNULL = TRUE,
-    ignoreInit = TRUE
-  )
+    state$detail_type("plot-observation")
+    state$selected_accession(accession_code)
+    state$details_open(TRUE)
+    # Open the details view
+    show_detail_view("plot-observation", accession_code, output, session)
+  })
 
   shiny::observeEvent(input$show_on_map,
     {
@@ -188,7 +186,7 @@ server <- function(input, output, session) {
 
       # Check for valid index before proceeding
       if (is.na(i) || i < 1 || i > nrow(plot_data)) {
-        shiny::showNotification("Cannot show on map: Missing or invalid index for this row",
+        shiny::showNotification(paste0("Cannot show on map: Missing or invalid index for this row: ", i),
           type = "warning"
         )
         return()

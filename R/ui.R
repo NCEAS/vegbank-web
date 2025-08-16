@@ -49,7 +49,7 @@ ui <- function(req) {
 
       console.log('Updating detail type to:', type);
 
-      if (plotCards && communityConceptCards && communityClassificationCards && 
+      if (plotCards && communityConceptCards && communityClassificationCards &&
       taxonObservationCards && projectCards && partyCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
@@ -106,24 +106,24 @@ custom_theme <- bslib::bs_theme(
 custom_theme <- bslib::bs_add_rules(
   custom_theme,
   "@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap');
-   
+
    :root {
      --bs-font-sans-serif: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
    }
-   
+
    *, *::before, *::after {
      font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
      font-variant-numeric: tabular-nums;
    }
-   
+
    body {
      font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
      font-variant-numeric: tabular-nums !important;
    }
-   
-   .card-header { 
-     background-color: #2c5443; 
-     color: #FFFFFF; 
+
+   .card-header {
+     background-color: #2c5443;
+     color: #FFFFFF;
      font-weight: bold;
      font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
    }
@@ -192,23 +192,23 @@ custom_theme <- bslib::bs_add_rules(
        font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
        font-variant-numeric: tabular-nums !important;
    }
-   
+
    /* Leaflet map styling */
    .leaflet-popup-content, .leaflet-popup-content * {
        font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
        font-variant-numeric: tabular-nums !important;
    }
-   
+
    .leaflet-tooltip, .leaflet-tooltip * {
        font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
        font-variant-numeric: tabular-nums !important;
    }
-   
+
    .leaflet-control, .leaflet-control * {
        font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
        font-variant-numeric: tabular-nums !important;
    }
-   
+
    .zoom-control {
        font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
        font-variant-numeric: tabular-nums !important;
@@ -359,7 +359,7 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("taxon_aliases")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("taxon_identifiers"))
         ),
-        
+
         # Party Details Cards - wrapped in a div with class for toggling visibility
         htmltools::tags$div(
           id = "party-details-cards",

@@ -37,7 +37,7 @@ test_that("create_action_buttons generates output", {
 
   # Create actions exactly matching what's in process_plot_data
   actions <- list(
-    list(input_id = "see_details", label = "Details", class = "btn-outline-primary"),
+    list(input_id = "see_obs_details", label = "Details", class = "btn-outline-primary"),
     list(input_id = "show_on_map", label = "Map", class = "btn-outline-secondary")
   )
 
