@@ -620,7 +620,7 @@ create_detail_table <- function(details, col_names) {
       lapply(names(details), function(name) {
         display_name <- if (name %in% names(col_names)) col_names[[name]] else name
         htmltools::tags$tr(
-          htmltools::tags$td(htmltools::tags$strong(display_name)),
+          htmltools::tags$td(htmltools::tags$td(display_name)),
           htmltools::tags$td(class = "text-end", details[[name]])
         )
       })

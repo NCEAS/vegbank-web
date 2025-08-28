@@ -38,7 +38,7 @@ server <- function(input, output, session) {
   vegbankr::vb_debug()
   vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
 
-  shiny::withProgress(message = "Fetching data...", value = 0, {
+  shiny::withProgress(message = "Fetching data:", value = 0, {
     plot_data <- load_data_type(
       "plot observations",
       "inst/cached_data/plot_obs_minimal_all.RDS",

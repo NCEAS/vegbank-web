@@ -23,16 +23,23 @@ build_plot_table <- function(plot_data, taxa_data, comm_data) {
       list(
         targets = 0, orderable = FALSE, searchable = FALSE, width = "10%",
         render = DT::JS(
-          "function(data, type, row, meta) {",
-          "  if(type === 'display') {",
-          "    if(!data || typeof data !== 'object') return '<span>No Data</span>';",
-          "    var code = data.code || '';",
-          "    var count = data.count || '';",
-          "    if(!code) return '<span>No Accession Code</span>';",
-          "    return '<div class=\"btn-group btn-group-sm\"><button class=\"btn btn-sm btn-outline-primary\" onclick=\"Shiny.setInputValue(\\'see_obs_details\\', \\'' + code + '\\', {priority: \\'event\\'});\">Details</button><button class=\"btn btn-sm btn-outline-secondary\" onclick=\"Shiny.setInputValue(\\'show_on_map\\', \\'' + count + '\\', {priority: \\'event\\'});\">Map</button></div>';",
-          "  }",
-          "  return data;",
-          "}"
+          "
+          function(data, type, row, meta) {
+            if(type === 'display') {
+              if(!data || typeof data !== 'object') return '<span>No Data</span>';
+              var code = data.code || '';
+              var count = data.count || '';
+              if(!code) return '<span>No Accession Code</span>';
+              return (
+                '<div class=\"btn-group btn-group-sm\">' +
+                  '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"Shiny.setInputValue(\\'see_obs_details\\', \\'' + code + '\\', {priority: \\'event\\'});\">Details</button>' +
+                  '<button class=\"btn btn-sm btn-outline-secondary\" onclick=\"Shiny.setInputValue(\\'show_on_map\\', \\'' + count + '\\', {priority: \\'event\\'});\">Map</button>' +
+                '</div>'
+              );
+            }
+            return data;
+          }
+          "
         )
       ),
       list(targets = 1, width = "15%"),
@@ -40,37 +47,56 @@ build_plot_table <- function(plot_data, taxa_data, comm_data) {
       list(
         targets = 3, orderable = FALSE, searchable = TRUE, width = "25%",
         render = DT::JS(
-          "function(data, type, row, meta) {",
-          "  if(type === 'display') {",
-          "    if(!data || data.length === 0) return 'No Taxa Data';",
-          "    var items = data.map(function(t) {",
-          "      if(!t.code && !t.name) return '<div style=\"margin-bottom: 4px;\">No Taxa Data</div>';",
-          "      return '<div style=\"display: flex; justify-content: space-between; margin-bottom: 4px;\"><a href=\"#\" class=\"taxa-link\" onclick=\"Shiny.setInputValue(\\'taxa_link_click\\', \\'' + t.code + '\\', {priority: \\'event\\'});\" style=\"text-align: left;\">' + (t.name || 'Unnamed') + '</a><span style=\"text-align: right; margin-left: 10px; font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-variant-numeric: tabular-nums;\">' + (t.cover || 'No cover ') + '%</span></div>';",
-          "    });",
-          "    return '<div class=\"taxa-list\">' + items.join('') + '</div>';",
-          "  }",
-          "  return data;",
-          "}"
+          "
+          function(data, type, row, meta) {
+            if(type === 'display') {
+              if(!data || data.length === 0) return 'No Taxa Data';
+              var items = data.map(function(t) {
+                if(!t.code && !t.name)return '<div style=\"margin-bottom: 4px;\">No Taxa Data</div>';
+                return (
+                  '<div style=\"display: flex; justify-content: space-between; margin-bottom: 4px;\">' +
+                    '<a href=\"#\" class=\"taxa-link\" onclick=\"Shiny.setInputValue(\\'taxa_link_click\\', \\'' + t.code + '\\', {priority: \\'event\\'});\" style=\"text-align: left;\">' +
+                      (t.name || 'Unnamed') +
+                    '</a>' +
+                    '<span style=\"text-align: right; margin-left: 10px; font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-variant-numeric: tabular-nums;\">' +
+                      (t.cover || 'No cover ') + '%' +
+                    '</span>' +
+                  '</div>'
+                );
+              });
+              return '<div class=\"taxa-list\">' + items.join('') + '</div>';
+            }
+            return data;
+          }
+          "
         )
       ),
       list(
         targets = 4, width = "40%",
         render = DT::JS(
-          "function(data, type, row, meta) {",
-          "  if(type === 'display') {",
-          "    if(!data || data.length === 0) return 'No Community Data';",
-          "    var items = data.map(function(c) {",
-          "      if(!c.code && !c.name) return '<li>No Community Data</li>';",
-          "      return '<div style=\"margin-bottom: 4px;\"><a href=\"#\" class=\"comm-link\" onclick=\"Shiny.setInputValue(\\'comm_class_link_click\\', \\'' + c.code + '\\', {priority: \\'event\\'});\">' + (c.name || 'Unnamed') + '</a></div>';",
-          "    });",
-          "    return '<ul class=\"comm-list\">' + items.join('') + '</ul>';",
-          "  }",
-          "  return data;",
-          "}"
+          "
+          function(data, type, row, meta) {
+            if(type === 'display') {
+              if(!data || data.length === 0) return 'No Community Data';
+              var items = data.map(function(c) {
+                if(!c.code && !c.name) return '<div style=\"margin-bottom: 4px;\">No Community Data</div>';
+                return (
+                  '<div style=\"display: flex; margin-bottom: 4px;\">' +
+                    '<a href=\"#\" class=\"comm-link\" onclick=\"Shiny.setInputValue(\\'comm_class_link_click\\', \\'' + c.code + '\\', {priority: \\'event\\'});\">' +
+                      (c.name || 'Unnamed') +
+                    '</a>' +
+                  '</div>'
+                );
+              });
+              return '<div class=\"comm-list\">' + items.join('') + '</div>';
+            }
+            return data;
+          }
+          "
         )
       )
     ),
-    progress_message = "Processing plot table data"
+    progress_message = "Processing table data:"
   )
 
   create_table(
@@ -94,16 +120,16 @@ process_plot_data <- function(data_sources) {
   shiny::incProgress(0.2, detail = "Cleaning author observation codes")
   author_codes <- clean_column_data(plot_data, "author_plot_code")
 
-  shiny::incProgress(0.1, detail = "Cleaning location data")
+  shiny::incProgress(0.1, detail = "Cleaning locations")
   locations <- clean_column_data(plot_data, "state_province")
 
-  shiny::incProgress(0.1, detail = "Aggregating taxa data...")
+  shiny::incProgress(0.1, detail = "Compiling taxa...")
   taxa_data_list <- create_taxa_vectors(plot_data, taxa_data)
 
-  shiny::incProgress(0.1, detail = "Aggregating community data...")
+  shiny::incProgress(0.1, detail = "Compiling communities...")
   community_data_list <- create_community_vectors(plot_data, comm_data)
 
-  shiny::incProgress(0.1, detail = "Aggregating button data...")
+  shiny::incProgress(0.1, detail = "Compiling button data...")
   action_data_list <- create_plot_action_buttons(plot_data)
 
   shiny::incProgress(0.2, detail = "Building table...")
@@ -111,7 +137,7 @@ process_plot_data <- function(data_sources) {
     "Actions" = I(action_data_list),
     "Author Plot Code" = author_codes,
     "Location" = locations,
-    "Top Taxa" = I(taxa_data_list),
+    "Top Taxa by Cover %" = I(taxa_data_list),
     "Community" = I(community_data_list),
     stringsAsFactors = FALSE,
     check.names = FALSE

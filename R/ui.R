@@ -9,6 +9,12 @@
 ui <- function(req) {
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
+  # Ensure Inter font loads from CDN before any CSS
+  font_head <- htmltools::tags$head(
+    htmltools::tags$link(rel = "preconnect", href = "https://rsms.me/"),
+    htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css")
+  )
+
   navbar_with_search <- build_navbar()
   overlay <- build_detail_overlay()
 
@@ -84,7 +90,7 @@ ui <- function(req) {
   "
   ))
 
-  htmltools::tagList(navbar_with_search, overlay, script)
+  htmltools::tagList(font_head, navbar_with_search, overlay, script)
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
@@ -100,119 +106,88 @@ custom_theme <- bslib::bs_theme(
   info = "#2c5443",
   primary = "#72b9a2",
   secondary = "#72b9a2",
-  base_font = bslib::font_google("Inter Tight", wght = c(400, 500, 600, 700)),
-  heading_font = bslib::font_google("Inter Tight", wght = c(400, 500, 600, 700))
+  base_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
+  heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif")
 )
 custom_theme <- bslib::bs_add_rules(
   custom_theme,
-  "@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap');
+  "/* Inter font from rsms.me CDN */
+  @import url('https://rsms.me/inter/inter.css');
 
-   :root {
-     --bs-font-sans-serif: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-   }
+  :root {
+    font-family: Inter, sans-serif !important;
+    font-feature-settings: 'liga' 1, 'calt' 1;
+    --bs-font-sans-serif: Inter, sans-serif !important;
+  }
+  @supports (font-variation-settings: normal) {
+    :root { 
+      font-family: InterVariable, sans-serif !important;
+      --bs-font-sans-serif: InterVariable, sans-serif !important;
+    }
+  }
 
-   *, *::before, *::after {
-     font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-     font-variant-numeric: tabular-nums;
-   }
+  *, *::before, *::after {
+    font-family: Inter, sans-serif !important;
+    font-variant-numeric: tabular-nums slashed-zero !important;
+    font-feature-settings: 'tnum' 1, 'zero' 1, 'ss01' 1, 'ss02' 1, 'liga' 1, 'calt' 1 !important;
+  }
+  @supports (font-variation-settings: normal) {
+    *, *::before, *::after {
+      font-family: InterVariable, sans-serif !important;
+    }
+  }
 
-   body {
-     font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-     font-variant-numeric: tabular-nums !important;
-   }
-
-   .card-header {
-     background-color: #2c5443;
-     color: #FFFFFF;
-     font-weight: bold;
-     font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-   }
-   .navbar {
-       min-height: 56px !important;
-       display: flex;
-       align-items: center;
-   }
-   .navbar-nav {
-       display: flex;
-       align-items: center;
-       height: 100%;
-   }
-   .navbar-brand {
-       color: #2c5443 !important;
-       font-weight: bold;
-       padding: 0;
-       display: flex;
-       align-items: center;
-       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-   }
-   .navbar-brand img {
-       height: 30px;
-       margin-right: 10px;
-   }
-   .nav-item {
-       display: flex;
-       align-items: center;
-       height: 100%;
-   }
-   .navbar-form {
-       display: flex;
-       align-items: center;
-       margin-bottom: 5px;
-   }
-   .navbar-form .form-group {
-       margin: 0;
-   }
-   .form-control {
-       height: 36px;
-       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-       font-variant-numeric: tabular-nums !important;
-   }
-   .detail-section {
-       display: none;
-   }
-   #community-description p {
-       margin-bottom: 0.75rem;
-   }
-   /* DataTables specific styling */
-   .dataTables_wrapper, .dataTables_wrapper * {
-       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-       font-variant-numeric: tabular-nums !important;
-   }
-   .dataTables_wrapper table td, .dataTables_wrapper table th {
-       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-       font-variant-numeric: tabular-nums !important;
-   }
-   /* Buttons */
-   .btn {
-       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-       font-variant-numeric: tabular-nums !important;
-   }
-   /* Cards */
-   .card, .card * {
-       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-       font-variant-numeric: tabular-nums !important;
-   }
-
-   /* Leaflet map styling */
-   .leaflet-popup-content, .leaflet-popup-content * {
-       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-       font-variant-numeric: tabular-nums !important;
-   }
-
-   .leaflet-tooltip, .leaflet-tooltip * {
-       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-       font-variant-numeric: tabular-nums !important;
-   }
-
-   .leaflet-control, .leaflet-control * {
-       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-       font-variant-numeric: tabular-nums !important;
-   }
-
-   .zoom-control {
-       font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
-       font-variant-numeric: tabular-nums !important;
-   }"
+  .card-header {
+    background-color: #2c5443;
+    color: #FFFFFF;
+    font-weight: bold;
+  }
+  .navbar {
+      min-height: 56px !important;
+      display: flex;
+      align-items: center;
+  }
+  .navbar-nav {
+      display: flex;
+      align-items: center;
+      height: 100%;
+  }
+  .navbar-brand {
+      color: #2c5443 !important;
+      font-weight: bold;
+      padding: 0;
+      display: flex;
+      align-items: center;
+  }
+  .navbar-brand img {
+      height: 30px;
+      margin-right: 10px;
+  }
+  .nav-item {
+      display: flex;
+      align-items: center;
+      height: 100%;
+  }
+  .navbar-form {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+  }
+  .navbar-form .form-group {
+      margin: 0;
+  }
+  .form-control {
+      height: 36px;
+  }
+  .detail-section {
+      display: none;
+  }
+  #community-description p {
+      margin-bottom: 0.75rem;
+  }
+  .dataTables_wrapper table th {
+      font-weight: 500 !important;
+  }"
 )
 
 #' Build Navigation Bar for Vegbank UI
