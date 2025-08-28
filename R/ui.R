@@ -188,6 +188,10 @@ custom_theme <- bslib::bs_add_rules(
   }
   .dataTables_wrapper table th {
       font-weight: 500 !important;
+  }
+  .datatables .dataTables_wrapper div.dataTables_info {
+      padding-top: 0.75rem;
+      font-size: 0.875rem !important;
   }"
 )
 
