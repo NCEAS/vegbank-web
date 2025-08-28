@@ -294,7 +294,7 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
           bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
           bslib::card(bslib::card_header("Communities"), shiny::uiOutput("communities_details")),
-          bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxa_details"))
+          bslib::card(bslib::card_header("Taxa Observed"), shiny::uiOutput("taxa_details"))
         ),
 
         # Community Details Cards - wrapped in a div with class for toggling visibility
