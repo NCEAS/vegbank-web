@@ -107,7 +107,8 @@ custom_theme <- bslib::bs_theme(
   primary = "#72b9a2",
   secondary = "#72b9a2",
   base_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
-  heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif")
+  heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
+  "font-size-base" = "0.875rem"
 )
 custom_theme <- bslib::bs_add_rules(
   custom_theme,
