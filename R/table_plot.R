@@ -52,7 +52,7 @@ build_plot_table <- function(plot_data, taxa_data, comm_data) {
             if(type === 'display') {
               if(!data || data.length === 0) return 'No Taxa Data';
               var items = data.map(function(t) {
-                if(!t.code && !t.name)return '<div style=\"margin-bottom: 4px;\">No Taxa Data</div>';
+                if(!t.code && !t.name) return '<div style=\"margin-bottom: 4px;\">No Taxa Data</div>';
                 return (
                   '<div style=\"display: flex; justify-content: space-between; margin-bottom: 4px;\">' +
                     '<a href=\"#\" class=\"taxa-link\" onclick=\"Shiny.setInputValue(\\'taxa_link_click\\', \\'' + t.code + '\\', {priority: \\'event\\'});\" style=\"text-align: left;\">' +
