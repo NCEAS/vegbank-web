@@ -183,7 +183,7 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
             list(
               code = .data$taxon_observation_accession_code[i],
               name = .data$int_curr_plant_sci_name_no_auth[i],
-              cover = round(.data$max_cover[i], 2)
+              cover = format(round(.data$max_cover[i], 2), nsmall = 2)
             )
           })
         }
