@@ -52,7 +52,7 @@ build_plot_table <- function(plot_data, taxa_data, comm_data) {
             if(type === 'display') {
               if(!data || data.length === 0) return 'No Taxa Data';
               var items = data.map(function(t) {
-                if(!t.code && !t.name)return '<div style=\"margin-bottom: 4px;\">No Taxa Data</div>';
+                if(!t.code && !t.name) return '<div style=\"margin-bottom: 4px;\">No Taxa Data</div>';
                 return (
                   '<div style=\"display: flex; justify-content: space-between; margin-bottom: 4px;\">' +
                     '<a href=\"#\" class=\"taxa-link\" onclick=\"Shiny.setInputValue(\\'taxa_link_click\\', \\'' + t.code + '\\', {priority: \\'event\\'});\" style=\"text-align: left;\">' +
@@ -156,12 +156,13 @@ create_plot_action_buttons <- function(plot_data) {
   lapply(seq_len(nrow(plot_data)), function(i) {
     list(
       code = plot_data$obs_accession_code[i],
-      count = i # This is used for indexing to get lat and long later, should we just add them now?
+      count = i,
+      # TODO: If lat/long are needed for downstream use, add them here from plot_data$lat[i] and plot_data$long[i]
     )
   })
 }
 
-#' TODO: Can this be called on each page render via a callback or passed up to the api?
+#' TODO: Should the create_taxa_vectors() function be called on each page render via a callback, or should its results be passed up to the API for more efficient data handling?
 #' Create data vectors for taxa lists
 #'
 #' @param plot_data Data frame of plot observation data
