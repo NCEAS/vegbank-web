@@ -161,6 +161,7 @@ create_plot_action_buttons <- function(plot_data) {
   })
 }
 
+#' TODO: Can this be called on each page render via a callback or passed up to the api?
 #' Create data vectors for taxa lists
 #'
 #' @param plot_data Data frame of plot observation data
@@ -169,7 +170,6 @@ create_plot_action_buttons <- function(plot_data) {
 #'
 #' @importFrom dplyr left_join group_by summarize
 #' @noRd
-#' TODO: Can this be done on each page render on a callback?
 create_taxa_vectors <- function(plot_data, taxa_data) {
   merged <- dplyr::left_join(plot_data, taxa_data, by = "observation_id")
   taxa_lists <- merged |>
