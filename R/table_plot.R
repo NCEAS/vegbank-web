@@ -162,7 +162,7 @@ create_plot_action_buttons <- function(plot_data) {
   })
 }
 
-#' TODO: Can this be called on each page render via a callback or passed up to the api?
+#' TODO: Should the create_taxa_vectors() function be called on each page render via a callback, or should its results be passed up to the API for more efficient data handling?
 #' Create data vectors for taxa lists
 #'
 #' @param plot_data Data frame of plot observation data
