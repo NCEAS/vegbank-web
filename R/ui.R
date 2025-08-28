@@ -112,10 +112,7 @@ custom_theme <- bslib::bs_theme(
 )
 custom_theme <- bslib::bs_add_rules(
   custom_theme,
-  "/* Inter font from rsms.me CDN */
-  @import url('https://rsms.me/inter/inter.css');
-
-  :root {
+  ":root {
     font-family: Inter, sans-serif !important;
     font-feature-settings: 'liga' 1, 'calt' 1;
     --bs-font-sans-serif: Inter, sans-serif !important;
