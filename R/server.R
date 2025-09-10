@@ -12,7 +12,7 @@
 #' @importFrom shiny reactiveVal observeEvent observe req renderUI renderText showNotification
 #'             updateNavbarPage invalidateLater reactiveValuesToList onBookmark onBookmarked
 #'             onRestore
-#' @importFrom DT renderDataTable datatable dataTableProxy selectRows
+#' @importFrom DT renderDataTable datatable dataTableProxy
 #' @importFrom htmltools tags
 #' @importFrom leaflet renderLeaflet leafletProxy
 #' @importFrom utils head
@@ -94,10 +94,16 @@ server <- function(input, output, session) {
     # Clear previous selections from all tables
     clear_all_table_selections()
     
-    # Select the row in the specified table
-    if (!is.null(row_index) && !is.na(row_index)) {
-      DT::dataTableProxy(table_id, session) |>
-        DT::selectRows(row_index)
+    # Select the row in the specified table using our custom programmatic method
+    if (!is.null(row_index) && !is.na(row_index) && is.numeric(row_index) && row_index > 0) {
+      # Convert to 0-based index for JavaScript (DT uses 0-based indexing)
+      js_index <- as.integer(row_index - 1)
+      
+      # Send the selection message
+      session$sendCustomMessage("selectTableRow", list(
+        tableId = table_id,
+        rowIndex = js_index
+      ))
       
       # Update state
       state$selected_table(table_id)
@@ -109,9 +115,12 @@ server <- function(input, output, session) {
   clear_all_table_selections <- function() {
     table_ids <- c("plot_table", "comm_table", "proj_table", "party_table")
     
+    # Send clear messages for all tables
     for (table_id in table_ids) {
-      DT::dataTableProxy(table_id, session) |>
-        DT::selectRows(NULL)
+      session$sendCustomMessage("selectTableRow", list(
+        tableId = table_id,
+        rowIndex = NULL
+      ))
     }
     
     # Clear state
@@ -192,72 +201,7 @@ server <- function(input, output, session) {
     ignoreInit = TRUE
   )
 
-  # TABLE SELECTION OBSERVERS ____________________________________________________________________
-  # Prevent user-initiated selections that don't match programmatic selections
-  
-  shiny::observeEvent(input$plot_table_rows_selected, {
-    if (!is.null(state$selected_table()) && state$selected_table() == "plot_table") {
-      # Allow the programmatic selection
-      if (!is.null(state$selected_row()) && 
-          !identical(input$plot_table_rows_selected, state$selected_row())) {
-        # Reset to programmatic selection
-        DT::dataTableProxy("plot_table", session) |>
-          DT::selectRows(state$selected_row())
-      }
-    } else if (!is.null(input$plot_table_rows_selected)) {
-      # Clear any user selection if not programmatically set
-      DT::dataTableProxy("plot_table", session) |>
-        DT::selectRows(NULL)
-    }
-  }, ignoreNULL = FALSE)
-  
-  shiny::observeEvent(input$comm_table_rows_selected, {
-    if (!is.null(state$selected_table()) && state$selected_table() == "comm_table") {
-      # Allow the programmatic selection
-      if (!is.null(state$selected_row()) && 
-          !identical(input$comm_table_rows_selected, state$selected_row())) {
-        # Reset to programmatic selection
-        DT::dataTableProxy("comm_table", session) |>
-          DT::selectRows(state$selected_row())
-      }
-    } else if (!is.null(input$comm_table_rows_selected)) {
-      # Clear any user selection if not programmatically set
-      DT::dataTableProxy("comm_table", session) |>
-        DT::selectRows(NULL)
-    }
-  }, ignoreNULL = FALSE)
-  
-  shiny::observeEvent(input$proj_table_rows_selected, {
-    if (!is.null(state$selected_table()) && state$selected_table() == "proj_table") {
-      # Allow the programmatic selection
-      if (!is.null(state$selected_row()) && 
-          !identical(input$proj_table_rows_selected, state$selected_row())) {
-        # Reset to programmatic selection
-        DT::dataTableProxy("proj_table", session) |>
-          DT::selectRows(state$selected_row())
-      }
-    } else if (!is.null(input$proj_table_rows_selected)) {
-      # Clear any user selection if not programmatically set
-      DT::dataTableProxy("proj_table", session) |>
-        DT::selectRows(NULL)
-    }
-  }, ignoreNULL = FALSE)
-  
-  shiny::observeEvent(input$party_table_rows_selected, {
-    if (!is.null(state$selected_table()) && state$selected_table() == "party_table") {
-      # Allow the programmatic selection
-      if (!is.null(state$selected_row()) && 
-          !identical(input$party_table_rows_selected, state$selected_row())) {
-        # Reset to programmatic selection
-        DT::dataTableProxy("party_table", session) |>
-          DT::selectRows(state$selected_row())
-      }
-    } else if (!is.null(input$party_table_rows_selected)) {
-      # Clear any user selection if not programmatically set
-      DT::dataTableProxy("party_table", session) |>
-        DT::selectRows(NULL)
-    }
-  }, ignoreNULL = FALSE)
+
 
   # EVENT HANDLERS _________________________________________________________________________________
   shiny::observeEvent(input$see_obs_details, {
@@ -337,6 +281,12 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      # Find and select the row in the plot table
+      row_index <- which(plot_data$obs_accession_code == accession_code)
+      if (length(row_index) > 0) {
+        select_table_row("plot_table", row_index[1])
+      }
+      
       state$detail_type("plot-observation")
       state$selected_accession(accession_code)
       state$details_open(TRUE)

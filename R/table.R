@@ -26,11 +26,11 @@ create_table <- function(data_sources, required_sources, process_function, table
       # Default column definitions
       column_defs <- table_config$column_defs %||% list()
 
-      DT::datatable(
+      dt_table <- DT::datatable(
         display_data,
         rownames = FALSE,
         escape = FALSE,
-        selection = list(mode = "single", target = "row", selected = NULL),
+        selection = "none",
         options = list(
           dom = table_config$dom %||% "frtip",
           pageLength = table_config$page_length %||% 100,
@@ -39,9 +39,82 @@ create_table <- function(data_sources, required_sources, process_function, table
           scrollCollapse = TRUE,
           deferRender = TRUE,
           processing = TRUE,
-          columnDefs = column_defs
+          columnDefs = column_defs,
+          initComplete = DT::JS("
+            function(settings, json) {
+              var table = this.api();
+              var tableId = $(table.table().node()).attr('id');
+              
+              // Store programmatic selection flag
+              table.programmaticSelection = false;
+              
+              // Completely disable DataTables selection events
+              table.off('select deselect');
+              
+              // Prevent all row selection interactions
+              $(table.table().body()).off('click', 'tr');
+              $(table.table().body()).on('click', 'tr', function(e) {
+                // Allow clicks on buttons and links within rows
+                if ($(e.target).is('button, a, input') || $(e.target).closest('button, a').length > 0) {
+                  return true;
+                }
+                // Prevent row selection
+                e.stopPropagation();
+                e.preventDefault();
+                return false;
+              });
+              
+              // Override row selection completely
+              table.rows().select = function() { return this; };
+              table.rows().deselect = function() { return this; };
+              table.row().select = function() { return this; };
+              table.row().deselect = function() { return this; };
+              
+              // Add custom selection method that manually adds/removes CSS classes
+              table.selectRowsProgrammatic = function(rowIndex) {
+                // Remove selection class from all rows across all pages
+                $(this.table().body()).find('tr').removeClass('selected');
+                
+                if (rowIndex !== null && rowIndex !== undefined) {
+                  // Get the row by data index (not display index)
+                  var rowNode = this.row(rowIndex).node();
+                  if (rowNode) {
+                    $(rowNode).addClass('selected');
+                    
+                    // If the row is not on the current page, navigate to it
+                    var pageInfo = this.page.info();
+                    var rowPage = Math.floor(rowIndex / pageInfo.length);
+                    if (rowPage !== pageInfo.page) {
+                      this.page(rowPage).draw(false);
+                    }
+                  }
+                }
+              };
+              
+              // Store table reference globally for message handler
+              if (!window.vegbankTables) {
+                window.vegbankTables = {};
+              }
+              
+              // Store under the actual table ID
+              window.vegbankTables[tableId] = table;
+              
+              // Also try to find and store under the expected Shiny output ID
+              var containerDiv = $(table.table().node()).closest('div[id]');
+              if (containerDiv.length) {
+                var containerId = containerDiv.attr('id');
+                if (containerId && containerId !== tableId) {
+                  window.vegbankTables[containerId] = table;
+                }
+              }
+              
+              console.log('Registered table with IDs:', tableId, containerDiv.length ? containerDiv.attr('id') : 'no container');
+            }
+          ")
         )
       )
+      
+      return(dt_table)
     },
     message = table_config$progress_message %||% "Processing table data",
     value = 0

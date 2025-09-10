@@ -35,6 +35,59 @@ ui <- function(req) {
       }
     });
 
+    Shiny.addCustomMessageHandler('selectTableRow', function(message) {
+      setTimeout(function() {
+        try {
+          var table = null;
+          
+          console.log('Trying to select row in table:', message.tableId);
+          console.log('Current registry:', Object.keys(window.vegbankTables || {}));
+          
+          // Try to find the table in the global registry
+          if (window.vegbankTables && window.vegbankTables[message.tableId]) {
+            table = window.vegbankTables[message.tableId];
+            console.log('Found table in registry');
+          } else {
+            // Fallback: try to find the table by ID in the DOM
+            var tableElement = $('#' + message.tableId + ' table');
+            console.log('Looking for DOM element:', '#' + message.tableId + ' table', 'found:', tableElement.length);
+            
+            if (tableElement.length && $.fn.DataTable.isDataTable(tableElement)) {
+              table = tableElement.DataTable();
+              console.log('Found DataTable via DOM fallback');
+              
+              // Add the programmatic selection method if missing
+              if (!table.selectRowsProgrammatic) {
+                table.selectRowsProgrammatic = function(rowIndex) {
+                  $(this.table().body()).find('tr').removeClass('selected');
+                  if (rowIndex !== null && rowIndex !== undefined) {
+                    $(this.row(rowIndex).node()).addClass('selected');
+                  }
+                };
+                console.log('Added programmatic selection method');
+              }
+              
+              // Add to registry for future use
+              if (!window.vegbankTables) window.vegbankTables = {};
+              window.vegbankTables[message.tableId] = table;
+              console.log('Added table to registry');
+            }
+          }
+          
+          if (table && typeof table.selectRowsProgrammatic === 'function') {
+            table.selectRowsProgrammatic(message.rowIndex);
+            console.log('Successfully selected row', message.rowIndex, 'in table', message.tableId);
+          } else {
+            console.warn('Table not found or method not available for:', message.tableId);
+            console.log('Available tables:', Object.keys(window.vegbankTables || {}));
+            console.log('Table object:', table);
+          }
+        } catch (e) {
+          console.warn('Could not select table row:', e);
+        }
+      }, 200);
+    });
+
     $(document).ready(function() {
       var params = new URLSearchParams(window.location.search);
       if(params.get('details_open') === 'true') {
