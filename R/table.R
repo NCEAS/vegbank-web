@@ -30,7 +30,7 @@ create_table <- function(data_sources, required_sources, process_function, table
         display_data,
         rownames = FALSE,
         escape = FALSE,
-        selection = list(mode = "single", target = "row", selectable = FALSE),
+        selection = list(mode = "single", target = "row", selected = NULL),
         options = list(
           dom = table_config$dom %||% "frtip",
           pageLength = table_config$page_length %||% 100,

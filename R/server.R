@@ -31,7 +31,9 @@ server <- function(input, output, session) {
     details_open = shiny::reactiveVal(FALSE),
     map_center_lat = shiny::reactiveVal(39.8283), # Default latitude
     map_center_lng = shiny::reactiveVal(-98.5795), # Default longitude
-    map_zoom = shiny::reactiveVal(2) # Default zoom
+    map_zoom = shiny::reactiveVal(2), # Default zoom
+    selected_table = shiny::reactiveVal(NULL), # Track which table has selection
+    selected_row = shiny::reactiveVal(NULL) # Track which row is selected
   )
 
   # Load data from vegbankr
@@ -85,6 +87,36 @@ server <- function(input, output, session) {
         data$latitude[idx],
         paste("Plot", data$author_obs_code[idx], "is here!")
       )
+  }
+
+  # Helper function to select a row in a table and clear others
+  select_table_row <- function(table_id, row_index) {
+    # Clear previous selections from all tables
+    clear_all_table_selections()
+    
+    # Select the row in the specified table
+    if (!is.null(row_index) && !is.na(row_index)) {
+      DT::dataTableProxy(table_id, session) |>
+        DT::selectRows(row_index)
+      
+      # Update state
+      state$selected_table(table_id)
+      state$selected_row(row_index)
+    }
+  }
+
+  # Helper function to clear all table selections
+  clear_all_table_selections <- function() {
+    table_ids <- c("plot_table", "comm_table", "proj_table", "party_table")
+    
+    for (table_id in table_ids) {
+      DT::dataTableProxy(table_id, session) |>
+        DT::selectRows(NULL)
+    }
+    
+    # Clear state
+    state$selected_table(NULL)
+    state$selected_row(NULL)
   }
 
   # RENDER UI ELEMENTS __________________________________________________________________
@@ -160,6 +192,73 @@ server <- function(input, output, session) {
     ignoreInit = TRUE
   )
 
+  # TABLE SELECTION OBSERVERS ____________________________________________________________________
+  # Prevent user-initiated selections that don't match programmatic selections
+  
+  shiny::observeEvent(input$plot_table_rows_selected, {
+    if (!is.null(state$selected_table()) && state$selected_table() == "plot_table") {
+      # Allow the programmatic selection
+      if (!is.null(state$selected_row()) && 
+          !identical(input$plot_table_rows_selected, state$selected_row())) {
+        # Reset to programmatic selection
+        DT::dataTableProxy("plot_table", session) |>
+          DT::selectRows(state$selected_row())
+      }
+    } else if (!is.null(input$plot_table_rows_selected)) {
+      # Clear any user selection if not programmatically set
+      DT::dataTableProxy("plot_table", session) |>
+        DT::selectRows(NULL)
+    }
+  }, ignoreNULL = FALSE)
+  
+  shiny::observeEvent(input$comm_table_rows_selected, {
+    if (!is.null(state$selected_table()) && state$selected_table() == "comm_table") {
+      # Allow the programmatic selection
+      if (!is.null(state$selected_row()) && 
+          !identical(input$comm_table_rows_selected, state$selected_row())) {
+        # Reset to programmatic selection
+        DT::dataTableProxy("comm_table", session) |>
+          DT::selectRows(state$selected_row())
+      }
+    } else if (!is.null(input$comm_table_rows_selected)) {
+      # Clear any user selection if not programmatically set
+      DT::dataTableProxy("comm_table", session) |>
+        DT::selectRows(NULL)
+    }
+  }, ignoreNULL = FALSE)
+  
+  shiny::observeEvent(input$proj_table_rows_selected, {
+    if (!is.null(state$selected_table()) && state$selected_table() == "proj_table") {
+      # Allow the programmatic selection
+      if (!is.null(state$selected_row()) && 
+          !identical(input$proj_table_rows_selected, state$selected_row())) {
+        # Reset to programmatic selection
+        DT::dataTableProxy("proj_table", session) |>
+          DT::selectRows(state$selected_row())
+      }
+    } else if (!is.null(input$proj_table_rows_selected)) {
+      # Clear any user selection if not programmatically set
+      DT::dataTableProxy("proj_table", session) |>
+        DT::selectRows(NULL)
+    }
+  }, ignoreNULL = FALSE)
+  
+  shiny::observeEvent(input$party_table_rows_selected, {
+    if (!is.null(state$selected_table()) && state$selected_table() == "party_table") {
+      # Allow the programmatic selection
+      if (!is.null(state$selected_row()) && 
+          !identical(input$party_table_rows_selected, state$selected_row())) {
+        # Reset to programmatic selection
+        DT::dataTableProxy("party_table", session) |>
+          DT::selectRows(state$selected_row())
+      }
+    } else if (!is.null(input$party_table_rows_selected)) {
+      # Clear any user selection if not programmatically set
+      DT::dataTableProxy("party_table", session) |>
+        DT::selectRows(NULL)
+    }
+  }, ignoreNULL = FALSE)
+
   # EVENT HANDLERS _________________________________________________________________________________
   shiny::observeEvent(input$see_obs_details, {
     accession_code <- input$see_obs_details
@@ -171,7 +270,11 @@ server <- function(input, output, session) {
       return()
     }
 
-    # TODO: Select the row in the datatable (with error handling)
+    # Find and select the row in the plot table
+    row_index <- which(plot_data$obs_accession_code == accession_code)
+    if (length(row_index) > 0) {
+      select_table_row("plot_table", row_index[1])
+    }
 
     state$detail_type("plot-observation")
     state$selected_accession(accession_code)
@@ -227,6 +330,7 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$close_details, {
     state$details_open(FALSE)
+    clear_all_table_selections()
     session$doBookmark()
   })
 
@@ -246,6 +350,19 @@ server <- function(input, output, session) {
       shiny::showNotification(paste0("No accession code found for that community classification"), type = "error")
       return()
     }
+    
+    # Find the plot row that contains this community classification
+    # We need to look through the community data to find which plot observation has this classification
+    comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
+    if (length(comm_class_row) > 0) {
+      # Get the plot observation accession code from the community classification
+      plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
+      plot_row_index <- which(plot_data$obs_accession_code == plot_obs_code)
+      if (length(plot_row_index) > 0) {
+        select_table_row("plot_table", plot_row_index[1])
+      }
+    }
+    
     state$detail_type("community-classification")
     state$selected_accession(accession_code)
     state$details_open(TRUE)
@@ -262,6 +379,12 @@ server <- function(input, output, session) {
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      # Find and select the row in the community table
+      row_index <- which(comm_concept_data$accession_code == accession_code)
+      if (length(row_index) > 0) {
+        select_table_row("comm_table", row_index[1])
+      }
+      
       state$detail_type("community-concept")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
@@ -275,6 +398,18 @@ server <- function(input, output, session) {
       shiny::showNotification(paste0("No accession code found for that taxon observation"), type = "error")
       return()
     }
+    
+    # Find the plot row that contains this taxon observation
+    taxa_row <- which(taxa_data$taxon_observation_accession_code == accession_code)
+    if (length(taxa_row) > 0) {
+      # Get the observation_id from the taxon data and find the corresponding plot row
+      observation_id <- taxa_data$observation_id[taxa_row[1]]
+      plot_row_index <- which(plot_data$observation_id == observation_id)
+      if (length(plot_row_index) > 0) {
+        select_table_row("plot_table", plot_row_index[1])
+      }
+    }
+    
     state$detail_type("taxon-observation")
     state$selected_accession(accession_code)
     state$details_open(TRUE)
@@ -291,6 +426,12 @@ server <- function(input, output, session) {
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      # Find and select the row in the project table
+      row_index <- which(project_data$project_accession_code == accession_code)
+      if (length(row_index) > 0) {
+        select_table_row("proj_table", row_index[1])
+      }
+      
       state$detail_type("project")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
@@ -308,6 +449,12 @@ server <- function(input, output, session) {
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
+      # Find and select the row in the party table
+      row_index <- which(party_data$party_accession_code == accession_code)
+      if (length(row_index) > 0) {
+        select_table_row("party_table", row_index[1])
+      }
+      
       state$detail_type("party")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
@@ -357,6 +504,55 @@ server <- function(input, output, session) {
         state$detail_type(context$values$detail_type)
         state$selected_accession(context$values$selected_accession)
         state$details_open(TRUE)
+        
+        # Re-select the appropriate row when restoring
+        accession_code <- state$selected_accession()
+        detail_type <- state$detail_type()
+        
+        if (!is.null(accession_code) && !is.null(detail_type)) {
+          if (detail_type == "plot-observation") {
+            row_index <- which(plot_data$obs_accession_code == accession_code)
+            if (length(row_index) > 0) {
+              select_table_row("plot_table", row_index[1])
+            }
+          } else if (detail_type == "community-concept") {
+            row_index <- which(comm_concept_data$accession_code == accession_code)
+            if (length(row_index) > 0) {
+              select_table_row("comm_table", row_index[1])
+            }
+          } else if (detail_type == "community-classification") {
+            # Find the plot row that contains this community classification
+            comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
+            if (length(comm_class_row) > 0) {
+              plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
+              plot_row_index <- which(plot_data$obs_accession_code == plot_obs_code)
+              if (length(plot_row_index) > 0) {
+                select_table_row("plot_table", plot_row_index[1])
+              }
+            }
+          } else if (detail_type == "taxon-observation") {
+            # Find the plot row that contains this taxon observation
+            taxa_row <- which(taxa_data$taxon_observation_accession_code == accession_code)
+            if (length(taxa_row) > 0) {
+              observation_id <- taxa_data$observation_id[taxa_row[1]]
+              plot_row_index <- which(plot_data$observation_id == observation_id)
+              if (length(plot_row_index) > 0) {
+                select_table_row("plot_table", plot_row_index[1])
+              }
+            }
+          } else if (detail_type == "project") {
+            row_index <- which(project_data$project_accession_code == accession_code)
+            if (length(row_index) > 0) {
+              select_table_row("proj_table", row_index[1])
+            }
+          } else if (detail_type == "party") {
+            row_index <- which(party_data$party_accession_code == accession_code)
+            if (length(row_index) > 0) {
+              select_table_row("party_table", row_index[1])
+            }
+          }
+        }
+        
         show_detail_view(
           state$detail_type(),
           state$selected_accession(),
