@@ -9,6 +9,12 @@
 ui <- function(req) {
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
+  # Ensure Inter font loads from CDN before any CSS
+  font_head <- htmltools::tags$head(
+    htmltools::tags$link(rel = "preconnect", href = "https://rsms.me/"),
+    htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css")
+  )
+
   navbar_with_search <- build_navbar()
   overlay <- build_detail_overlay()
 
@@ -49,7 +55,7 @@ ui <- function(req) {
 
       console.log('Updating detail type to:', type);
 
-      if (plotCards && communityConceptCards && communityClassificationCards && 
+      if (plotCards && communityConceptCards && communityClassificationCards &&
       taxonObservationCards && projectCards && partyCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
@@ -84,7 +90,7 @@ ui <- function(req) {
   "
   ))
 
-  htmltools::tagList(navbar_with_search, overlay, script)
+  htmltools::tagList(font_head, navbar_with_search, overlay, script)
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
@@ -100,55 +106,90 @@ custom_theme <- bslib::bs_theme(
   info = "#2c5443",
   primary = "#72b9a2",
   secondary = "#72b9a2",
-  base_font = bslib::font_google("Inter"),
-  heading_font = bslib::font_google("Inter")
+  base_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
+  heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
+  "font-size-base" = "0.875rem"
 )
 custom_theme <- bslib::bs_add_rules(
   custom_theme,
-  ".card-header { background-color: #2c5443; color: #FFFFFF; font-weight: bold; }
-     .navbar {
-         min-height: 56px !important;
-         display: flex;
-         align-items: center;
-     }
-     .navbar-nav {
-         display: flex;
-         align-items: center;
-         height: 100%;
-     }
-     .navbar-brand {
-         color: #2c5443 !important;
-         font-weight: bold;
-         padding: 0;
-         display: flex;
-         align-items: center;
-     }
-     .navbar-brand img {
-         height: 30px;
-         margin-right: 10px;
-     }
-     .nav-item {
-         display: flex;
-         align-items: center;
-         height: 100%;
-     }
-     .navbar-form {
-         display: flex;
-         align-items: center;
-         margin-bottom: 5px;
-     }
-     .navbar-form .form-group {
-         margin: 0;
-     }
-     .form-control {
-         height: 36px;
-     }
-     .detail-section {
-         display: none; /* Hide by default */
-     }
-     #community-description p {
-         margin-bottom: 0.75rem;
-     }"
+  ":root {
+    font-family: Inter, sans-serif !important;
+    font-feature-settings: 'liga' 1, 'calt' 1;
+    --bs-font-sans-serif: Inter, sans-serif !important;
+  }
+  @supports (font-variation-settings: normal) {
+    :root { 
+      font-family: InterVariable, sans-serif !important;
+      --bs-font-sans-serif: InterVariable, sans-serif !important;
+    }
+  }
+
+  *, *::before, *::after {
+    font-family: Inter, sans-serif !important;
+    font-variant-numeric: tabular-nums slashed-zero !important;
+    font-feature-settings: 'tnum' 1, 'zero' 1, 'ss01' 1, 'ss02' 1, 'liga' 1, 'calt' 1 !important;
+  }
+  @supports (font-variation-settings: normal) {
+    *, *::before, *::after {
+      font-family: InterVariable, sans-serif !important;
+    }
+  }
+
+  .card-header {
+    background-color: #2c5443;
+    color: #FFFFFF;
+    font-weight: bold;
+  }
+  .navbar {
+      min-height: 56px !important;
+      display: flex;
+      align-items: center;
+  }
+  .navbar-nav {
+      display: flex;
+      align-items: center;
+      height: 100%;
+  }
+  .navbar-brand {
+      color: #2c5443 !important;
+      font-weight: bold;
+      padding: 0;
+      display: flex;
+      align-items: center;
+  }
+  .navbar-brand img {
+      height: 30px;
+      margin-right: 10px;
+  }
+  .nav-item {
+      display: flex;
+      align-items: center;
+      height: 100%;
+  }
+  .navbar-form {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+  }
+  .navbar-form .form-group {
+      margin: 0;
+  }
+  .form-control {
+      height: 36px;
+  }
+  .detail-section {
+      display: none;
+  }
+  #community-description p {
+      margin-bottom: 0.75rem;
+  }
+  .dataTables_wrapper table th {
+      font-weight: 500 !important;
+  }
+  .datatables .dataTables_wrapper div.dataTables_info {
+      padding-top: 0.75rem;
+      font-size: 0.875rem !important;
+  }"
 )
 
 #' Build Navigation Bar for Vegbank UI
@@ -254,7 +295,7 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
           bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
           bslib::card(bslib::card_header("Communities"), shiny::uiOutput("communities_details")),
-          bslib::card(bslib::card_header("Top Taxa"), shiny::uiOutput("taxa_details"))
+          bslib::card(bslib::card_header("Taxa Observed"), shiny::uiOutput("taxa_details"))
         ),
 
         # Community Details Cards - wrapped in a div with class for toggling visibility
@@ -295,7 +336,7 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("taxon_aliases")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("taxon_identifiers"))
         ),
-        
+
         # Party Details Cards - wrapped in a div with class for toggling visibility
         htmltools::tags$div(
           id = "party-details-cards",

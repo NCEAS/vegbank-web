@@ -17,9 +17,9 @@ build_community_table <- function(community_data) {
   table_config <- list(
     column_defs = list(
       list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
-      list(targets = 1, width = "30%"),
-      list(targets = 2, width = "20%"),
-      list(targets = 3, width = "40%")
+      list(targets = 1, width = "50%"),
+      list(targets = 2, width = "10%", className = "dt-right"),
+      list(targets = 3, width = "30%")
     ),
     progress_message = "Processing community table data"
   )

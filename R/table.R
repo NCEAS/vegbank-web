@@ -34,7 +34,7 @@ create_table <- function(data_sources, required_sources, process_function, table
         options = list(
           dom = table_config$dom %||% "frtip",
           pageLength = table_config$page_length %||% 100,
-          scrollY = table_config$scroll_y %||% "calc(100vh - 300px)",
+          scrollY = table_config$scroll_y %||% "calc(100vh - 235px)",
           scrollX = table_config$scroll_x %||% TRUE,
           scrollCollapse = TRUE,
           deferRender = TRUE,

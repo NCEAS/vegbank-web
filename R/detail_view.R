@@ -203,11 +203,6 @@ build_plot_obs_details_view <- function(result) {
         })
         htmltools::tags$table(
           class = "table table-sm table-striped table-hover",
-          htmltools::tags$thead(
-            htmltools::tags$tr(
-              htmltools::tags$th("Community Classification")
-            )
-          ),
           htmltools::tags$tbody(rows)
         )
       },
@@ -348,7 +343,7 @@ build_comm_concept_details_view <- function(result) {
 
   list(
     community_name = shiny::renderUI({
-      htmltools::tags$b(scientific_class$comm_name)
+      htmltools::tags$p(scientific_class$comm_name)
     }),
     observation_count = shiny::renderUI({
       htmltools::tags$p(
@@ -404,7 +399,7 @@ build_project_details_view <- function(result) {
 
   list(
     project_name = shiny::renderUI({
-      htmltools::tags$b(result$project_name)
+      htmltools::tags$p(result$project_name)
     }),
     project_observations = shiny::renderUI({
       # TODO: Add classified plots
@@ -461,16 +456,16 @@ build_taxon_details_view <- function(result) {
 
   list(
     taxon_name = shiny::renderUI({
-      htmltools::tags$b(result$author_plant_name)
+      htmltools::tags$p(result$author_plant_name)
     }),
     taxon_coverage = shiny::renderUI({
       htmltools::tags$div(
         htmltools::tags$p(
-          htmltools::tags$strong("Cover percentage: "),
+          htmltools::tags$span("Cover percentage: "),
           paste0(result$max_cover, "%")
         ),
         htmltools::tags$p(
-          htmltools::tags$strong("Taxon inference area: "),
+          htmltools::tags$span("Taxon inference area: "),
           paste0(result$taxon_inference_area, " m\u00B2") # Replace m² with Unicode escape
         )
       )
@@ -544,7 +539,7 @@ build_party_details_view <- function(result) {
 
   list(
     party_name = shiny::renderUI({
-      htmltools::tags$b(full_name)
+      htmltools::tags$p(full_name)
     }),
     party_organization = shiny::renderUI({
       if (is.na(result$organization_name)) {
@@ -620,7 +615,7 @@ create_detail_table <- function(details, col_names) {
       lapply(names(details), function(name) {
         display_name <- if (name %in% names(col_names)) col_names[[name]] else name
         htmltools::tags$tr(
-          htmltools::tags$td(htmltools::tags$strong(display_name)),
+          htmltools::tags$td(display_name),
           htmltools::tags$td(class = "text-end", details[[name]])
         )
       })

@@ -28,26 +28,24 @@ test_that("clean_column_data handles missing columns and values", {
   expect_equal(result, c("Not Provided", "Not Provided", "Not Provided"))
 })
 
-test_that("create_action_buttons generates output", {
+test_that("create_plot_action_buttons generates correct structure", {
   # Create test data with required structure
   test_data <- data.frame(
-    observation_id = 1:2,
+    obs_accession_code = c("ACC1", "ACC2"),
     stringsAsFactors = FALSE
   )
 
-  # Create actions exactly matching what's in process_plot_data
-  actions <- list(
-    list(input_id = "see_details", label = "Details", class = "btn-outline-primary"),
-    list(input_id = "show_on_map", label = "Map", class = "btn-outline-secondary")
-  )
-
-  # Test the function minimally - just check that it returns something
-  buttons <- create_action_buttons(test_data, actions)
-  expect_equal(length(buttons), nrow(test_data))
-  expect_type(buttons, "character")
+  result <- create_plot_action_buttons(test_data)
+  
+  expect_equal(length(result), 2)
+  expect_type(result, "list")
+  expect_equal(result[[1]]$code, "ACC1")
+  expect_equal(result[[1]]$count, 1)
+  expect_equal(result[[2]]$code, "ACC2")
+  expect_equal(result[[2]]$count, 2)
 })
 
-test_that("create_taxa_vectors creates HTML taxa lists", {
+test_that("create_taxa_vectors creates correct data structure", {
   # Create test data with the correct column structure
   plot_data <- data.frame(
     observation_id = c(1, 2),
@@ -57,19 +55,30 @@ test_that("create_taxa_vectors creates HTML taxa lists", {
   taxa_data <- data.frame(
     observation_id = c(1, 1, 2),
     int_curr_plant_sci_name_no_auth = c("Taxon1", "Taxon2", NA),
-    max_cover = c(10, 20, NA),
+    max_cover = c(10.123, 20.456, NA),
     taxon_observation_accession_code = c("ACC1", "ACC2", "ACC3"),
     stringsAsFactors = FALSE
   )
 
   result <- create_taxa_vectors(plot_data, taxa_data)
+  
   expect_equal(length(result), 2)
-  expect_true(grepl("taxa-list", result[1]))
-  expect_true(grepl("Taxon1", result[1]))
-  expect_true(grepl("No Taxa Data", result[2]))
+  expect_type(result, "list")
+  
+  # Check first observation (has taxa)
+  expect_equal(length(result[[1]]), 2)
+  expect_equal(result[[1]][[1]]$code, "ACC1")
+  expect_equal(result[[1]][[1]]$name, "Taxon1")
+  expect_equal(result[[1]][[1]]$cover, "10.12") # formatted with 2 decimal places
+  expect_equal(result[[1]][[2]]$code, "ACC2")
+  expect_equal(result[[1]][[2]]$name, "Taxon2")
+  expect_equal(result[[1]][[2]]$cover, "20.46")
+  
+  # Check second observation (no valid taxa data)
+  expect_equal(length(result[[2]]), 0)
 })
 
-test_that("create_community_vectors creates HTML community lists", {
+test_that("create_community_vectors creates correct data structure", {
   # Create test data with the exact column names needed
   plot_data <- data.frame(
     obs_accession_code = c("ACC1", "ACC2"),
@@ -84,11 +93,19 @@ test_that("create_community_vectors creates HTML community lists", {
   )
 
   result <- create_community_vectors(plot_data, comm_data)
+  
   expect_equal(length(result), 2)
-  expect_true(grepl("comm-list", result[1]))
-  expect_true(grepl("Community1", result[1]))
-  expect_true(grepl("comm_class_link_click", result[1]))
-  expect_true(grepl("Unnamed", result[2])) # Second entry has NA for comm_name, so should say "Unnamed"
+  expect_type(result, "list")
+  
+  # Check first observation (has community data)
+  expect_equal(length(result[[1]]), 1)
+  expect_equal(result[[1]][[1]]$code, "COMM1")
+  expect_equal(result[[1]][[1]]$name, "Community1")
+  
+  # Check second observation (has community code but no name)
+  expect_equal(length(result[[2]]), 1)
+  expect_equal(result[[2]][[1]]$code, "COMM2")
+  expect_true(is.na(result[[2]][[1]]$name))
 })
 
 test_that("process_plot_data formats display data correctly", {
@@ -104,7 +121,7 @@ test_that("process_plot_data formats display data correctly", {
   taxa_data <- data.frame(
     observation_id = 1,
     int_curr_plant_sci_name_no_auth = "Taxon1",
-    max_cover = 10,
+    max_cover = 10.5,
     taxon_observation_accession_code = "TAXA1",
     stringsAsFactors = FALSE
   )
@@ -131,10 +148,26 @@ test_that("process_plot_data formats display data correctly", {
       expect_equal(ncol(result), 5)
       expect_equal(
         colnames(result),
-        c("Actions", "Author Plot Code", "Location", "Top Taxa", "Community")
+        c("Actions", "Author Plot Code", "Location", "Top Taxa by Cover %", "Community")
       )
       expect_equal(result$`Author Plot Code`, "Plot1")
       expect_equal(result$Location, "State1")
+      
+      # Check that Actions column contains list data
+      expect_type(result$Actions, "list")
+      expect_equal(result$Actions[[1]]$code, "ACC1")
+      expect_equal(result$Actions[[1]]$count, 1)
+      
+      # Check that Taxa column contains list data
+      expect_type(result$`Top Taxa by Cover %`, "list")
+      expect_equal(length(result$`Top Taxa by Cover %`[[1]]), 1)
+      expect_equal(result$`Top Taxa by Cover %`[[1]][[1]]$name, "Taxon1")
+      expect_equal(result$`Top Taxa by Cover %`[[1]][[1]]$cover, "10.50")
+      
+      # Check that Community column contains list data
+      expect_type(result$Community, "list")
+      expect_equal(length(result$Community[[1]]), 1)
+      expect_equal(result$Community[[1]][[1]]$name, "Community1")
     }
   )
 })
@@ -152,7 +185,7 @@ test_that("build_plot_table returns a DataTable with correct structure", {
   taxa_data <- data.frame(
     observation_id = 1,
     int_curr_plant_sci_name_no_auth = "Taxon1",
-    max_cover = 10,
+    max_cover = 10.25,
     taxon_observation_accession_code = "TAXA1",
     stringsAsFactors = FALSE
   )
@@ -178,6 +211,25 @@ test_that("build_plot_table returns a DataTable with correct structure", {
           expect_equal(names(data_sources), c("plot_data", "taxa_data", "comm_data"))
           expect_equal(required_sources, c("plot_data", "taxa_data", "comm_data"))
           expect_equal(names(table_config), c("column_defs", "progress_message"))
+          
+          # Verify table config structure
+          expect_type(table_config$column_defs, "list")
+          expect_equal(length(table_config$column_defs), 5) # 5 column definitions
+          expect_equal(table_config$progress_message, "Processing table data:")
+          
+          # Check that column definitions have the expected structure
+          expect_equal(table_config$column_defs[[1]]$targets, 0) # Actions column
+          expect_equal(table_config$column_defs[[1]]$orderable, FALSE)
+          expect_equal(table_config$column_defs[[1]]$searchable, FALSE)
+          expect_true(inherits(table_config$column_defs[[1]]$render, "JS_EVAL"))
+          
+          expect_equal(table_config$column_defs[[4]]$targets, 3) # Taxa column  
+          expect_equal(table_config$column_defs[[4]]$orderable, FALSE)
+          expect_equal(table_config$column_defs[[4]]$searchable, TRUE)
+          expect_true(inherits(table_config$column_defs[[4]]$render, "JS_EVAL"))
+          
+          expect_equal(table_config$column_defs[[5]]$targets, 4) # Community column
+          expect_true(inherits(table_config$column_defs[[5]]$render, "JS_EVAL"))
 
           # Process data and create a mock DT object
           processed_data <- process_function(data_sources)
@@ -188,10 +240,82 @@ test_that("build_plot_table returns a DataTable with correct structure", {
           result <- build_plot_table(plot_data, taxa_data, comm_data)
           expect_s3_class(result, "datatables")
           expect_equal(ncol(result$x$data), 5)
-          expect_true(all(c("Actions", "Author Plot Code", "Location", "Top Taxa", "Community") %in%
+          expect_true(all(c("Actions", "Author Plot Code", "Location", "Top Taxa by Cover %", "Community") %in%
             colnames(result$x$data)))
         }
       )
     }
   )
+})
+
+test_that("create_taxa_vectors handles edge cases correctly", {
+  plot_data <- data.frame(
+    observation_id = c(1, 2, 3),
+    stringsAsFactors = FALSE
+  )
+
+  # Test with completely empty taxa data
+  taxa_data_empty <- data.frame(
+    observation_id = integer(0),
+    int_curr_plant_sci_name_no_auth = character(0),
+    max_cover = numeric(0),
+    taxon_observation_accession_code = character(0),
+    stringsAsFactors = FALSE
+  )
+
+  result_empty <- create_taxa_vectors(plot_data, taxa_data_empty)
+  expect_equal(length(result_empty), 3)
+  expect_equal(length(result_empty[[1]]), 0) # Empty list
+  expect_equal(length(result_empty[[2]]), 0)
+  expect_equal(length(result_empty[[3]]), 0)
+
+  # Test with all NA values
+  taxa_data_na <- data.frame(
+    observation_id = c(1, 2),
+    int_curr_plant_sci_name_no_auth = c(NA, NA),
+    max_cover = c(NA, NA),
+    taxon_observation_accession_code = c("ACC1", "ACC2"),
+    stringsAsFactors = FALSE
+  )
+
+  result_na <- create_taxa_vectors(plot_data, taxa_data_na)
+  expect_equal(length(result_na), 3)
+  expect_equal(length(result_na[[1]]), 0) # Should be empty due to all NA values
+  expect_equal(length(result_na[[2]]), 0)
+  expect_equal(length(result_na[[3]]), 0) # No matching observation_id
+})
+
+test_that("create_community_vectors handles edge cases correctly", {
+  plot_data <- data.frame(
+    obs_accession_code = c("ACC1", "ACC2", "ACC3"),
+    stringsAsFactors = FALSE
+  )
+
+  # Test with completely empty community data
+  comm_data_empty <- data.frame(
+    obs_accession_code = character(0),
+    comm_name = character(0),
+    comm_class_accession_code = character(0),
+    stringsAsFactors = FALSE
+  )
+
+  result_empty <- create_community_vectors(plot_data, comm_data_empty)
+  expect_equal(length(result_empty), 3)
+  expect_equal(length(result_empty[[1]]), 0)
+  expect_equal(length(result_empty[[2]]), 0)
+  expect_equal(length(result_empty[[3]]), 0)
+
+  # Test with all NA values
+  comm_data_na <- data.frame(
+    obs_accession_code = c("ACC1", "ACC2"),
+    comm_name = c(NA, NA),
+    comm_class_accession_code = c(NA, NA),
+    stringsAsFactors = FALSE
+  )
+
+  result_na <- create_community_vectors(plot_data, comm_data_na)
+  expect_equal(length(result_na), 3)
+  expect_equal(length(result_na[[1]]), 0) # Should be empty due to all NA values
+  expect_equal(length(result_na[[2]]), 0)
+  expect_equal(length(result_na[[3]]), 0) # No matching obs_accession_code
 })
