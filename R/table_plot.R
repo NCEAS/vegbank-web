@@ -156,7 +156,7 @@ create_plot_action_buttons <- function(plot_data) {
   lapply(seq_len(nrow(plot_data)), function(i) {
     list(
       code = plot_data$obs_accession_code[i],
-      count = i,
+      count = i
       # TODO: If lat/long are needed for downstream use, add them here from plot_data$lat[i] and plot_data$long[i]
     )
   })
