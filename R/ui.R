@@ -6,6 +6,10 @@
 #' @return A Shiny tag list.
 #'
 #' @noRd
+#' @param req A Shiny request object.
+#' @return A Shiny tag list.
+#'
+#' @noRd
 ui <- function(req) {
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
@@ -59,9 +63,84 @@ ui <- function(req) {
               // Add the programmatic selection method if missing
               if (!table.selectRowsProgrammatic) {
                 table.selectRowsProgrammatic = function(rowIndex) {
+                  // Remove selection class from all rows across all pages
                   $(this.table().body()).find('tr').removeClass('selected');
+                  console.log('Cleared all selections');
+                  
                   if (rowIndex !== null && rowIndex !== undefined) {
-                    $(this.row(rowIndex).node()).addClass('selected');
+                    var self = this;
+                    var pageInfo = self.page.info();
+                    var totalRows = self.data().count();
+                    var rowPage = Math.floor(rowIndex / pageInfo.length);
+                    
+                    console.log('Selection details:');
+                    console.log('  Target row:', rowIndex);
+                    console.log('  Total rows:', totalRows);
+                    console.log('  Page length:', pageInfo.length);
+                    console.log('  Current page:', pageInfo.page);
+                    console.log('  Calculated target page:', rowPage);
+                    
+                    // Check if row index is valid
+                    if (rowIndex >= totalRows) {
+                      console.warn('Row index', rowIndex, 'is beyond total rows', totalRows);
+                      return;
+                    }
+                    
+                    // Function to select the row
+                    var selectRow = function() {
+                      // Try different methods to get the row
+                      console.log('Debugging row access for index', rowIndex);
+                      
+                      // Method 1: Direct row access
+                      var rowNode = self.row(rowIndex).node();
+                      console.log('Method 1 - self.row(' + rowIndex + ').node():', rowNode);
+                      
+                      // Method 2: Check if row exists in data
+                      var rowData = self.row(rowIndex).data();
+                      console.log('Method 2 - Row data exists:', rowData !== undefined);
+                      
+                      // Method 3: Try to find the row on current page
+                      var currentPageRows = self.rows({page: 'current'}).nodes().toArray();
+                      console.log('Method 3 - Rows on current page:', currentPageRows.length);
+                      
+                      // Method 4: Get all row indices on current page
+                      var currentPageIndices = self.rows({page: 'current'}).indexes().toArray();
+                      console.log('Method 4 - Row indices on current page:', currentPageIndices);
+                      
+                      if (rowNode) {
+                        $(rowNode).addClass('selected');
+                        console.log('SUCCESS: Added selected class to row', rowIndex);
+                        console.log('Row classes:', $(rowNode).attr('class'));
+                      } else {
+                        console.warn('FAILED: Row node is null for index', rowIndex);
+                        
+                        // Try alternative approach - find by position within current page
+                        var pageStart = pageInfo.page * pageInfo.length;
+                        var positionInPage = rowIndex - pageStart;
+                        console.log('Alternative: Position in page:', positionInPage);
+                        
+                        if (positionInPage >= 0 && positionInPage < currentPageRows.length) {
+                          var altRowNode = currentPageRows[positionInPage];
+                          console.log('Alternative row node:', altRowNode);
+                          if (altRowNode) {
+                            $(altRowNode).addClass('selected');
+                            console.log('SUCCESS: Selected row using alternative method');
+                          }
+                        }
+                      }
+                    };
+                    
+                    // If the row is not on the current page, navigate to it first
+                    if (rowPage !== pageInfo.page) {
+                      console.log('Navigating from page', pageInfo.page, 'to page', rowPage);
+                      self.page(rowPage).draw(false);
+                      
+                      // Wait for the page to redraw before selecting
+                      setTimeout(selectRow, 150);
+                    } else {
+                      // Row is on current page
+                      selectRow();
+                    }
                   }
                 };
                 console.log('Added programmatic selection method');
@@ -86,6 +165,75 @@ ui <- function(req) {
           console.warn('Could not select table row:', e);
         }
       }, 200);
+    });
+
+    Shiny.addCustomMessageHandler('selectTableRowByAccession', function(message) {
+      console.log('Selecting row by accession code:', message.accessionCode, 'in table:', message.tableId);
+      
+      var trySelect = function(attempt) {
+        attempt = attempt || 1;
+        var maxAttempts = 10;
+        
+        try {
+          // Clear all selections from all tables first
+          $('table tbody tr').removeClass('selected');
+          console.log('Cleared all existing selections (attempt ' + attempt + ')');
+          
+          // Find the button with the specific accession code
+          var buttonSelector = 'button[onclick*=\"' + message.accessionCode.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\"]';
+          var targetButton = $(buttonSelector);
+          
+          console.log('Looking for button with selector:', buttonSelector);
+          console.log('Found buttons:', targetButton.length);
+          
+          if (targetButton.length > 0) {
+            // Get the row containing the button
+            var targetRow = targetButton.closest('tr');
+            console.log('Found target row:', targetRow.length);
+            
+            if (targetRow.length > 0) {
+              // Add the selected class
+              targetRow.addClass('selected');
+              console.log('SUCCESS: Added selected class to row with accession code:', message.accessionCode);
+              console.log('Row classes:', targetRow.attr('class'));
+              return true;
+            } else {
+              console.warn('Could not find row containing the button');
+            }
+          } else {
+            console.warn('Could not find button with accession code:', message.accessionCode);
+            
+            // If button not found and we haven't exceeded max attempts, retry
+            if (attempt < maxAttempts) {
+              console.log('Retrying selection in 500ms (attempt ' + (attempt + 1) + ' of ' + maxAttempts + ')');
+              setTimeout(function() {
+                trySelect(attempt + 1);
+              }, 500);
+              return false;
+            }
+          }
+        } catch (e) {
+          console.warn('Error selecting table row by accession (attempt ' + attempt + '):', e);
+          if (attempt < maxAttempts) {
+            setTimeout(function() {
+              trySelect(attempt + 1);
+            }, 500);
+          }
+        }
+        
+        return false;
+      };
+      
+      // Start the selection attempt
+      setTimeout(function() {
+        trySelect(1);
+      }, 100);
+    });
+
+    Shiny.addCustomMessageHandler('clearAllTableSelections', function(message) {
+      // Simply remove selected class from all table rows
+      $('table tbody tr').removeClass('selected');
+      console.log('Cleared all table selections');
     });
 
     $(document).ready(function() {
@@ -242,7 +390,8 @@ custom_theme <- bslib::bs_add_rules(
   .datatables .dataTables_wrapper div.dataTables_info {
       padding-top: 0.75rem;
       font-size: 0.875rem !important;
-  }"
+  }
+"
 )
 
 #' Build Navigation Bar for Vegbank UI

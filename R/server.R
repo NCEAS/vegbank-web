@@ -90,38 +90,28 @@ server <- function(input, output, session) {
   }
 
   # Helper function to select a row in a table and clear others
-  select_table_row <- function(table_id, row_index) {
+  select_table_row_by_accession <- function(table_id, accession_code) {
     # Clear previous selections from all tables
     clear_all_table_selections()
     
-    # Select the row in the specified table using our custom programmatic method
-    if (!is.null(row_index) && !is.na(row_index) && is.numeric(row_index) && row_index > 0) {
-      # Convert to 0-based index for JavaScript (DT uses 0-based indexing)
-      js_index <- as.integer(row_index - 1)
-      
-      # Send the selection message
-      session$sendCustomMessage("selectTableRow", list(
+    # Select the row in the specified table using accession code
+    if (!is.null(accession_code) && !is.na(accession_code) && nchar(accession_code) > 0) {
+      # Send the selection message with accession code
+      session$sendCustomMessage("selectTableRowByAccession", list(
         tableId = table_id,
-        rowIndex = js_index
+        accessionCode = accession_code
       ))
       
       # Update state
       state$selected_table(table_id)
-      state$selected_row(row_index)
+      state$selected_row(accession_code)
     }
   }
 
   # Helper function to clear all table selections
   clear_all_table_selections <- function() {
-    table_ids <- c("plot_table", "comm_table", "proj_table", "party_table")
-    
-    # Send clear messages for all tables
-    for (table_id in table_ids) {
-      session$sendCustomMessage("selectTableRow", list(
-        tableId = table_id,
-        rowIndex = NULL
-      ))
-    }
+    # Send a simple clear message to JavaScript
+    session$sendCustomMessage("clearAllTableSelections", list())
     
     # Clear state
     state$selected_table(NULL)
@@ -215,10 +205,7 @@ server <- function(input, output, session) {
     }
 
     # Find and select the row in the plot table
-    row_index <- which(plot_data$obs_accession_code == accession_code)
-    if (length(row_index) > 0) {
-      select_table_row("plot_table", row_index[1])
-    }
+    select_table_row_by_accession("plot_table", accession_code)
 
     state$detail_type("plot-observation")
     state$selected_accession(accession_code)
@@ -282,10 +269,7 @@ server <- function(input, output, session) {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Find and select the row in the plot table
-      row_index <- which(plot_data$obs_accession_code == accession_code)
-      if (length(row_index) > 0) {
-        select_table_row("plot_table", row_index[1])
-      }
+      select_table_row_by_accession("plot_table", accession_code)
       
       state$detail_type("plot-observation")
       state$selected_accession(accession_code)
@@ -307,10 +291,7 @@ server <- function(input, output, session) {
     if (length(comm_class_row) > 0) {
       # Get the plot observation accession code from the community classification
       plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
-      plot_row_index <- which(plot_data$obs_accession_code == plot_obs_code)
-      if (length(plot_row_index) > 0) {
-        select_table_row("plot_table", plot_row_index[1])
-      }
+      select_table_row_by_accession("plot_table", plot_obs_code)
     }
     
     state$detail_type("community-classification")
@@ -329,11 +310,8 @@ server <- function(input, output, session) {
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      # Find and select the row in the community table
-      row_index <- which(comm_concept_data$accession_code == accession_code)
-      if (length(row_index) > 0) {
-        select_table_row("comm_table", row_index[1])
-      }
+      # Select the row by accession code directly
+      select_table_row_by_accession("comm_table", accession_code)
       
       state$detail_type("community-concept")
       state$selected_accession(accession_code)
@@ -356,7 +334,9 @@ server <- function(input, output, session) {
       observation_id <- taxa_data$observation_id[taxa_row[1]]
       plot_row_index <- which(plot_data$observation_id == observation_id)
       if (length(plot_row_index) > 0) {
-        select_table_row("plot_table", plot_row_index[1])
+        # Get the plot's accession code and select by that
+        plot_accession_code <- plot_data$obs_accession_code[plot_row_index[1]]
+        select_table_row_by_accession("plot_table", plot_accession_code)
       }
     }
     
@@ -377,10 +357,7 @@ server <- function(input, output, session) {
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Find and select the row in the project table
-      row_index <- which(project_data$project_accession_code == accession_code)
-      if (length(row_index) > 0) {
-        select_table_row("proj_table", row_index[1])
-      }
+      select_table_row_by_accession("proj_table", accession_code)
       
       state$detail_type("project")
       state$selected_accession(accession_code)
@@ -400,10 +377,7 @@ server <- function(input, output, session) {
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Find and select the row in the party table
-      row_index <- which(party_data$party_accession_code == accession_code)
-      if (length(row_index) > 0) {
-        select_table_row("party_table", row_index[1])
-      }
+      select_table_row_by_accession("party_table", accession_code)
       
       state$detail_type("party")
       state$selected_accession(accession_code)
@@ -459,26 +433,24 @@ server <- function(input, output, session) {
         accession_code <- state$selected_accession()
         detail_type <- state$detail_type()
         
+        cat("DEBUG onRestore: Restoring detail view\n")
+        cat("  Detail type:", detail_type, "\n")
+        cat("  Accession code:", accession_code, "\n")
+        
         if (!is.null(accession_code) && !is.null(detail_type)) {
           if (detail_type == "plot-observation") {
-            row_index <- which(plot_data$obs_accession_code == accession_code)
-            if (length(row_index) > 0) {
-              select_table_row("plot_table", row_index[1])
-            }
+            cat("  Selecting plot table row\n")
+            select_table_row_by_accession("plot_table", accession_code)
           } else if (detail_type == "community-concept") {
-            row_index <- which(comm_concept_data$accession_code == accession_code)
-            if (length(row_index) > 0) {
-              select_table_row("comm_table", row_index[1])
-            }
+            cat("  Selecting community table row\n")
+            select_table_row_by_accession("comm_table", accession_code)
           } else if (detail_type == "community-classification") {
             # Find the plot row that contains this community classification
             comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
             if (length(comm_class_row) > 0) {
               plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
-              plot_row_index <- which(plot_data$obs_accession_code == plot_obs_code)
-              if (length(plot_row_index) > 0) {
-                select_table_row("plot_table", plot_row_index[1])
-              }
+              cat("  Selecting plot table row for community classification\n")
+              select_table_row_by_accession("plot_table", plot_obs_code)
             }
           } else if (detail_type == "taxon-observation") {
             # Find the plot row that contains this taxon observation
@@ -487,19 +459,17 @@ server <- function(input, output, session) {
               observation_id <- taxa_data$observation_id[taxa_row[1]]
               plot_row_index <- which(plot_data$observation_id == observation_id)
               if (length(plot_row_index) > 0) {
-                select_table_row("plot_table", plot_row_index[1])
+                plot_accession_code <- plot_data$obs_accession_code[plot_row_index[1]]
+                cat("  Selecting plot table row for taxon observation\n")
+                select_table_row_by_accession("plot_table", plot_accession_code)
               }
             }
           } else if (detail_type == "project") {
-            row_index <- which(project_data$project_accession_code == accession_code)
-            if (length(row_index) > 0) {
-              select_table_row("proj_table", row_index[1])
-            }
+            cat("  Selecting project table row\n")
+            select_table_row_by_accession("proj_table", accession_code)
           } else if (detail_type == "party") {
-            row_index <- which(party_data$party_accession_code == accession_code)
-            if (length(row_index) > 0) {
-              select_table_row("party_table", row_index[1])
-            }
+            cat("  Selecting party table row\n")
+            select_table_row_by_accession("party_table", accession_code)
           }
         }
         
