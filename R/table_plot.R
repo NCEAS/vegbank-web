@@ -198,12 +198,9 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
       .groups = "drop"
     )
 
-  # Match results in case order differs from plot_data
-  result <- vector("list", nrow(plot_data))
-  match_idx <- match(plot_data$observation_id, taxa_lists$observation_id)
-  result[!is.na(match_idx)] <- taxa_lists$taxa[match_idx[!is.na(match_idx)]]
-  result[sapply(result, is.null)] <- list(list())
-  result
+  # Match results to plot_data order using left_join since their indicies need to align
+  # for the show_on_map button to work correctly
+  dplyr::left_join(plot_data["observation_id"], taxa_lists, by = "observation_id")$taxa
 }
 
 #' Create data vectors for community lists
@@ -237,10 +234,8 @@ create_community_vectors <- function(plot_data, comm_data) {
       ),
       .groups = "drop"
     )
-  # Match index to plot_data to avoid duplicates / NAs where no communities exist
-  result <- vector("list", nrow(plot_data))
-  match_idx <- match(plot_data$obs_accession_code, community_lists$obs_accession_code)
-  result[!is.na(match_idx)] <- community_lists$communities[match_idx[!is.na(match_idx)]]
-  result[sapply(result, is.null)] <- list(list())
-  result
+
+  # Match results to plot_data order using left_join since their indicies need to align
+  # for the show_on_map button to work correctly
+  dplyr::left_join(plot_data["obs_accession_code"], community_lists, by = "obs_accession_code")$communities
 }
