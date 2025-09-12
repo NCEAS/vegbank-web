@@ -180,11 +180,26 @@ ui <- function(req) {
           console.log('Cleared all existing selections (attempt ' + attempt + ')');
           
           // Find the button with the specific accession code
-          var buttonSelector = 'button[onclick*=\"' + message.accessionCode.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\"]';
+          // Use a more precise selector that looks for the exact value
+          var escapedAccessionCode = message.accessionCode.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+          var buttonSelector = 'button[onclick*=\"Shiny.setInputValue\"][onclick*=\"' + escapedAccessionCode + '\"]';
           var targetButton = $(buttonSelector);
           
+          // Additional filtering to ensure exact match
+          targetButton = targetButton.filter(function() {
+            var onclickAttr = $(this).attr('onclick');
+            if (!onclickAttr) return false;
+            
+            // Extract the value from onclick=\"Shiny.setInputValue('...', 'VALUE', ...)\"
+            var match = onclickAttr.match(/Shiny\\.setInputValue\\([^,]+,\\s*['\\\"]([^'\\\"]+)['\\\"]/);
+            if (match && match[1]) {
+              return match[1] === message.accessionCode;
+            }
+            return false;
+          });
+          
           console.log('Looking for button with selector:', buttonSelector);
-          console.log('Found buttons:', targetButton.length);
+          console.log('Found buttons after filtering:', targetButton.length);
           
           if (targetButton.length > 0) {
             // Get the row containing the button

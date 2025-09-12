@@ -95,7 +95,11 @@ server <- function(input, output, session) {
     clear_all_table_selections()
     
     # Select the row in the specified table using accession code
-    if (!is.null(accession_code) && !is.na(accession_code) && nchar(accession_code) > 0) {
+    # Skip selection if accession code is invalid, null, NA, or empty
+    if (!is.null(accession_code) && 
+        !is.na(accession_code) && 
+        nchar(accession_code) > 0 &&
+        accession_code != "NA") {
       # Send the selection message with accession code
       session$sendCustomMessage("selectTableRowByAccession", list(
         tableId = table_id,
@@ -105,6 +109,8 @@ server <- function(input, output, session) {
       # Update state
       state$selected_table(table_id)
       state$selected_row(accession_code)
+    } else {
+      cat("DEBUG: Skipping row selection for invalid accession code:", accession_code, "\n")
     }
   }
 
