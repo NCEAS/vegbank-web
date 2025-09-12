@@ -217,18 +217,22 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
 create_community_vectors <- function(plot_data, comm_data) {
   merged <- dplyr::left_join(plot_data, comm_data, by = "obs_accession_code")
   community_lists <- merged |>
+    dplyr::mutate(
+      comm_details = mapply(
+        function(x, y) list(code = x, name = y),
+        .data$comm_class_accession_code,
+        .data$comm_name,
+        SIMPLIFY = FALSE,
+        USE.NAMES = FALSE
+      )
+    ) |>
     dplyr::group_by(.data$obs_accession_code) |>
     dplyr::summarize(
       communities = list(
         if (all(is.na(.data$comm_name)) & all(is.na(.data$comm_class_accession_code))) {
           list()
         } else {
-          lapply(seq_along(.data$comm_class_accession_code), function(i) {
-            list(
-              code = .data$comm_class_accession_code[i],
-              name = .data$comm_name[i]
-            )
-          })
+          comm_details
         }
       ),
       .groups = "drop"
