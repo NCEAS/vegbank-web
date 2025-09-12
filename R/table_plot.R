@@ -28,12 +28,13 @@ build_plot_table <- function(plot_data, taxa_data, comm_data) {
             if(type === 'display') {
               if(!data || typeof data !== 'object') return '<span>No Data</span>';
               var code = data.code || '';
-              var count = data.count || '';
+              var lat = data.latitude || '';
+              var lng = data.longitude || '';
               if(!code) return '<span>No Accession Code</span>';
               return (
                 '<div class=\"btn-group btn-group-sm\">' +
                   '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"Shiny.setInputValue(\\'see_obs_details\\', \\'' + code + '\\', {priority: \\'event\\'});\">Details</button>' +
-                  '<button class=\"btn btn-sm btn-outline-secondary\" onclick=\"Shiny.setInputValue(\\'show_on_map\\', \\'' + count + '\\', {priority: \\'event\\'});\">Map</button>' +
+                  '<button class=\"btn btn-sm btn-outline-secondary\" onclick=\"Shiny.setInputValue(\\'show_on_map\\', {lat: ' + lat + ', lng: ' + lng + ', code: \\'' + code + '\\'}, {priority: \\'event\\'});\">Map</button>' +
                 '</div>'
               );
             }
@@ -156,8 +157,8 @@ create_plot_action_buttons <- function(plot_data) {
   lapply(seq_len(nrow(plot_data)), function(i) {
     list(
       code = plot_data$obs_accession_code[i],
-      count = i
-      # TODO: If lat/long are needed for downstream use, add them here from plot_data$lat[i] and plot_data$long[i]
+      latitude = plot_data$latitude[i],
+      longitude = plot_data$longitude[i]
     )
   })
 }
@@ -198,9 +199,7 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
       .groups = "drop"
     )
 
-  # Match results to plot_data order using left_join since their indicies need to align
-  # for the show_on_map button to work correctly
-  dplyr::left_join(plot_data["observation_id"], taxa_lists, by = "observation_id")$taxa
+  taxa_lists$taxa
 }
 
 #' Create data vectors for community lists
@@ -235,7 +234,5 @@ create_community_vectors <- function(plot_data, comm_data) {
       .groups = "drop"
     )
 
-  # Match results to plot_data order using left_join since their indicies need to align
-  # for the show_on_map button to work correctly
-  dplyr::left_join(plot_data["obs_accession_code"], community_lists, by = "obs_accession_code")$communities
+  community_lists$communities
 }
