@@ -147,7 +147,7 @@ process_plot_data <- function(data_sources) {
 # ---- Helpers below (internal module use only) ----
 
 #' Create action buttons for each plot row
-#' 
+#'
 #' @param plot_data Data frame of plot observation data
 #' @param actions List of action button specifications
 #' @returns A list of action button HTML strings for each row
@@ -174,24 +174,31 @@ create_plot_action_buttons <- function(plot_data) {
 create_taxa_vectors <- function(plot_data, taxa_data) {
   merged <- dplyr::left_join(plot_data, taxa_data, by = "observation_id")
   taxa_lists <- merged |>
+    dplyr::mutate(
+      str_max_cover = format(round(.data$max_cover, 2), nsmall = 2, trim = TRUE),
+      taxon_details = mapply(
+        function(x, y, z) list(code = x, name = y, cover = z),
+        .data$taxon_observation_accession_code,
+        .data$int_curr_plant_sci_name_no_auth,
+        str_max_cover,
+        SIMPLIFY = FALSE,
+        USE.NAMES = FALSE
+      )
+    ) |>
     dplyr::group_by(.data$observation_id) |>
     dplyr::summarize(
       taxa = list(
-        if (all(is.na(.data$int_curr_plant_sci_name_no_auth)) & all(is.na(.data$max_cover))) {
+        if (all(is.na(.data$int_curr_plant_sci_name_no_auth)) &
+              all(is.na(.data$max_cover))) {
           list()
         } else {
-          lapply(seq_along(.data$taxon_observation_accession_code), function(i) {
-            list(
-              code = .data$taxon_observation_accession_code[i],
-              name = .data$int_curr_plant_sci_name_no_auth[i],
-              cover = format(round(.data$max_cover[i], 2), nsmall = 2)
-            )
-          })
+          taxon_details
         }
       ),
       .groups = "drop"
     )
-  # Match index to plot_data to avoid duplicates / NAs where no taxa exist
+
+  # Match results in case order differs from plot_data
   result <- vector("list", nrow(plot_data))
   match_idx <- match(plot_data$observation_id, taxa_lists$observation_id)
   result[!is.na(match_idx)] <- taxa_lists$taxa[match_idx[!is.na(match_idx)]]

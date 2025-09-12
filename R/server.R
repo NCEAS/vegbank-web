@@ -165,7 +165,7 @@ server <- function(input, output, session) {
     accession_code <- input$see_obs_details
     if (is.null(accession_code) || is.na(accession_code) || accession_code == "") {
       shiny::showNotification(
-        paste0("No accession code found for that plot observation: ", accession_code),
+        paste0("No accession code found for that plot observation"),
         type = "error"
       )
       return()
