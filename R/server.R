@@ -77,14 +77,9 @@ server <- function(input, output, session) {
     )
   })
 
-  move_map_to_obs <- function(idx) {
-    data <- plot_data
+  move_map_to_obs <- function(lat, lng, message) {
     leaflet::leafletProxy("map", session) |>
-      update_map_view(
-        data$longitude[idx],
-        data$latitude[idx],
-        paste("Plot", data$author_obs_code[idx], "is here!")
-      )
+      update_map_view(lng, lat, message)
   }
 
   # RENDER UI ELEMENTS __________________________________________________________________
@@ -165,7 +160,7 @@ server <- function(input, output, session) {
     accession_code <- input$see_obs_details
     if (is.null(accession_code) || is.na(accession_code) || accession_code == "") {
       shiny::showNotification(
-        paste0("No accession code found for that plot observation: ", accession_code),
+        paste0("No accession code found for that plot observation"),
         type = "error"
       )
       return()
@@ -180,30 +175,25 @@ server <- function(input, output, session) {
     show_detail_view("plot-observation", accession_code, output, session)
   })
 
-  shiny::observeEvent(input$show_on_map,
+    shiny::observeEvent(input$show_on_map,
     {
-      i <- as.numeric(input$show_on_map)
+      map_data <- input$show_on_map
+      
+      # Extract coordinates and code from the data
+      lat <- as.numeric(map_data$lat)
+      lng <- as.numeric(map_data$lng)
+      code <- map_data$code
 
-      # Check for valid index before proceeding
-      if (is.na(i) || i < 1 || i > nrow(plot_data)) {
-        shiny::showNotification(paste0("Cannot show on map: Missing or invalid index for this row: ", i),
+      # Check for valid coordinates
+      if (is.na(lat) || is.na(lng) || !is.numeric(lat) || !is.numeric(lng)) {
+        shiny::showNotification("Cannot show on map: Missing or invalid coordinates for plot: " + code,
           type = "warning"
         )
         return()
       }
 
-      # Check for valid latitude and longitude
-      lat <- plot_data$latitude[i]
-      lon <- plot_data$longitude[i]
-
-      if (is.na(lat) || is.na(lon) || !is.numeric(lat) || !is.numeric(lon)) {
-        shiny::showNotification("Cannot show on map: Missing or invalid coordinates for this plot",
-          type = "warning"
-        )
-        return()
-      }
-
-      state$map_request(i)
+      # Store the map data for the observer
+      state$map_request(list(lat = lat, lng = lng, code = code))
       shiny::updateNavbarPage(session, "page", selected = "Map")
 
       # Create a self-destroying observer
@@ -211,10 +201,14 @@ server <- function(input, output, session) {
         # Only proceed if we're on the map page
         shiny::req(input$page == "Map")
 
-        idx <- state$map_request()
-        if (!is.null(idx) && length(idx) > 0) {
+        map_req <- state$map_request()
+        if (!is.null(map_req)) {
           session$sendCustomMessage("invalidateMapSize", list())
-          move_map_to_obs(idx)
+          move_map_to_obs(
+            map_req$lat, 
+            map_req$lng, 
+            paste("Plot", map_req$code, "is here!")
+          )
           state$map_request(NULL)
 
           map_update_observer$destroy()

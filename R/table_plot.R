@@ -28,12 +28,13 @@ build_plot_table <- function(plot_data, taxa_data, comm_data) {
             if(type === 'display') {
               if(!data || typeof data !== 'object') return '<span>No Data</span>';
               var code = data.code || '';
-              var count = data.count || '';
+              var lat = data.latitude || '';
+              var lng = data.longitude || '';
               if(!code) return '<span>No Accession Code</span>';
               return (
                 '<div class=\"btn-group btn-group-sm\">' +
                   '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"Shiny.setInputValue(\\'see_obs_details\\', \\'' + code + '\\', {priority: \\'event\\'});\">Details</button>' +
-                  '<button class=\"btn btn-sm btn-outline-secondary\" onclick=\"Shiny.setInputValue(\\'show_on_map\\', \\'' + count + '\\', {priority: \\'event\\'});\">Map</button>' +
+                  '<button class=\"btn btn-sm btn-outline-secondary\" onclick=\"Shiny.setInputValue(\\'show_on_map\\', {lat: ' + lat + ', lng: ' + lng + ', code: \\'' + code + '\\'}, {priority: \\'event\\'});\">Map</button>' +
                 '</div>'
               );
             }
@@ -147,7 +148,7 @@ process_plot_data <- function(data_sources) {
 # ---- Helpers below (internal module use only) ----
 
 #' Create action buttons for each plot row
-#' 
+#'
 #' @param plot_data Data frame of plot observation data
 #' @param actions List of action button specifications
 #' @returns A list of action button HTML strings for each row
@@ -156,8 +157,8 @@ create_plot_action_buttons <- function(plot_data) {
   lapply(seq_len(nrow(plot_data)), function(i) {
     list(
       code = plot_data$obs_accession_code[i],
-      count = i
-      # TODO: If lat/long are needed for downstream use, add them here from plot_data$lat[i] and plot_data$long[i]
+      latitude = plot_data$latitude[i],
+      longitude = plot_data$longitude[i]
     )
   })
 }
@@ -174,29 +175,31 @@ create_plot_action_buttons <- function(plot_data) {
 create_taxa_vectors <- function(plot_data, taxa_data) {
   merged <- dplyr::left_join(plot_data, taxa_data, by = "observation_id")
   taxa_lists <- merged |>
+    dplyr::mutate(
+      str_max_cover = format(round(.data$max_cover, 2), nsmall = 2, trim = TRUE),
+      taxon_details = mapply(
+        function(x, y, z) list(code = x, name = y, cover = z),
+        .data$taxon_observation_accession_code,
+        .data$int_curr_plant_sci_name_no_auth,
+        str_max_cover,
+        SIMPLIFY = FALSE,
+        USE.NAMES = FALSE
+      )
+    ) |>
     dplyr::group_by(.data$observation_id) |>
     dplyr::summarize(
       taxa = list(
-        if (all(is.na(.data$int_curr_plant_sci_name_no_auth)) & all(is.na(.data$max_cover))) {
+        if (all(is.na(.data$int_curr_plant_sci_name_no_auth)) &
+              all(is.na(.data$max_cover))) {
           list()
         } else {
-          lapply(seq_along(.data$taxon_observation_accession_code), function(i) {
-            list(
-              code = .data$taxon_observation_accession_code[i],
-              name = .data$int_curr_plant_sci_name_no_auth[i],
-              cover = format(round(.data$max_cover[i], 2), nsmall = 2)
-            )
-          })
+          taxon_details
         }
       ),
       .groups = "drop"
     )
-  # Match index to plot_data to avoid duplicates / NAs where no taxa exist
-  result <- vector("list", nrow(plot_data))
-  match_idx <- match(plot_data$observation_id, taxa_lists$observation_id)
-  result[!is.na(match_idx)] <- taxa_lists$taxa[match_idx[!is.na(match_idx)]]
-  result[sapply(result, is.null)] <- list(list())
-  result
+
+  taxa_lists$taxa
 }
 
 #' Create data vectors for community lists
@@ -210,26 +213,26 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
 create_community_vectors <- function(plot_data, comm_data) {
   merged <- dplyr::left_join(plot_data, comm_data, by = "obs_accession_code")
   community_lists <- merged |>
+    dplyr::mutate(
+      comm_details = mapply(
+        function(x, y) list(code = x, name = y),
+        .data$comm_class_accession_code,
+        .data$comm_name,
+        SIMPLIFY = FALSE,
+        USE.NAMES = FALSE
+      )
+    ) |>
     dplyr::group_by(.data$obs_accession_code) |>
     dplyr::summarize(
       communities = list(
         if (all(is.na(.data$comm_name)) & all(is.na(.data$comm_class_accession_code))) {
           list()
         } else {
-          lapply(seq_along(.data$comm_class_accession_code), function(i) {
-            list(
-              code = .data$comm_class_accession_code[i],
-              name = .data$comm_name[i]
-            )
-          })
+          comm_details
         }
       ),
       .groups = "drop"
     )
-  # Match index to plot_data to avoid duplicates / NAs where no communities exist
-  result <- vector("list", nrow(plot_data))
-  match_idx <- match(plot_data$obs_accession_code, community_lists$obs_accession_code)
-  result[!is.na(match_idx)] <- community_lists$communities[match_idx[!is.na(match_idx)]]
-  result[sapply(result, is.null)] <- list(list())
-  result
+
+  community_lists$communities
 }
