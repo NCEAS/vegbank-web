@@ -222,7 +222,7 @@ create_community_vectors <- function(plot_data, comm_data) {
         USE.NAMES = FALSE
       )
     ) |>
-    dplyr::group_by(.data$obs_accession_code) |>
+    dplyr::group_by(.data$observation_id) |>
     dplyr::summarize(
       communities = list(
         if (all(is.na(.data$comm_name)) & all(is.na(.data$comm_class_accession_code))) {
