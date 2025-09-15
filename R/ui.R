@@ -39,215 +39,84 @@ ui <- function(req) {
       }
     });
 
-    Shiny.addCustomMessageHandler('selectTableRow', function(message) {
-      setTimeout(function() {
-        try {
-          var table = null;
-          
-          console.log('Trying to select row in table:', message.tableId);
-          console.log('Current registry:', Object.keys(window.vegbankTables || {}));
-          
-          // Try to find the table in the global registry
-          if (window.vegbankTables && window.vegbankTables[message.tableId]) {
-            table = window.vegbankTables[message.tableId];
-            console.log('Found table in registry');
-          } else {
-            // Fallback: try to find the table by ID in the DOM
-            var tableElement = $('#' + message.tableId + ' table');
-            console.log('Looking for DOM element:', '#' + message.tableId + ' table', 'found:', tableElement.length);
-            
-            if (tableElement.length && $.fn.DataTable.isDataTable(tableElement)) {
-              table = tableElement.DataTable();
-              console.log('Found DataTable via DOM fallback');
-              
-              // Add the programmatic selection method if missing
-              if (!table.selectRowsProgrammatic) {
-                table.selectRowsProgrammatic = function(rowIndex) {
-                  // Remove selection class from all rows across all pages
-                  $(this.table().body()).find('tr').removeClass('selected');
-                  console.log('Cleared all selections');
-                  
-                  if (rowIndex !== null && rowIndex !== undefined) {
-                    var self = this;
-                    var pageInfo = self.page.info();
-                    var totalRows = self.data().count();
-                    var rowPage = Math.floor(rowIndex / pageInfo.length);
-                    
-                    console.log('Selection details:');
-                    console.log('  Target row:', rowIndex);
-                    console.log('  Total rows:', totalRows);
-                    console.log('  Page length:', pageInfo.length);
-                    console.log('  Current page:', pageInfo.page);
-                    console.log('  Calculated target page:', rowPage);
-                    
-                    // Check if row index is valid
-                    if (rowIndex >= totalRows) {
-                      console.warn('Row index', rowIndex, 'is beyond total rows', totalRows);
-                      return;
-                    }
-                    
-                    // Function to select the row
-                    var selectRow = function() {
-                      // Try different methods to get the row
-                      console.log('Debugging row access for index', rowIndex);
-                      
-                      // Method 1: Direct row access
-                      var rowNode = self.row(rowIndex).node();
-                      console.log('Method 1 - self.row(' + rowIndex + ').node():', rowNode);
-                      
-                      // Method 2: Check if row exists in data
-                      var rowData = self.row(rowIndex).data();
-                      console.log('Method 2 - Row data exists:', rowData !== undefined);
-                      
-                      // Method 3: Try to find the row on current page
-                      var currentPageRows = self.rows({page: 'current'}).nodes().toArray();
-                      console.log('Method 3 - Rows on current page:', currentPageRows.length);
-                      
-                      // Method 4: Get all row indices on current page
-                      var currentPageIndices = self.rows({page: 'current'}).indexes().toArray();
-                      console.log('Method 4 - Row indices on current page:', currentPageIndices);
-                      
-                      if (rowNode) {
-                        $(rowNode).addClass('selected');
-                        console.log('SUCCESS: Added selected class to row', rowIndex);
-                        console.log('Row classes:', $(rowNode).attr('class'));
-                      } else {
-                        console.warn('FAILED: Row node is null for index', rowIndex);
-                        
-                        // Try alternative approach - find by position within current page
-                        var pageStart = pageInfo.page * pageInfo.length;
-                        var positionInPage = rowIndex - pageStart;
-                        console.log('Alternative: Position in page:', positionInPage);
-                        
-                        if (positionInPage >= 0 && positionInPage < currentPageRows.length) {
-                          var altRowNode = currentPageRows[positionInPage];
-                          console.log('Alternative row node:', altRowNode);
-                          if (altRowNode) {
-                            $(altRowNode).addClass('selected');
-                            console.log('SUCCESS: Selected row using alternative method');
-                          }
-                        }
-                      }
-                    };
-                    
-                    // If the row is not on the current page, navigate to it first
-                    if (rowPage !== pageInfo.page) {
-                      console.log('Navigating from page', pageInfo.page, 'to page', rowPage);
-                      self.page(rowPage).draw(false);
-                      
-                      // Wait for the page to redraw before selecting
-                      setTimeout(selectRow, 150);
-                    } else {
-                      // Row is on current page
-                      selectRow();
-                    }
-                  }
-                };
-                console.log('Added programmatic selection method');
-              }
-              
-              // Add to registry for future use
-              if (!window.vegbankTables) window.vegbankTables = {};
-              window.vegbankTables[message.tableId] = table;
-              console.log('Added table to registry');
-            }
-          }
-          
-          if (table && typeof table.selectRowsProgrammatic === 'function') {
-            table.selectRowsProgrammatic(message.rowIndex);
-            console.log('Successfully selected row', message.rowIndex, 'in table', message.tableId);
-          } else {
-            console.warn('Table not found or method not available for:', message.tableId);
-            console.log('Available tables:', Object.keys(window.vegbankTables || {}));
-            console.log('Table object:', table);
-          }
-        } catch (e) {
-          console.warn('Could not select table row:', e);
+    // Store pending row selections until tables are ready
+    var pendingSelections = [];
+    var currentSelection = null; // Track the currently selected accession code
+    
+    // Listen for table ready events
+    $(document).on('tableReady tableDrawn', function(e, data) {
+      console.log('Table ready/drawn event:', data.tableId);
+      
+      // Restore current selection after table redraw
+      if (currentSelection) {
+        console.log('Restoring current selection after table redraw:', currentSelection);
+        attemptRowSelection(currentSelection, false); // false = don't clear current selection
+      }
+      
+      // Check for any pending selections for this table or any table
+      for (var i = pendingSelections.length - 1; i >= 0; i--) {
+        var pendingSelection = pendingSelections[i];
+        console.log('Processing pending selection:', pendingSelection.accessionCode);
+        
+        // Try to select the row now that table is ready
+        if (attemptRowSelection(pendingSelection.accessionCode)) {
+          console.log('Successfully processed pending selection for:', pendingSelection.accessionCode);
+          // Remove from pending list and set as current selection
+          currentSelection = pendingSelection.accessionCode;
+          pendingSelections.splice(i, 1);
         }
-      }, 200);
+      }
     });
+    
+    // Function to attempt row selection
+    function attemptRowSelection(accessionCode, clearCurrent) {
+      if (clearCurrent !== false) { // Default to true unless explicitly set to false
+        console.log('Attempting to select row with accession:', accessionCode);
+        // Clear all selections from all tables first
+        $('table tbody tr').removeClass('selected');
+      }
+      
+      // Find the button with the specific accession code
+      var targetButton = $('button').filter(function() {
+        var onclick = $(this).attr('onclick');
+        return onclick && onclick.includes(\"'\" + accessionCode + \"'\");
+      });
+      
+      console.log('Found', targetButton.length, 'buttons with accession code');
+      
+      if (targetButton.length > 0) {
+        // Get the row containing the button and select it
+        var targetRow = targetButton.closest('tr');
+        targetRow.addClass('selected');
+        console.log('SUCCESS: Selected row for accession', accessionCode);
+        return true;
+      } else {
+        console.log('No buttons found for accession', accessionCode);
+        return false;
+      }
+    }
 
     Shiny.addCustomMessageHandler('selectTableRowByAccession', function(message) {
-      console.log('Selecting row by accession code:', message.accessionCode, 'in table:', message.tableId);
+      console.log('Received selection request for:', message.accessionCode);
       
-      var trySelect = function(attempt) {
-        attempt = attempt || 1;
-        var maxAttempts = 10;
-        
-        try {
-          // Clear all selections from all tables first
-          $('table tbody tr').removeClass('selected');
-          console.log('Cleared all existing selections (attempt ' + attempt + ')');
-          
-          // Find the button with the specific accession code
-          // Use a more precise selector that looks for the exact value
-          var escapedAccessionCode = message.accessionCode.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
-          var buttonSelector = 'button[onclick*=\"Shiny.setInputValue\"][onclick*=\"' + escapedAccessionCode + '\"]';
-          var targetButton = $(buttonSelector);
-          
-          // Additional filtering to ensure exact match
-          targetButton = targetButton.filter(function() {
-            var onclickAttr = $(this).attr('onclick');
-            if (!onclickAttr) return false;
-            
-            // Extract the value from onclick=\"Shiny.setInputValue('...', 'VALUE', ...)\"
-            var match = onclickAttr.match(/Shiny\\.setInputValue\\([^,]+,\\s*['\\\"]([^'\\\"]+)['\\\"]/);
-            if (match && match[1]) {
-              return match[1] === message.accessionCode;
-            }
-            return false;
-          });
-          
-          console.log('Looking for button with selector:', buttonSelector);
-          console.log('Found buttons after filtering:', targetButton.length);
-          
-          if (targetButton.length > 0) {
-            // Get the row containing the button
-            var targetRow = targetButton.closest('tr');
-            console.log('Found target row:', targetRow.length);
-            
-            if (targetRow.length > 0) {
-              // Add the selected class
-              targetRow.addClass('selected');
-              console.log('SUCCESS: Added selected class to row with accession code:', message.accessionCode);
-              console.log('Row classes:', targetRow.attr('class'));
-              return true;
-            } else {
-              console.warn('Could not find row containing the button');
-            }
-          } else {
-            console.warn('Could not find button with accession code:', message.accessionCode);
-            
-            // If button not found and we haven't exceeded max attempts, retry
-            if (attempt < maxAttempts) {
-              console.log('Retrying selection in 500ms (attempt ' + (attempt + 1) + ' of ' + maxAttempts + ')');
-              setTimeout(function() {
-                trySelect(attempt + 1);
-              }, 500);
-              return false;
-            }
-          }
-        } catch (e) {
-          console.warn('Error selecting table row by accession (attempt ' + attempt + '):', e);
-          if (attempt < maxAttempts) {
-            setTimeout(function() {
-              trySelect(attempt + 1);
-            }, 500);
-          }
-        }
-        
-        return false;
-      };
-      
-      // Start the selection attempt
-      setTimeout(function() {
-        trySelect(1);
-      }, 100);
+      // Try immediate selection first
+      if (!attemptRowSelection(message.accessionCode)) {
+        console.log('Immediate selection failed, adding to pending queue');
+        // Add to pending selections if immediate attempt fails
+        pendingSelections.push({
+          accessionCode: message.accessionCode,
+          timestamp: Date.now()
+        });
+      } else {
+        // Set as current selection if successful
+        currentSelection = message.accessionCode;
+      }
     });
 
     Shiny.addCustomMessageHandler('clearAllTableSelections', function(message) {
       // Simply remove selected class from all table rows
       $('table tbody tr').removeClass('selected');
+      currentSelection = null; // Clear the current selection
       console.log('Cleared all table selections');
     });
 
@@ -405,6 +274,17 @@ custom_theme <- bslib::bs_add_rules(
   .datatables .dataTables_wrapper div.dataTables_info {
       padding-top: 0.75rem;
       font-size: 0.875rem !important;
+  }
+  .dataTables_wrapper tbody tr.selected,
+  table.dataTable tbody tr.selected,
+  .table tbody tr.selected {
+      background-color: rgba(114, 185, 162, 0.15) !important;
+      border-left: 4px solid #72b9a2 !important;
+  }
+  .dataTables_wrapper tbody tr.selected:hover,
+  table.dataTable tbody tr.selected:hover,
+  .table tbody tr.selected:hover {
+      background-color: rgba(114, 185, 162, 0.25) !important;
   }
 "
 )

@@ -45,9 +45,6 @@ create_table <- function(data_sources, required_sources, process_function, table
               var table = this.api();
               var tableId = $(table.table().node()).attr('id');
               
-              // Store programmatic selection flag
-              table.programmaticSelection = false;
-              
               // Completely disable DataTables selection events
               table.off('select deselect');
               
@@ -58,119 +55,23 @@ create_table <- function(data_sources, required_sources, process_function, table
                 if ($(e.target).is('button, a, input') || $(e.target).closest('button, a').length > 0) {
                   return true;
                 }
-                // Prevent row selection
-                e.stopPropagation();
+                
+                // Prevent any other row selection
                 e.preventDefault();
+                e.stopPropagation();
                 return false;
               });
               
-              // Override row selection completely
-              table.rows().select = function() { return this; };
-              table.rows().deselect = function() { return this; };
-              table.row().select = function() { return this; };
-              table.row().deselect = function() { return this; };
-              
-              // Add custom selection method that manually adds/removes CSS classes
-              table.selectRowsProgrammatic = function(rowIndex) {
-                // Remove selection class from all rows across all pages
-                $(this.table().body()).find('tr').removeClass('selected');
-                console.log('Cleared all selections');
-                
-                if (rowIndex !== null && rowIndex !== undefined) {
-                  var self = this;
-                  var pageInfo = self.page.info();
-                  var totalRows = self.data().count();
-                  var rowPage = Math.floor(rowIndex / pageInfo.length);
-                  
-                  console.log('Selection details:');
-                  console.log('  Target row:', rowIndex);
-                  console.log('  Total rows:', totalRows);
-                  console.log('  Page length:', pageInfo.length);
-                  console.log('  Current page:', pageInfo.page);
-                  console.log('  Calculated target page:', rowPage);
-                  
-                  // Check if row index is valid
-                  if (rowIndex >= totalRows) {
-                    console.warn('Row index', rowIndex, 'is beyond total rows', totalRows);
-                    return;
-                  }
-                  
-                  // Function to select the row
-                  var selectRow = function() {
-                    // Try different methods to get the row
-                    console.log('Debugging row access for index', rowIndex);
-                    
-                    // Method 1: Direct row access
-                    var rowNode = self.row(rowIndex).node();
-                    console.log('Method 1 - self.row(' + rowIndex + ').node():', rowNode);
-                    
-                    // Method 2: Check if row exists in data
-                    var rowData = self.row(rowIndex).data();
-                    console.log('Method 2 - Row data exists:', rowData !== undefined);
-                    
-                    // Method 3: Try to find the row on current page
-                    var currentPageRows = self.rows({page: 'current'}).nodes().toArray();
-                    console.log('Method 3 - Rows on current page:', currentPageRows.length);
-                    
-                    // Method 4: Get all row indices on current page
-                    var currentPageIndices = self.rows({page: 'current'}).indexes().toArray();
-                    console.log('Method 4 - Row indices on current page:', currentPageIndices);
-                    
-                    if (rowNode) {
-                      $(rowNode).addClass('selected');
-                      console.log('SUCCESS: Added selected class to row', rowIndex);
-                      console.log('Row classes:', $(rowNode).attr('class'));
-                    } else {
-                      console.warn('FAILED: Row node is null for index', rowIndex);
-                      
-                      // Try alternative approach - find by position within current page
-                      var pageStart = pageInfo.page * pageInfo.length;
-                      var positionInPage = rowIndex - pageStart;
-                      console.log('Alternative: Position in page:', positionInPage);
-                      
-                      if (positionInPage >= 0 && positionInPage < currentPageRows.length) {
-                        var altRowNode = currentPageRows[positionInPage];
-                        console.log('Alternative row node:', altRowNode);
-                        if (altRowNode) {
-                          $(altRowNode).addClass('selected');
-                          console.log('SUCCESS: Selected row using alternative method');
-                        }
-                      }
-                    }
-                  };
-                  
-                  // If the row is not on the current page, navigate to it first
-                  if (rowPage !== pageInfo.page) {
-                    console.log('Navigating from page', pageInfo.page, 'to page', rowPage);
-                    self.page(rowPage).draw(false);
-                    
-                    // Wait for the page to redraw before selecting
-                    setTimeout(selectRow, 150);
-                  } else {
-                    // Row is on current page
-                    selectRow();
-                  }
-                }
-              };
-              
-              // Store table reference globally for message handler
-              if (!window.vegbankTables) {
-                window.vegbankTables = {};
-              }
-              
-              // Store under the actual table ID
-              window.vegbankTables[tableId] = table;
-              
-              // Also try to find and store under the expected Shiny output ID
-              var containerDiv = $(table.table().node()).closest('div[id]');
-              if (containerDiv.length) {
-                var containerId = containerDiv.attr('id');
-                if (containerId && containerId !== tableId) {
-                  window.vegbankTables[containerId] = table;
-                }
-              }
-              
-              console.log('Registered table with IDs:', tableId, containerDiv.length ? containerDiv.attr('id') : 'no container');
+              // Trigger custom event to indicate table is ready for selection
+              $(document).trigger('tableReady', {tableId: tableId, table: table});
+            }
+          "),
+          drawCallback = DT::JS("
+            function(settings) {
+              // Re-trigger table ready event after each draw (pagination, filtering, etc.)
+              var table = this.api();
+              var tableId = $(table.table().node()).attr('id');
+              $(document).trigger('tableDrawn', {tableId: tableId, table: table});
             }
           ")
         )

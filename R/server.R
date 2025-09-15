@@ -84,39 +84,18 @@ server <- function(input, output, session) {
       update_map_view(lng, lat, message)
   }
 
-  # Helper function to select a row in a table and clear others
-  select_table_row_by_accession <- function(table_id, accession_code) {
-    # Clear previous selections from all tables
-    clear_all_table_selections()
-    
-    # Select the row in the specified table using accession code
-    # Skip selection if accession code is invalid, null, NA, or empty
-    if (!is.null(accession_code) && 
-        !is.na(accession_code) && 
-        nchar(accession_code) > 0 &&
-        accession_code != "NA") {
-      # Send the selection message with accession code
-      session$sendCustomMessage("selectTableRowByAccession", list(
-        tableId = table_id,
-        accessionCode = accession_code
-      ))
-      
-      # Update state
-      state$selected_table(table_id)
-      state$selected_row(accession_code)
-    } else {
-      cat("DEBUG: Skipping row selection for invalid accession code:", accession_code, "\n")
+  # Simplified function to select a table row by accession code
+  select_table_row_by_accession <- function(accession_code) {
+    # Skip if invalid accession code
+    if (is.null(accession_code) || is.na(accession_code) || 
+        nchar(accession_code) == 0 || accession_code == "NA") {
+      return()
     }
-  }
-
-  # Helper function to clear all table selections
-  clear_all_table_selections <- function() {
-    # Send a simple clear message to JavaScript
-    session$sendCustomMessage("clearAllTableSelections", list())
     
-    # Clear state
-    state$selected_table(NULL)
-    state$selected_row(NULL)
+    # Send selection message to JavaScript
+    session$sendCustomMessage("selectTableRowByAccession", list(
+      accessionCode = accession_code
+    ))
   }
 
   # RENDER UI ELEMENTS __________________________________________________________________
@@ -206,7 +185,7 @@ server <- function(input, output, session) {
     }
 
     # Find and select the row in the plot table
-    select_table_row_by_accession("plot_table", accession_code)
+    select_table_row_by_accession(accession_code)
 
     state$detail_type("plot-observation")
     state$selected_accession(accession_code)
@@ -261,7 +240,7 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$close_details, {
     state$details_open(FALSE)
-    clear_all_table_selections()
+    session$sendCustomMessage("clearAllTableSelections", list())
     session$doBookmark()
   })
 
@@ -269,7 +248,7 @@ server <- function(input, output, session) {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Find and select the row in the plot table
-      select_table_row_by_accession("plot_table", accession_code)
+      select_table_row_by_accession(accession_code)
       
       state$detail_type("plot-observation")
       state$selected_accession(accession_code)
@@ -291,7 +270,7 @@ server <- function(input, output, session) {
     if (length(comm_class_row) > 0) {
       # Get the plot observation accession code from the community classification
       plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
-      select_table_row_by_accession("plot_table", plot_obs_code)
+      select_table_row_by_accession(plot_obs_code)
     }
     
     state$detail_type("community-classification")
@@ -311,7 +290,7 @@ server <- function(input, output, session) {
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Select the row by accession code directly
-      select_table_row_by_accession("comm_table", accession_code)
+      select_table_row_by_accession(accession_code)
       
       state$detail_type("community-concept")
       state$selected_accession(accession_code)
@@ -336,7 +315,7 @@ server <- function(input, output, session) {
       if (length(plot_row_index) > 0) {
         # Get the plot's accession code and select by that
         plot_accession_code <- plot_data$obs_accession_code[plot_row_index[1]]
-        select_table_row_by_accession("plot_table", plot_accession_code)
+        select_table_row_by_accession(plot_accession_code)
       }
     }
     
@@ -357,7 +336,7 @@ server <- function(input, output, session) {
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Find and select the row in the project table
-      select_table_row_by_accession("proj_table", accession_code)
+      select_table_row_by_accession(accession_code)
       
       state$detail_type("project")
       state$selected_accession(accession_code)
@@ -377,7 +356,7 @@ server <- function(input, output, session) {
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Find and select the row in the party table
-      select_table_row_by_accession("party_table", accession_code)
+      select_table_row_by_accession(accession_code)
       
       state$detail_type("party")
       state$selected_accession(accession_code)
@@ -429,7 +408,15 @@ server <- function(input, output, session) {
         state$selected_accession(context$values$selected_accession)
         state$details_open(TRUE)
         
-        # Re-select the appropriate row when restoring
+        # Show the detail view first
+        show_detail_view(
+          state$detail_type(),
+          state$selected_accession(),
+          output,
+          session
+        )
+        
+        # Then select the row - the JavaScript will handle timing via DataTable events
         accession_code <- state$selected_accession()
         detail_type <- state$detail_type()
         
@@ -440,17 +427,17 @@ server <- function(input, output, session) {
         if (!is.null(accession_code) && !is.null(detail_type)) {
           if (detail_type == "plot-observation") {
             cat("  Selecting plot table row\n")
-            select_table_row_by_accession("plot_table", accession_code)
+            select_table_row_by_accession(accession_code)
           } else if (detail_type == "community-concept") {
             cat("  Selecting community table row\n")
-            select_table_row_by_accession("comm_table", accession_code)
+            select_table_row_by_accession(accession_code)
           } else if (detail_type == "community-classification") {
             # Find the plot row that contains this community classification
             comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
             if (length(comm_class_row) > 0) {
               plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
               cat("  Selecting plot table row for community classification\n")
-              select_table_row_by_accession("plot_table", plot_obs_code)
+              select_table_row_by_accession(plot_obs_code)
             }
           } else if (detail_type == "taxon-observation") {
             # Find the plot row that contains this taxon observation
@@ -461,24 +448,18 @@ server <- function(input, output, session) {
               if (length(plot_row_index) > 0) {
                 plot_accession_code <- plot_data$obs_accession_code[plot_row_index[1]]
                 cat("  Selecting plot table row for taxon observation\n")
-                select_table_row_by_accession("plot_table", plot_accession_code)
+                select_table_row_by_accession(plot_accession_code)
               }
             }
           } else if (detail_type == "project") {
             cat("  Selecting project table row\n")
-            select_table_row_by_accession("proj_table", accession_code)
+            select_table_row_by_accession(accession_code)
           } else if (detail_type == "party") {
             cat("  Selecting party table row\n")
-            select_table_row_by_accession("party_table", accession_code)
+            select_table_row_by_accession(accession_code)
           }
         }
         
-        show_detail_view(
-          state$detail_type(),
-          state$selected_accession(),
-          output,
-          session
-        )
         detail_open_observer$destroy()
       })
     }
