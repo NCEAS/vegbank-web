@@ -43,9 +43,9 @@ ui <- function(req) {
     var pendingSelections = [];
     var currentSelection = null; // Track the currently selected accession code
     
-    // Listen for table ready events
-    $(document).on('tableReady tableDrawn', function(e, data) {
-      console.log('Table ready/drawn event:', data.tableId);
+    // Listen for table drawn events to restore selections
+    $(document).on('tableDrawn', function(e, data) {
+      console.log('Table drawn event:', data.tableId);
       
       // Restore current selection after table redraw
       if (currentSelection) {
@@ -73,7 +73,7 @@ ui <- function(req) {
       if (clearCurrent !== false) { // Default to true unless explicitly set to false
         console.log('Attempting to select row with accession:', accessionCode);
         // Clear all selections from all tables first
-        $('table tbody tr').removeClass('selected');
+        $('table tbody tr').removeClass('selected-entity');
       }
       
       // Find the button with the specific accession code
@@ -87,7 +87,7 @@ ui <- function(req) {
       if (targetButton.length > 0) {
         // Get the row containing the button and select it
         var targetRow = targetButton.closest('tr');
-        targetRow.addClass('selected');
+        targetRow.addClass('selected-entity');
         console.log('SUCCESS: Selected row for accession', accessionCode);
         return true;
       } else {
@@ -114,9 +114,8 @@ ui <- function(req) {
     });
 
     Shiny.addCustomMessageHandler('clearAllTableSelections', function(message) {
-      // Simply remove selected class from all table rows
-      $('table tbody tr').removeClass('selected');
-      currentSelection = null; // Clear the current selection
+      $('table tbody tr').removeClass('selected-entity');
+      currentSelection = null;
       console.log('Cleared all table selections');
     });
 
@@ -275,15 +274,14 @@ custom_theme <- bslib::bs_add_rules(
       padding-top: 0.75rem;
       font-size: 0.875rem !important;
   }
-  .dataTables_wrapper tbody tr.selected,
-  table.dataTable tbody tr.selected,
-  .table tbody tr.selected {
+  .dataTables_wrapper tbody tr.selected-entity,
+  table.dataTable tbody tr.selected-entity,
+  .table tbody tr.selected-entity {
       background-color: rgba(114, 185, 162, 0.15) !important;
-      border-left: 4px solid #72b9a2 !important;
   }
-  .dataTables_wrapper tbody tr.selected:hover,
-  table.dataTable tbody tr.selected:hover,
-  .table tbody tr.selected:hover {
+  .dataTables_wrapper tbody tr.selected-entity:hover,
+  table.dataTable tbody tr.selected-entity:hover,
+  .table tbody tr.selected-entity:hover {
       background-color: rgba(114, 185, 162, 0.25) !important;
   }
 "

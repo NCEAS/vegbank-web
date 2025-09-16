@@ -31,9 +31,7 @@ server <- function(input, output, session) {
     details_open = shiny::reactiveVal(FALSE),
     map_center_lat = shiny::reactiveVal(39.8283), # Default latitude
     map_center_lng = shiny::reactiveVal(-98.5795), # Default longitude
-    map_zoom = shiny::reactiveVal(2), # Default zoom
-    selected_table = shiny::reactiveVal(NULL), # Track which table has selection
-    selected_row = shiny::reactiveVal(NULL) # Track which row is selected
+    map_zoom = shiny::reactiveVal(2) # Default zoom
   )
 
   # Load data from vegbankr
@@ -87,11 +85,11 @@ server <- function(input, output, session) {
   # Simplified function to select a table row by accession code
   select_table_row_by_accession <- function(accession_code) {
     # Skip if invalid accession code
-    if (is.null(accession_code) || is.na(accession_code) || 
-        nchar(accession_code) == 0 || accession_code == "NA") {
+    if (is.null(accession_code) || is.na(accession_code) ||
+      nchar(accession_code) == 0 || accession_code == "NA") {
       return()
     }
-    
+
     # Send selection message to JavaScript
     session$sendCustomMessage("selectTableRowByAccession", list(
       accessionCode = accession_code
@@ -194,10 +192,10 @@ server <- function(input, output, session) {
     show_detail_view("plot-observation", accession_code, output, session)
   })
 
-    shiny::observeEvent(input$show_on_map,
+  shiny::observeEvent(input$show_on_map,
     {
       map_data <- input$show_on_map
-      
+
       # Extract coordinates and code from the data
       lat <- as.numeric(map_data$lat)
       lng <- as.numeric(map_data$lng)
@@ -224,8 +222,8 @@ server <- function(input, output, session) {
         if (!is.null(map_req)) {
           session$sendCustomMessage("invalidateMapSize", list())
           move_map_to_obs(
-            map_req$lat, 
-            map_req$lng, 
+            map_req$lat,
+            map_req$lng,
             paste("Plot", map_req$code, "is here!")
           )
           state$map_request(NULL)
@@ -249,7 +247,7 @@ server <- function(input, output, session) {
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Find and select the row in the plot table
       select_table_row_by_accession(accession_code)
-      
+
       state$detail_type("plot-observation")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
@@ -263,7 +261,7 @@ server <- function(input, output, session) {
       shiny::showNotification(paste0("No accession code found for that community classification"), type = "error")
       return()
     }
-    
+
     # Find the plot row that contains this community classification
     # We need to look through the community data to find which plot observation has this classification
     comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
@@ -272,7 +270,7 @@ server <- function(input, output, session) {
       plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
       select_table_row_by_accession(plot_obs_code)
     }
-    
+
     state$detail_type("community-classification")
     state$selected_accession(accession_code)
     state$details_open(TRUE)
@@ -291,7 +289,7 @@ server <- function(input, output, session) {
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Select the row by accession code directly
       select_table_row_by_accession(accession_code)
-      
+
       state$detail_type("community-concept")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
@@ -305,7 +303,7 @@ server <- function(input, output, session) {
       shiny::showNotification(paste0("No accession code found for that taxon observation"), type = "error")
       return()
     }
-    
+
     # Find the plot row that contains this taxon observation
     taxa_row <- which(taxa_data$taxon_observation_accession_code == accession_code)
     if (length(taxa_row) > 0) {
@@ -318,7 +316,7 @@ server <- function(input, output, session) {
         select_table_row_by_accession(plot_accession_code)
       }
     }
-    
+
     state$detail_type("taxon-observation")
     state$selected_accession(accession_code)
     state$details_open(TRUE)
@@ -337,7 +335,7 @@ server <- function(input, output, session) {
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Find and select the row in the project table
       select_table_row_by_accession(accession_code)
-      
+
       state$detail_type("project")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
@@ -357,7 +355,7 @@ server <- function(input, output, session) {
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
       # Find and select the row in the party table
       select_table_row_by_accession(accession_code)
-      
+
       state$detail_type("party")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
@@ -407,7 +405,7 @@ server <- function(input, output, session) {
         state$detail_type(context$values$detail_type)
         state$selected_accession(context$values$selected_accession)
         state$details_open(TRUE)
-        
+
         # Show the detail view first
         show_detail_view(
           state$detail_type(),
@@ -415,15 +413,15 @@ server <- function(input, output, session) {
           output,
           session
         )
-        
+
         # Then select the row - the JavaScript will handle timing via DataTable events
         accession_code <- state$selected_accession()
         detail_type <- state$detail_type()
-        
+
         cat("DEBUG onRestore: Restoring detail view\n")
         cat("  Detail type:", detail_type, "\n")
         cat("  Accession code:", accession_code, "\n")
-        
+
         if (!is.null(accession_code) && !is.null(detail_type)) {
           if (detail_type == "plot-observation") {
             cat("  Selecting plot table row\n")
@@ -459,7 +457,7 @@ server <- function(input, output, session) {
             select_table_row_by_accession(accession_code)
           }
         }
-        
+
         detail_open_observer$destroy()
       })
     }

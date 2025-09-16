@@ -44,10 +44,10 @@ create_table <- function(data_sources, required_sources, process_function, table
             function(settings, json) {
               var table = this.api();
               var tableId = $(table.table().node()).attr('id');
-              
+
               // Completely disable DataTables selection events
               table.off('select deselect');
-              
+
               // Prevent all row selection interactions
               $(table.table().body()).off('click', 'tr');
               $(table.table().body()).on('click', 'tr', function(e) {
@@ -55,20 +55,17 @@ create_table <- function(data_sources, required_sources, process_function, table
                 if ($(e.target).is('button, a, input') || $(e.target).closest('button, a').length > 0) {
                   return true;
                 }
-                
+
                 // Prevent any other row selection
                 e.preventDefault();
                 e.stopPropagation();
                 return false;
               });
-              
-              // Trigger custom event to indicate table is ready for selection
-              $(document).trigger('tableReady', {tableId: tableId, table: table});
             }
           "),
           drawCallback = DT::JS("
             function(settings) {
-              // Re-trigger table ready event after each draw (pagination, filtering, etc.)
+              // Re-trigger table drawn event after each draw (pagination, filtering, etc.)
               var table = this.api();
               var tableId = $(table.table().node()).attr('id');
               $(document).trigger('tableDrawn', {tableId: tableId, table: table});
@@ -76,7 +73,7 @@ create_table <- function(data_sources, required_sources, process_function, table
           ")
         )
       )
-      
+
       return(dt_table)
     },
     message = table_config$progress_message %||% "Processing table data",
