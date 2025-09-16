@@ -418,23 +418,23 @@ server <- function(input, output, session) {
         accession_code <- state$selected_accession()
         detail_type <- state$detail_type()
 
-        cat("DEBUG onRestore: Restoring detail view\n")
-        cat("  Detail type:", detail_type, "\n")
-        cat("  Accession code:", accession_code, "\n")
+        message("DEBUG onRestore: Restoring detail view")
+        message("  Detail type: ", detail_type)
+        message("  Accession code: ", accession_code)
 
         if (!is.null(accession_code) && !is.null(detail_type)) {
           if (detail_type == "plot-observation") {
-            cat("  Selecting plot table row\n")
+            message("  Selecting plot table row")
             select_table_row_by_accession(accession_code)
           } else if (detail_type == "community-concept") {
-            cat("  Selecting community table row\n")
+            message("  Selecting community table row")
             select_table_row_by_accession(accession_code)
           } else if (detail_type == "community-classification") {
             # Find the plot row that contains this community classification
             comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
             if (length(comm_class_row) > 0) {
               plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
-              cat("  Selecting plot table row for community classification\n")
+              message("  Selecting plot table row for community classification")
               select_table_row_by_accession(plot_obs_code)
             }
           } else if (detail_type == "taxon-observation") {
@@ -445,15 +445,15 @@ server <- function(input, output, session) {
               plot_row_index <- which(plot_data$observation_id == observation_id)
               if (length(plot_row_index) > 0) {
                 plot_accession_code <- plot_data$obs_accession_code[plot_row_index[1]]
-                cat("  Selecting plot table row for taxon observation\n")
+                message("  Selecting plot table row for taxon observation")
                 select_table_row_by_accession(plot_accession_code)
               }
             }
           } else if (detail_type == "project") {
-            cat("  Selecting project table row\n")
+            message("  Selecting project table row")
             select_table_row_by_accession(accession_code)
           } else if (detail_type == "party") {
-            cat("  Selecting party table row\n")
+            message("  Selecting party table row")
             select_table_row_by_accession(accession_code)
           }
         }
@@ -470,20 +470,34 @@ server <- function(input, output, session) {
     session$doBookmark()
   })
 
-  # Exclude DataTable inputs from bookmarks (avoids storing the large table state)
-  shiny::setBookmarkExclude(c(
-    "plot_table_rows_selected", "plot_table_rows_all", "plot_table_rows_current",
-    "plot_table_search", "plot_table_state", "plot_table_row_last_clicked",
-    "plot_table_cell_clicked", "proj_table_rows_selected", "proj_table_rows_all",
-    "proj_table_rows_current", "proj_table_search", "proj_table_state",
-    "proj_table_row_last_clicked", "proj_table_cell_clicked", "comm_table_rows_selected",
-    "comm_table_rows_all", "comm_table_rows_current", "comm_table_search", "comm_table_state",
-    "comm_table_row_last_clicked", "comm_table_cell_clicked", "party_table_rows_selected",
-    "party_table_rows_all", "party_table_rows_current", "party_table_search", "party_table_state",
-    "party_table_row_last_clicked", "party_table_cell_clicked",
-    "map_bounds", "map_marker_mouseout", "map_marker_mouseover",
-    "map_marker_click", "map_click"
-  ))
+  # Generates a character vector of bookmark exclusions for all tables and the map
+  # This keeps the bookmark URLs shorter
+  generate_bookmark_exclusions <- function() {
+    dt_output_ids <- c("plot_table", "comm_table", "proj_table", "party_table")
+
+    # Base exclusions to apply to all DataTables
+    table_exclusions <- c(
+      "_cells_selected", "_cell_clicked", "_columns_selected", "_row_last_clicked",
+      "_rows_all", "_rows_current", "_rows_selected", "_search", "_state"
+    )
+
+    # Generate exclusions for each table
+    all_table_exclusions <- unlist(lapply(dt_output_ids, function(table_id) {
+      paste0(table_id, table_exclusions)
+    }))
+
+    # Map-specific exclusions
+    map_exclusions <- c(
+      "map_bounds", "map_center", "map_click", "map_marker_click",
+      "map_marker_mouseout", "map_marker_mouseover", "map_zoom"
+    )
+
+    # Combine and return all exclusions
+    c(all_table_exclusions, map_exclusions)
+  }
+
+  # Exclude some DataTable and map inputs from bookmarks (to keep URLs shorter)
+  shiny::setBookmarkExclude(generate_bookmark_exclusions())
 }
 
 # Helper function to load data types with API fallback

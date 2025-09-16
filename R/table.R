@@ -32,6 +32,7 @@ create_table <- function(data_sources, required_sources, process_function, table
         escape = FALSE,
         selection = "none",
         options = list(
+          stateSave = TRUE, # Save pagination, filtering, sorting to local storage
           dom = table_config$dom %||% "frtip",
           pageLength = table_config$page_length %||% 100,
           scrollY = table_config$scroll_y %||% "calc(100vh - 235px)",
