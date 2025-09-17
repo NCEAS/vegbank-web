@@ -22,16 +22,22 @@
 # ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
 
+  # CONSTANTS --------------------------------------------------------------------------------------
+
+  DEFAULT_MAP_LAT <- 39.8283
+  DEFAULT_MAP_LNG <- -98.5795
+  DEFAULT_MAP_ZOOM <- 2
+
   # STATE INITIALIZATION ---------------------------------------------------------------------------
-  
+
   state <- list(
     map_request = shiny::reactiveVal(NULL),
     detail_type = shiny::reactiveVal(NULL),
     selected_accession = shiny::reactiveVal(NULL),
     details_open = shiny::reactiveVal(FALSE),
-    map_center_lat = shiny::reactiveVal(39.8283), # Default latitude
-    map_center_lng = shiny::reactiveVal(-98.5795), # Default longitude
-    map_zoom = shiny::reactiveVal(2) # Default zoom
+    map_center_lat = shiny::reactiveVal(DEFAULT_MAP_LAT),
+    map_center_lng = shiny::reactiveVal(DEFAULT_MAP_LNG),
+    map_zoom = shiny::reactiveVal(DEFAULT_MAP_ZOOM)
   )
 
 
@@ -137,20 +143,7 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$see_obs_details, {
     accession_code <- input$see_obs_details
-    if (is.null(accession_code) || is.na(accession_code) || accession_code == "") {
-      shiny::showNotification(
-        paste0("No accession code found for that plot observation"),
-        type = "error"
-      )
-      return()
-    }
-
-    state$detail_type("plot-observation")
-    state$selected_accession(accession_code)
-    state$details_open(TRUE)
-
-    select_table_row_by_accession(session, accession_code)
-    show_detail_view("plot-observation", accession_code, output, session)
+    open_accession_details(state, session, output, accession_code, "plot-observation", "No accession code found for that plot observation")
   })
 
   shiny::observeEvent(input$show_on_map,
@@ -206,23 +199,19 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("plot-observation")
-      state$selected_accession(accession_code)
-      state$details_open(TRUE)
-
-      select_table_row_by_accession(session, accession_code)
-      show_detail_view("plot-observation", accession_code, output, session)
+      open_accession_details(state, session, output, accession_code, "plot-observation")
     }
   })
 
   shiny::observeEvent(input$comm_class_link_click, {
     accession_code <- input$comm_class_link_click
-    if (is.null(accession_code) || is.na(accession_code) || accession_code == "") {
-      shiny::showNotification(paste0("No accession code found for that community classification"), type = "error")
+
+    if (!is_valid_accession_code(accession_code)) {
+      shiny::showNotification("No accession code found for that community classification", type = "error")
       return()
     }
 
-    # Find the plot accession code that contains this community classification
+    # Find the corresponding plot accession code for table selection
     comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
     if (length(comm_class_row) > 0) {
       plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
@@ -232,35 +221,24 @@ server <- function(input, output, session) {
     state$detail_type("community-classification")
     state$selected_accession(accession_code)
     state$details_open(TRUE)
+
     show_detail_view("community-classification", accession_code, output, session)
   })
 
   shiny::observeEvent(input$comm_link_click, {
     accession_code <- input$comm_link_click
-    if (is.null(accession_code) ||
-          is.na(accession_code) ||
-          accession_code == "") {
-      shiny::showNotification(paste0("No accession code found for that community concept"), type = "error")
-      return()
-    }
-    if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("community-concept")
-      state$selected_accession(accession_code)
-      state$details_open(TRUE)
-
-      select_table_row_by_accession(session, accession_code)
-      show_detail_view("community-concept", accession_code, output, session)
-    }
+    open_accession_details(state, session, output, accession_code, "community-concept")
   })
 
   shiny::observeEvent(input$taxa_link_click, {
     accession_code <- input$taxa_link_click
-    if (is.null(accession_code) || is.na(accession_code) || accession_code == "") {
-      shiny::showNotification(paste0("No accession code found for that taxon observation"), type = "error")
+
+    if (!is_valid_accession_code(accession_code)) {
+      shiny::showNotification("No accession code found for that taxon observation", type = "error")
       return()
     }
 
-    # Find the plot accession code that contains this taxon observation
+    # Find the corresponding plot accession code for table selection
     taxa_row <- which(taxa_data$taxon_observation_accession_code == accession_code)
     if (length(taxa_row) > 0) {
       observation_id <- taxa_data$observation_id[taxa_row[1]]
@@ -280,38 +258,12 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$proj_link_click, {
     accession_code <- input$proj_link_click
-    if (is.null(accession_code) ||
-          is.na(accession_code) ||
-          accession_code == "") {
-      shiny::showNotification(paste0("No accession code found for that project"), type = "error")
-      return()
-    }
-    if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("project")
-      state$selected_accession(accession_code)
-      state$details_open(TRUE)
-
-      select_table_row_by_accession(session, accession_code)
-      show_detail_view("project", accession_code, output, session)
-    }
+    open_accession_details(state, session, output, accession_code, "project")
   })
 
   shiny::observeEvent(input$party_link_click, {
     accession_code <- input$party_link_click
-    if (is.null(accession_code) ||
-          is.na(accession_code) ||
-          accession_code == "") {
-      shiny::showNotification(paste0("No accession code found for that party"), type = "error")
-      return()
-    }
-    if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      state$detail_type("party")
-      state$selected_accession(accession_code)
-      state$details_open(TRUE)
-
-      select_table_row_by_accession(session, accession_code)
-      show_detail_view("party", accession_code, output, session)
-    }
+    open_accession_details(state, session, output, accession_code, "party")
   })
 
 
@@ -355,9 +307,9 @@ server <- function(input, output, session) {
     map_init_observer <- shiny::observeEvent(session$clientData$url_search,
       {
         # Only update map if we have restored state values
-        if (state$map_center_lat() != 39.8283 ||
-              state$map_center_lng() != -98.5795 ||
-              state$map_zoom() != 2) {
+        if (state$map_center_lat() != DEFAULT_MAP_LAT ||
+              state$map_center_lng() != DEFAULT_MAP_LNG ||
+              state$map_zoom() != DEFAULT_MAP_ZOOM) {
           leaflet::leafletProxy("map", session) |>
             leaflet::setView(
               lng = state$map_center_lng(),
@@ -449,6 +401,43 @@ server <- function(input, output, session) {
 
 # ================= OTHER FUNCTIONS ===========================================================
 
+#' Handles opening accession detail views with consistent state management
+#'
+#' @param state The state object containing reactive values
+#' @param session Shiny session object
+#' @param output Shiny output object
+#' @param accession_code The accession code for the entity
+#' @param detail_type The type of detail view to open
+#' @param error_message Custom error message for invalid accession codes
+#' @return TRUE if successful, FALSE if validation failed
+#' @noRd
+open_accession_details <- function(state, session, output, accession_code, detail_type, error_message = NULL) {
+  if (!is_valid_accession_code(accession_code)) {
+    error_msg <- error_message %||% paste0("No accession code found for that ", gsub("-", " ", detail_type))
+    shiny::showNotification(error_msg, type = "error")
+    return(FALSE)
+  }
+
+  state$detail_type(detail_type)
+  state$selected_accession(accession_code)
+  state$details_open(TRUE)
+
+  select_table_row_by_accession(session, accession_code)
+  show_detail_view(detail_type, accession_code, output, session)
+
+  return(TRUE)
+}
+
+#' Validates an accession code for use in the application
+#'
+#' @param accession_code The accession code to validate
+#' @return TRUE if valid, FALSE if invalid
+#' @noRd
+is_valid_accession_code <- function(accession_code) {
+  !is.null(accession_code) && !is.na(accession_code) &&
+    nchar(as.character(accession_code)) > 0 && accession_code != "NA"
+}
+
 #' Generates a character vector of bookmark exclusions for all tables defined
 #' in dt_output_ids and the map so the bookmark URL doesn't become too long.
 #'
@@ -495,8 +484,7 @@ move_map_to_obs <- function(session, lat, lng, message) {
 #' @noRd
 select_table_row_by_accession <- function(session, accession_code) {
   # Skip if invalid accession code
-  if (is.null(accession_code) || is.na(accession_code) ||
-        nchar(accession_code) == 0 || accession_code == "NA") {
+  if (!is_valid_accession_code(accession_code)) {
     return()
   }
 
