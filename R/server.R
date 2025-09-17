@@ -19,11 +19,11 @@
 #' @import vegbankr
 #'
 #' @noRd
-
-# ================= MAIN SERVER FUNCTION =================
-
+# ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
-  # STATE MANAGEMENT ______________________________________________________________________________
+
+  # STATE INITIALIZATION ---------------------------------------------------------------------------
+  
   state <- list(
     map_request = shiny::reactiveVal(NULL),
     detail_type = shiny::reactiveVal(NULL),
@@ -34,7 +34,9 @@ server <- function(input, output, session) {
     map_zoom = shiny::reactiveVal(2) # Default zoom
   )
 
-  # Load data from vegbankr
+
+  # DATA LOADING -----------------------------------------------------------------------------------
+
   vegbankr::vb_debug()
   vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
 
@@ -77,26 +79,9 @@ server <- function(input, output, session) {
     )
   })
 
-  move_map_to_obs <- function(lat, lng, message) {
-    leaflet::leafletProxy("map", session) |>
-      update_map_view(lng, lat, message)
-  }
 
-  # Simplified function to select a table row by accession code
-  select_table_row_by_accession <- function(accession_code) {
-    # Skip if invalid accession code
-    if (is.null(accession_code) || is.na(accession_code) ||
-      nchar(accession_code) == 0 || accession_code == "NA") {
-      return()
-    }
+  # RENDER UI ELEMENTS --------------------------------------------------------------------------------
 
-    # Send selection message to JavaScript
-    session$sendCustomMessage("selectTableRowByAccession", list(
-      accessionCode = accession_code
-    ))
-  }
-
-  # RENDER UI ELEMENTS __________________________________________________________________
   output$dataSummary <- shiny::renderUI({
     htmltools::tags$p(
       "Vegbank is a database of vegetation plot data. Navigate to the Plots tab ",
@@ -126,30 +111,11 @@ server <- function(input, output, session) {
   })
 
   output$map <- leaflet::renderLeaflet({
-    # Always initially render with default values
     process_map_data(plot_data)
   })
 
-  # Use a self-destroying observer to handle map initialization from URL
-  map_init_observer <- shiny::observeEvent(session$clientData$url_search,
-    {
-      # Only update map if we have restored state values
-      if (state$map_center_lat() != 39.8283 ||
-        state$map_center_lng() != -98.5795 ||
-        state$map_zoom() != 2) {
-        leaflet::leafletProxy("map", session) |>
-          leaflet::setView(
-            lng = state$map_center_lng(),
-            lat = state$map_center_lat(),
-            zoom = state$map_zoom()
-          )
-      }
 
-      # Destroy this observer after first run
-      map_init_observer$destroy()
-    },
-    once = TRUE
-  )
+  # EVENT OBSERVERS --------------------------------------------------------------------------------
 
   # Track map state changes without triggering redraws
   shiny::observeEvent(input$map_zoom,
@@ -169,9 +135,6 @@ server <- function(input, output, session) {
     ignoreInit = TRUE
   )
 
-
-
-  # EVENT HANDLERS _________________________________________________________________________________
   shiny::observeEvent(input$see_obs_details, {
     accession_code <- input$see_obs_details
     if (is.null(accession_code) || is.na(accession_code) || accession_code == "") {
@@ -182,21 +145,17 @@ server <- function(input, output, session) {
       return()
     }
 
-    # Find and select the row in the plot table
-    select_table_row_by_accession(accession_code)
-
     state$detail_type("plot-observation")
     state$selected_accession(accession_code)
     state$details_open(TRUE)
-    # Open the details view
+
+    select_table_row_by_accession(session, accession_code)
     show_detail_view("plot-observation", accession_code, output, session)
   })
 
   shiny::observeEvent(input$show_on_map,
     {
       map_data <- input$show_on_map
-
-      # Extract coordinates and code from the data
       lat <- as.numeric(map_data$lat)
       lng <- as.numeric(map_data$lng)
       code <- map_data$code
@@ -213,7 +172,8 @@ server <- function(input, output, session) {
       state$map_request(list(lat = lat, lng = lng, code = code))
       shiny::updateNavbarPage(session, "page", selected = "Map")
 
-      # Create a self-destroying observer
+      # Create a self-destroying observer (necessary to avoid updating
+      # the map before we're on the map page)
       map_update_observer <- shiny::observe({
         # Only proceed if we're on the map page
         shiny::req(input$page == "Map")
@@ -222,6 +182,7 @@ server <- function(input, output, session) {
         if (!is.null(map_req)) {
           session$sendCustomMessage("invalidateMapSize", list())
           move_map_to_obs(
+            session,
             map_req$lat,
             map_req$lng,
             paste("Plot", map_req$code, "is here!")
@@ -245,12 +206,11 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      # Find and select the row in the plot table
-      select_table_row_by_accession(accession_code)
-
       state$detail_type("plot-observation")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
+
+      select_table_row_by_accession(session, accession_code)
       show_detail_view("plot-observation", accession_code, output, session)
     }
   })
@@ -262,13 +222,11 @@ server <- function(input, output, session) {
       return()
     }
 
-    # Find the plot row that contains this community classification
-    # We need to look through the community data to find which plot observation has this classification
+    # Find the plot accession code that contains this community classification
     comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
     if (length(comm_class_row) > 0) {
-      # Get the plot observation accession code from the community classification
       plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
-      select_table_row_by_accession(plot_obs_code)
+      select_table_row_by_accession(session, plot_obs_code)
     }
 
     state$detail_type("community-classification")
@@ -279,20 +237,18 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$comm_link_click, {
     accession_code <- input$comm_link_click
-    # Check for valid accession code
     if (is.null(accession_code) ||
-      is.na(accession_code) ||
-      accession_code == "") {
+          is.na(accession_code) ||
+          accession_code == "") {
       shiny::showNotification(paste0("No accession code found for that community concept"), type = "error")
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      # Select the row by accession code directly
-      select_table_row_by_accession(accession_code)
-
       state$detail_type("community-concept")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
+
+      select_table_row_by_accession(session, accession_code)
       show_detail_view("community-concept", accession_code, output, session)
     }
   })
@@ -304,73 +260,67 @@ server <- function(input, output, session) {
       return()
     }
 
-    # Find the plot row that contains this taxon observation
+    # Find the plot accession code that contains this taxon observation
     taxa_row <- which(taxa_data$taxon_observation_accession_code == accession_code)
     if (length(taxa_row) > 0) {
-      # Get the observation_id from the taxon data and find the corresponding plot row
       observation_id <- taxa_data$observation_id[taxa_row[1]]
       plot_row_index <- which(plot_data$observation_id == observation_id)
       if (length(plot_row_index) > 0) {
-        # Get the plot's accession code and select by that
         plot_accession_code <- plot_data$obs_accession_code[plot_row_index[1]]
-        select_table_row_by_accession(plot_accession_code)
+        select_table_row_by_accession(session, plot_accession_code)
       }
     }
 
     state$detail_type("taxon-observation")
     state$selected_accession(accession_code)
     state$details_open(TRUE)
+
     show_detail_view("taxon-observation", accession_code, output, session)
   })
 
   shiny::observeEvent(input$proj_link_click, {
     accession_code <- input$proj_link_click
-    # Check for valid accession code
     if (is.null(accession_code) ||
-      is.na(accession_code) ||
-      accession_code == "") {
+          is.na(accession_code) ||
+          accession_code == "") {
       shiny::showNotification(paste0("No accession code found for that project"), type = "error")
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      # Find and select the row in the project table
-      select_table_row_by_accession(accession_code)
-
       state$detail_type("project")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
+
+      select_table_row_by_accession(session, accession_code)
       show_detail_view("project", accession_code, output, session)
     }
   })
 
   shiny::observeEvent(input$party_link_click, {
     accession_code <- input$party_link_click
-    # Check for valid accession code
     if (is.null(accession_code) ||
-      is.na(accession_code) ||
-      accession_code == "") {
+          is.na(accession_code) ||
+          accession_code == "") {
       shiny::showNotification(paste0("No accession code found for that party"), type = "error")
       return()
     }
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      # Find and select the row in the party table
-      select_table_row_by_accession(accession_code)
-
       state$detail_type("party")
       state$selected_accession(accession_code)
       state$details_open(TRUE)
+
+      select_table_row_by_accession(session, accession_code)
       show_detail_view("party", accession_code, output, session)
     }
   })
 
-  # STATE PERSISTENCE ____________________________________________________________________________
+
+  # STATE PERSISTENCE ----------------------------------------------------------------------------------
   shiny::onBookmark(function(state_obj) {
     state_obj$values$current_tab <- input$page
     state_obj$values$detail_type <- state$detail_type()
     state_obj$values$selected_accession <- state$selected_accession()
     state_obj$values$details_open <- state$details_open()
-
-    # Add map state
     state_obj$values$map_center_lat <- state$map_center_lat()
     state_obj$values$map_center_lng <- state$map_center_lng()
     state_obj$values$map_zoom <- state$map_zoom()
@@ -399,6 +349,29 @@ server <- function(input, output, session) {
       state$map_zoom(context$values$map_zoom)
     }
 
+    # Use a self-destroying observer to handle map initialization from URL
+    # This observer is in the onRestore function to ensure it runs after state
+    # restoration and is only created when necessary instead of on every session
+    map_init_observer <- shiny::observeEvent(session$clientData$url_search,
+      {
+        # Only update map if we have restored state values
+        if (state$map_center_lat() != 39.8283 ||
+              state$map_center_lng() != -98.5795 ||
+              state$map_zoom() != 2) {
+          leaflet::leafletProxy("map", session) |>
+            leaflet::setView(
+              lng = state$map_center_lng(),
+              lat = state$map_center_lat(),
+              zoom = state$map_zoom()
+            )
+        }
+
+        # Destroy this observer after first run
+        map_init_observer$destroy()
+      },
+      once = TRUE
+    )
+
     # Safely reopen the detail overlay
     if (isTRUE(context$values$details_open)) {
       detail_open_observer <- shiny::observe({
@@ -425,17 +398,17 @@ server <- function(input, output, session) {
         if (!is.null(accession_code) && !is.null(detail_type)) {
           if (detail_type == "plot-observation") {
             message("  Selecting plot table row")
-            select_table_row_by_accession(accession_code)
+            select_table_row_by_accession(session, accession_code)
           } else if (detail_type == "community-concept") {
             message("  Selecting community table row")
-            select_table_row_by_accession(accession_code)
+            select_table_row_by_accession(session, accession_code)
           } else if (detail_type == "community-classification") {
             # Find the plot row that contains this community classification
             comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
             if (length(comm_class_row) > 0) {
               plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
               message("  Selecting plot table row for community classification")
-              select_table_row_by_accession(plot_obs_code)
+              select_table_row_by_accession(session, plot_obs_code)
             }
           } else if (detail_type == "taxon-observation") {
             # Find the plot row that contains this taxon observation
@@ -446,15 +419,15 @@ server <- function(input, output, session) {
               if (length(plot_row_index) > 0) {
                 plot_accession_code <- plot_data$obs_accession_code[plot_row_index[1]]
                 message("  Selecting plot table row for taxon observation")
-                select_table_row_by_accession(plot_accession_code)
+                select_table_row_by_accession(session, plot_accession_code)
               }
             }
           } else if (detail_type == "project") {
             message("  Selecting project table row")
-            select_table_row_by_accession(accession_code)
+            select_table_row_by_accession(session, accession_code)
           } else if (detail_type == "party") {
             message("  Selecting party table row")
-            select_table_row_by_accession(accession_code)
+            select_table_row_by_accession(session, accession_code)
           }
         }
 
@@ -470,40 +443,73 @@ server <- function(input, output, session) {
     session$doBookmark()
   })
 
-  # Generates a character vector of bookmark exclusions for all tables and the map
-  # This keeps the bookmark URLs shorter
-  generate_bookmark_exclusions <- function() {
-    dt_output_ids <- c("plot_table", "comm_table", "proj_table", "party_table")
-
-    # Base exclusions to apply to all DataTables
-    table_exclusions <- c(
-      "_cells_selected", "_cell_clicked", "_columns_selected", "_row_last_clicked",
-      "_rows_all", "_rows_current", "_rows_selected", "_search", "_state"
-    )
-
-    # Generate exclusions for each table
-    all_table_exclusions <- unlist(lapply(dt_output_ids, function(table_id) {
-      paste0(table_id, table_exclusions)
-    }))
-
-    # Map-specific exclusions
-    map_exclusions <- c(
-      "map_bounds", "map_center", "map_click", "map_marker_click",
-      "map_marker_mouseout", "map_marker_mouseover", "map_zoom"
-    )
-
-    # Combine and return all exclusions
-    c(all_table_exclusions, map_exclusions)
-  }
-
-  # Exclude some DataTable and map inputs from bookmarks (to keep URLs shorter)
   shiny::setBookmarkExclude(generate_bookmark_exclusions())
 }
 
-# Helper function to load data types with API fallback
-# This function will try to load data from the API first, and if it fails, it
-# will fall back to reading from a cached RDS file.
-# If the API is not used, it will only read from the cached file.
+
+# ================= OTHER FUNCTIONS ===========================================================
+
+#' Generates a character vector of bookmark exclusions for all tables defined
+#' in dt_output_ids and the map so the bookmark URL doesn't become too long.
+#'
+#' @noRd
+generate_bookmark_exclusions <- function() {
+  dt_output_ids <- c("plot_table", "comm_table", "proj_table", "party_table")
+
+  # Base exclusions to apply to all DataTables
+  table_exclusions <- c(
+    "_cells_selected", "_cell_clicked", "_columns_selected", "_row_last_clicked",
+    "_rows_all", "_rows_current", "_rows_selected", "_search", "_state"
+  )
+
+  # Generate exclusions for each table
+  all_table_exclusions <- unlist(lapply(dt_output_ids, function(table_id) {
+    paste0(table_id, table_exclusions)
+  }))
+
+  # Map-specific exclusions
+  map_exclusions <- c(
+    "map_bounds", "map_center", "map_click", "map_marker_click",
+    "map_marker_mouseout", "map_marker_mouseover", "map_zoom"
+  )
+
+  # Combine and return all exclusions
+  c(all_table_exclusions, map_exclusions)
+}
+
+#' Move the map to the specified latitude and longitude with a popup message
+#'
+#' @param lat Latitude of the observation
+#' @param lng Longitude of the observation
+#' @param message Message to display in the popup
+#' @noRd
+move_map_to_obs <- function(session, lat, lng, message) {
+  leaflet::leafletProxy("map", session) |>
+    update_map_view(lng, lat, message)
+}
+
+#' Select a table row by accession code using a custom Shiny message
+#'
+#' @param session The Shiny session object
+#' @param accession_code The accession code to select
+#' @noRd
+select_table_row_by_accession <- function(session, accession_code) {
+  # Skip if invalid accession code
+  if (is.null(accession_code) || is.na(accession_code) ||
+        nchar(accession_code) == 0 || accession_code == "NA") {
+    return()
+  }
+
+  # Send selection message to JavaScript
+  session$sendCustomMessage("selectTableRowByAccession", list(
+    accessionCode = accession_code
+  ))
+}
+
+#' Helper function to load data types with API fallback
+#' This function will try to load data from the API first, and if it fails, it
+#' will fall back to reading from a cached RDS file.
+#' If the API is not used, it will only read from the cached file.
 # Returns a data frame with the loaded data or an empty data frame if loading fails.
 #'
 #' @param data_type Name of the data type being loaded (for progress messages)
@@ -554,8 +560,9 @@ load_data_type <- function(data_type, file_path, api_function, api_params = list
   }
 }
 
-#' This function checks if the specified file exists and reads it as an RDS file.
+#' Checks if the specified file exists and reads it as an RDS file.
 #' If the file does not exist, it shows an error notification and returns an empty data frame.
+#' 
 #' @param data_type Name of the data type being loaded (for error messages)
 #' @param file_path Path to the cached RDS file
 #' @return A data frame with the loaded data or an empty data frame if loading fails.
