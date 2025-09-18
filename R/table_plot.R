@@ -163,7 +163,6 @@ create_plot_action_buttons <- function(plot_data) {
   })
 }
 
-#' TODO: Should the create_taxa_vectors() function be called on each page render via a callback, or should its results be passed up to the API for more efficient data handling?
 #' Create data vectors for taxa lists
 #'
 #' @param plot_data Data frame of plot observation data
@@ -173,7 +172,8 @@ create_plot_action_buttons <- function(plot_data) {
 #' @importFrom dplyr left_join group_by summarize
 #' @noRd
 create_taxa_vectors <- function(plot_data, taxa_data) {
-  merged <- dplyr::left_join(plot_data, taxa_data, by = "observation_id")
+  merged <- dplyr::left_join(plot_data, taxa_data, by = "obs_accession_code")
+
   taxa_lists <- merged |>
     dplyr::mutate(
       str_max_cover = format(round(.data$max_cover, 2), nsmall = 2, trim = TRUE),
@@ -181,25 +181,31 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
         function(x, y, z) list(code = x, name = y, cover = z),
         .data$taxon_observation_accession_code,
         .data$int_curr_plant_sci_name_no_auth,
-        str_max_cover,
+        .data$str_max_cover,
         SIMPLIFY = FALSE,
         USE.NAMES = FALSE
       )
     ) |>
-    dplyr::group_by(.data$observation_id) |>
+    dplyr::arrange(dplyr::desc(.data$max_cover)) |>
+    dplyr::group_by(.data$obs_accession_code) |>
     dplyr::summarize(
       taxa = list(
         if (all(is.na(.data$int_curr_plant_sci_name_no_auth)) &
-              all(is.na(.data$max_cover))) {
+          all(is.na(.data$max_cover))) {
           list()
         } else {
-          taxon_details
+          .data$taxon_details
         }
       ),
       .groups = "drop"
     )
 
-  taxa_lists$taxa
+  # Ensure the order matches plot_data so it can be directly used in the table
+  result <- dplyr::left_join(
+    plot_data["obs_accession_code"],
+    taxa_lists,
+    by = "obs_accession_code"
+  )$taxa
 }
 
 #' Create data vectors for community lists
@@ -212,6 +218,7 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
 #' @noRd
 create_community_vectors <- function(plot_data, comm_data) {
   merged <- dplyr::left_join(plot_data, comm_data, by = "obs_accession_code")
+
   community_lists <- merged |>
     dplyr::mutate(
       comm_details = mapply(
@@ -222,17 +229,22 @@ create_community_vectors <- function(plot_data, comm_data) {
         USE.NAMES = FALSE
       )
     ) |>
-    dplyr::group_by(.data$observation_id) |>
+    dplyr::group_by(.data$obs_accession_code) |>
     dplyr::summarize(
       communities = list(
         if (all(is.na(.data$comm_name)) & all(is.na(.data$comm_class_accession_code))) {
           list()
         } else {
-          comm_details
+          .data$comm_details
         }
       ),
       .groups = "drop"
     )
 
-  community_lists$communities
+  # Ensure the order matches plot_data so it can be directly used in the table
+  result <- dplyr::left_join(
+    plot_data["obs_accession_code"],
+    community_lists,
+    by = "obs_accession_code"
+  )$communities
 }
