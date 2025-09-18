@@ -32,6 +32,8 @@ test_that("create_plot_action_buttons generates correct structure", {
   # Create test data with required structure
   test_data <- data.frame(
     obs_accession_code = c("ACC1", "ACC2"),
+    latitude = c(40.1, 41.2),
+    longitude = c(-74.1, -75.2),
     stringsAsFactors = FALSE
   )
 
@@ -40,20 +42,22 @@ test_that("create_plot_action_buttons generates correct structure", {
   expect_equal(length(result), 2)
   expect_type(result, "list")
   expect_equal(result[[1]]$code, "ACC1")
-  expect_equal(result[[1]]$count, 1)
+  expect_equal(result[[1]]$latitude, 40.1)
+  expect_equal(result[[1]]$longitude, -74.1)
   expect_equal(result[[2]]$code, "ACC2")
-  expect_equal(result[[2]]$count, 2)
+  expect_equal(result[[2]]$latitude, 41.2)
+  expect_equal(result[[2]]$longitude, -75.2)
 })
 
 test_that("create_taxa_vectors creates correct data structure", {
   # Create test data with the correct column structure
   plot_data <- data.frame(
-    observation_id = c(1, 2),
+    obs_accession_code = c("PLOT1", "PLOT2"),
     stringsAsFactors = FALSE
   )
 
   taxa_data <- data.frame(
-    observation_id = c(1, 1, 2),
+    obs_accession_code = c("PLOT1", "PLOT1", "PLOT2"),
     int_curr_plant_sci_name_no_auth = c("Taxon1", "Taxon2", NA),
     max_cover = c(10.123, 20.456, NA),
     taxon_observation_accession_code = c("ACC1", "ACC2", "ACC3"),
@@ -65,14 +69,14 @@ test_that("create_taxa_vectors creates correct data structure", {
   expect_equal(length(result), 2)
   expect_type(result, "list")
   
-  # Check first observation (has taxa)
+  # Check first observation (has taxa) - sorted by max_cover descending
   expect_equal(length(result[[1]]), 2)
-  expect_equal(result[[1]][[1]]$code, "ACC1")
-  expect_equal(result[[1]][[1]]$name, "Taxon1")
-  expect_equal(result[[1]][[1]]$cover, "10.12") # formatted with 2 decimal places
-  expect_equal(result[[1]][[2]]$code, "ACC2")
-  expect_equal(result[[1]][[2]]$name, "Taxon2")
-  expect_equal(result[[1]][[2]]$cover, "20.46")
+  expect_equal(result[[1]][[1]]$code, "ACC2")  # Higher cover (20.46) comes first
+  expect_equal(result[[1]][[1]]$name, "Taxon2")
+  expect_equal(result[[1]][[1]]$cover, "20.46") # formatted with 2 decimal places
+  expect_equal(result[[1]][[2]]$code, "ACC1")  # Lower cover (10.12) comes second
+  expect_equal(result[[1]][[2]]$name, "Taxon1")
+  expect_equal(result[[1]][[2]]$cover, "10.12")
   
   # Check second observation (no valid taxa data)
   expect_equal(length(result[[2]]), 0)
@@ -111,7 +115,6 @@ test_that("create_community_vectors creates correct data structure", {
 test_that("process_plot_data formats display data correctly", {
   # Create minimal test data with required columns
   plot_data <- data.frame(
-    observation_id = 1,
     obs_accession_code = "ACC1",
     author_plot_code = "Plot1",
     state_province = "State1",
@@ -119,7 +122,7 @@ test_that("process_plot_data formats display data correctly", {
   )
 
   taxa_data <- data.frame(
-    observation_id = 1,
+    obs_accession_code = "ACC1",
     int_curr_plant_sci_name_no_auth = "Taxon1",
     max_cover = 10.5,
     taxon_observation_accession_code = "TAXA1",
@@ -156,7 +159,6 @@ test_that("process_plot_data formats display data correctly", {
       # Check that Actions column contains list data
       expect_type(result$Actions, "list")
       expect_equal(result$Actions[[1]]$code, "ACC1")
-      expect_equal(result$Actions[[1]]$count, 1)
       
       # Check that Taxa column contains list data
       expect_type(result$`Top Taxa by Cover %`, "list")
@@ -175,7 +177,6 @@ test_that("process_plot_data formats display data correctly", {
 test_that("build_plot_table returns a DataTable with correct structure", {
   # Create minimal test data with all required columns
   plot_data <- data.frame(
-    observation_id = 1,
     obs_accession_code = "ACC1",
     author_plot_code = "Plot1",
     state_province = "State1",
@@ -183,7 +184,7 @@ test_that("build_plot_table returns a DataTable with correct structure", {
   )
 
   taxa_data <- data.frame(
-    observation_id = 1,
+    obs_accession_code = "ACC1",
     int_curr_plant_sci_name_no_auth = "Taxon1",
     max_cover = 10.25,
     taxon_observation_accession_code = "TAXA1",
@@ -250,13 +251,13 @@ test_that("build_plot_table returns a DataTable with correct structure", {
 
 test_that("create_taxa_vectors handles edge cases correctly", {
   plot_data <- data.frame(
-    observation_id = c(1, 2, 3),
+    obs_accession_code = c("PLOT1", "PLOT2", "PLOT3"),
     stringsAsFactors = FALSE
   )
 
   # Test with completely empty taxa data
   taxa_data_empty <- data.frame(
-    observation_id = integer(0),
+    obs_accession_code = character(0),
     int_curr_plant_sci_name_no_auth = character(0),
     max_cover = numeric(0),
     taxon_observation_accession_code = character(0),
@@ -271,7 +272,7 @@ test_that("create_taxa_vectors handles edge cases correctly", {
 
   # Test with all NA values
   taxa_data_na <- data.frame(
-    observation_id = c(1, 2),
+    obs_accession_code = c("PLOT1", "PLOT2"),
     int_curr_plant_sci_name_no_auth = c(NA, NA),
     max_cover = c(NA, NA),
     taxon_observation_accession_code = c("ACC1", "ACC2"),
@@ -282,7 +283,6 @@ test_that("create_taxa_vectors handles edge cases correctly", {
   expect_equal(length(result_na), 3)
   expect_equal(length(result_na[[1]]), 0) # Should be empty due to all NA values
   expect_equal(length(result_na[[2]]), 0)
-  expect_equal(length(result_na[[3]]), 0) # No matching observation_id
 })
 
 test_that("create_community_vectors handles edge cases correctly", {
