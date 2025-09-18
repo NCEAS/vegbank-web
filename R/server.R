@@ -21,7 +21,6 @@
 #' @noRd
 # ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
-
   # CONSTANTS --------------------------------------------------------------------------------------
 
   DEFAULT_MAP_LAT <- 39.8283
@@ -143,7 +142,13 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$see_obs_details, {
     accession_code <- input$see_obs_details
-    open_accession_details(state, session, output, accession_code, "plot-observation", "No accession code found for that plot observation")
+    open_accession_details(
+      state,
+      session,
+      output,
+      accession_code,
+      "plot-observation"
+    )
   })
 
   shiny::observeEvent(input$show_on_map,
@@ -205,24 +210,11 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$comm_class_link_click, {
     accession_code <- input$comm_class_link_click
-
-    if (!is_valid_accession_code(accession_code)) {
-      shiny::showNotification("No accession code found for that community classification", type = "error")
-      return()
-    }
-
-    # Find the corresponding plot accession code for table selection
-    comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
-    if (length(comm_class_row) > 0) {
-      plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
-      select_table_row_by_accession(session, plot_obs_code)
-    }
-
-    state$detail_type("community-classification")
-    state$selected_accession(accession_code)
-    state$details_open(TRUE)
-
-    show_detail_view("community-classification", accession_code, output, session)
+    open_accession_details(
+      state, session, output,
+      accession_code, "community-classification",
+      NULL, comm_class_data, taxa_data, plot_data
+    )
   })
 
   shiny::observeEvent(input$comm_link_click, {
@@ -232,28 +224,11 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$taxa_link_click, {
     accession_code <- input$taxa_link_click
-
-    if (!is_valid_accession_code(accession_code)) {
-      shiny::showNotification("No accession code found for that taxon observation", type = "error")
-      return()
-    }
-
-    # Find the corresponding plot accession code for table selection
-    taxa_row <- which(taxa_data$taxon_observation_accession_code == accession_code)
-    if (length(taxa_row) > 0) {
-      observation_id <- taxa_data$observation_id[taxa_row[1]]
-      plot_row_index <- which(plot_data$observation_id == observation_id)
-      if (length(plot_row_index) > 0) {
-        plot_accession_code <- plot_data$obs_accession_code[plot_row_index[1]]
-        select_table_row_by_accession(session, plot_accession_code)
-      }
-    }
-
-    state$detail_type("taxon-observation")
-    state$selected_accession(accession_code)
-    state$details_open(TRUE)
-
-    show_detail_view("taxon-observation", accession_code, output, session)
+    open_accession_details(
+      state, session, output,
+      accession_code, "taxon-observation",
+      NULL, comm_class_data, taxa_data, plot_data
+    )
   })
 
   shiny::observeEvent(input$proj_link_click, {
@@ -343,43 +318,13 @@ server <- function(input, output, session) {
         accession_code <- state$selected_accession()
         detail_type <- state$detail_type()
 
-        message("DEBUG onRestore: Restoring detail view")
-        message("  Detail type: ", detail_type)
-        message("  Accession code: ", accession_code)
+        message("DEBUG onRestore: Restoring detail view - ", detail_type, ": ", accession_code)
 
+        # Look up the correct row code in case of indirect links (comm class and taxon obs)
         if (!is.null(accession_code) && !is.null(detail_type)) {
-          if (detail_type == "plot-observation") {
-            message("  Selecting plot table row")
-            select_table_row_by_accession(session, accession_code)
-          } else if (detail_type == "community-concept") {
-            message("  Selecting community table row")
-            select_table_row_by_accession(session, accession_code)
-          } else if (detail_type == "community-classification") {
-            # Find the plot row that contains this community classification
-            comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
-            if (length(comm_class_row) > 0) {
-              plot_obs_code <- comm_class_data$obs_accession_code[comm_class_row[1]]
-              message("  Selecting plot table row for community classification")
-              select_table_row_by_accession(session, plot_obs_code)
-            }
-          } else if (detail_type == "taxon-observation") {
-            # Find the plot row that contains this taxon observation
-            taxa_row <- which(taxa_data$taxon_observation_accession_code == accession_code)
-            if (length(taxa_row) > 0) {
-              observation_id <- taxa_data$observation_id[taxa_row[1]]
-              plot_row_index <- which(plot_data$observation_id == observation_id)
-              if (length(plot_row_index) > 0) {
-                plot_accession_code <- plot_data$obs_accession_code[plot_row_index[1]]
-                message("  Selecting plot table row for taxon observation")
-                select_table_row_by_accession(session, plot_accession_code)
-              }
-            }
-          } else if (detail_type == "project") {
-            message("  Selecting project table row")
-            select_table_row_by_accession(session, accession_code)
-          } else if (detail_type == "party") {
-            message("  Selecting party table row")
-            select_table_row_by_accession(session, accession_code)
+          row_code <- find_row_selection_code(detail_type, accession_code, comm_class_data, taxa_data, plot_data)
+          if (!is.null(row_code)) {
+            select_table_row_by_accession(session, row_code)
           }
         }
 
@@ -411,7 +356,7 @@ server <- function(input, output, session) {
 #' @param error_message Custom error message for invalid accession codes
 #' @return TRUE if successful, FALSE if validation failed
 #' @noRd
-open_accession_details <- function(state, session, output, accession_code, detail_type, error_message = NULL) {
+open_accession_details <- function(state, session, output, accession_code, detail_type, error_message = NULL, comm_class_data = NULL, taxa_data = NULL, plot_data = NULL) {
   if (!is_valid_accession_code(accession_code)) {
     error_msg <- error_message %||% paste0("No accession code found for that ", gsub("-", " ", detail_type))
     shiny::showNotification(error_msg, type = "error")
@@ -422,7 +367,19 @@ open_accession_details <- function(state, session, output, accession_code, detai
   state$selected_accession(accession_code)
   state$details_open(TRUE)
 
-  select_table_row_by_accession(session, accession_code)
+  # Use a helper function to find the correct table selection code in case of indirect links
+  # Community classifications and taxon observations require looking up the related
+  # plot observation to select the correct row.
+  if (!is.null(comm_class_data) && !is.null(taxa_data) && !is.null(plot_data)) {
+    row_code <- find_row_selection_code(detail_type, accession_code, comm_class_data, taxa_data, plot_data)
+    if (!is.null(row_code)) {
+      select_table_row_by_accession(session, row_code)
+    }
+  } else {
+    # Fallback to direct selection for simple cases
+    select_table_row_by_accession(session, accession_code)
+  }
+
   show_detail_view(detail_type, accession_code, output, session)
 
   return(TRUE)
@@ -494,6 +451,43 @@ select_table_row_by_accession <- function(session, accession_code) {
   ))
 }
 
+#' Find the correct accession code for table row selection based on detail type
+#' Community classifications and taxon observations require looking up the related
+#' plot observation to select the correct row.
+#'
+#' @param detail_type The type of detail view
+#' @param accession_code The accession code from the detail view
+#' @param comm_class_data Community classification data frame
+#' @param taxa_data Taxon observation data frame
+#' @param plot_data Plot observation data frame
+#' @return The accession code to use for table row selection, or NULL if not found
+#' @noRd
+find_row_selection_code <- function(detail_type, accession_code, comm_class_data, taxa_data, plot_data) {
+  switch(detail_type,
+    "plot-observation" = accession_code,
+    "community-concept" = accession_code,
+    "project" = accession_code,
+    "party" = accession_code,
+    "community-classification" = {
+      # Find the plot row that contains this community classification
+      comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
+      if (length(comm_class_row) > 0) comm_class_data$obs_accession_code[comm_class_row[1]] else NULL
+    },
+    "taxon-observation" = {
+      # Find the plot row that contains this taxon observation
+      taxa_row <- which(taxa_data$taxon_observation_accession_code == accession_code)
+      if (length(taxa_row) > 0) {
+        observation_id <- taxa_data$observation_id[taxa_row[1]]
+        plot_row_index <- which(plot_data$observation_id == observation_id)
+        if (length(plot_row_index) > 0) plot_data$obs_accession_code[plot_row_index[1]] else NULL
+      } else {
+        NULL
+      }
+    },
+    NULL # Unknown detail type
+  )
+}
+
 #' Helper function to load data types with API fallback
 #' This function will try to load data from the API first, and if it fails, it
 #' will fall back to reading from a cached RDS file.
@@ -550,7 +544,7 @@ load_data_type <- function(data_type, file_path, api_function, api_params = list
 
 #' Checks if the specified file exists and reads it as an RDS file.
 #' If the file does not exist, it shows an error notification and returns an empty data frame.
-#' 
+#'
 #' @param data_type Name of the data type being loaded (for error messages)
 #' @param file_path Path to the cached RDS file
 #' @return A data frame with the loaded data or an empty data frame if loading fails.
