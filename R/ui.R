@@ -43,9 +43,10 @@ ui <- function(req) {
     var pendingSelections = [];
     var currentSelection = null; // Track the currently selected accession code
     
-    // Listen for table drawn events to restore selections
-    $(document).on('tableDrawn', function(e, data) {
-      console.log('Table drawn event:', data.tableId);
+    // Listen for native DataTables draw events to restore selections
+    $(document).on('draw.dt', function(e, settings) {
+      var tableId = settings.sTableId;
+      console.log('DataTable draw event for:', tableId);
       
       // Restore current selection after table redraw
       if (currentSelection) {

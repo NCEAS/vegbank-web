@@ -40,38 +40,7 @@ create_table <- function(data_sources, required_sources, process_function, table
           scrollCollapse = TRUE,
           deferRender = TRUE,
           processing = TRUE,
-          columnDefs = column_defs,
-          initComplete = DT::JS("
-            function(settings, json) {
-              var table = this.api();
-              var tableId = $(table.table().node()).attr('id');
-
-              // Completely disable DataTables selection events
-              table.off('select deselect');
-
-              // Prevent all row selection interactions
-              $(table.table().body()).off('click', 'tr');
-              $(table.table().body()).on('click', 'tr', function(e) {
-                // Allow clicks on buttons and links within rows
-                if ($(e.target).is('button, a, input') || $(e.target).closest('button, a').length > 0) {
-                  return true;
-                }
-
-                // Prevent any other row selection
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-              });
-            }
-          "),
-          drawCallback = DT::JS("
-            function(settings) {
-              // Re-trigger table drawn event after each draw (pagination, filtering, etc.)
-              var table = this.api();
-              var tableId = $(table.table().node()).attr('id');
-              $(document).trigger('tableDrawn', {tableId: tableId, table: table});
-            }
-          ")
+          columnDefs = column_defs
         )
       )
 
