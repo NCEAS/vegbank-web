@@ -283,8 +283,8 @@ server <- function(input, output, session) {
       {
         # Only update map if we have restored state values
         if (state$map_center_lat() != DEFAULT_MAP_LAT ||
-              state$map_center_lng() != DEFAULT_MAP_LNG ||
-              state$map_zoom() != DEFAULT_MAP_ZOOM) {
+          state$map_center_lng() != DEFAULT_MAP_LNG ||
+          state$map_zoom() != DEFAULT_MAP_ZOOM) {
           leaflet::leafletProxy("map", session) |>
             leaflet::setView(
               lng = state$map_center_lng(),
@@ -322,7 +322,9 @@ server <- function(input, output, session) {
 
         # Look up the correct row code in case of indirect links (comm class and taxon obs)
         if (!is.null(accession_code) && !is.null(detail_type)) {
-          row_code <- find_row_selection_code(detail_type, accession_code, comm_class_data, taxa_data, plot_data)
+          row_code <- find_row_selection_code(
+            detail_type, accession_code, comm_class_data, taxa_data, plot_data
+          )
           if (!is.null(row_code)) {
             select_table_row_by_accession(session, row_code)
           }
@@ -356,7 +358,9 @@ server <- function(input, output, session) {
 #' @param error_message Custom error message for invalid accession codes
 #' @return TRUE if successful, FALSE if validation failed
 #' @noRd
-open_accession_details <- function(state, session, output, accession_code, detail_type, error_message = NULL, comm_class_data = NULL, taxa_data = NULL, plot_data = NULL) {
+open_accession_details <- function(
+    state, session, output, accession_code, detail_type, error_message = NULL,
+    comm_class_data = NULL, taxa_data = NULL, plot_data = NULL) {
   if (!is_valid_accession_code(accession_code)) {
     error_msg <- error_message %||% paste0("No accession code found for that ", gsub("-", " ", detail_type))
     shiny::showNotification(error_msg, type = "error")
