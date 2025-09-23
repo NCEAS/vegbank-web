@@ -18,7 +18,7 @@
 #' @importFrom shiny withProgress incProgress showNotification
 #' @importFrom htmlwidgets onRender
 #' @noRd
-process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.8283, zoom = 2) {
+process_map_data <- function(map_data, center_lng, center_lat, zoom) {
   shiny::withProgress(
     expr = {
       if (is.null(map_data) || nrow(map_data) == 0) {
@@ -49,8 +49,14 @@ process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.82
           .groups = "drop"
         )
       shiny::incProgress(0.3, detail = "Building map...")
-      leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = 2)) |>
-        leaflet::setMaxBounds(lng1 = -180, lat1 = -85, lng2 = 180, lat2 = 85) |>
+      map_defaults <- get_map_defaults()
+      leaflet::leaflet(data_grouped, options = leaflet::leafletOptions(minZoom = map_defaults$min_zoom)) |>
+        leaflet::setMaxBounds(
+          lng1 = map_defaults$max_bounds$lng1,
+          lat1 = map_defaults$max_bounds$lat1,
+          lng2 = map_defaults$max_bounds$lng2,
+          lat2 = map_defaults$max_bounds$lat2
+        ) |>
         leaflet::addTiles() |>
         leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom) |>
         leaflet::addMarkers(
@@ -85,12 +91,15 @@ process_map_data <- function(map_data, center_lng = -98.5795, center_lat = 39.82
 #' @param lng Longitude
 #' @param lat Latitude
 #' @param label Popup label (HTML)
-#' @param zoom Zoom level (default 18)
+#' @param zoom Zoom level (defaults to detail zoom from map constants)
 #' @returns A leaflet map proxy with updated view and popup
 #'
 #' @importFrom leaflet setView clearPopups addPopups
 #' @noRd
-update_map_view <- function(map_proxy, lng, lat, label, zoom = 18) {
+update_map_view <- function(map_proxy, lng, lat, label, zoom = NULL) {
+  if (is.null(zoom)) {
+    zoom <- get_map_defaults()$detail_zoom
+  }
   map_proxy |>
     leaflet::setView(lng = lng, lat = lat, zoom = zoom) |>
     leaflet::clearPopups() |>
@@ -110,9 +119,13 @@ update_map_view <- function(map_proxy, lng, lat, label, zoom = 18) {
 #' @importFrom leaflet leaflet leafletOptions setMaxBounds addTiles addControl
 #' @noRd
 create_empty_map <- function() {
-  leaflet::leaflet(options = leaflet::leafletOptions(minZoom = 2)) |>
+  map_defaults <- get_map_defaults()
+  leaflet::leaflet(options = leaflet::leafletOptions(minZoom = map_defaults$min_zoom)) |>
     leaflet::setMaxBounds(
-      lng1 = -180, lat1 = -85, lng2 = 180, lat2 = 85
+      lng1 = map_defaults$max_bounds$lng1,
+      lat1 = map_defaults$max_bounds$lat1,
+      lng2 = map_defaults$max_bounds$lng2,
+      lat2 = map_defaults$max_bounds$lat2
     ) |>
     leaflet::addTiles() |>
     leaflet::addControl("Data unavailable", position = "topright")
