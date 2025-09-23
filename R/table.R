@@ -26,12 +26,13 @@ create_table <- function(data_sources, required_sources, process_function, table
       # Default column definitions
       column_defs <- table_config$column_defs %||% list()
 
-      DT::datatable(
+      dt_table <- DT::datatable(
         display_data,
         rownames = FALSE,
         escape = FALSE,
-        selection = list(mode = "single", target = "row", selectable = FALSE),
+        selection = "none",
         options = list(
+          stateSave = TRUE, # Save pagination, filtering, sorting to local storage
           dom = table_config$dom %||% "frtip",
           pageLength = table_config$page_length %||% 100,
           scrollY = table_config$scroll_y %||% "calc(100vh - 235px)",
@@ -42,6 +43,8 @@ create_table <- function(data_sources, required_sources, process_function, table
           columnDefs = column_defs
         )
       )
+
+      return(dt_table)
     },
     message = table_config$progress_message %||% "Processing table data",
     value = 0

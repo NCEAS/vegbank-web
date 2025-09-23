@@ -6,6 +6,10 @@
 #' @return A Shiny tag list.
 #'
 #' @noRd
+#' @param req A Shiny request object.
+#' @return A Shiny tag list.
+#'
+#' @noRd
 ui <- function(req) {
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
@@ -33,6 +37,87 @@ ui <- function(req) {
           map.invalidateSize();
         }
       }
+    });
+
+    // Store pending row selections until tables are ready
+    var pendingSelections = [];
+    var currentSelection = null; // Track the currently selected accession code
+    
+    // Listen for native DataTables draw events to restore selections
+    $(document).on('draw.dt', function(e, settings) {
+      var tableId = settings.sTableId;
+      console.log('DataTable draw event for:', tableId);
+      
+      // Restore current selection after table redraw
+      if (currentSelection) {
+        console.log('Restoring current selection after table redraw:', currentSelection);
+        attemptRowSelection(currentSelection, false); // false = don't clear current selection
+      }
+      
+      // Check for any pending selections for this table or any table
+      for (var i = pendingSelections.length - 1; i >= 0; i--) {
+        var pendingSelection = pendingSelections[i];
+        console.log('Processing pending selection:', pendingSelection.accessionCode);
+        
+        // Try to select the row now that table is ready
+        if (attemptRowSelection(pendingSelection.accessionCode)) {
+          console.log('Successfully processed pending selection for:', pendingSelection.accessionCode);
+          // Remove from pending list and set as current selection
+          currentSelection = pendingSelection.accessionCode;
+          pendingSelections.splice(i, 1);
+        }
+      }
+    });
+    
+    // Function to attempt row selection
+    function attemptRowSelection(accessionCode, clearCurrent) {
+      if (clearCurrent !== false) { // Default to true unless explicitly set to false
+        console.log('Attempting to select row with accession:', accessionCode);
+        // Clear all selections from all tables first
+        $('table tbody tr').removeClass('selected-entity');
+      }
+      
+      // Find the button with the specific accession code
+      var targetButton = $('button').filter(function() {
+        var onclick = $(this).attr('onclick');
+        return onclick && onclick.includes(\"'\" + accessionCode + \"'\");
+      });
+      
+      console.log('Found', targetButton.length, 'buttons with accession code');
+      
+      if (targetButton.length > 0) {
+        // Get the row containing the button and select it
+        var targetRow = targetButton.closest('tr');
+        targetRow.addClass('selected-entity');
+        console.log('SUCCESS: Selected row for accession', accessionCode);
+        return true;
+      } else {
+        console.log('No buttons found for accession', accessionCode);
+        return false;
+      }
+    }
+
+    Shiny.addCustomMessageHandler('selectTableRowByAccession', function(message) {
+      console.log('Received selection request for:', message.accessionCode);
+      
+      // Try immediate selection first
+      if (!attemptRowSelection(message.accessionCode)) {
+        console.log('Immediate selection failed, adding to pending queue');
+        // Add to pending selections if immediate attempt fails
+        pendingSelections.push({
+          accessionCode: message.accessionCode,
+          timestamp: Date.now()
+        });
+      } else {
+        // Set as current selection if successful
+        currentSelection = message.accessionCode;
+      }
+    });
+
+    Shiny.addCustomMessageHandler('clearAllTableSelections', function(message) {
+      $('table tbody tr').removeClass('selected-entity');
+      currentSelection = null;
+      console.log('Cleared all table selections');
     });
 
     $(document).ready(function() {
@@ -189,7 +274,18 @@ custom_theme <- bslib::bs_add_rules(
   .datatables .dataTables_wrapper div.dataTables_info {
       padding-top: 0.75rem;
       font-size: 0.875rem !important;
-  }"
+  }
+  .dataTables_wrapper tbody tr.selected-entity,
+  table.dataTable tbody tr.selected-entity,
+  .table tbody tr.selected-entity {
+      background-color: rgba(114, 185, 162, 0.15) !important;
+  }
+  .dataTables_wrapper tbody tr.selected-entity:hover,
+  table.dataTable tbody tr.selected-entity:hover,
+  .table tbody tr.selected-entity:hover {
+      background-color: rgba(114, 185, 162, 0.25) !important;
+  }
+"
 )
 
 #' Build Navigation Bar for Vegbank UI
