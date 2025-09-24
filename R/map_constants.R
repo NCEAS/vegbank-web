@@ -13,7 +13,7 @@ get_map_defaults <- function() {
     lat = 39.8283,                  # Default center latitude (US center)
     lng = -98.5795,                 # Default center longitude (US center)
     zoom = 4,                       # Default zoom level
-    detail_zoom = 14,               # Zoom level for detailed view
+    detail_zoom = 18,               # Zoom level for detailed view
     min_zoom = 2,                   # Minimum allowed zoom level
     max_bounds = list(              # Map boundaries
       lng1 = -180,                  # Western limit
