@@ -122,7 +122,7 @@ server <- function(input, output, session) {
 
   output$map <- leaflet::renderLeaflet({
     process_map_data(
-      plot_data,
+      map_data = plot_data,
       center_lng = DEFAULT_MAP_LNG,
       center_lat = DEFAULT_MAP_LAT,
       zoom = DEFAULT_MAP_ZOOM
@@ -439,13 +439,14 @@ generate_bookmark_exclusions <- function() {
 
 #' Move the map to the specified latitude and longitude with a popup message
 #'
+#' @param session Shiny session object
 #' @param lat Latitude of the observation
 #' @param lng Longitude of the observation
 #' @param message Message to display in the popup
 #' @noRd
 move_map_to_obs <- function(session, lat, lng, message) {
   leaflet::leafletProxy("map", session) |>
-    update_map_view(lng, lat, message)
+    update_map_view(lng = lng, lat = lat, label = message)
 }
 
 #' Select a table row by accession code using a custom Shiny message
