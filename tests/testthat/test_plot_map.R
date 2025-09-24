@@ -5,6 +5,13 @@ test_that("create_empty_map returns a leaflet map", {
   expect_equal(empty_map$x$options$minZoom, 2)
 })
 
+test_that("get_map_defaults returns expected structure", {
+  defaults <- get_map_defaults()
+  expect_type(defaults, "list")
+  expect_true(all(c("lat", "lng", "zoom", "detail_zoom", "min_zoom", "max_bounds") %in% names(defaults)))
+  expect_type(defaults$max_bounds, "list")
+})
+
 test_that("create_marker_popup creates correct HTML", {
   # Single observation
   single_popup <- create_marker_popup("Plot1", "ACC1", 1)
@@ -26,7 +33,7 @@ test_that("create_marker_popup creates correct HTML", {
 
 test_that("process_map_data handles empty input", {
   with_mock_shiny_notifications({
-    # Test with NULL data
+    # Test with NULL data - use default values for coordinates and zoom
     empty_map <- process_map_data(NULL)
     expect_true(inherits(empty_map, "leaflet"))
 
@@ -94,5 +101,5 @@ test_that("update_map_view creates proper function", {
   # but we can check the function signature
   fn_args <- formals(update_map_view)
   expect_equal(names(fn_args), c("map_proxy", "lng", "lat", "label", "zoom"))
-  expect_equal(fn_args$zoom, 18)
+  expect_null(fn_args$zoom)
 })
