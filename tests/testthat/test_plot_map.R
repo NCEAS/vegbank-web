@@ -33,17 +33,21 @@ test_that("create_marker_popup creates correct HTML", {
 
 test_that("process_map_data handles empty input", {
   with_mock_shiny_notifications({
+    defaults <- get_map_defaults()
+
     # Test with NULL data - use default values for coordinates and zoom
-    empty_map <- process_map_data(NULL)
+    empty_map <- process_map_data(NULL, defaults$lng, defaults$lat, defaults$zoom)
     expect_true(inherits(empty_map, "leaflet"))
 
     # Test with empty data frame
-    empty_map <- process_map_data(data.frame())
+    empty_map <- process_map_data(data.frame(), defaults$lng, defaults$lat, defaults$zoom)
     expect_true(inherits(empty_map, "leaflet"))
   })
 })
 
 test_that("process_map_data creates a map with markers", {
+  defaults <- get_map_defaults()
+
   # Create a small test dataset
   test_data <- data.frame(
     latitude = c(40.7128, 34.0522),
@@ -54,7 +58,7 @@ test_that("process_map_data creates a map with markers", {
   )
 
   with_mock_shiny_notifications({
-    map <- process_map_data(test_data)
+    map <- process_map_data(test_data, defaults$lng, defaults$lat, defaults$zoom)
     # Just check that the map is created successfully
     expect_true(inherits(map, "leaflet"))
     # Check that there's at least one call in the map object
