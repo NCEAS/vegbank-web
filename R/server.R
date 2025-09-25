@@ -126,6 +126,10 @@ server <- function(input, output, session) {
     build_party_table(party_data)
   })
 
+  output$plant_table <- DT::renderDataTable({
+    build_plant_table(plant_data)
+  })
+
   output$map <- leaflet::renderLeaflet({
     process_map_data(
       map_data = plot_data,
@@ -255,6 +259,11 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$party_link_click, {
     accession_code <- input$party_link_click
     open_accession_details(state, session, output, accession_code, "party")
+  })
+
+  shiny::observeEvent(input$plant_link_click, {
+    accession_code <- input$plant_link_click
+    open_accession_details(state, session, output, accession_code, "plant-concept")
   })
 
 
@@ -420,7 +429,7 @@ is_valid_accession_code <- function(accession_code) {
 #'
 #' @noRd
 generate_bookmark_exclusions <- function() {
-  dt_output_ids <- c("plot_table", "comm_table", "proj_table", "party_table")
+  dt_output_ids <- c("plot_table", "comm_table", "proj_table", "party_table", "plant_table")
 
   # Base exclusions to apply to all DataTables
   table_exclusions <- c(
@@ -489,6 +498,7 @@ find_row_selection_code <- function(detail_type, accession_code, comm_class_data
     "community-concept" = accession_code,
     "project" = accession_code,
     "party" = accession_code,
+    "plant-concept" = accession_code,
     "community-classification" = {
       # Find the plot row that contains this community classification
       comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)

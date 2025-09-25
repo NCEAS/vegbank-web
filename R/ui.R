@@ -329,7 +329,11 @@ build_navbar <- function() {
         DT::dataTableOutput("plot_table"),
       )
     ),
-    bslib::nav_panel(title = "Plants"),
+    bslib::nav_panel(title = "Plants"
+      , shiny::fluidPage(
+        DT::dataTableOutput("plant_table"),
+      )
+    ),
     bslib::nav_panel(
       title = "Communities",
       shiny::fluidPage(
