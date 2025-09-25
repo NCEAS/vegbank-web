@@ -137,11 +137,12 @@ ui <- function(req) {
       const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
       const projectCards = document.getElementById('project-details-cards');
       const partyCards = document.getElementById('party-details-cards');
+      const plantConceptCards = document.getElementById('plant-concept-details-cards');
 
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards &&
-      taxonObservationCards && projectCards && partyCards) {
+      taxonObservationCards && projectCards && partyCards && plantConceptCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
@@ -149,6 +150,7 @@ ui <- function(req) {
         taxonObservationCards.style.display = 'none';
         projectCards.style.display = 'none';
         partyCards.style.display = 'none';
+        plantConceptCards.style.display = 'none';
 
         // Show the requested type
         if (type === 'plot-observation') {
@@ -169,6 +171,9 @@ ui <- function(req) {
         } else if (type === 'party') {
           console.log('Showing party details');
           partyCards.style.display = 'block';
+        } else if (type === 'plant-concept') {
+          console.log('Showing plant concept details');
+          plantConceptCards.style.display = 'block';
         }
       }
     });
@@ -445,6 +450,16 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Organization"), shiny::uiOutput("party_organization")),
           bslib::card(bslib::card_header("Contact Information"), shiny::uiOutput("party_contact")),
           bslib::card(bslib::card_header("Projects"), shiny::uiOutput("party_projects"))
+        ),
+
+        # Plant Concept Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "plant-concept-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_name")),
+          bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("plant_concept_details")),
+          bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("plant_party_perspective")),
+          bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("plant_aliases"))
         )
       )
     )

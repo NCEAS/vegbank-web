@@ -8,14 +8,16 @@
 #' Generic function to fetch and display details in the overlay.
 #'
 #' @param detail_type Type of detail to show ("plot-observation", "community-concept",
-#' "community-classification", "project", or "taxon-observation")
+#' "community-classification", "project", "taxon-observation", or "plant-concept")
 #' @param accession_code The accession code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
+#' TODO Remove this when vegbankr is updated
+#' @param get_plant_concept_func Function to get plant concept data (optional)
 #' @return Boolean indicating success or failure
 #'
 #' @noRd
-show_detail_view <- function(detail_type, accession_code, output, session) {
+show_detail_view <- function(detail_type, accession_code, output, session, get_plant_concept_func = NULL) {
   # Use native Shiny progress functions
   shiny::withProgress(
     expr = {
@@ -27,7 +29,9 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
         "taxon-observation" = vegbankr::get_taxon_observation(accession_code),
         "plot-observation" = vegbankr::get_plot_observation_details(accession_code),
         "project" = vegbankr::get_project(accession_code),
-        "party" = vegbankr::get_party(accession_code)
+        "party" = vegbankr::get_party(accession_code),
+        # TODO replace this when vegbankr is updated
+        "plant-concept" = if (!is.null(get_plant_concept_func)) get_plant_concept_func(accession_code) else NULL
       )
 
       if (length(result) == 0) {
@@ -66,6 +70,10 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       output$party_organization <- shiny::renderUI(NULL)
       output$party_contact <- shiny::renderUI(NULL)
       output$party_projects <- shiny::renderUI(NULL)
+      output$plant_concept_name <- shiny::renderUI(NULL)
+      output$plant_concept_details <- shiny::renderUI(NULL)
+      output$plant_party_perspective <- shiny::renderUI(NULL)
+      output$plant_aliases <- shiny::renderUI(NULL)
 
       # Generate the appropriate view based on detail type
       switch(detail_type,
@@ -119,6 +127,14 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
           output$plot_quality_details <- details$plot_quality_details
           output$taxa_details <- details$taxa_details
           output$communities_details <- details$communities_details
+        },
+        "plant-concept" = {
+          shiny::incProgress(0.5, "Processing plant concept details")
+          details <- build_plant_concept_details_view(result)
+          output$plant_concept_name <- details$plant_concept_name
+          output$plant_concept_details <- details$plant_concept_details
+          output$plant_party_perspective <- details$plant_party_perspective
+          output$plant_aliases <- details$plant_aliases
         }
       )
 
@@ -584,6 +600,17 @@ get_field_display_names <- function() {
   }
 }
 
+#' Safely Render Detail Fields in a Shiny UI
+#' 
+#' This function creates a Shiny renderUI output that displays data fields in a formatted table.
+#' It handles missing values, validates field existence, and formats logical values for display.
+#'
+#' @param fields A character vector of field names to display from the dataframe
+#' @param dataframe A dataframe containing the data to display
+#'
+#' @return A shiny::renderUI function that generates an HTML table with field names and values.
+#'         Returns a message if no valid fields are found.
+#' @noRd
 safe_render_details <- function(fields, dataframe) {
   # Read display names from the lookup file
   display_names <- get_field_display_names()
@@ -608,6 +635,16 @@ safe_render_details <- function(fields, dataframe) {
   })
 }
 
+#' Create an HTML Table for Detail View
+#'
+#' This function generates an HTML table to display field name/value pairs in a
+#' formatted two-column table.
+#'
+#' @param details A named list of values to display
+#' @param col_names A named list mapping internal column names to display names
+#'
+#' @return An htmltools table object with styled rows and columns
+#' @noRd
 create_detail_table <- function(details, col_names) {
   htmltools::tags$table(
     class = "table table-sm table-striped table-hover",
@@ -621,4 +658,170 @@ create_detail_table <- function(details, col_names) {
       })
     )
   )
+}
+
+#' Build Plant Concept Details View
+#'
+#' Constructs a list of Shiny UI outputs for displaying detailed plant concept information.
+#'
+#' @param result A data frame returned by get_plant_concept_mock()
+#' @return A list of Shiny UI outputs.
+#'
+#' @importFrom htmltools tags HTML
+#' @importFrom shiny renderUI
+#' @importFrom jsonlite fromJSON
+#' @noRd
+build_plant_concept_details_view <- function(result) {
+  if (is.null(result) || nrow(result) == 0) {
+    return(list(
+      plant_concept_name = shiny::renderUI({
+        htmltools::tags$p("Plant concept details not available")
+      }),
+      plant_concept_details = shiny::renderUI({
+        htmltools::tags$p("No concept details available")
+      }),
+      plant_party_perspective = shiny::renderUI({
+        htmltools::tags$p("No party perspective available")
+      }),
+      plant_aliases = shiny::renderUI({
+        htmltools::tags$p("No aliases available")
+      })
+    ))
+  }
+
+  list(
+    plant_concept_name = shiny::renderUI({
+      htmltools::tags$h4(result$plant_name)
+    }),
+    plant_concept_details = shiny::renderUI({
+      htmltools::tags$table(
+        class = "table table-sm table-striped table-hover",
+        htmltools::tags$tbody(
+          htmltools::tags$tr(
+            htmltools::tags$td("Plant Code"),
+            htmltools::tags$td(class = "text-end", result$pc_code)
+          ),
+          htmltools::tags$tr(
+            htmltools::tags$td("Reference"),
+            htmltools::tags$td(class = "text-end", result$concept_rf_name %||% "Not specified")
+          ),
+          htmltools::tags$tr(
+            htmltools::tags$td("Observation Count"),
+            htmltools::tags$td(class = "text-end", result$obs_count %||% "0")
+          )
+        )
+      )
+    }),
+    plant_party_perspective = create_party_perspective_ui(result),
+    plant_aliases = create_plant_aliases_ui(result)
+  )
+}
+
+#' Create Party Perspective UI for Plant Concept
+#'
+#' @param result Plant concept data frame row
+#' @return A shiny::renderUI function
+#' @noRd
+create_party_perspective_ui <- function(result) {
+  shiny::renderUI({
+    # Parse children JSON if it exists and is not NA
+    children_links <- NULL
+    if (!is.na(result$children) && !is.null(result$children) && result$children != "") {
+      tryCatch({
+        children_data <- jsonlite::fromJSON(result$children)
+        if (length(children_data) > 0) {
+          children_links <- lapply(names(children_data), function(child_code) {
+            htmltools::tags$li(
+              htmltools::tags$a(
+                href = "#",
+                onclick = sprintf(
+                  "Shiny.setInputValue('plant_link_click', '%s', {priority: 'event'}); return false;",
+                  child_code
+                ),
+                children_data[[child_code]]
+              )
+            )
+          })
+        }
+      }, error = function(e) {
+        # If JSON parsing fails, show the raw children data
+        children_links <- htmltools::tags$p(result$children)
+      })
+    }
+
+    htmltools::tags$table(
+      class = "table table-sm table-striped table-hover",
+      htmltools::tags$tbody(
+        htmltools::tags$tr(
+          htmltools::tags$td("Party"),
+          htmltools::tags$td(class = "text-end", result$party %||% "Not specified")
+        ),
+        htmltools::tags$tr(
+          htmltools::tags$td("Start Date"),
+          htmltools::tags$td(class = "text-end", if (!is.na(result$start_date)) format(as.Date(result$start_date), "%Y-%m-%d") else "Not specified")
+        ),
+        htmltools::tags$tr(
+          htmltools::tags$td("Stop Date"),
+          htmltools::tags$td(class = "text-end", if (!is.na(result$stop_date)) format(as.Date(result$stop_date), "%Y-%m-%d") else "Not specified")
+        ),
+        htmltools::tags$tr(
+          htmltools::tags$td("Status"),
+          htmltools::tags$td(class = "text-end", result$status %||% "Not specified")
+        ),
+        htmltools::tags$tr(
+          htmltools::tags$td("Parent"),
+          htmltools::tags$td(class = "text-end", result$parent_name %||% "None")
+        ),
+        if (!is.null(children_links)) {
+          htmltools::tags$tr(
+            htmltools::tags$td("Children"),
+            htmltools::tags$td(class = "text-end", htmltools::tags$ul(children_links))
+          )
+        } else {
+          htmltools::tags$tr(
+            htmltools::tags$td("Children"),
+            htmltools::tags$td(class = "text-end", "None")
+          )
+        }
+      )
+    )
+  })
+}
+
+#' Create Plant Aliases UI
+#'
+#' @param result Plant concept data frame row
+#' @return A shiny::renderUI function
+#' @noRd
+create_plant_aliases_ui <- function(result) {
+  shiny::renderUI({
+    # Parse usage_names JSON if it exists
+    aliases_content <- NULL
+    if (!is.na(result$usage_names) && !is.null(result$usage_names) && result$usage_names != "") {
+      tryCatch({
+        usage_names_data <- jsonlite::fromJSON(result$usage_names)
+        if (length(usage_names_data) > 0) {
+          aliases_rows <- lapply(names(usage_names_data), function(usage_type) {
+            htmltools::tags$tr(
+              htmltools::tags$td(usage_type),
+              htmltools::tags$td(class = "text-end", usage_names_data[[usage_type]])
+            )
+          })
+          aliases_content <- htmltools::tags$table(
+            class = "table table-sm table-striped table-hover",
+            htmltools::tags$tbody(aliases_rows)
+          )
+        }
+      }, error = function(e) {
+        # If JSON parsing fails, show the raw usage_names data
+        aliases_content <- htmltools::tags$p(result$usage_names)
+      })
+    }
+
+    if (is.null(aliases_content)) {
+      htmltools::tags$p("No aliases available")
+    } else {
+      aliases_content
+    }
+  })
 }
