@@ -190,6 +190,7 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
     dplyr::group_by(.data$obs_accession_code) |>
     dplyr::summarize(
       taxa = list(
+        # TODO: The backup value for this should be author_taxon_name when sci_name_no_author is missing
         if (all(is.na(.data$int_curr_plant_sci_name_no_auth)) &
           all(is.na(.data$max_cover))) {
           list()

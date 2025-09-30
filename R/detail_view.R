@@ -73,7 +73,6 @@ show_detail_view <- function(detail_type, accession_code, output, session, get_p
       output$plant_concept_name <- shiny::renderUI(NULL)
       output$plant_concept_details <- shiny::renderUI(NULL)
       output$plant_party_perspective <- shiny::renderUI(NULL)
-      output$plant_aliases <- shiny::renderUI(NULL)
 
       # Generate the appropriate view based on detail type
       switch(detail_type,
@@ -134,7 +133,6 @@ show_detail_view <- function(detail_type, accession_code, output, session, get_p
           output$plant_concept_name <- details$plant_concept_name
           output$plant_concept_details <- details$plant_concept_details
           output$plant_party_perspective <- details$plant_party_perspective
-          output$plant_aliases <- details$plant_aliases
         }
       )
 
@@ -625,9 +623,6 @@ build_plant_concept_details_view <- function(result) {
       }),
       plant_party_perspective = shiny::renderUI({
         htmltools::tags$p("No party perspective available")
-      }),
-      plant_aliases = shiny::renderUI({
-        htmltools::tags$p("No aliases available")
       })
     ))
   }
@@ -636,15 +631,8 @@ build_plant_concept_details_view <- function(result) {
     plant_concept_name = shiny::renderUI({
       htmltools::div(
         htmltools::tags$i(result$plant_level %|||% "Unspecified level"),
-        htmltools::tags$h5(
-          result$plant_name,
-          if (!is.na(result$plant_code)) {
-            htmltools::tags$span(
-              style = "color: gray;",
-              paste0("(", result$plant_code, ")")
-            )
-          }
-        ),
+        htmltools::tags$h5(result$plant_name, style = "margin-bottom: 0;"),
+        if (!is.na(result$plant_code)) htmltools::tags$p(paste0("(", result$plant_code, ")"))
       )
     }),
     plant_concept_details = shiny::renderUI({
@@ -666,8 +654,7 @@ build_plant_concept_details_view <- function(result) {
         )
       )
     }),
-    plant_party_perspective = create_party_perspective_ui(result),
-    plant_aliases = create_plant_aliases_ui(result)
+    plant_party_perspective = create_party_perspective_ui(result)
   )
 }
 
@@ -706,54 +693,67 @@ create_party_perspective_ui <- function(result) {
       )
     }
 
-    htmltools::tags$table(
-      class = "table table-sm table-striped table-hover",
-      htmltools::tags$tbody(
-        htmltools::tags$tr(
-          htmltools::tags$td("Party"),
-          htmltools::tags$td(class = "text-end", result$party %|||% "Not specified")
-        ),
-        htmltools::tags$tr(
-          htmltools::tags$td("Start Date"),
-          htmltools::tags$td(class = "text-end", if (!is.na(result$start_date)) format(as.Date(result$start_date), "%Y-%m-%d") else "Not specified")
-        ),
-        htmltools::tags$tr(
-          htmltools::tags$td("Stop Date"),
-          htmltools::tags$td(class = "text-end", if (!is.na(result$stop_date)) format(as.Date(result$stop_date), "%Y-%m-%d") else "Not specified")
-        ),
-        htmltools::tags$tr(
-          htmltools::tags$td("Status"),
-          htmltools::tags$td(class = "text-end", result$status %|||% "Not specified")
-        ),
-        htmltools::tags$tr(
-          htmltools::tags$td("Parent"),
-          htmltools::tags$td(
-            class = "text-end",
-            if (!is.na(result$parent_name)) {
-              htmltools::tags$a(
-                href = "#",
-                onclick = sprintf(
-                  "Shiny.setInputValue('plant_link_click', '%s', {priority: 'event'}); return false;",
-                  result$parent_pc_code
-                ),
-                result$parent_name
-              )
-            } else {
-              "None"
-            }
-          )
-        ),
-        if (!is.null(children_links)) {
-          htmltools::tags$tr(
-            htmltools::tags$td("Children"),
-            htmltools::tags$td(class = "text-end", htmltools::tags$ul(children_links))
+    htmltools::tags$div(
+      htmltools::tags$b(result$party %|||% "Party not recorded"),
+      htmltools::tags$span(
+        if (!is.na(result$status)) {
+          htmltools::tags$i(paste0("(", result$status, ")"))
+        } else {
+          "(Status not recorded)"
+        }
+      ),
+      htmltools::tags$p(
+        if (!is.na(result$start_date) && !is.na(result$stop_date)) {
+          paste0(
+            "From ", format(as.Date(result$start_date), "%Y-%m-%d"),
+            " to ", format(as.Date(result$stop_date), "%Y-%m-%d")
           )
         } else {
-          htmltools::tags$tr(
-            htmltools::tags$td("Children"),
-            htmltools::tags$td(class = "text-end", "None")
-          )
+          "Date not recorded"
         }
+      ),
+      htmltools::tags$div(
+        "Aliases",
+        style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443;"
+      ),
+      create_plant_aliases_ui(result),
+      htmltools::tags$div(
+        "Taxonomic Hierarchy",
+        style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443;"
+      ),
+      htmltools::tags$table(
+        class = "table table-sm table-striped table-hover",
+        htmltools::tags$tbody(
+          htmltools::tags$tr(
+            htmltools::tags$td("Parent"),
+            htmltools::tags$td(
+              class = "text-end",
+              if (!is.na(result$parent_name)) {
+                htmltools::tags$a(
+                  href = "#",
+                  onclick = sprintf(
+                    "Shiny.setInputValue('plant_link_click', '%s', {priority: 'event'}); return false;",
+                    result$parent_pc_code
+                  ),
+                  result$parent_name
+                )
+              } else {
+                "None"
+              }
+            )
+          ),
+          if (!is.null(children_links)) {
+            htmltools::tags$tr(
+              htmltools::tags$td("Children"),
+              htmltools::tags$td(class = "text-end", htmltools::tags$ul(children_links))
+            )
+          } else {
+            htmltools::tags$tr(
+              htmltools::tags$td("Children"),
+              htmltools::tags$td(class = "text-end", "None")
+            )
+          }
+        )
       )
     )
   })
@@ -762,42 +762,42 @@ create_party_perspective_ui <- function(result) {
 #' Create Plant Aliases UI
 #'
 #' @param result Plant concept data frame row
-#' @return A shiny::renderUI function
+#' @return HTML tags for aliases table or message
 #' @noRd
 create_plant_aliases_ui <- function(result) {
-  shiny::renderUI({
-    # Parse usage_names JSON if it exists
-    aliases_content <- NULL
-    if (!is.na(result$usage_names) && !is.null(result$usage_names) && result$usage_names != "") {
-      tryCatch(
-        {
-          usage_names_data <- jsonlite::fromJSON(result$usage_names)
-          if (length(usage_names_data) > 0) {
-            aliases_rows <- lapply(names(usage_names_data), function(usage_type) {
-              htmltools::tags$tr(
-                htmltools::tags$td(usage_type),
-                htmltools::tags$td(class = "text-end", usage_names_data[[usage_type]])
-              )
-            })
-            aliases_content <- htmltools::tags$table(
-              class = "table table-sm table-striped table-hover",
-              htmltools::tags$tbody(aliases_rows)
+  # Parse usage_names JSON if it exists
+  aliases_content <- NULL
+  if (!is.na(result$usage_names) && !is.null(result$usage_names) && result$usage_names != "") {
+    tryCatch(
+      {
+        usage_names_data <- jsonlite::fromJSON(result$usage_names)
+        if (length(usage_names_data) > 0) {
+          # Sort the usage types alphabetically
+          sorted_usage_types <- sort(names(usage_names_data))
+          aliases_rows <- lapply(sorted_usage_types, function(usage_type) {
+            htmltools::tags$tr(
+              htmltools::tags$td(usage_type),
+              htmltools::tags$td(class = "text-end", usage_names_data[[usage_type]])
             )
-          }
-        },
-        error = function(e) {
-          # If JSON parsing fails, show the raw usage_names data
-          aliases_content <- htmltools::tags$p(result$usage_names)
+          })
+          aliases_content <- htmltools::tags$table(
+            class = "table table-sm table-striped table-hover",
+            htmltools::tags$tbody(aliases_rows)
+          )
         }
-      )
-    }
+      },
+      error = function(e) {
+        # If JSON parsing fails, show the raw usage_names data
+        aliases_content <- htmltools::tags$p(result$usage_names)
+      }
+    )
+  }
 
-    if (is.null(aliases_content)) {
-      htmltools::tags$p("No aliases available")
-    } else {
-      aliases_content
-    }
-  })
+  if (is.null(aliases_content)) {
+    htmltools::tags$p("No aliases available")
+  } else {
+    aliases_content
+  }
 }
 
 #' Read Display Names from Lookup Table

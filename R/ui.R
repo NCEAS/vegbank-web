@@ -459,7 +459,6 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_name")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("plant_concept_details")),
           bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("plant_party_perspective")),
-          bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("plant_aliases"))
         )
       )
     )

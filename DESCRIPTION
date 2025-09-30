@@ -13,6 +13,7 @@ Imports:
     ggplot2 (>= 3.3.6),
     htmltools (>= 0.5.2),
     htmlwidgets (>= 1.5.4),
+    jsonlite (>= 1.8.0),
     leaflet (>= 2.0.0),
     markdown (>= 1.1),
     shiny (>= 1.10.0),
