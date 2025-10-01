@@ -43,7 +43,15 @@ process_plant_data <- function(data_sources) {
   plant_data <- data_sources$plant_data
 
   shiny::incProgress(0.15, detail = "Cleaning plant names")
+  # Add badges for not currently accepted plant concepts
   plant_names <- clean_column_data(plant_data, "plant_name")
+  
+  # Add "Not Accepted" badge for plant concepts where current_accepted is FALSE
+  not_accepted_mask <- !is.na(plant_data$current_accepted) & plant_data$current_accepted == FALSE
+  plant_names[not_accepted_mask] <- paste0(
+    plant_names[not_accepted_mask],
+    ' <span class="badge bg-warning text-dark ms-2">Not Currently Accepted</span>'
+  )
 
   shiny::incProgress(0.15, detail = "Cleaning concept reference names")
   concept_rf_names <- clean_column_data(plant_data, "concept_rf_name")

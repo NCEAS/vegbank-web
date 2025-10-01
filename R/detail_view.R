@@ -627,6 +627,7 @@ build_plant_concept_details_view <- function(result) {
     ))
   }
 
+  # TODO: Link to USDA plant page if appropriate
   list(
     plant_concept_name = shiny::renderUI({
       htmltools::div(
@@ -664,6 +665,7 @@ build_plant_concept_details_view <- function(result) {
 #' @return A shiny::renderUI function
 #' @noRd
 create_party_perspective_ui <- function(result) {
+  # TODO: What to do for synonyms/convergence? What about for comm concepts?
   shiny::renderUI({
     # Parse children JSON if it exists and is not NA
     children_links <- NULL
