@@ -206,6 +206,14 @@ custom_theme <- bslib::bs_add_rules(
     font-family: Inter, sans-serif !important;
     font-feature-settings: 'liga' 1, 'calt' 1;
     --bs-font-sans-serif: Inter, sans-serif !important;
+    
+    /* Status badge colors */
+    --no-status-bg: hsl(204, 6%, 90%);
+    --no-status-text: hsl(0, 0%, 20%);
+    --accepted-bg: hsl(153, 31%, 79%);
+    --accepted-text: hsl(152, 69%, 19%);
+    --not-current-bg: hsl(45, 100%, 85%);
+    --not-current-text: hsl(45, 94%, 21%);
   }
   @supports (font-variation-settings: normal) {
     :root { 

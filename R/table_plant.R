@@ -17,11 +17,12 @@ build_plant_table <- function(plant_data) {
   table_config <- list(
     column_defs = list(
       list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
-      list(targets = 1, width = "25%"),
-      list(targets = 2, width = "20%"),
-      list(targets = 3, width = "10%", type = "num", className = "dt-right"),
-      list(targets = 4, width = "25%"),
-      list(targets = 5, width = "10%")
+      list(targets = 1, width = "25%"), # Plant Name
+      list(targets = 2, width = "12%", className = "dt-center"), # Status
+      list(targets = 3, width = "20%"), # Reference Source
+      list(targets = 4, width = "10%", type = "num", className = "dt-right"), # Observations
+      list(targets = 5, width = "18%"), # Description
+      list(targets = 6, width = "10%") # Plant Code
     ),
     progress_message = "Processing plant concepts table data"
   )
@@ -43,15 +44,7 @@ process_plant_data <- function(data_sources) {
   plant_data <- data_sources$plant_data
 
   shiny::incProgress(0.15, detail = "Cleaning plant names")
-  # Add badges for not currently accepted plant concepts
   plant_names <- clean_column_data(plant_data, "plant_name")
-  
-  # Add "Not Accepted" badge for plant concepts where current_accepted is FALSE
-  not_accepted_mask <- !is.na(plant_data$current_accepted) & plant_data$current_accepted == FALSE
-  plant_names[not_accepted_mask] <- paste0(
-    plant_names[not_accepted_mask],
-    ' <span class="badge bg-warning text-dark ms-2">Not Currently Accepted</span>'
-  )
 
   shiny::incProgress(0.15, detail = "Cleaning concept reference names")
   concept_rf_names <- clean_column_data(plant_data, "concept_rf_name")
@@ -65,6 +58,18 @@ process_plant_data <- function(data_sources) {
   shiny::incProgress(0.15, detail = "Cleaning plant concept codes")
   pc_codes <- clean_column_data(plant_data, "pc_code")
 
+  shiny::incProgress(0.1, detail = "Creating status badges")
+  # Create status badges based on current_accepted field
+  status_badges <- ifelse(
+    is.na(plant_data$current_accepted),
+    '<span class="badge rounded-pill" style="background-color: var(--no-status-bg); color: var(--no-status-text);">No Status</span>',
+    ifelse(
+      plant_data$current_accepted == TRUE,
+      '<span class="badge rounded-pill" style="background-color: var(--accepted-bg); color: var(--accepted-text);">Accepted</span>',
+      '<span class="badge rounded-pill" style="background-color: var(--not-current-bg); color: var(--not-current-text);">Not Current</span>'
+    )
+  )
+
   shiny::incProgress(0.1, detail = "Creating action buttons")
   action_buttons <- create_action_buttons(plant_data, list(
     list(input_id = "plant_link_click", input_value = 'pc_code', label = "Details", class = "btn-outline-primary")
@@ -74,6 +79,7 @@ process_plant_data <- function(data_sources) {
   data.frame(
     "Actions" = action_buttons,
     "Plant Name" = plant_names,
+    "Status" = status_badges,
     "Reference Source" = concept_rf_names,
     "Observations" = obs_counts,
     "Description" = plant_descriptions,
