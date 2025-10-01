@@ -23,20 +23,25 @@
 server <- function(input, output, session) {
   # CONSTANTS --------------------------------------------------------------------------------------
 
-  DEFAULT_MAP_LAT <- 39.8283
-  DEFAULT_MAP_LNG <- -98.5795
-  DEFAULT_MAP_ZOOM <- 2
+  # Get default map settings from constants module
+  map_defaults <- get_map_defaults()
+  DEFAULT_MAP_LAT <- map_defaults$lat
+  DEFAULT_MAP_LNG <- map_defaults$lng
+  DEFAULT_MAP_ZOOM <- map_defaults$zoom
 
   # STATE INITIALIZATION ---------------------------------------------------------------------------
+
+  # Initialize map state with defaults
+  map_state <- initialize_map_state()
 
   state <- list(
     map_request = shiny::reactiveVal(NULL),
     detail_type = shiny::reactiveVal(NULL),
     selected_accession = shiny::reactiveVal(NULL),
     details_open = shiny::reactiveVal(FALSE),
-    map_center_lat = shiny::reactiveVal(DEFAULT_MAP_LAT),
-    map_center_lng = shiny::reactiveVal(DEFAULT_MAP_LNG),
-    map_zoom = shiny::reactiveVal(DEFAULT_MAP_ZOOM)
+    map_center_lat = map_state$map_center_lat,
+    map_center_lng = map_state$map_center_lng,
+    map_zoom = map_state$map_zoom
   )
 
 
@@ -116,7 +121,12 @@ server <- function(input, output, session) {
   })
 
   output$map <- leaflet::renderLeaflet({
-    process_map_data(plot_data)
+    process_map_data(
+      map_data = plot_data,
+      center_lng = DEFAULT_MAP_LNG,
+      center_lat = DEFAULT_MAP_LAT,
+      zoom = DEFAULT_MAP_ZOOM
+    )
   })
 
 
@@ -283,8 +293,8 @@ server <- function(input, output, session) {
       {
         # Only update map if we have restored state values
         if (state$map_center_lat() != DEFAULT_MAP_LAT ||
-          state$map_center_lng() != DEFAULT_MAP_LNG ||
-          state$map_zoom() != DEFAULT_MAP_ZOOM) {
+              state$map_center_lng() != DEFAULT_MAP_LNG ||
+              state$map_zoom() != DEFAULT_MAP_ZOOM) {
           leaflet::leafletProxy("map", session) |>
             leaflet::setView(
               lng = state$map_center_lng(),
@@ -429,13 +439,14 @@ generate_bookmark_exclusions <- function() {
 
 #' Move the map to the specified latitude and longitude with a popup message
 #'
+#' @param session Shiny session object
 #' @param lat Latitude of the observation
 #' @param lng Longitude of the observation
 #' @param message Message to display in the popup
 #' @noRd
 move_map_to_obs <- function(session, lat, lng, message) {
   leaflet::leafletProxy("map", session) |>
-    update_map_view(lng, lat, message)
+    update_map_view(lng = lng, lat = lat, label = message)
 }
 
 #' Select a table row by accession code using a custom Shiny message
