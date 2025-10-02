@@ -28,8 +28,7 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
         "plot-observation" = vegbankr::get_plot_observation_details(accession_code),
         "project" = vegbankr::get_project(accession_code),
         "party" = vegbankr::get_party(accession_code),
-        # TODO replace this when vegbankr is updated
-        "plant-concept" = if (!is.null(get_plant_concept_func)) get_plant_concept_func(accession_code) else NULL
+        "plant-concept" = vegbankr::get_plant_concept(accession_code)
       )
 
       if (length(result) == 0) {
@@ -598,6 +597,31 @@ build_party_details_view <- function(result) {
   a
 }
 
+#' Safe Date Parser for GMT Format Strings
+#' Parses date strings that may be in GMT format or other standard formats
+#' @param date_string The date string to parse
+#' @return A Date object or NA if parsing fails
+#' @noRd
+safe_parse_date <- function(date_string) {
+  if (is.na(date_string) || is.null(date_string) || date_string == "") {
+    return(NA)
+  }
+  
+  tryCatch({
+    # Try parsing as GMT format first (e.g., "Tue, 20 Aug 2002 07:00:00 GMT")
+    parsed_date <- as.POSIXct(date_string, format = "%a, %d %b %Y %H:%M:%S", tz = "GMT")
+    if (!is.na(parsed_date)) {
+      return(as.Date(parsed_date))
+    }
+    
+    # Fallback to standard date parsing
+    as.Date(date_string)
+  }, error = function(e) {
+    # If all parsing attempts fail, return NA
+    NA
+  })
+}
+
 
 #' Build Plant Concept Details View
 #'
@@ -702,16 +726,23 @@ create_party_perspective_ui <- function(result) {
           "(Status not recorded)"
         }
       ),
-      htmltools::tags$p(
-        if (!is.na(result$start_date) && !is.na(result$stop_date)) {
+      htmltools::tags$p({
+        start_parsed <- safe_parse_date(result$start_date)
+        stop_parsed <- safe_parse_date(result$stop_date)
+        
+        if (!is.na(start_parsed) && !is.na(stop_parsed)) {
           paste0(
-            "From ", format(as.Date(result$start_date), "%Y-%m-%d"),
-            " to ", format(as.Date(result$stop_date), "%Y-%m-%d")
+            "From ", format(start_parsed, "%Y-%m-%d"),
+            " to ", format(stop_parsed, "%Y-%m-%d")
           )
+        } else if (!is.na(start_parsed)) {
+          paste0("From ", format(start_parsed, "%Y-%m-%d"))
+        } else if (!is.na(stop_parsed)) {
+          paste0("Until ", format(stop_parsed, "%Y-%m-%d"))
         } else {
           "Date not recorded"
         }
-      ),
+      }),
       htmltools::tags$div(
         "Aliases",
         style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443;"
