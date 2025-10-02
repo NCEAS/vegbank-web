@@ -12,12 +12,10 @@
 #' @param accession_code The accession code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
-#' TODO Remove this when vegbankr is updated
-#' @param get_plant_concept_func Function to get plant concept data (optional)
 #' @return Boolean indicating success or failure
 #'
 #' @noRd
-show_detail_view <- function(detail_type, accession_code, output, session, get_plant_concept_func = NULL) {
+show_detail_view <- function(detail_type, accession_code, output, session) {
   # Use native Shiny progress functions
   shiny::withProgress(
     expr = {

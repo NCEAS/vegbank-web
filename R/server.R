@@ -95,13 +95,6 @@ server <- function(input, output, session) {
     )
   })
 
-  # TODO Remove this when vegbankr is updated
-  # Create a closure that captures plant_data for the mock function
-  get_plant_concept_with_data <- function(pc_code) {
-    get_plant_concept_mock(pc_code, plant_data)
-  }
-
-
   # RENDER UI ELEMENTS --------------------------------------------------------------------------------
 
   output$dataSummary <- shiny::renderUI({
@@ -173,9 +166,7 @@ server <- function(input, output, session) {
       session,
       output,
       accession_code,
-      "plot-observation",
-      # TODO Remove this when vegbankr is updated
-      get_plant_concept_func = get_plant_concept_with_data
+      "plot-observation"
     )
   })
 
@@ -232,9 +223,7 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$label_link_click, {
     accession_code <- input$label_link_click
     if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      open_accession_details(state, session, output, accession_code, "plot-observation",
-                              get_plant_concept_func = get_plant_concept_with_data)
-
+      open_accession_details(state, session, output, accession_code, "plot-observation")
     }
   })
 
@@ -243,14 +232,13 @@ server <- function(input, output, session) {
     open_accession_details(
       state, session, output,
       accession_code, "community-classification",
-      NULL, comm_class_data, taxa_data, plot_data, get_plant_concept_with_data
+      NULL, comm_class_data, taxa_data, plot_data
     )
   })
 
   shiny::observeEvent(input$comm_link_click, {
     accession_code <- input$comm_link_click
-    open_accession_details(state, session, output, accession_code, "community-concept", 
-                          get_plant_concept_func = get_plant_concept_with_data)
+    open_accession_details(state, session, output, accession_code, "community-concept")
   })
 
   shiny::observeEvent(input$taxa_link_click, {
@@ -258,26 +246,23 @@ server <- function(input, output, session) {
     open_accession_details(
       state, session, output,
       accession_code, "taxon-observation",
-      NULL, comm_class_data, taxa_data, plot_data, get_plant_concept_with_data
+      NULL, comm_class_data, taxa_data, plot_data
     )
   })
 
   shiny::observeEvent(input$proj_link_click, {
     accession_code <- input$proj_link_click
-    open_accession_details(state, session, output, accession_code, "project", 
-                          get_plant_concept_func = get_plant_concept_with_data)
+    open_accession_details(state, session, output, accession_code, "project")
   })
 
   shiny::observeEvent(input$party_link_click, {
     accession_code <- input$party_link_click
-    open_accession_details(state, session, output, accession_code, "party", 
-                          get_plant_concept_func = get_plant_concept_with_data)
+    open_accession_details(state, session, output, accession_code, "party")
   })
 
   shiny::observeEvent(input$plant_link_click, {
     accession_code <- input$plant_link_click
-    open_accession_details(state, session, output, accession_code, "plant-concept", 
-                          get_plant_concept_func = get_plant_concept_with_data)
+    open_accession_details(state, session, output, accession_code, "plant-concept")
   })
 
 
@@ -350,9 +335,7 @@ server <- function(input, output, session) {
           state$detail_type(),
           state$selected_accession(),
           output,
-          session,
-          # TODO Remove this when vegbankr is updated
-          get_plant_concept_with_data
+          session
         )
 
         # Then select the row - the JavaScript will handle timing via DataTable events
@@ -397,13 +380,11 @@ server <- function(input, output, session) {
 #' @param accession_code The accession code for the entity
 #' @param detail_type The type of detail view to open
 #' @param error_message Custom error message for invalid accession codes
-#' TODO Remove this when vegbankr is updated
-#' @param get_plant_concept_func Function to get plant concept data (optional)
 #' @return TRUE if successful, FALSE if validation failed
 #' @noRd
 open_accession_details <- function(
     state, session, output, accession_code, detail_type, error_message = NULL,
-    comm_class_data = NULL, taxa_data = NULL, plot_data = NULL, get_plant_concept_func = NULL) {
+    comm_class_data = NULL, taxa_data = NULL, plot_data = NULL) {
   if (!is_valid_accession_code(accession_code)) {
     error_msg <- error_message %||% paste0("No accession code found for that ", gsub("-", " ", detail_type))
     shiny::showNotification(error_msg, type = "error")
@@ -427,7 +408,7 @@ open_accession_details <- function(
     select_table_row_by_accession(session, accession_code)
   }
 
-  show_detail_view(detail_type, accession_code, output, session, get_plant_concept_func)
+  show_detail_view(detail_type, accession_code, output, session)
 
   return(TRUE)
 }
@@ -608,30 +589,4 @@ read_from_cache <- function(data_type, file_path) {
     )
     data.frame()
   }
-}
-
-# TODO Remove this when vegbankr is updated
-#' Mock function to get plant concept details from plant_data
-#'
-#' Since there's no vegbankr::get_plant_concept() function, this function
-#' looks up a given pc_code in the plant_data dataframe
-#'
-#' @param pc_code The plant concept code to look up
-#' @param plant_data The plant data dataframe to search in
-#' @return A single row data frame with plant concept details, or NULL if not found
-#' @noRd
-get_plant_concept_mock <- function(pc_code, plant_data) {
-  if (is.null(plant_data) || nrow(plant_data) == 0) {
-    return(NULL)
-  }
-
-  # Find the matching row
-  matching_row <- plant_data[plant_data$pc_code == pc_code, ]
-
-  if (nrow(matching_row) == 0) {
-    return(NULL)
-  }
-
-  # Return the first matching row
-  matching_row[1, ]
 }
