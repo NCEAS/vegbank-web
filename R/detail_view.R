@@ -632,7 +632,7 @@ build_plant_concept_details_view <- function(result) {
     plant_concept_name = shiny::renderUI({
       htmltools::div(
         htmltools::tags$i(result$plant_level %|||% "Unspecified level"),
-        htmltools::tags$h5(result$plant_name, style = "margin-bottom: 0;"),
+        htmltools::tags$h5(result$plant_name, style = "font-weight: 600; margin-bottom: 0px;"),
         if (!is.na(result$plant_code)) htmltools::tags$p(paste0("(", result$plant_code, ")"))
       )
     }),
