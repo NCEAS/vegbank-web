@@ -137,11 +137,12 @@ ui <- function(req) {
       const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
       const projectCards = document.getElementById('project-details-cards');
       const partyCards = document.getElementById('party-details-cards');
+      const plantConceptCards = document.getElementById('plant-concept-details-cards');
 
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards &&
-      taxonObservationCards && projectCards && partyCards) {
+      taxonObservationCards && projectCards && partyCards && plantConceptCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
@@ -149,6 +150,7 @@ ui <- function(req) {
         taxonObservationCards.style.display = 'none';
         projectCards.style.display = 'none';
         partyCards.style.display = 'none';
+        plantConceptCards.style.display = 'none';
 
         // Show the requested type
         if (type === 'plot-observation') {
@@ -169,6 +171,9 @@ ui <- function(req) {
         } else if (type === 'party') {
           console.log('Showing party details');
           partyCards.style.display = 'block';
+        } else if (type === 'plant-concept') {
+          console.log('Showing plant concept details');
+          plantConceptCards.style.display = 'block';
         }
       }
     });
@@ -201,6 +206,14 @@ custom_theme <- bslib::bs_add_rules(
     font-family: Inter, sans-serif !important;
     font-feature-settings: 'liga' 1, 'calt' 1;
     --bs-font-sans-serif: Inter, sans-serif !important;
+    
+    /* Status badge colors */
+    --no-status-bg: hsl(204, 6%, 90%);
+    --no-status-text: hsl(0, 0%, 20%);
+    --accepted-bg: hsl(153, 31%, 79%);
+    --accepted-text: hsl(152, 69%, 19%);
+    --not-current-bg: hsl(45, 100%, 85%);
+    --not-current-text: hsl(45, 94%, 21%);
   }
   @supports (font-variation-settings: normal) {
     :root { 
@@ -329,7 +342,11 @@ build_navbar <- function() {
         DT::dataTableOutput("plot_table"),
       )
     ),
-    bslib::nav_panel(title = "Plants"),
+    bslib::nav_panel(title = "Plants"
+      , shiny::fluidPage(
+        DT::dataTableOutput("plant_table"),
+      )
+    ),
     bslib::nav_panel(
       title = "Communities",
       shiny::fluidPage(
@@ -441,6 +458,15 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Organization"), shiny::uiOutput("party_organization")),
           bslib::card(bslib::card_header("Contact Information"), shiny::uiOutput("party_contact")),
           bslib::card(bslib::card_header("Projects"), shiny::uiOutput("party_projects"))
+        ),
+
+        # Plant Concept Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "plant-concept-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_name")),
+          bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("plant_concept_details")),
+          bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("plant_party_perspective")),
         )
       )
     )

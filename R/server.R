@@ -76,6 +76,12 @@ server <- function(input, output, session) {
       vegbankr::get_all_taxon_observations
     )
 
+    plant_data <- load_data_type(
+      "plant concepts",
+      "inst/cached_data/plant_concepts_all_20250924.RDS",
+      vegbankr::get_all_plant_concepts
+    )
+
     project_data <- load_data_type(
       "projects",
       "inst/cached_data/projects_all.RDS",
@@ -88,7 +94,6 @@ server <- function(input, output, session) {
       vegbankr::get_all_parties
     )
   })
-
 
   # RENDER UI ELEMENTS --------------------------------------------------------------------------------
 
@@ -118,6 +123,10 @@ server <- function(input, output, session) {
 
   output$party_table <- DT::renderDataTable({
     build_party_table(party_data)
+  })
+
+  output$plant_table <- DT::renderDataTable({
+    build_plant_table(plant_data)
   })
 
   output$map <- leaflet::renderLeaflet({
@@ -251,6 +260,11 @@ server <- function(input, output, session) {
     open_accession_details(state, session, output, accession_code, "party")
   })
 
+  shiny::observeEvent(input$plant_link_click, {
+    accession_code <- input$plant_link_click
+    open_accession_details(state, session, output, accession_code, "plant-concept")
+  })
+
 
   # STATE PERSISTENCE ----------------------------------------------------------------------------------
   shiny::onBookmark(function(state_obj) {
@@ -293,8 +307,8 @@ server <- function(input, output, session) {
       {
         # Only update map if we have restored state values
         if (state$map_center_lat() != DEFAULT_MAP_LAT ||
-              state$map_center_lng() != DEFAULT_MAP_LNG ||
-              state$map_zoom() != DEFAULT_MAP_ZOOM) {
+          state$map_center_lng() != DEFAULT_MAP_LNG ||
+          state$map_zoom() != DEFAULT_MAP_ZOOM) {
           leaflet::leafletProxy("map", session) |>
             leaflet::setView(
               lng = state$map_center_lng(),
@@ -414,7 +428,7 @@ is_valid_accession_code <- function(accession_code) {
 #'
 #' @noRd
 generate_bookmark_exclusions <- function() {
-  dt_output_ids <- c("plot_table", "comm_table", "proj_table", "party_table")
+  dt_output_ids <- c("plot_table", "comm_table", "proj_table", "party_table", "plant_table")
 
   # Base exclusions to apply to all DataTables
   table_exclusions <- c(
@@ -483,6 +497,7 @@ find_row_selection_code <- function(detail_type, accession_code, comm_class_data
     "community-concept" = accession_code,
     "project" = accession_code,
     "party" = accession_code,
+    "plant-concept" = accession_code,
     "community-classification" = {
       # Find the plot row that contains this community classification
       comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
