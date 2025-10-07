@@ -503,6 +503,7 @@ find_row_selection_code <- function(detail_type, accession_code, comm_class_data
     "project" = accession_code,
     "party" = accession_code,
     "plant-concept" = accession_code,
+    # TODO: Should there be a stratum/cover method table or should we highlight the plot observation?
     "stratum-method" = accession_code,
     "community-classification" = {
       # Find the plot row that contains this community classification

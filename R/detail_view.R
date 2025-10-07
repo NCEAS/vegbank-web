@@ -270,15 +270,54 @@ build_plot_obs_details_view <- function(result) {
       ),
       result$plot_observation
     ),
-    methods_details = safe_render_details(c(
-      "obs_start_date",
-      "project_name",
-      "cover_type",
-      "stratum_method_name",
-      "stratum_method_description",
-      "taxon_observation_area",
-      "auto_taxon_cover"
-    ), result$plot_observation),
+    methods_details = shiny::renderUI({
+      # Use safe_render_details for most fields, then inject custom stratum method link
+      display_names <- get_field_display_names()
+      obs <- result$plot_observation
+      
+      # Define all the fields we want to display
+      fields <- c(
+        "obs_start_date",
+        "project_name",
+        "cover_type",
+        "stratum_method_name",
+        "stratum_method_description",
+        "taxon_observation_area",
+        "auto_taxon_cover"
+      )
+      
+      # Get valid fields that exist in the data
+      valid_fields <- fields[fields %in% colnames(obs)]
+      if (length(valid_fields) == 0) {
+        return(htmltools::tags$p("No method details available"))
+      }
+      
+      # Get values for all fields
+      values <- lapply(obs[valid_fields], function(x) {
+        if (is.null(x) || all(is.na(x))) "Not recorded" else x
+      })
+      
+      # Convert logical values to human-readable text
+      values <- lapply(values, function(x) {
+        if (is.logical(x)) ifelse(x, "Yes", "No") else x
+      })
+      
+      # Replace stratum_method_name value with a clickable link if code exists
+      if ("stratum_method_name" %in% names(values) && 
+          "stratum_method_accession_code" %in% colnames(obs) && 
+          !is.na(obs$stratum_method_accession_code)) {
+        values$stratum_method_name <- htmltools::tags$button(
+          obs$stratum_method_name,
+          class = "btn btn-link p-0 text-start",
+          style = "text-decoration: underline;",
+          onclick = sprintf("Shiny.setInputValue('stratum_method_link_click', '%s', {priority: 'event'})", 
+                          obs$stratum_method_accession_code)
+        )
+      }
+      
+      # Use the existing create_detail_table helper
+      create_detail_table(values, col_names = display_names)
+    }),
     plot_quality_details = safe_render_details(
       "plot_validation_level_descr",
       result$plot_observation
