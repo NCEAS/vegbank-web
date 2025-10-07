@@ -138,11 +138,12 @@ ui <- function(req) {
       const projectCards = document.getElementById('project-details-cards');
       const partyCards = document.getElementById('party-details-cards');
       const plantConceptCards = document.getElementById('plant-concept-details-cards');
+      const stratumMethodCards = document.getElementById('stratum-method-details-cards');
 
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards &&
-      taxonObservationCards && projectCards && partyCards && plantConceptCards) {
+      taxonObservationCards && projectCards && partyCards && plantConceptCards && stratumMethodCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
@@ -151,6 +152,7 @@ ui <- function(req) {
         projectCards.style.display = 'none';
         partyCards.style.display = 'none';
         plantConceptCards.style.display = 'none';
+        stratumMethodCards.style.display = 'none';
 
         // Show the requested type
         if (type === 'plot-observation') {
@@ -174,6 +176,9 @@ ui <- function(req) {
         } else if (type === 'plant-concept') {
           console.log('Showing plant concept details');
           plantConceptCards.style.display = 'block';
+        } else if (type === 'stratum-method') {
+          console.log('Showing stratum method details');
+          stratumMethodCards.style.display = 'block';
         }
       }
     });
@@ -467,6 +472,16 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_name")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("plant_concept_details")),
           bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("plant_party_perspective")),
+        ),
+
+        # Stratum Method Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "stratum-method-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Stratum Method"), shiny::uiOutput("stratum_method_name")),
+          bslib::card(bslib::card_header("Description"), shiny::uiOutput("stratum_method_description")),
+          bslib::card(bslib::card_header("Reference"), shiny::uiOutput("stratum_method_reference")),
+          bslib::card(bslib::card_header("Strata"), shiny::uiOutput("stratum_method_strata"))
         )
       )
     )

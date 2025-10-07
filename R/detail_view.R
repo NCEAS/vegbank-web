@@ -8,7 +8,7 @@
 #' Generic function to fetch and display details in the overlay.
 #'
 #' @param detail_type Type of detail to show ("plot-observation", "community-concept",
-#' "community-classification", "project", "taxon-observation", or "plant-concept")
+#' "community-classification", "project", "taxon-observation", "plant-concept", or "stratum-method")
 #' @param accession_code The accession code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
@@ -28,7 +28,8 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
         "plot-observation" = vegbankr::get_plot_observation_details(accession_code),
         "project" = vegbankr::get_project(accession_code),
         "party" = vegbankr::get_party(accession_code),
-        "plant-concept" = vegbankr::get_plant_concept(accession_code)
+        "plant-concept" = vegbankr::get_plant_concept(accession_code),
+        "stratum-method" = vegbankr::get_stratum_method(accession_code)
       )
 
       if (length(result) == 0) {
@@ -70,6 +71,10 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       output$plant_concept_name <- shiny::renderUI(NULL)
       output$plant_concept_details <- shiny::renderUI(NULL)
       output$plant_party_perspective <- shiny::renderUI(NULL)
+      output$stratum_method_name <- shiny::renderUI(NULL)
+      output$stratum_method_description <- shiny::renderUI(NULL)
+      output$stratum_method_reference <- shiny::renderUI(NULL)
+      output$stratum_method_strata <- shiny::renderUI(NULL)
 
       # Generate the appropriate view based on detail type
       switch(detail_type,
@@ -130,6 +135,14 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
           output$plant_concept_name <- details$plant_concept_name
           output$plant_concept_details <- details$plant_concept_details
           output$plant_party_perspective <- details$plant_party_perspective
+        },
+        "stratum-method" = {
+          shiny::incProgress(0.5, "Processing stratum method details")
+          details <- build_stratum_method_details_view(result)
+          output$stratum_method_name <- details$stratum_method_name
+          output$stratum_method_description <- details$stratum_method_description
+          output$stratum_method_reference <- details$stratum_method_reference
+          output$stratum_method_strata <- details$stratum_method_strata
         }
       )
 
@@ -829,6 +842,122 @@ create_plant_aliases_ui <- function(result) {
   } else {
     aliases_content
   }
+}
+
+#' Build Stratum Method Details View
+#'
+#' Constructs a list of Shiny UI outputs for displaying detailed stratum method information.
+#'
+#' @param result A data frame returned by vegbankr::get_stratum_method()
+#' @return A list of Shiny UI outputs.
+#'
+#' @importFrom htmltools tags
+#' @importFrom shiny renderUI
+#' @noRd
+build_stratum_method_details_view <- function(result) {
+  if (is.null(result) || nrow(result) == 0) {
+    return(list(
+      stratum_method_name = shiny::renderUI({
+        htmltools::tags$p("Stratum method details not available")
+      }),
+      stratum_method_description = shiny::renderUI({
+        htmltools::tags$p("No description available")
+      }),
+      stratum_method_reference = shiny::renderUI({
+        htmltools::tags$p("No reference available")
+      }),
+      stratum_method_strata = shiny::renderUI({
+        htmltools::tags$p("No strata information available")
+      })
+    ))
+  }
+
+  list(
+    stratum_method_name = shiny::renderUI({
+      htmltools::tags$div(
+        htmltools::tags$h5(result$stratum_method_name %|||% "Unnamed Method", style = "font-weight: 600; margin-bottom: 0px;"),
+        if (!is.na(result$sm_code)) htmltools::tags$p(
+          htmltools::tags$small(result$sm_code, style = "color: #666;")
+        )
+      )
+    }),
+    stratum_method_description = shiny::renderUI({
+      if (!is.na(result$stratum_method_description) && nchar(result$stratum_method_description) > 0) {
+        htmltools::tags$div(
+          htmltools::tags$p(result$stratum_method_description),
+          if (!is.na(result$stratum_assignment)) {
+            htmltools::tags$p(
+              htmltools::tags$strong("Assignment: "),
+              result$stratum_assignment
+            )
+          }
+        )
+      } else {
+        htmltools::tags$p("No description available")
+      }
+    }),
+    stratum_method_reference = shiny::renderUI({
+      if (!is.na(result$rf_name) || !is.na(result$rf_code)) {
+        htmltools::tags$div(
+          if (!is.na(result$rf_name)) htmltools::tags$p(result$rf_name),
+          if (!is.na(result$rf_code)) htmltools::tags$p(
+            htmltools::tags$small(paste0("(", result$rf_code, ")"), style = "color: #666;")
+          )
+        )
+      } else {
+        htmltools::tags$p("No reference specified")
+      }
+    }),
+    stratum_method_strata = shiny::renderUI({
+      # Build a table showing stratum information
+      strata_rows <- list()
+      
+      if (!is.na(result$stratum_index)) {
+        strata_rows <- c(strata_rows, list(
+          htmltools::tags$tr(
+            htmltools::tags$td("Stratum Index"),
+            htmltools::tags$td(class = "text-end", result$stratum_index)
+          )
+        ))
+      }
+      
+      if (!is.na(result$stratum_name)) {
+        strata_rows <- c(strata_rows, list(
+          htmltools::tags$tr(
+            htmltools::tags$td("Stratum Name"),
+            htmltools::tags$td(class = "text-end", result$stratum_name)
+          )
+        ))
+      }
+      
+      if (!is.na(result$stratum_description)) {
+        strata_rows <- c(strata_rows, list(
+          htmltools::tags$tr(
+            htmltools::tags$td("Description"),
+            htmltools::tags$td(class = "text-end", result$stratum_description)
+          )
+        ))
+      }
+      
+      if (!is.na(result$sy_code)) {
+        strata_rows <- c(strata_rows, list(
+          htmltools::tags$tr(
+            htmltools::tags$td("Stratum Code"),
+            htmltools::tags$td(class = "text-end", result$sy_code)
+          )
+        ))
+      }
+      
+      if (length(strata_rows) > 0) {
+        htmltools::tags$table(
+          class = "table table-sm table-striped table-hover",
+          htmltools::tags$tbody(strata_rows)
+        )
+      } else {
+        htmltools::tags$p("No strata information available")
+      }
+    })
+  )
 }
 
 #' Read Display Names from Lookup Table
