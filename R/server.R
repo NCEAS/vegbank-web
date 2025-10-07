@@ -265,6 +265,11 @@ server <- function(input, output, session) {
     open_accession_details(state, session, output, accession_code, "plant-concept")
   })
 
+  shiny::observeEvent(input$cover_method_link_click, {
+    accession_code <- input$cover_method_link_click
+    open_accession_details(state, session, output, accession_code, "cover-method")
+  })
+
 
   # STATE PERSISTENCE ----------------------------------------------------------------------------------
   shiny::onBookmark(function(state_obj) {
@@ -498,6 +503,7 @@ find_row_selection_code <- function(detail_type, accession_code, comm_class_data
     "project" = accession_code,
     "party" = accession_code,
     "plant-concept" = accession_code,
+    "cover-method" = accession_code,
     "community-classification" = {
       # Find the plot row that contains this community classification
       comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)

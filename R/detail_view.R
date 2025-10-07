@@ -8,7 +8,7 @@
 #' Generic function to fetch and display details in the overlay.
 #'
 #' @param detail_type Type of detail to show ("plot-observation", "community-concept",
-#' "community-classification", "project", "taxon-observation", or "plant-concept")
+#' "community-classification", "project", "taxon-observation", "plant-concept", or "cover-method")
 #' @param accession_code The accession code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
@@ -28,7 +28,8 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
         "plot-observation" = vegbankr::get_plot_observation_details(accession_code),
         "project" = vegbankr::get_project(accession_code),
         "party" = vegbankr::get_party(accession_code),
-        "plant-concept" = vegbankr::get_plant_concept(accession_code)
+        "plant-concept" = vegbankr::get_plant_concept(accession_code),
+        "cover-method" = vegbankr::get_cover_method(accession_code)
       )
 
       if (length(result) == 0) {
@@ -70,6 +71,10 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
       output$plant_concept_name <- shiny::renderUI(NULL)
       output$plant_concept_details <- shiny::renderUI(NULL)
       output$plant_party_perspective <- shiny::renderUI(NULL)
+      output$cover_method_name <- shiny::renderUI(NULL)
+      output$cover_method_type <- shiny::renderUI(NULL)
+      output$cover_method_reference <- shiny::renderUI(NULL)
+      output$cover_method_scale <- shiny::renderUI(NULL)
 
       # Generate the appropriate view based on detail type
       switch(detail_type,
@@ -130,6 +135,14 @@ show_detail_view <- function(detail_type, accession_code, output, session) {
           output$plant_concept_name <- details$plant_concept_name
           output$plant_concept_details <- details$plant_concept_details
           output$plant_party_perspective <- details$plant_party_perspective
+        },
+        "cover-method" = {
+          shiny::incProgress(0.5, "Processing cover method details")
+          details <- build_cover_method_details_view(result)
+          output$cover_method_name <- details$cover_method_name
+          output$cover_method_type <- details$cover_method_type
+          output$cover_method_reference <- details$cover_method_reference
+          output$cover_method_scale <- details$cover_method_scale
         }
       )
 
@@ -829,6 +842,115 @@ create_plant_aliases_ui <- function(result) {
   } else {
     aliases_content
   }
+}
+
+#' Build Cover Method Details View
+#'
+#' Constructs a list of Shiny UI outputs for displaying detailed cover method information.
+#'
+#' @param result A data frame returned by vegbankr::get_cover_method()
+#' @return A list of Shiny UI outputs.
+#'
+#' @importFrom htmltools tags
+#' @importFrom shiny renderUI
+#' @noRd
+build_cover_method_details_view <- function(result) {
+  if (is.null(result) || nrow(result) == 0) {
+    return(list(
+      cover_method_name = shiny::renderUI({
+        htmltools::tags$p("Cover method details not available")
+      }),
+      cover_method_type = shiny::renderUI({
+        htmltools::tags$p("No type information available")
+      }),
+      cover_method_reference = shiny::renderUI({
+        htmltools::tags$p("No reference available")
+      }),
+      cover_method_scale = shiny::renderUI({
+        htmltools::tags$p("No scale information available")
+      })
+    ))
+  }
+
+  list(
+    cover_method_name = shiny::renderUI({
+      htmltools::tags$div(
+        htmltools::tags$h5(result$cm_code, style = "font-weight: 600; margin-bottom: 0px;"),
+        if (!is.na(result$cover_estimation_method)) {
+          htmltools::tags$p(paste0("Estimation Method: ", result$cover_estimation_method))
+        }
+      )
+    }),
+    cover_method_type = shiny::renderUI({
+      htmltools::tags$p(result$cover_type %|||% "Not specified")
+    }),
+    cover_method_reference = shiny::renderUI({
+      if (!is.na(result$rf_name) || !is.na(result$rf_code)) {
+        htmltools::tags$div(
+          if (!is.na(result$rf_name)) htmltools::tags$p(result$rf_name),
+          if (!is.na(result$rf_code)) htmltools::tags$p(
+            htmltools::tags$small(paste0("(", result$rf_code, ")"), style = "color: #666;")
+          )
+        )
+      } else {
+        htmltools::tags$p("No reference specified")
+      }
+    }),
+    cover_method_scale = shiny::renderUI({
+      # Build a table showing the cover scale information
+      scale_rows <- list()
+      
+      if (!is.na(result$cover_code)) {
+        scale_rows <- c(scale_rows, list(
+          htmltools::tags$tr(
+            htmltools::tags$td("Cover Code"),
+            htmltools::tags$td(class = "text-end", result$cover_code)
+          )
+        ))
+      }
+      
+      if (!is.na(result$cover_percent)) {
+        scale_rows <- c(scale_rows, list(
+          htmltools::tags$tr(
+            htmltools::tags$td("Cover Percent"),
+            htmltools::tags$td(class = "text-end", paste0(result$cover_percent, "%"))
+          )
+        ))
+      }
+      
+      if (!is.na(result$lower_limit) || !is.na(result$upper_limit)) {
+        range_text <- paste(
+          ifelse(is.na(result$lower_limit), "—", result$lower_limit),
+          "to",
+          ifelse(is.na(result$upper_limit), "—", result$upper_limit)
+        )
+        scale_rows <- c(scale_rows, list(
+          htmltools::tags$tr(
+            htmltools::tags$td("Coverage Range"),
+            htmltools::tags$td(class = "text-end", range_text)
+          )
+        ))
+      }
+      
+      if (!is.na(result$index_description)) {
+        scale_rows <- c(scale_rows, list(
+          htmltools::tags$tr(
+            htmltools::tags$td("Index Description"),
+            htmltools::tags$td(class = "text-end", result$index_description)
+          )
+        ))
+      }
+      
+      if (length(scale_rows) > 0) {
+        htmltools::tags$table(
+          class = "table table-sm table-striped table-hover",
+          htmltools::tags$tbody(scale_rows)
+        )
+      } else {
+        htmltools::tags$p("No scale information available")
+      }
+    })
+  )
 }
 
 #' Read Display Names from Lookup Table
