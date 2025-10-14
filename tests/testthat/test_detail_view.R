@@ -71,7 +71,7 @@ mock_taxon_data <- list(
 
 # Create mock community classification data for testing
 mock_comm_class_data <- data.frame(
-  comm_class_accession_code = "CLASS123",
+  cl_code = "cl.1553",
   inspection = "Visual inspection",
   table_analysis = TRUE,
   multivariate_analysis = FALSE,
@@ -104,7 +104,7 @@ mock_party_data <- data.frame(
   salutation = "Dr.",
   organization_name = "Example Organization",
   contact_instructions = "Email: john.public@example.org",
-  party_accession_code = "VB.Py.123.PUBLIC",
+  py_code = "py.123",
   stringsAsFactors = FALSE
 )
 
@@ -329,13 +329,13 @@ mock_vegbank_api_error <- function(output, session) {
     env = environment(show_detail_view),
     code = {
       # Create local versions of the API functions that return errors
-      get_plot_observation_details <- function(accession_code) {
+      get_plot_observation_details <- function(vb_code) {
         list() # Empty list simulates API error
       }
-      get_community_concept <- function(accession_code) {
+      get_community_concept <- function(vb_code) {
         list()
       }
-      get_taxon_observation <- function(accession_code) {
+      get_taxon_observation <- function(vb_code) {
         list()
       }
 
@@ -388,9 +388,9 @@ test_that("show_detail_view handles API errors appropriately", {
         expect_equal(error_notification$type, "error")
       })
     },
-    get_plot_observation_details = function(accession_code) list(),
-    get_community_concept = function(accession_code) list(),
-    get_taxon_observation = function(accession_code) list(),
+    get_plot_observation_details = function(ob_code) list(),
+    get_community_concept = function(cc_code) list(),
+    get_taxon_observation = function(to_code) list(),
     .package = "vegbankr"
   )
 })
@@ -424,9 +424,9 @@ test_that("show_detail_view handles success case for plot details", {
         expect_equal(messages_captured$updateDetailType$type, "plot-observation")
       })
     },
-    get_plot_observation_details = function(accession_code) mock_plot_data,
-    get_community_concept = function(accession_code) list(),
-    get_taxon_observation = function(accession_code) list(),
+    get_plot_observation_details = function(ob_code) mock_plot_data,
+    get_community_concept = function(cc_code) list(),
+    get_taxon_observation = function(to_code) list(),
     .package = "vegbankr"
   )
 })
@@ -460,7 +460,7 @@ test_that("show_detail_view handles project data correctly", {
         expect_equal(messages_captured$updateDetailType$type, "project")
       })
     },
-    get_project = function(accession_code) mock_project_data,
+    get_project = function(pj_code) mock_project_data,
     .package = "vegbankr"
   )
 })
@@ -494,7 +494,7 @@ test_that("show_detail_view handles community classification data correctly", {
         expect_equal(messages_captured$updateDetailType$type, "community-classification")
       })
     },
-    get_community_classification = function(accession_code) mock_comm_class_data,
+    get_community_classification = function(cl_code) mock_comm_class_data,
     .package = "vegbankr"
   )
 })
@@ -528,7 +528,7 @@ test_that("show_detail_view handles party data correctly", {
         expect_equal(messages_captured$updateDetailType$type, "party")
       })
     },
-    get_party = function(accession_code) mock_party_data,
+    get_party = function(py_code) mock_party_data,
     .package = "vegbankr"
   )
 })

@@ -9,26 +9,26 @@
 #'
 #' @param detail_type Type of detail to show ("plot-observation", "community-concept",
 #' "community-classification", "project", "taxon-observation", or "plant-concept")
-#' @param accession_code The accession code to fetch details for
+#' @param vb_code The VegBank code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
 #' @return Boolean indicating success or failure
 #'
 #' @noRd
-show_detail_view <- function(detail_type, accession_code, output, session) {
+show_detail_view <- function(detail_type, vb_code, output, session) {
   # Use native Shiny progress functions
   shiny::withProgress(
     expr = {
       shiny::incProgress(0.3, "Fetching details")
 
       result <- switch(detail_type,
-        "community-classification" = vegbankr::get_community_classification(accession_code),
-        "community-concept" = vegbankr::get_community_concept(accession_code),
-        "taxon-observation" = vegbankr::get_taxon_observation(accession_code),
-        "plot-observation" = vegbankr::get_plot_observation_details(accession_code),
-        "project" = vegbankr::get_project(accession_code),
-        "party" = vegbankr::get_party(accession_code),
-        "plant-concept" = vegbankr::get_plant_concept(accession_code)
+        "community-classification" = vegbankr::get_community_classification(vb_code),
+        "community-concept" = vegbankr::get_community_concept(vb_code),
+        "taxon-observation" = vegbankr::get_taxon_observation(vb_code),
+        "plot-observation" = vegbankr::get_plot_observation_details(vb_code),
+        "project" = vegbankr::get_project(vb_code),
+        "party" = vegbankr::get_party(vb_code),
+        "plant-concept" = vegbankr::get_plant_concept(vb_code)
       )
 
       if (length(result) == 0) {
@@ -205,7 +205,7 @@ build_plot_obs_details_view <- function(result) {
                 href = "#",
                 onclick = sprintf(
                   "Shiny.setInputValue('comm_link_click', '%s', {priority: 'event'}); return false;",
-                  row$accession_code
+                  row$cc_code
                 ),
                 row$comm_name
               )
@@ -301,13 +301,13 @@ build_comm_class_details_view <- function(result) {
   list(
     observation_details = shiny::renderUI({
       safe_render_details(
-        c("comm_class_accession_code", "inspection", "table_analysis", "multivariate_analysis"),
+        c("cl_code", "inspection", "table_analysis", "multivariate_analysis"),
         result
       )
     }),
     community_interpretation = shiny::renderUI({
       safe_render_details(
-        c("comm_concept_id", "class_fit", "class_confidence", "comm_authority_id", "type"),
+        c("cc_code", "class_fit", "class_confidence", "comm_authority_id", "type"),
         result
       )
     })

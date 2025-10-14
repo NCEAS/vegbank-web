@@ -72,7 +72,7 @@ process_project_data <- function(data_sources) {
     list(
       list(
         input_id = "proj_link_click",
-        input_value = "project_accession_code",
+        input_value = "pj_code",
         label = "Details",
         class = "btn-outline-primary"
       )

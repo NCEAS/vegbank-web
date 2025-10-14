@@ -51,7 +51,7 @@ process_community_data <- function(data_sources) {
 
   shiny::incProgress(0.1, detail = "Creating action buttons")
   action_buttons <- create_action_buttons(community_data, list(
-    list(input_id = "comm_link_click", input_value = 'accession_code', label = "Details", class = "btn-outline-primary")
+    list(input_id = "comm_link_click", input_value = 'cc_code', label = "Details", class = "btn-outline-primary")
   ))
 
   shiny::incProgress(0.2, detail = "Building table...")
@@ -74,7 +74,7 @@ process_community_data <- function(data_sources) {
 create_reference_vectors <- function(community_data, reference_data) {
   # Implementation would be similar to create_taxa_vectors but for references
   # This is a placeholder for the actual implementation
-  merged <- dplyr::left_join(community_data, reference_data, by = "comm_concept_id")
+  merged <- dplyr::left_join(community_data, reference_data, by = "cc_code")
   # Process reference data into HTML...
   rep("References would appear here", nrow(community_data))
 }

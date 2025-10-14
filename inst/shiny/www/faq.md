@@ -24,7 +24,7 @@ Please select from the following questions, or browse through this file:
 > [Why are there so few soil variables in the soilObs table?](#soilvariables)  
 > [What is annotation?](#annotate)  
 > [How do I cite VegBank?](#cite)  
-> [What is an Accession Code?](#accessioncode)  
+> [What is a VegBank Code?](#vegbankcode)  
 > [How is VegBank financed? How can I help VegBank operate financially?](#donate)
 
 **[Learning More about VegBank](#catglearnmore):**
@@ -176,7 +176,7 @@ Please select from the following questions, or browse through this file:
 
 ##### What is a plant concept? What is a community concept? {#whatconcept}
 
-> Generally, people use only a plant name to refer to a particular plant taxon. However, names may mean different things to different people or at different times. When users view a plant in VegBank, they need to know what is meant by a plant name, hence only a name is not enough. A reference, or context, must be provided which gives the name meaning and defines what the taxon encompasses. When we mention a "plant concept" in VegBank, we mean this unique combination of name and reference. For example, one might mention "Carya ovata" according to (reference) "Radford, 1968." Each plant concept and community concept in VegBank has an Accession Code which provides unique identification for the plant concept. For more information, please see the [VegBank Plant Taxonomy Overview](/vegdocs/design/planttaxaoverview.html).  
+> Generally, people use only a plant name to refer to a particular plant taxon. However, names may mean different things to different people or at different times. When users view a plant in VegBank, they need to know what is meant by a plant name, hence only a name is not enough. A reference, or context, must be provided which gives the name meaning and defines what the taxon encompasses. When we mention a "plant concept" in VegBank, we mean this unique combination of name and reference. For example, one might mention "Carya ovata" according to (reference) "Radford, 1968." Each plant concept and community concept in VegBank has an VegBank Code which provides unique identification for the plant concept. For more information, please see the [VegBank Plant Taxonomy Overview](/vegdocs/design/planttaxaoverview.html).  
 > Community Concepts function in exactly the same way, except that Community Concepts describe a community type, not a plant taxon.
 
 [back to top...](#topoffaq)
@@ -229,15 +229,11 @@ Please select from the following questions, or browse through this file:
 
 * * *
 
-##### What is an Accession Code? {#accessioncode}
+##### What is a VegBank Code? {#vegbankcode}
 
-> An Accession Code is a unique combination of letters, numbers, and some periods which uniquely identify something in VegBank. Accession Codes are used to identify plots and observations, as well as methods, plant taxa, and community types. This allows communication about these elements to take place so that each party knows that they are mentioning the same thing. Accession Codes are important when VegBranch and VegBank communicate, because this helps the two databases align the different types of data, rather than repeating redundant information.  
+> An VegBank Code is a unique combination of letters, numbers, and a period which uniquely identify something in VegBank. VegBank Codes are used to identify plots and observations, as well as methods, plant taxa, and community types. This allows communication about these elements to take place so that each party knows that they are mentioning the same thing. VegBank Codes are important when VegBranch and VegBank communicate, because this helps the two databases align the different types of data, rather than repeating redundant information.  
 >   
-> For those who want to know how a VegBank Accession Code works (this is not necessary!), it is broken into several alphanumerical parts, each divided by a period (.). An example Accession Code is that of Quercus alba, with reference of USDA 2002 : VB.PC.48413.QUERCUSALBAL  
->   
-> The first part is the database identifier (i.e. VB for VegBank), then a table identifier (i.e. PC for Plant Concept), then a record number (i.e. the primary key, 48413). Next, there is a confirmation code, which is a set of letters and numbers derived from something that is likely to make sense to a person. This means that we can see this code and may generally know that it is Quercus alba of some sort. The confirmation code also ensures that the accession code has not suffered from a typo, which could result in the mismatching of data without anyone's awareness. For example, if there was no confirmation code and you mistyped the 'PC' as 'Py', then the database would think you meant Party #48413. Worse, you could mistype the number as 48418 and a different plant would be referenced.  
->   
-> Finally, there may be a fifth segment of the accessionCode which identifies the time and date the record was accessed from the database mentioned in the first part of the accession code.
+> For those who want to know how a VegBank VegBank Code works (this is not necessary!), it is broken into two parts, each divided by a period (.). An example VB Code is that of Quercus alba, with reference of USDA 2002 : pc.48413. The first part is the table identifier (i.e. pc for plant concepts), then a record number (i.e. the primary key, 48413)
 
 [back to top...](#topoffaq)
 

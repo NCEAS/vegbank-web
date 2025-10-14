@@ -63,7 +63,7 @@ process_party_data <- function(data_sources) {
     list(
       list(
         input_id = "party_link_click",
-        input_value = "party_accession_code",
+        input_value = "py_code",
         label = "Details",
         class = "btn-outline-primary"
       )
