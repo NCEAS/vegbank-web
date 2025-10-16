@@ -231,7 +231,7 @@ Please select from the following questions, or browse through this file:
 
 ##### What is a VegBank Code? {#vegbankcode}
 
-> An VegBank Code is a unique combination of letters, numbers, and a period which uniquely identify something in VegBank. VegBank Codes are used to identify plots and observations, as well as methods, plant taxa, and community types. This allows communication about these elements to take place so that each party knows that they are mentioning the same thing. VegBank Codes are important when VegBranch and VegBank communicate, because this helps the two databases align the different types of data, rather than repeating redundant information.  
+> A VegBank Code is a unique combination of letters, numbers, and a period which uniquely identify something in VegBank. VegBank Codes are used to identify plots and observations, as well as methods, plant taxa, and community types. This allows communication about these elements to take place so that each party knows that they are mentioning the same thing. VegBank Codes are important when VegBranch and VegBank communicate, because this helps the two databases align the different types of data, rather than repeating redundant information.  
 >   
 > For those who want to know how a VegBank VegBank Code works (this is not necessary!), it is broken into two parts, each divided by a period (.). An example VB Code is that of Quercus alba, with reference of USDA 2002 : pc.48413. The first part is the table identifier (i.e. pc for plant concepts), then a record number (i.e. the primary key, 48413)
 
