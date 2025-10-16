@@ -18,7 +18,7 @@ build_community_table <- function(community_data) {
     column_defs = list(
       list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
       list(targets = 1, width = "50%"),
-      list(targets = 2, width = "10%", className = "dt-right"),
+      list(targets = 2, width = "10%", className = "dt-right", type = "num"),
       list(targets = 3, width = "30%")
     ),
     progress_message = "Processing community table data"
@@ -41,13 +41,13 @@ process_community_data <- function(data_sources) {
   community_data <- data_sources$community_data
 
   shiny::incProgress(0.2, detail = "Cleaning community names")
-  comm_names <- clean_column_data(community_data, "default_name")
+  comm_names <- clean_column_data(community_data, "comm_name")
 
   shiny::incProgress(0.2, detail = "Cleaning community descriptions")
   comm_desc <- clean_column_data(community_data, "comm_description")
 
   shiny::incProgress(0.2, detail = "Cleaning observation counts")
-  obs_count <- clean_column_data(community_data, "obs_count")
+  obs_count <- as.numeric(clean_column_data(community_data, "obs_count", "0"))
 
   shiny::incProgress(0.1, detail = "Creating action buttons")
   action_buttons <- create_action_buttons(community_data, list(
