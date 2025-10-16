@@ -53,44 +53,45 @@ server <- function(input, output, session) {
   shiny::withProgress(message = "Fetching data:", value = 0, {
     plot_data <- load_data_type(
       "plot observations",
-      "inst/cached_data/plot_obs_minimal_all.RDS",
+      "inst/cached_data/ob_20251015.RDS",
       vegbankr::get_all_plot_observations,
       list(detail = "minimal")
     )
 
     comm_class_data <- load_data_type(
       "community classifications",
-      "inst/cached_data/comm_class_minimal_all.RDS",
-      vegbankr::get_all_community_classifications
+      "inst/cached_data/cl_20251015.RDS",
+      vegbankr::get_all_community_classifications,
+      list(detail = "minimal")
     )
 
     comm_concept_data <- load_data_type(
       "community concepts",
-      "inst/cached_data/comm_concept_full_all.RDS",
+      "inst/cached_data/cc_20251015.RDS",
       vegbankr::get_all_community_concepts
     )
 
     taxa_data <- load_data_type(
       "taxon observations",
-      "inst/cached_data/taxon_obs_top_5.RDS",
+      "inst/cached_data/to_20251015.RDS",
       vegbankr::get_all_taxon_observations
     )
 
     plant_data <- load_data_type(
       "plant concepts",
-      "inst/cached_data/plant_concepts_all_20250924.RDS",
+      "inst/cached_data/pc_20250924.RDS",
       vegbankr::get_all_plant_concepts
     )
 
     project_data <- load_data_type(
       "projects",
-      "inst/cached_data/projects_all.RDS",
+      "inst/cached_data/pj_20251014.rds",
       vegbankr::get_all_projects
     )
 
     party_data <- load_data_type(
       "parties",
-      "inst/cached_data/parties_all.RDS",
+      "inst/cached_data/py_20251014.rds",
       vegbankr::get_all_parties
     )
   })
