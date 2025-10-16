@@ -47,7 +47,7 @@ process_community_data <- function(data_sources) {
   comm_desc <- clean_column_data(community_data, "comm_description")
 
   shiny::incProgress(0.2, detail = "Cleaning observation counts")
-  obs_count <- as.numeric(clean_column_data(community_data, "obs_count", "0"))
+  obs_count <- as.numeric(clean_column_data(community_data, "obs_count"))
 
   shiny::incProgress(0.1, detail = "Creating action buttons")
   action_buttons <- create_action_buttons(community_data, list(
