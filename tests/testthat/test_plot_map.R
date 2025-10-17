@@ -53,7 +53,7 @@ test_that("process_map_data creates a map with markers", {
     latitude = c(40.7128, 34.0522),
     longitude = c(-74.0060, -118.2437),
     author_obs_code = c("NYC", "LA"),
-    obs_accession_code = c("ACC_NYC", "ACC_LA"),
+    ob_code = c("ob.2948", "ob.2949"),
     stringsAsFactors = FALSE
   )
 
@@ -71,7 +71,7 @@ test_that("process_map_data handles custom center and zoom", {
     latitude = c(40.7128),
     longitude = c(-74.0060),
     author_obs_code = c("NYC"),
-    obs_accession_code = c("ACC_NYC"),
+    ob_code = c("ob.2948"),
     stringsAsFactors = FALSE
   )
 

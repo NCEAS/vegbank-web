@@ -10,7 +10,7 @@
 #' This function handles the entire process from data validation to map rendering.
 #'
 #' @param map_data Data frame with map points. Must contain latitude, longitude,
-#'                author_obs_code and obs_accession_code columns.
+#'                author_obs_code and ob_code columns.
 #' @param center_lng Longitude for map center (numeric)
 #' @param center_lat Latitude for map center (numeric)
 #' @param zoom Initial zoom level (integer)
@@ -109,7 +109,7 @@ update_map_view <- function(map_proxy, lng, lat, label, zoom = NULL) {
 is_invalid_map_data <- function(map_data) {
   is.null(map_data) ||
     nrow(map_data) == 0 ||
-    !all(c("latitude", "longitude", "author_obs_code", "obs_accession_code") %in% colnames(map_data))
+    !all(c("latitude", "longitude", "author_obs_code", "ob_code") %in% colnames(map_data))
 }
 
 #' Filter map data to only include points with valid coordinates
@@ -138,7 +138,7 @@ group_map_points <- function(valid_points) {
       obs_count = dplyr::n(),
       author_obs_code_label = create_marker_popup(
         .data$author_obs_code,
-        .data$obs_accession_code,
+        .data$ob_code,
         dplyr::n()
       ),
       .groups = "drop"
@@ -237,12 +237,12 @@ create_empty_map <- function(map_defaults = NULL, center_lng = NULL, center_lat 
 
 #' Create a marker popup HTML for a group of observations
 #'
-#' @param obs_codes Character vector of author observation codes
-#' @param accession_codes Character vector of plot observation accession codes
+#' @param author_obs_codes Character vector of author observation codes
+#' @param ob_codes Character vector of plot observation VegBank codes
 #' @param count Integer, number of observations for that plot
 #' @return A string containing HTML for the popup label
 #' @noRd
-create_marker_popup <- function(obs_codes, accession_codes, count) {
+create_marker_popup <- function(author_obs_codes, ob_codes, count) {
   # Create header text
   header <- ifelse(count == 1, "1 Observation", paste(count, "Observations"))
 
@@ -254,7 +254,7 @@ create_marker_popup <- function(obs_codes, accession_codes, count) {
         acc, obs
       )
     },
-    obs_codes, accession_codes
+    author_obs_codes, ob_codes
   )
 
   # Combine into a single HTML string

@@ -1,11 +1,10 @@
 test_that("build_party_table creates a datatable object", {
   test_data <- data.frame(
-    party_id = c(1, 2),
     given_name = c("John", "Jane"),
     surname = c("Doe", "Smith"),
     organization_name = c("Organization 1", "Organization 2"),
     contact_instructions = c("Email: john@example.com", "Phone: 555-1234"),
-    party_accession_code = c("PARTY001", "PARTY002"),
+    py_code = c("py.191377", "py.191378"),
     stringsAsFactors = FALSE
   )
 
@@ -43,12 +42,11 @@ test_that("build_party_table creates a datatable object", {
 
 test_that("process_party_data correctly formats party data", {
   test_data <- data.frame(
-    party_id = c(1, 2),
     given_name = c("John", "Jane"),
     surname = c("Doe", "Smith"),
     organization_name = c("Organization 1", "Organization 2"),
     contact_instructions = c("Email: john@example.com", "Phone: 555-1234"),
-    party_accession_code = c("PARTY001", "PARTY002"),
+    py_code = c("py.191377", "py.191378"),
     stringsAsFactors = FALSE
   )
 
@@ -116,7 +114,6 @@ test_that("party_table handles empty data", {
 
 test_that("is_any_data_missing is called with correct parameters", {
   test_data <- data.frame(
-    party_id = c(1),
     given_name = c("John"),
     surname = c("Doe"),
     stringsAsFactors = FALSE

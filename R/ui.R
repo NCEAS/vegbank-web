@@ -41,7 +41,7 @@ ui <- function(req) {
 
     // Store pending row selections until tables are ready
     var pendingSelections = [];
-    var currentSelection = null; // Track the currently selected accession code
+    var currentSelection = null; // Track the currently selected VegBank code
     
     // Listen for native DataTables draw events to restore selections
     $(document).on('draw.dt', function(e, settings) {
@@ -57,60 +57,60 @@ ui <- function(req) {
       // Check for any pending selections for this table or any table
       for (var i = pendingSelections.length - 1; i >= 0; i--) {
         var pendingSelection = pendingSelections[i];
-        console.log('Processing pending selection:', pendingSelection.accessionCode);
+        console.log('Processing pending selection:', pendingSelection.vbCode);
         
         // Try to select the row now that table is ready
-        if (attemptRowSelection(pendingSelection.accessionCode)) {
-          console.log('Successfully processed pending selection for:', pendingSelection.accessionCode);
+        if (attemptRowSelection(pendingSelection.vbCode)) {
+          console.log('Successfully processed pending selection for:', pendingSelection.vbCode);
           // Remove from pending list and set as current selection
-          currentSelection = pendingSelection.accessionCode;
+          currentSelection = pendingSelection.vbCode;
           pendingSelections.splice(i, 1);
         }
       }
     });
     
     // Function to attempt row selection
-    function attemptRowSelection(accessionCode, clearCurrent) {
+    function attemptRowSelection(vbCode, clearCurrent) {
       if (clearCurrent !== false) { // Default to true unless explicitly set to false
-        console.log('Attempting to select row with accession:', accessionCode);
+        console.log('Attempting to select row with VegBank code:', vbCode);
         // Clear all selections from all tables first
         $('table tbody tr').removeClass('selected-entity');
       }
-      
-      // Find the button with the specific accession code
+
+      // Find the button with the specific VegBank code
       var targetButton = $('button').filter(function() {
         var onclick = $(this).attr('onclick');
-        return onclick && onclick.includes(\"'\" + accessionCode + \"'\");
+        return onclick && onclick.includes(\"'\" + vbCode + \"'\");
       });
-      
-      console.log('Found', targetButton.length, 'buttons with accession code');
-      
+
+      console.log('Found', targetButton.length, 'buttons with VegBank code');
+
       if (targetButton.length > 0) {
         // Get the row containing the button and select it
         var targetRow = targetButton.closest('tr');
         targetRow.addClass('selected-entity');
-        console.log('SUCCESS: Selected row for accession', accessionCode);
+        console.log('SUCCESS: Selected row for VegBank code', vbCode);
         return true;
       } else {
-        console.log('No buttons found for accession', accessionCode);
+        console.log('No buttons found for VegBank code', vbCode);
         return false;
       }
     }
 
-    Shiny.addCustomMessageHandler('selectTableRowByAccession', function(message) {
-      console.log('Received selection request for:', message.accessionCode);
-      
+    Shiny.addCustomMessageHandler('selectTableRowByCode', function(message) {
+      console.log('Received selection request for:', message.vbCode);
+
       // Try immediate selection first
-      if (!attemptRowSelection(message.accessionCode)) {
+      if (!attemptRowSelection(message.vbCode)) {
         console.log('Immediate selection failed, adding to pending queue');
         // Add to pending selections if immediate attempt fails
         pendingSelections.push({
-          accessionCode: message.accessionCode,
+          vbCode: message.vbCode,
           timestamp: Date.now()
         });
       } else {
         // Set as current selection if successful
-        currentSelection = message.accessionCode;
+        currentSelection = message.vbCode;
       }
     });
 

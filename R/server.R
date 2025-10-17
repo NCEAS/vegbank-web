@@ -37,7 +37,7 @@ server <- function(input, output, session) {
   state <- list(
     map_request = shiny::reactiveVal(NULL),
     detail_type = shiny::reactiveVal(NULL),
-    selected_accession = shiny::reactiveVal(NULL),
+    selected_code = shiny::reactiveVal(NULL),
     details_open = shiny::reactiveVal(FALSE),
     map_center_lat = map_state$map_center_lat,
     map_center_lng = map_state$map_center_lng,
@@ -53,44 +53,45 @@ server <- function(input, output, session) {
   shiny::withProgress(message = "Fetching data:", value = 0, {
     plot_data <- load_data_type(
       "plot observations",
-      "inst/cached_data/plot_obs_minimal_all.RDS",
+      "inst/cached_data/ob_20251015.RDS",
       vegbankr::get_all_plot_observations,
       list(detail = "minimal")
     )
 
     comm_class_data <- load_data_type(
       "community classifications",
-      "inst/cached_data/comm_class_minimal_all.RDS",
-      vegbankr::get_all_community_classifications
+      "inst/cached_data/cl_20251015.RDS",
+      vegbankr::get_all_community_classifications,
+      list(detail = "minimal")
     )
 
     comm_concept_data <- load_data_type(
       "community concepts",
-      "inst/cached_data/comm_concept_full_all.RDS",
+      "inst/cached_data/cc_20251015.RDS",
       vegbankr::get_all_community_concepts
     )
 
     taxa_data <- load_data_type(
       "taxon observations",
-      "inst/cached_data/taxon_obs_top_5.RDS",
+      "inst/cached_data/to_20251015.RDS",
       vegbankr::get_all_taxon_observations
     )
 
     plant_data <- load_data_type(
       "plant concepts",
-      "inst/cached_data/plant_concepts_all_20250924.RDS",
+      "inst/cached_data/pc_20250924.RDS",
       vegbankr::get_all_plant_concepts
     )
 
     project_data <- load_data_type(
       "projects",
-      "inst/cached_data/projects_all.RDS",
+      "inst/cached_data/pj_20251014.rds",
       vegbankr::get_all_projects
     )
 
     party_data <- load_data_type(
       "parties",
-      "inst/cached_data/parties_all.RDS",
+      "inst/cached_data/py_20251014.rds",
       vegbankr::get_all_parties
     )
   })
@@ -160,12 +161,12 @@ server <- function(input, output, session) {
   )
 
   shiny::observeEvent(input$see_obs_details, {
-    accession_code <- input$see_obs_details
-    open_accession_details(
+    vb_code <- input$see_obs_details
+    open_code_details(
       state,
       session,
       output,
-      accession_code,
+      vb_code,
       "plot-observation"
     )
   })
@@ -221,48 +222,48 @@ server <- function(input, output, session) {
   })
 
   shiny::observeEvent(input$label_link_click, {
-    accession_code <- input$label_link_click
-    if (!is.null(accession_code) && nchar(accession_code) > 0) {
-      open_accession_details(state, session, output, accession_code, "plot-observation")
+    vb_code <- input$label_link_click
+    if (!is.null(vb_code) && nchar(vb_code) > 0) {
+      open_code_details(state, session, output, vb_code, "plot-observation")
     }
   })
 
   shiny::observeEvent(input$comm_class_link_click, {
-    accession_code <- input$comm_class_link_click
-    open_accession_details(
+    vb_code <- input$comm_class_link_click
+    open_code_details(
       state, session, output,
-      accession_code, "community-classification",
+      vb_code, "community-classification",
       NULL, comm_class_data, taxa_data, plot_data
     )
   })
 
   shiny::observeEvent(input$comm_link_click, {
-    accession_code <- input$comm_link_click
-    open_accession_details(state, session, output, accession_code, "community-concept")
+    vb_code <- input$comm_link_click
+    open_code_details(state, session, output, vb_code, "community-concept")
   })
 
   shiny::observeEvent(input$taxa_link_click, {
-    accession_code <- input$taxa_link_click
-    open_accession_details(
+    vb_code <- input$taxa_link_click
+    open_code_details(
       state, session, output,
-      accession_code, "taxon-observation",
+      vb_code, "taxon-observation",
       NULL, comm_class_data, taxa_data, plot_data
     )
   })
 
   shiny::observeEvent(input$proj_link_click, {
-    accession_code <- input$proj_link_click
-    open_accession_details(state, session, output, accession_code, "project")
+    vb_code <- input$proj_link_click
+    open_code_details(state, session, output, vb_code, "project")
   })
 
   shiny::observeEvent(input$party_link_click, {
-    accession_code <- input$party_link_click
-    open_accession_details(state, session, output, accession_code, "party")
+    vb_code <- input$party_link_click
+    open_code_details(state, session, output, vb_code, "party")
   })
 
   shiny::observeEvent(input$plant_link_click, {
-    accession_code <- input$plant_link_click
-    open_accession_details(state, session, output, accession_code, "plant-concept")
+    vb_code <- input$plant_link_click
+    open_code_details(state, session, output, vb_code, "plant-concept")
   })
 
 
@@ -270,7 +271,7 @@ server <- function(input, output, session) {
   shiny::onBookmark(function(state_obj) {
     state_obj$values$current_tab <- input$page
     state_obj$values$detail_type <- state$detail_type()
-    state_obj$values$selected_accession <- state$selected_accession()
+    state_obj$values$selected_code <- state$selected_code()
     state_obj$values$details_open <- state$details_open()
     state_obj$values$map_center_lat <- state$map_center_lat()
     state_obj$values$map_center_lng <- state$map_center_lng()
@@ -327,30 +328,30 @@ server <- function(input, output, session) {
     if (isTRUE(context$values$details_open)) {
       detail_open_observer <- shiny::observe({
         state$detail_type(context$values$detail_type)
-        state$selected_accession(context$values$selected_accession)
+        state$selected_code(context$values$selected_code)
         state$details_open(TRUE)
 
         # Show the detail view first
         show_detail_view(
           state$detail_type(),
-          state$selected_accession(),
+          state$selected_code(),
           output,
           session
         )
 
         # Then select the row - the JavaScript will handle timing via DataTable events
-        accession_code <- state$selected_accession()
+        vb_code <- state$selected_code()
         detail_type <- state$detail_type()
 
-        message("DEBUG onRestore: Restoring detail view - ", detail_type, ": ", accession_code)
+        message("DEBUG onRestore: Restoring detail view - ", detail_type, ": ", vb_code)
 
         # Look up the correct row code in case of indirect links (comm class and taxon obs)
-        if (!is.null(accession_code) && !is.null(detail_type)) {
+        if (!is.null(vb_code) && !is.null(detail_type)) {
           row_code <- find_row_selection_code(
-            detail_type, accession_code, comm_class_data, taxa_data, plot_data
+            detail_type, vb_code, comm_class_data, taxa_data, plot_data
           )
           if (!is.null(row_code)) {
-            select_table_row_by_accession(session, row_code)
+            select_table_row_by_code(session, row_code)
           }
         }
 
@@ -372,55 +373,55 @@ server <- function(input, output, session) {
 
 # ================= OTHER FUNCTIONS ===========================================================
 
-#' Handles opening accession detail views with consistent state management
+#' Handles opening entity detail views with consistent state management
 #'
 #' @param state The state object containing reactive values
 #' @param session Shiny session object
 #' @param output Shiny output object
-#' @param accession_code The accession code for the entity
+#' @param vb_code The VegBank code for the entity
 #' @param detail_type The type of detail view to open
-#' @param error_message Custom error message for invalid accession codes
+#' @param error_message Custom error message for invalid VegBank codes
 #' @return TRUE if successful, FALSE if validation failed
 #' @noRd
-open_accession_details <- function(
-    state, session, output, accession_code, detail_type, error_message = NULL,
+open_code_details <- function(
+    state, session, output, vb_code, detail_type, error_message = NULL,
     comm_class_data = NULL, taxa_data = NULL, plot_data = NULL) {
-  if (!is_valid_accession_code(accession_code)) {
-    error_msg <- error_message %||% paste0("No accession code found for that ", gsub("-", " ", detail_type))
+  if (!is_valid_vb_code(vb_code)) {
+    error_msg <- error_message %||% paste0("No VegBank code found for that ", gsub("-", " ", detail_type))
     shiny::showNotification(error_msg, type = "error")
     return(FALSE)
   }
 
   state$detail_type(detail_type)
-  state$selected_accession(accession_code)
+  state$selected_code(vb_code)
   state$details_open(TRUE)
 
   # Use a helper function to find the correct table selection code in case of indirect links
   # Community classifications and taxon observations require looking up the related
   # plot observation to select the correct row.
   if (!is.null(comm_class_data) && !is.null(taxa_data) && !is.null(plot_data)) {
-    row_code <- find_row_selection_code(detail_type, accession_code, comm_class_data, taxa_data, plot_data)
+    row_code <- find_row_selection_code(detail_type, vb_code, comm_class_data, taxa_data, plot_data)
     if (!is.null(row_code)) {
-      select_table_row_by_accession(session, row_code)
+      select_table_row_by_code(session, row_code)
     }
   } else {
     # Fallback to direct selection for simple cases
-    select_table_row_by_accession(session, accession_code)
+    select_table_row_by_code(session, vb_code)
   }
 
-  show_detail_view(detail_type, accession_code, output, session)
+  show_detail_view(detail_type, vb_code, output, session)
 
   return(TRUE)
 }
 
-#' Validates an accession code for use in the application
+#' Validates a VegBank code for use in the application
 #'
-#' @param accession_code The accession code to validate
+#' @param vb_code The VegBank code to validate
 #' @return TRUE if valid, FALSE if invalid
 #' @noRd
-is_valid_accession_code <- function(accession_code) {
-  !is.null(accession_code) && !is.na(accession_code) &&
-    nchar(as.character(accession_code)) > 0 && accession_code != "NA"
+is_valid_vb_code <- function(vb_code) {
+  !is.null(vb_code) && !is.na(vb_code) &&
+    nchar(as.character(vb_code)) > 0 && vb_code != "NA"
 }
 
 #' Generates a character vector of bookmark exclusions for all tables defined
@@ -463,53 +464,55 @@ move_map_to_obs <- function(session, lat, lng, message) {
     update_map_view(lng = lng, lat = lat, label = message)
 }
 
-#' Select a table row by accession code using a custom Shiny message
+#' Select a table row by VegBank code using a custom Shiny message
 #'
 #' @param session The Shiny session object
-#' @param accession_code The accession code to select
+#' @param vb_code The VegBank code to select
 #' @noRd
-select_table_row_by_accession <- function(session, accession_code) {
-  # Skip if invalid accession code
-  if (!is_valid_accession_code(accession_code)) {
+select_table_row_by_code <- function(session, vb_code) {
+  # Skip if invalid VegBank code
+  if (!is_valid_vb_code(vb_code)) {
     return()
   }
 
   # Send selection message to JavaScript
-  session$sendCustomMessage("selectTableRowByAccession", list(
-    accessionCode = accession_code
+  session$sendCustomMessage("selectTableRowByCode", list(
+    vbCode = vb_code
   ))
 }
 
-#' Find the correct accession code for table row selection based on detail type
+#' Find the correct VegBank code for table row selection based on detail type
 #' Community classifications and taxon observations require looking up the related
 #' plot observation to select the correct row.
 #'
 #' @param detail_type The type of detail view
-#' @param accession_code The accession code from the detail view
+#' @param vb_code The VegBank code from the detail view
 #' @param comm_class_data Community classification data frame
 #' @param taxa_data Taxon observation data frame
 #' @param plot_data Plot observation data frame
-#' @return The accession code to use for table row selection, or NULL if not found
+#' @return The VegBank code to use for table row selection, or NULL if not found
 #' @noRd
-find_row_selection_code <- function(detail_type, accession_code, comm_class_data, taxa_data, plot_data) {
+find_row_selection_code <- function(detail_type, vb_code, comm_class_data, taxa_data, plot_data) {
   switch(detail_type,
-    "plot-observation" = accession_code,
-    "community-concept" = accession_code,
-    "project" = accession_code,
-    "party" = accession_code,
-    "plant-concept" = accession_code,
+    "plot-observation" = vb_code,
+    "community-concept" = vb_code,
+    "project" = vb_code,
+    "party" = vb_code,
+    "plant-concept" = vb_code,
     "community-classification" = {
       # Find the plot row that contains this community classification
-      comm_class_row <- which(comm_class_data$comm_class_accession_code == accession_code)
-      if (length(comm_class_row) > 0) comm_class_data$obs_accession_code[comm_class_row[1]] else NULL
+      comm_class_row <- which(comm_class_data$cl_code == vb_code)
+      # TODO: Make sure an ob_code exists in comm_class_data
+      if (length(comm_class_row) > 0) comm_class_data$ob_code[comm_class_row[1]] else NULL
     },
     "taxon-observation" = {
       # Find the plot row that contains this taxon observation
-      taxa_row <- which(taxa_data$taxon_observation_accession_code == accession_code)
+      taxa_row <- which(taxa_data$to_code == vb_code)
       if (length(taxa_row) > 0) {
-        observation_id <- taxa_data$observation_id[taxa_row[1]]
-        plot_row_index <- which(plot_data$observation_id == observation_id)
-        if (length(plot_row_index) > 0) plot_data$obs_accession_code[plot_row_index[1]] else NULL
+        ob_code <- taxa_data$ob_code[taxa_row[1]]
+        plot_row_index <- which(plot_data$ob_code == ob_code)
+        # TODO: Make sure an ob_code exists in taxa_data and is linking entities appropriately here
+        if (length(plot_row_index) > 0) plot_data$ob_code[plot_row_index[1]] else NULL
       } else {
         NULL
       }

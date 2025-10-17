@@ -1,7 +1,7 @@
 test_that("build_community_table creates a datatable object", {
   test_data <- data.frame(
-    accession_code = c("COMM001", "COMM002"),
-    default_name = c("Test Community 1", "Test Community 2"),
+    cc_code = c("cc.30617", "cc.30618"),
+    comm_name = c("Test Community 1", "Test Community 2"),
     comm_description = c("Description 1", "Description 2"),
     obs_count = c(10, 20),
     stringsAsFactors = FALSE
@@ -41,8 +41,8 @@ test_that("build_community_table creates a datatable object", {
 
 test_that("process_community_data correctly formats community data", {
   test_data <- data.frame(
-    accession_code = c("COMM001", "COMM002"),
-    default_name = c("Test Community 1", "Test Community 2"),
+    cc_code = c("cc.30617", "cc.30618"),
+    comm_name = c("Test Community 1", "Test Community 2"),
     comm_description = c("Description 1", "Description 2"),
     obs_count = c(10, 20),
     stringsAsFactors = FALSE
@@ -71,12 +71,12 @@ test_that("process_community_data correctly formats community data", {
 test_that("create_reference_vectors formats references correctly", {
   # Create test data
   community_data <- data.frame(
-    comm_concept_id = c(1, 2),
+    cc_code = c("cc.30617", "cc.30618"),
     stringsAsFactors = FALSE
   )
 
   reference_data <- data.frame(
-    comm_concept_id = c(1, 2),
+    cc_code = c("cc.30617", "cc.30618"),
     reference = c("Ref 1", "Ref 2"),
     stringsAsFactors = FALSE
   )

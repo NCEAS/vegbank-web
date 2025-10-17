@@ -9,26 +9,26 @@
 #'
 #' @param detail_type Type of detail to show ("plot-observation", "community-concept",
 #' "community-classification", "project", "taxon-observation", or "plant-concept")
-#' @param accession_code The accession code to fetch details for
+#' @param vb_code The VegBank code to fetch details for
 #' @param output The Shiny output object
 #' @param session The Shiny session object
 #' @return Boolean indicating success or failure
 #'
 #' @noRd
-show_detail_view <- function(detail_type, accession_code, output, session) {
+show_detail_view <- function(detail_type, vb_code, output, session) {
   # Use native Shiny progress functions
   shiny::withProgress(
     expr = {
       shiny::incProgress(0.3, "Fetching details")
 
       result <- switch(detail_type,
-        "community-classification" = vegbankr::get_community_classification(accession_code),
-        "community-concept" = vegbankr::get_community_concept(accession_code),
-        "taxon-observation" = vegbankr::get_taxon_observation(accession_code),
-        "plot-observation" = vegbankr::get_plot_observation_details(accession_code),
-        "project" = vegbankr::get_project(accession_code),
-        "party" = vegbankr::get_party(accession_code),
-        "plant-concept" = vegbankr::get_plant_concept(accession_code)
+        "community-classification" = vegbankr::get_community_classification(vb_code),
+        "community-concept" = vegbankr::get_community_concept(vb_code),
+        "taxon-observation" = vegbankr::get_taxon_observation(vb_code),
+        "plot-observation" = vegbankr::get_plot_observation_details(vb_code),
+        "project" = vegbankr::get_project(vb_code),
+        "party" = vegbankr::get_party(vb_code),
+        "plant-concept" = vegbankr::get_plant_concept(vb_code)
       )
 
       if (length(result) == 0) {
@@ -168,6 +168,7 @@ build_plot_obs_details_view <- function(result) {
         rows <- lapply(seq_len(nrow(sorted_taxa)), function(i) {
           row <- sorted_taxa[i, ]
           htmltools::tags$tr(
+            # TODO: Change to author name? To avoid NA in lots of cases
             htmltools::tags$td(row$int_curr_plant_sci_name_no_auth),
             htmltools::tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
           )
@@ -176,6 +177,7 @@ build_plot_obs_details_view <- function(result) {
           class = "table table-sm table-striped table-hover",
           htmltools::tags$thead(
             htmltools::tags$tr(
+              # TODO: Change to author name?
               htmltools::tags$th("Scientific Name"),
               htmltools::tags$th("Cover")
             )
@@ -205,7 +207,7 @@ build_plot_obs_details_view <- function(result) {
                 href = "#",
                 onclick = sprintf(
                   "Shiny.setInputValue('comm_link_click', '%s', {priority: 'event'}); return false;",
-                  row$accession_code
+                  row$cc_code
                 ),
                 row$comm_name
               )
@@ -301,13 +303,13 @@ build_comm_class_details_view <- function(result) {
   list(
     observation_details = shiny::renderUI({
       safe_render_details(
-        c("comm_class_accession_code", "inspection", "table_analysis", "multivariate_analysis"),
+        c("cl_code", "inspection", "table_analysis", "multivariate_analysis"),
         result
       )
     }),
     community_interpretation = shiny::renderUI({
       safe_render_details(
-        c("comm_concept_id", "class_fit", "class_confidence", "comm_authority_id", "type"),
+        c("cc_code", "class_fit", "class_confidence", "comm_authority_id", "type"),
         result
       )
     })
@@ -437,6 +439,9 @@ build_project_details_view <- function(result) {
   )
 }
 
+# TODO: Update to convert identifiers to links in aliases card,
+#       link back to observation (need obs original author plot name?)
+#       and link to reference (need reference labels/name)
 #' Build Taxon Details View
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed taxon information.
@@ -494,9 +499,9 @@ build_taxon_details_view <- function(result) {
     ),
     taxon_identifiers = safe_render_details(
       c(
-        "taxon_observation_id",
-        "int_curr_plant_code",
-        "int_orig_plant_code"
+        "ob_code",
+        "int_curr_pc_code",
+        "int_orig_pc_code"
       ),
       result
     )
@@ -589,6 +594,7 @@ build_party_details_view <- function(result) {
     a <- a[1]
   }
 
+  # TODO: There should not be any "NA" strings in the data, but if we find them we should send a warning
   # Check for NA, empty string, or "NA" string
   if (is.na(a) || a == "" || a == "NA") {
     return(b)

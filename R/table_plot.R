@@ -30,7 +30,7 @@ build_plot_table <- function(plot_data, taxa_data, comm_data) {
               var code = data.code || '';
               var lat = data.latitude || '';
               var lng = data.longitude || '';
-              if(!code) return '<span>No Accession Code</span>';
+              if(!code) return '<span>No Code</span>';
               return (
                 '<div class=\"btn-group btn-group-sm\">' +
                   '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"Shiny.setInputValue(\\'see_obs_details\\', \\'' + code + '\\', {priority: \\'event\\'});\">Details</button>' +
@@ -156,7 +156,7 @@ process_plot_data <- function(data_sources) {
 create_plot_action_buttons <- function(plot_data) {
   lapply(seq_len(nrow(plot_data)), function(i) {
     list(
-      code = plot_data$obs_accession_code[i],
+      code = plot_data$ob_code[i],
       latitude = plot_data$latitude[i],
       longitude = plot_data$longitude[i]
     )
@@ -172,14 +172,14 @@ create_plot_action_buttons <- function(plot_data) {
 #' @importFrom dplyr left_join group_by summarize
 #' @noRd
 create_taxa_vectors <- function(plot_data, taxa_data) {
-  merged <- dplyr::left_join(plot_data, taxa_data, by = "obs_accession_code")
+  merged <- dplyr::left_join(plot_data, taxa_data, by = "ob_code")
 
   taxa_lists <- merged |>
     dplyr::mutate(
       str_max_cover = format(round(.data$max_cover, 2), nsmall = 2, trim = TRUE),
       taxon_details = mapply(
         function(x, y, z) list(code = x, name = y, cover = z),
-        .data$taxon_observation_accession_code,
+        .data$to_code,
         .data$int_curr_plant_sci_name_no_auth,
         .data$str_max_cover,
         SIMPLIFY = FALSE,
@@ -187,7 +187,7 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
       )
     ) |>
     dplyr::arrange(dplyr::desc(.data$max_cover)) |>
-    dplyr::group_by(.data$obs_accession_code) |>
+    dplyr::group_by(.data$ob_code) |>
     dplyr::summarize(
       taxa = list(
         # TODO: The backup value for this should be author_taxon_name when sci_name_no_author is missing
@@ -203,9 +203,9 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
 
   # Ensure the order matches plot_data so it can be directly used in the table
   result <- dplyr::left_join(
-    plot_data["obs_accession_code"],
+    plot_data["ob_code"],
     taxa_lists,
-    by = "obs_accession_code"
+    by = "ob_code"
   )$taxa
 }
 
@@ -218,22 +218,22 @@ create_taxa_vectors <- function(plot_data, taxa_data) {
 #' @importFrom dplyr left_join group_by summarize
 #' @noRd
 create_community_vectors <- function(plot_data, comm_data) {
-  merged <- dplyr::left_join(plot_data, comm_data, by = "obs_accession_code")
+  merged <- dplyr::left_join(plot_data, comm_data, by = "ob_code")
 
   community_lists <- merged |>
     dplyr::mutate(
       comm_details = mapply(
         function(x, y) list(code = x, name = y),
-        .data$comm_class_accession_code,
+        .data$cl_code,
         .data$comm_name,
         SIMPLIFY = FALSE,
         USE.NAMES = FALSE
       )
     ) |>
-    dplyr::group_by(.data$obs_accession_code) |>
+    dplyr::group_by(.data$ob_code) |>
     dplyr::summarize(
       communities = list(
-        if (all(is.na(.data$comm_name)) & all(is.na(.data$comm_class_accession_code))) {
+        if (all(is.na(.data$comm_name)) & all(is.na(.data$cl_code))) {
           list()
         } else {
           .data$comm_details
@@ -244,8 +244,8 @@ create_community_vectors <- function(plot_data, comm_data) {
 
   # Ensure the order matches plot_data so it can be directly used in the table
   result <- dplyr::left_join(
-    plot_data["obs_accession_code"],
+    plot_data["ob_code"],
     community_lists,
-    by = "obs_accession_code"
+    by = "ob_code"
   )$communities
 }
