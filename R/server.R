@@ -79,7 +79,7 @@ server <- function(input, output, session) {
 
     plant_data <- load_data_type(
       "plant concepts",
-      "inst/cached_data/pc_20250924.RDS",
+      "inst/cached_data/pc_20251017.RDS",
       vegbankr::get_all_plant_concepts
     )
 

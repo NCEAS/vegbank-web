@@ -411,14 +411,13 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Taxa Observed"), shiny::uiOutput("taxa_details"))
         ),
 
-        # Community Details Cards - wrapped in a div with class for toggling visibility
+        # Community Concept Details Cards - wrapped in a div with class for toggling visibility
         htmltools::tags$div(
           id = "community-concept-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Community Name"), shiny::uiOutput("community_name")),
-          bslib::card(bslib::card_header("Occurrences"), shiny::uiOutput("observation_count")),
-          bslib::card(bslib::card_header("Community Description"), shiny::uiOutput("community_description")),
-          bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("community_aliases"))
+          bslib::card(bslib::card_header("Community Concept"), shiny::uiOutput("community_concept_name")),
+          bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("community_concept_details")),
+          bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("community_party_perspective"))
         ),
 
         # Community Classification Details Cards - wrapped in a div with class for toggling visibility
