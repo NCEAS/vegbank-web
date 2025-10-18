@@ -409,7 +409,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
   })
   
   # Party perspective output
-  outputs[[perspective_output]] <- create_concept_partyz_perspective_ui(
+  outputs[[perspective_output]] <- create_concept_party_perspective_ui(
     result, 
     concept_type, 
     id_field,
