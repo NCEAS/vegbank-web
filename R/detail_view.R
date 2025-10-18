@@ -620,9 +620,9 @@ build_party_details_view <- function(result) {
 
 
 #' Coalesce Function for NULL or NA
-#' Returns the first argument if it is not NULL, NA, "NA" or ""; otherwise returns the second argument
+#' Returns the first argument if it is not NULL or NA; otherwise returns the second argument
 #' @param a First value to check
-#' @param b Second value to return if the first is NULL, NA, or empty string
+#' @param b Second value to return if the first is NULL or NA
 #' @return The first value if valid, otherwise the second value
 #' @noRd
 `%|||%` <- function(a, b) {
@@ -636,8 +636,7 @@ build_party_details_view <- function(result) {
     a <- a[1]
   }
 
-  # TODO: There should not be any "NA" strings in the data, but if we find them we should send a warning
-  # Check for NA, empty string, or "NA" string
+  # Check for NA
   if (is.na(a) || a == "" || a == "NA") {
     return(b)
   }
