@@ -340,12 +340,12 @@ build_concept_details_view <- function(result, concept_type = "plant") {
   id_field <- if (is_plant) "pc_code" else "cc_code"
   parent_id_field <- if (is_plant) "parent_pc_code" else "parent_cc_code"
   link_input_id <- if (is_plant) "plant_link_click" else "comm_link_click"
-  
-  # Output slot names - now both use the same pattern
+
+  # Output slot names
   name_output <- if (is_plant) "plant_concept_name" else "community_concept_name"
   details_output <- if (is_plant) "plant_concept_details" else "community_concept_details"
   perspective_output <- if (is_plant) "plant_party_perspective" else "community_party_perspective"
-  
+
   if (is.null(result) || nrow(result) == 0) {
     empty_outputs <- list()
     empty_outputs[[name_output]] <- shiny::renderUI({
@@ -359,9 +359,9 @@ build_concept_details_view <- function(result, concept_type = "plant") {
     })
     return(empty_outputs)
   }
-  
+
   outputs <- list()
-  
+
   # Name output
   outputs[[name_output]] <- shiny::renderUI({
     htmltools::div(
@@ -370,8 +370,8 @@ build_concept_details_view <- function(result, concept_type = "plant") {
       if (!is.na(result[[code_field]])) htmltools::tags$p(paste0("(", result[[code_field]], ")"))
     )
   })
-  
-  # Details output - now includes more info for both types
+
+  # Details output
   outputs[[details_output]] <- shiny::renderUI({
     htmltools::tags$div(
       htmltools::tags$table(
@@ -383,7 +383,21 @@ build_concept_details_view <- function(result, concept_type = "plant") {
           ),
           htmltools::tags$tr(
             htmltools::tags$td("Reference"),
-            htmltools::tags$td(class = "text-end", result$concept_rf_name %|||% "Not specified")
+            htmltools::tags$td(
+              class = "text-end",
+              if (!is.na(result$concept_rf_code) && !is.na(result$concept_rf_name)) {
+                htmltools::tags$a(
+                  href = "#",
+                  onclick = sprintf(
+                    "Shiny.setInputValue('reference_link_click', '%s', {priority: 'event'}); return false;",
+                    result$concept_rf_code
+                  ),
+                  result$concept_rf_name
+                )
+              } else {
+                result$concept_rf_name %|||% "Not specified"
+              }
+            )
           ),
           htmltools::tags$tr(
             htmltools::tags$td("Observation Count"),
@@ -397,7 +411,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
           style = "margin-top: 15px;",
           htmltools::tags$div(
             "Description",
-            style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443; margin-bottom: 10px;"
+            style = "width: 100%; border-bottom: 1px solid #2c5443; margin-bottom: 10px;"
           ),
           htmltools::tags$div(
             id = "concept-description",
@@ -407,16 +421,16 @@ build_concept_details_view <- function(result, concept_type = "plant") {
       }
     )
   })
-  
+
   # Party perspective output
-  outputs[[perspective_output]] <- create_concept_party_perspective_ui(
-    result, 
-    concept_type, 
+  outputs[[perspective_output]] <- create_party_perspective_ui(
+    result,
+    concept_type,
     id_field,
     parent_id_field,
     link_input_id
   )
-  
+
   outputs
 }
 
@@ -701,9 +715,9 @@ build_comm_concept_details_view <- function(result) {
 #' @param link_input_id The Shiny input ID for clicking links
 #' @return A shiny::renderUI function
 #' @noRd
-create_concept_party_perspective_ui <- function(result, concept_type, id_field, parent_id_field, link_input_id) {
+create_party_perspective_ui <- function(result, concept_type, id_field, parent_id_field, link_input_id) {
   is_plant <- concept_type == "plant"
-  
+
   shiny::renderUI({
     # Parse children JSON if it exists and is not NA
     children_links <- NULL
@@ -752,11 +766,11 @@ create_concept_party_perspective_ui <- function(result, concept_type, id_field, 
         }
       )
     }
-    
+
     # Parse correlations JSON if it exists
     correlations_links <- NULL
     if (!is.na(result$correlations) && !is.null(result$correlations) && result$correlations != "" &&
-        length(result$correlations[[1]]) > 0) {
+          length(result$correlations[[1]]) > 0) {
       tryCatch(
         {
           corr_data <- result$correlations[[1]]
@@ -788,7 +802,20 @@ create_concept_party_perspective_ui <- function(result, concept_type, id_field, 
     }
 
     htmltools::tags$div(
-      htmltools::tags$b(result$party %|||% "Party not recorded"),
+      htmltools::tags$b(
+        if (!is.na(result$py_code) && !is.na(result$party)) {
+          htmltools::tags$a(
+            href = "#",
+            onclick = sprintf(
+              "Shiny.setInputValue('party_link_click', '%s', {priority: 'event'}); return false;",
+              result$py_code
+            ),
+            result$party
+          )
+        } else {
+          result$party %|||% "Party not recorded"
+        }
+      ),
       htmltools::tags$span(
         if (!is.na(result$status)) {
           htmltools::tags$i(paste0(" (", result$status, ")"))
@@ -799,7 +826,7 @@ create_concept_party_perspective_ui <- function(result, concept_type, id_field, 
       htmltools::tags$p({
         start_parsed <- safe_parse_date(result$start_date)
         stop_parsed <- safe_parse_date(result$stop_date)
-        
+
         if (!is.na(start_parsed) && !is.na(stop_parsed)) {
           paste0(
             "From ", format(start_parsed, "%Y-%m-%d"),
@@ -877,23 +904,23 @@ create_concept_aliases_ui <- function(result, is_plant = TRUE) {
   # Parse usages list column if it exists
   aliases_content <- NULL
   usages_field <- "usages"
-  
+
   if (!is.na(result[[usages_field]]) && !is.null(result[[usages_field]]) && 
-      length(result[[usages_field]][[1]]) > 0) {
+        length(result[[usages_field]][[1]]) > 0) {
     tryCatch(
       {
         usages_data <- result[[usages_field]][[1]]
         if (is.data.frame(usages_data) && nrow(usages_data) > 0) {
           # Usages is a list column containing a dataframe with columns like:
           # class_system, name (or plant_name/comm_name), party
-          
+
           # Determine which columns to use
           class_system_col <- if ("class_system" %in% names(usages_data)) {
             "class_system"
           } else {
             NULL
           }
-          
+
           # Get the name column - could be "name", "plant_name", "comm_name"
           name_col <- if ("name" %in% names(usages_data)) {
             "name"
@@ -905,12 +932,12 @@ create_concept_aliases_ui <- function(result, is_plant = TRUE) {
             # Fallback to second column
             names(usages_data)[2]
           }
-          
+
           # Sort by class_system/usage_type if available
           if (!is.null(class_system_col)) {
             usages_data <- usages_data[order(usages_data[[class_system_col]]), ]
           }
-          
+
           aliases_rows <- lapply(seq_len(nrow(usages_data)), function(i) {
             # Get the classification system (e.g., "Scientific", "Code", etc.)
             class_system <- if (!is.null(class_system_col)) {
@@ -919,13 +946,13 @@ create_concept_aliases_ui <- function(result, is_plant = TRUE) {
               "Usage"
             }
             usage_name <- usages_data[[name_col]][i]
-            
+
             htmltools::tags$tr(
               htmltools::tags$td(class_system),
               htmltools::tags$td(class = "text-end", usage_name)
             )
           })
-          
+
           aliases_content <- htmltools::tags$table(
             class = "table table-sm table-striped table-hover",
             htmltools::tags$tbody(aliases_rows)
