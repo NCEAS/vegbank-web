@@ -22,7 +22,7 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
     column_defs = list(
       list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
       list(targets = 1, width = "25%"), # Name
-      list(targets = 2, width = "12%", className = "dt-center"), # Status
+      list(targets = 2, width = "12%", className = "dt-center", render = create_status_badge_renderer()), # Status
       list(targets = 3, width = "20%"), # Reference Source
       list(targets = 4, width = "10%", type = "num", className = "dt-right"), # Observations
       list(targets = 5, width = "28%") # Description
@@ -61,8 +61,9 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   shiny::incProgress(0.15, detail = paste0("Cleaning ", concept_type, " names"))
   names <- clean_column_data(concept_data, name_field)
 
-  shiny::incProgress(0.1, detail = "Creating status badges")
-  status_badges <- create_status_badges(concept_data$current_accepted)
+  shiny::incProgress(0.1, detail = "Preparing status data")
+  # Pass raw boolean values - will be rendered by JavaScript
+  status_values <- concept_data$current_accepted
 
   shiny::incProgress(0.15, detail = "Cleaning reference names")
   concept_rf_names <- clean_column_data(concept_data, "concept_rf_name")
@@ -81,7 +82,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   shiny::incProgress(0.15, detail = "Building table...")
   result <- data.frame(
     "Actions" = action_buttons,
-    "Status" = status_badges,
+    "Status" = status_values,
     "Reference Source" = concept_rf_names,
     "Observations" = obs_counts,
     "Description" = descriptions,
@@ -97,4 +98,99 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   )
 
   result
+}
+
+# ' Create status badges for a vector of status values
+#'  Allows for client-side filtering by status in table
+#'
+# ' @param status_vector A vector of logical values (TRUE, FALSE, NA)
+# ' @returns A character vector of HTML strings representing status badges
+# ' @noRd
+create_status_badges <- function(status_vector) {
+  vapply(status_vector, function(status) {
+    # Could be made fasterer with pre-generated HTML strings, but this is clearer
+    if (is.na(status)) {
+      as.character(
+        htmltools::span(
+          class = "badge rounded-pill",
+          style = "background-color: var(--no-status-bg); color: var(--no-status-text);",
+          "No Status"
+        )
+      )
+    } else if (status == TRUE) {
+      as.character(
+        htmltools::span(
+          class = "badge rounded-pill",
+          style = "background-color: var(--accepted-bg); color: var(--accepted-text);",
+          "Accepted"
+        )
+      )
+    } else {
+      as.character(
+        htmltools::span(
+          class = "badge rounded-pill",
+          style = "background-color: var(--not-current-bg); color: var(--not-current-text);",
+          "Not Current"
+        )
+      )
+    }
+  }, character(1))
+}
+
+
+
+# -------------- JS Renderers ---------------------
+
+#' Create JavaScript renderer for status badges
+#' Creates badges client side so we don't have to iterate over the whole table in R
+#' Doesn't allow for client-side filtering by status
+#'
+#' @returns A DT::JS object containing the JavaScript renderer function
+#' @noRd
+create_status_badge_renderer <- function() {
+  # Could be made fasterer with pre-generated HTML strings, but this is clearer
+  no_status_badge <- as.character(
+    htmltools::span(
+      class = "badge rounded-pill",
+      style = "background-color: var(--no-status-bg); color: var(--no-status-text);",
+      "No Status"
+    )
+  )
+
+  accepted_badge <- as.character(
+    htmltools::span(
+      class = "badge rounded-pill",
+      style = "background-color: var(--accepted-bg); color: var(--accepted-text);",
+      "Accepted"
+    )
+  )
+
+  not_current_badge <- as.character(
+    htmltools::span(
+      class = "badge rounded-pill",
+      style = "background-color: var(--not-current-bg); color: var(--not-current-text);",
+      "Not Current"
+    )
+  )
+
+  # Now create the JavaScript function using the R-generated HTML
+  js_code <- sprintf(
+    "function(data, type, row, meta) {
+      if (type === 'display') {
+        if (data === null || data === '') {
+          return '%s';
+        } else if (data === true || data === 'true' || data === 'TRUE') {
+          return '%s';
+        } else {
+          return '%s';
+        }
+      }
+      return data;
+    }",
+    no_status_badge,
+    accepted_badge,
+    not_current_badge
+  )
+
+  DT::JS(js_code)
 }
