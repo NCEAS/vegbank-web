@@ -150,3 +150,16 @@ create_action_buttons <- function(data, actions) {
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
 }
+
+
+create_status_badges <- function(status_vector) {
+  vapply(status_vector, function(status) {
+    if (is.na(status)) {
+      '<span class="badge rounded-pill" style="background-color: var(--no-status-bg); color: var(--no-status-text);">No Status</span>'
+    } else if (status == TRUE) {
+      '<span class="badge rounded-pill" style="background-color: var(--accepted-bg); color: var(--accepted-text);">Accepted</span>'
+    } else {
+      '<span class="badge rounded-pill" style="background-color: var(--not-current-bg); color: var(--not-current-text);">Not Current</span>'
+    }
+  }, character(1))
+}
