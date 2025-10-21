@@ -23,7 +23,7 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
       list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
       list(targets = 1, width = "25%"), # Name
       list(targets = 2, width = "12%", className = "dt-center", render = create_status_badge_renderer()), # Status
-      list(targets = 3, width = "20%"), # Reference Source
+      list(targets = 3, width = "20%", render = create_reference_link_renderer()), # Reference Source
       list(targets = 4, width = "10%", type = "num", className = "dt-right"), # Observations
       list(targets = 5, width = "28%") # Description
     ),
@@ -65,8 +65,9 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   # Pass raw boolean values - will be rendered by JavaScript
   status_values <- concept_data$current_accepted
 
-  shiny::incProgress(0.15, detail = "Cleaning reference names")
-  concept_rf_names <- clean_column_data(concept_data, "concept_rf_name")
+  shiny::incProgress(0.15, detail = "Preparing reference data")
+  # Create list objects with code and name for JavaScript renderer
+  reference_data <- create_reference_objects(concept_data)
 
   shiny::incProgress(0.15, detail = "Cleaning observation counts")
   obs_counts <- as.numeric(clean_column_data(concept_data, "obs_count", "0"))
@@ -83,7 +84,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   result <- data.frame(
     "Actions" = action_buttons,
     "Status" = status_values,
-    "Reference Source" = concept_rf_names,
+    "Reference Source" = I(reference_data),
     "Observations" = obs_counts,
     "Description" = descriptions,
     stringsAsFactors = FALSE,
@@ -98,6 +99,16 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   )
 
   result
+}
+
+create_reference_objects <- function(concept_data) { 
+  mapply(
+    function(code, name) list(code = code, name = name),
+    concept_data$concept_rf_code,
+    concept_data$concept_rf_name,
+    SIMPLIFY = FALSE,
+    USE.NAMES = FALSE
+  )
 }
 
 # ' Create status badges for a vector of status values
@@ -141,7 +152,31 @@ create_status_badges <- function(status_vector) {
 
 # -------------- JS Renderers ---------------------
 
-#' Create JavaScript renderer for status badges
+#' Create JavaScript renderer for reference links
+#' Creates clickable links to reference sources using concept_rf_code and concept_rf_name
+#'
+#' @returns A DT::JS object containing the JavaScript renderer function
+#' @noRd
+create_reference_link_renderer <- function() {
+  # Create the JavaScript function
+  js_code <- sprintf(
+    "function(data, type, row, meta) {  
+      // Handle display - create clickable link
+      if (type === 'display') {
+        // data should be an object with {code: '...', name: '...'}
+        if (!data || typeof data !== 'object') return '<span>Not provided</span>';
+        if (!data.code || !data.name) return '<span>Not provided</span>';
+        
+        var code = data.code;
+        var name = data.name;
+        
+        return '<a href=\"#\" data-code=\"' + code + '\" onclick=\"Shiny.setInputValue(\\'ref_link_click\\', \\'' + code + '\\', {priority: \\'event\\'}); return false;\">' + name + '</a>';
+      }
+    }"
+  )
+  
+  DT::JS(js_code)
+}#' Create JavaScript renderer for status badges
 #' Creates badges client side so we don't have to iterate over the whole table in R
 #' Doesn't allow for client-side filtering by status
 #'
