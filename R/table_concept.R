@@ -25,11 +25,13 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
     column_defs = list(
       list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%", render = create_action_button_renderer(link_input_id, "Details")),
       list(targets = 1, width = "25%"), # Name
-      list(targets = 2, width = "12%", className = "dt-center", render = create_status_badge_renderer()), # Status
-      list(targets = 3, width = "20%", orderData = 4), # Reference Source - sort using hidden column
-      list(targets = 4, visible = FALSE, searchable = FALSE), # Hidden column: reference names for sorting
-      list(targets = 5, width = "10%", type = "num", className = "dt-right"), # Observations
-      list(targets = 6, width = "28%") # Description
+      list(targets = 2, width = "12%", className = "dt-center", orderData = 3, searchData = 4), # Status - sort by column 3, search in column 4
+      list(targets = 3, visible = FALSE, searchable = FALSE), # Hidden: status sort values (0, 1, 2)
+      list(targets = 4, visible = FALSE), # Hidden: status filter text (Accepted, Not Current, No Status)
+      list(targets = 5, width = "20%", orderData = 6), # Reference Source - sort using hidden column
+      list(targets = 6, visible = FALSE, searchable = FALSE), # Hidden: reference names for sorting
+      list(targets = 7, width = "10%", type = "num", className = "dt-right"), # Observations
+      list(targets = 8, width = "28%") # Description
     ),
     progress_message = paste0("Processing ", concept_type, " concepts table data")
   )
@@ -66,8 +68,24 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   names <- clean_column_data(concept_data, name_field)
 
   shiny::incProgress(0.1, detail = "Preparing status data")
-  # Pass raw boolean values - will be rendered by JavaScript
-  status_values <- concept_data$current_accepted
+  # Create status badges with HTML for display and text for sorting/filtering
+  # Pre-generate badge HTML strings once for performance
+  status_raw <- concept_data$current_accepted
+  
+  accepted_badge <- '<span class="badge rounded-pill" style="background-color: var(--accepted-bg); color: var(--accepted-text);">Accepted</span>'
+  not_current_badge <- '<span class="badge rounded-pill" style="background-color: var(--not-current-bg); color: var(--not-current-text);">Not Current</span>'
+  no_status_badge <- '<span class="badge rounded-pill" style="background-color: var(--no-status-bg); color: var(--no-status-text);">No Status</span>'
+  
+  # Vectorized assignment of badges
+  status_display <- ifelse(is.na(status_raw), no_status_badge, 
+                           ifelse(status_raw == TRUE, accepted_badge, not_current_badge))
+  
+  # Sort order: Accepted (0) < Not Current (1) < No Status (2)
+  status_sort <- ifelse(is.na(status_raw), 2, ifelse(status_raw == TRUE, 0, 1))
+  
+  # Text for filtering
+  status_filter <- ifelse(is.na(status_raw), "No Status", 
+                          ifelse(status_raw == TRUE, "Accepted", "Not Current"))
 
   shiny::incProgress(0.15, detail = "Preparing reference data")
   # Create list objects with code and name for JavaScript renderer
@@ -101,9 +119,11 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   result <- data.frame(
     "Actions" = action_codes,
-    "Status" = status_values,
+    "Status" = status_display,
+    "status_sort" = status_sort,  # Hidden column for sorting (0=Accepted, 1=Not Current, 2=No Status)
+    "status_filter" = status_filter,  # Hidden column for filtering
     "Reference Source" = reference_display,
-    "ref_sort" = reference_names,  # Hidden column for sorting
+    "ref_sort" = reference_names,  # Hidden column for sorting references
     "Observations" = obs_counts,
     "Description" = descriptions,
     stringsAsFactors = FALSE,
@@ -114,7 +134,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   result <- cbind(
     Actions = result$Actions,
     setNames(data.frame(names, stringsAsFactors = FALSE), name_label),
-    result[, c("Status", "Reference Source", "ref_sort", "Observations", "Description")]
+    result[, c("Status", "status_sort", "status_filter", "Reference Source", "ref_sort", "Observations", "Description")]
   )
 
   result
