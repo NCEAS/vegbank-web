@@ -12,7 +12,7 @@
 build_concept_table <- function(concept_data, concept_type = "plant") {
   is_plant <- concept_type == "plant"
   data_key <- if (is_plant) "plant_data" else "community_data"
-  
+
   # Determine input ID based on concept type
   link_input_id <- if (is_plant) "plant_link_click" else "comm_link_click"
 
@@ -26,9 +26,10 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
       list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%", render = create_action_button_renderer(link_input_id, "Details")),
       list(targets = 1, width = "25%"), # Name
       list(targets = 2, width = "12%", className = "dt-center", render = create_status_badge_renderer()), # Status
-      list(targets = 3, width = "20%", type = "string", render = create_reference_link_renderer()), # Reference Source
-      list(targets = 4, width = "10%", type = "num", className = "dt-right"), # Observations
-      list(targets = 5, width = "28%") # Description
+      list(targets = 3, width = "20%", orderData = 4), # Reference Source - sort using hidden column
+      list(targets = 4, visible = FALSE, searchable = FALSE), # Hidden column: reference names for sorting
+      list(targets = 5, width = "10%", type = "num", className = "dt-right"), # Observations
+      list(targets = 6, width = "28%") # Description
     ),
     progress_message = paste0("Processing ", concept_type, " concepts table data")
   )
@@ -83,10 +84,26 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   action_codes <- concept_data[[code_field]]
 
   shiny::incProgress(0.15, detail = "Building table...")
+  # Extract reference codes and names for display and sorting
+  reference_codes <- vapply(reference_data, function(x) x$code, character(1))
+  reference_names <- vapply(reference_data, function(x) x$name, character(1))
+  
+  # Create display HTML for reference column
+  is_not_provided <- reference_names == "Not Provided" | is.na(reference_codes) | reference_codes == ""
+  reference_display <- ifelse(
+    is_not_provided,
+    sprintf('<span>%s</span>', reference_names),
+    sprintf(
+      '<a href="#" data-code="%s" onclick="Shiny.setInputValue(\'ref_link_click\', \'%s\', {priority: \'event\'}); return false;">%s</a>',
+      reference_codes, reference_codes, reference_names
+    )
+  )
+
   result <- data.frame(
     "Actions" = action_codes,
     "Status" = status_values,
-    "Reference Source" = I(reference_data),
+    "Reference Source" = reference_display,
+    "ref_sort" = reference_names,  # Hidden column for sorting
     "Observations" = obs_counts,
     "Description" = descriptions,
     stringsAsFactors = FALSE,
@@ -97,17 +114,21 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   result <- cbind(
     Actions = result$Actions,
     setNames(data.frame(names, stringsAsFactors = FALSE), name_label),
-    result[, c("Status", "Reference Source", "Observations", "Description")]
+    result[, c("Status", "Reference Source", "ref_sort", "Observations", "Description")]
   )
 
   result
 }
 
-create_reference_objects <- function(concept_data) { 
+create_reference_objects <- function(concept_data) {
+  # Clean the reference names first (vectorized operation)
+  cleaned_names <- clean_column_data(concept_data, "concept_rf_name")
+
+  # Use mapply to create simple list objects
   mapply(
     function(code, name) list(code = code, name = name),
     concept_data$concept_rf_code,
-    concept_data$concept_rf_name,
+    cleaned_names,
     SIMPLIFY = FALSE,
     USE.NAMES = FALSE
   )
@@ -168,7 +189,7 @@ create_action_button_renderer <- function(input_id = "link_click", button_label 
       if (type === 'display') {
         // data should be the code value
         if (!data || data === '') return '<span>No Data</span>';
-        
+
         return '<div class=\"btn-group btn-group-sm\">' +
                '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"Shiny.setInputValue(\\'%s\\', \\'' + data + '\\', {priority: \\'event\\'})\">' +
                '%s' +
@@ -180,35 +201,40 @@ create_action_button_renderer <- function(input_id = "link_click", button_label 
     input_id,
     button_label
   )
-  
+
   DT::JS(js_code)
 }
 
 #' Create JavaScript renderer for reference links
-#' Creates clickable links to reference sources using concept_rf_code and concept_rf_name
+#' Creates clickable links to reference sources
+#' Uses orthogonal data structure with display/sort/filter properties
 #'
 #' @returns A DT::JS object containing the JavaScript renderer function
 #' @noRd
 create_reference_link_renderer <- function() {
-  # Create the JavaScript function
-  js_code <- sprintf(
-    "function(data, type, row, meta) {  
-      // Handle display - create clickable link
-      if (type === 'display') {
-        // data should be an object with {code: '...', name: '...'}
-        if (!data || typeof data !== 'object') return '<span>Not provided</span>';
-        if (!data.code || !data.name) return '<span>Not provided</span>';
-        
-        var code = data.code;
-        var name = data.name;
-        
-        return '<a href=\"#\" data-code=\"' + code + '\" onclick=\"Shiny.setInputValue(\\'ref_link_click\\', \\'' + code + '\\', {priority: \\'event\\'}); return false;\">' + name + '</a>';
+  js_code <- "function(data, type, row, meta) {
+      // data is an object with: {display: '...', sort: '...', filter: '...'}
+      if (!data || typeof data !== 'object') {
+        return '';
       }
+
+      // Return the appropriate property based on the render type
+      if (type === 'display') {
+        return data.display || '';
+      } else if (type === 'sort') {
+        return data.sort || '';
+      } else if (type === 'filter') {
+        return data.filter || '';
+      } else if (type === 'type') {
+        return 'string';
+      }
+
+      // Default to sort value
+      return data.sort || '';
     }"
-  )
-  
+
   DT::JS(js_code)
-}#' Create JavaScript renderer for status badges
+} #' Create JavaScript renderer for status badges
 #' Creates badges client side so we don't have to iterate over the whole table in R
 #' Doesn't allow for client-side filtering by status
 #'
