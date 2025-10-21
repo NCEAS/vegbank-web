@@ -12,6 +12,9 @@
 build_concept_table <- function(concept_data, concept_type = "plant") {
   is_plant <- concept_type == "plant"
   data_key <- if (is_plant) "plant_data" else "community_data"
+  
+  # Determine input ID based on concept type
+  link_input_id <- if (is_plant) "plant_link_click" else "comm_link_click"
 
   data_sources <- list()
   data_sources[[data_key]] <- concept_data
@@ -20,10 +23,10 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
 
   table_config <- list(
     column_defs = list(
-      list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
+      list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%", render = create_action_button_renderer(link_input_id, "Details")),
       list(targets = 1, width = "25%"), # Name
       list(targets = 2, width = "12%", className = "dt-center", render = create_status_badge_renderer()), # Status
-      list(targets = 3, width = "20%", render = create_reference_link_renderer()), # Reference Source
+      list(targets = 3, width = "20%", type = "string", render = create_reference_link_renderer()), # Reference Source
       list(targets = 4, width = "10%", type = "num", className = "dt-right"), # Observations
       list(targets = 5, width = "28%") # Description
     ),
@@ -75,14 +78,13 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   shiny::incProgress(0.15, detail = paste0("Cleaning ", concept_type, " descriptions"))
   descriptions <- clean_column_data(concept_data, description_field)
 
-  shiny::incProgress(0.1, detail = "Creating action buttons")
-  action_buttons <- create_action_buttons(concept_data, list(
-    list(input_id = link_input_id, input_value = code_field, label = "Details", class = "btn-outline-primary")
-  ))
+  shiny::incProgress(0.1, detail = "Preparing action codes")
+  # Pass the code value directly - will be rendered by JavaScript
+  action_codes <- concept_data[[code_field]]
 
   shiny::incProgress(0.15, detail = "Building table...")
   result <- data.frame(
-    "Actions" = action_buttons,
+    "Actions" = action_codes,
     "Status" = status_values,
     "Reference Source" = I(reference_data),
     "Observations" = obs_counts,
@@ -151,6 +153,36 @@ create_status_badges <- function(status_vector) {
 
 
 # -------------- JS Renderers ---------------------
+
+#' Create JavaScript renderer for action buttons
+#' Creates Details button with click handler for concept detail view
+#'
+#' @param input_id The Shiny input ID for the button click event
+#' @param button_label The label text for the button (default: "Details")
+#' @returns A DT::JS object containing the JavaScript renderer function
+#' @noRd
+create_action_button_renderer <- function(input_id = "link_click", button_label = "Details") {
+  # Create the JavaScript function with sprintf
+  js_code <- sprintf(
+    "function(data, type, row, meta) {
+      if (type === 'display') {
+        // data should be the code value
+        if (!data || data === '') return '<span>No Data</span>';
+        
+        return '<div class=\"btn-group btn-group-sm\">' +
+               '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"Shiny.setInputValue(\\'%s\\', \\'' + data + '\\', {priority: \\'event\\'})\">' +
+               '%s' +
+               '</button>' +
+               '</div>';
+      }
+      return data;
+    }",
+    input_id,
+    button_label
+  )
+  
+  DT::JS(js_code)
+}
 
 #' Create JavaScript renderer for reference links
 #' Creates clickable links to reference sources using concept_rf_code and concept_rf_name
