@@ -816,6 +816,8 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
           result$party %|||% "Party not recorded"
         }
       ),
+      # TODO: This status varies from the current_accepted badge in the table.
+      #       Do we want to show that badge here instead?
       htmltools::tags$span(
         if (!is.na(result$status)) {
           htmltools::tags$i(paste0(" (", result$status, ")"))

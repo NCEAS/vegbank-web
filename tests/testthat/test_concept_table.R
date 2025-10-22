@@ -2,6 +2,7 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
   sample_data <- data.frame(
     pc_code = c("pc.001", "pc.002"),
     plant_name = c("Sample Plant 1", "Sample Plant 2"),
+    plant_level = c("Species", NA),
     current_accepted = c(TRUE, FALSE),
     concept_rf_code = c("rf.1", ""),
     concept_rf_name = c("Reference A", "Not Provided"),
@@ -16,7 +17,7 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
     create_table = function(data_sources, required_sources, process_function, table_config) {
       expect_equal(names(data_sources), "plant_data")
       expect_equal(required_sources, "plant_data")
-      expect_equal(length(table_config$column_defs), 8)
+      expect_equal(length(table_config$column_defs), 9)
 
       status_col <- table_config$column_defs[[3]]
       expect_equal(status_col$orderData, 3)
@@ -25,10 +26,13 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
       expect_false(status_sort_col$visible)
       expect_false(status_sort_col$searchable)
 
-      ref_col <- table_config$column_defs[[5]]
-      expect_equal(ref_col$orderData, 5)
+      level_col <- table_config$column_defs[[5]]
+      expect_equal(level_col$targets, 4)
 
-      ref_sort_col <- table_config$column_defs[[6]]
+      ref_col <- table_config$column_defs[[6]]
+      expect_equal(ref_col$orderData, 6)
+
+      ref_sort_col <- table_config$column_defs[[7]]
       expect_false(ref_sort_col$visible)
       expect_false(ref_sort_col$searchable)
 
@@ -47,6 +51,7 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
 plant_test_data <- data.frame(
   pc_code = c("pc.101", "pc.102"),
   plant_name = c("Oak", NA),
+  plant_level = c("Species", NA),
   current_accepted = c(TRUE, NA),
   concept_rf_code = c("rf.9", ""),
   concept_rf_name = c("Oak Ref", NA),
@@ -58,6 +63,7 @@ plant_test_data <- data.frame(
 community_test_data <- data.frame(
   cc_code = c("cc.201", "cc.202"),
   comm_name = c("Prairie", NA),
+  comm_level = c("Alliance", NA),
   current_accepted = c(FALSE, NA),
   concept_rf_code = c("cr.5", NA),
   concept_rf_name = c("Prairie Ref", ""),
@@ -72,13 +78,14 @@ test_that("process_concept_data formats plant concepts", {
 
     expect_equal(colnames(result), c(
       "Actions", "Plant Name", "Status", "status_sort",
-      "Reference Source", "ref_sort", "Observations", "Description"
+      "Level", "Reference Source", "ref_sort", "Observations", "Description"
     ))
 
     expect_equal(result$Actions, plant_test_data$pc_code)
     expect_equal(result$`Plant Name`, c("Oak", "Not Provided"))
     expect_equal(result$Status, plant_test_data$current_accepted)
     expect_equal(result$status_sort, c(0, 2))
+    expect_equal(result$Level, c("Species", "Not provided"))
     expect_equal(result$`Reference Source`, c("rf.9", ""))
     expect_equal(result$ref_sort, c("Oak Ref", "Not Provided"))
     expect_equal(result$Observations, c(15, 0))
@@ -93,13 +100,14 @@ test_that("process_concept_data formats community concepts", {
 
     expect_equal(colnames(result), c(
       "Actions", "Community Name", "Status", "status_sort",
-      "Reference Source", "ref_sort", "Observations", "Description"
+      "Level", "Reference Source", "ref_sort", "Observations", "Description"
     ))
 
     expect_equal(result$Actions, community_test_data$cc_code)
     expect_equal(result$`Community Name`, c("Prairie", "Not Provided"))
     expect_equal(result$Status, community_test_data$current_accepted)
     expect_equal(result$status_sort, c(1, 2))
+    expect_equal(result$Level, c("Alliance", "Not provided"))
     expect_equal(result$`Reference Source`, c("cr.5", NA_character_))
     expect_equal(result$ref_sort, c("Prairie Ref", "Not Provided"))
     expect_equal(result$Observations, c(8, 0))

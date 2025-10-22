@@ -39,20 +39,22 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
       list(targets = 1, width = "25%"),
       # Status - render client-side, sort by hidden column
       list(
-        targets = 2, width = "12%", className = "dt-center",
+        targets = 2, width = "10%", className = "dt-center",
         render = create_status_badge_renderer(), orderData = 3
       ),
       list(targets = 3, visible = FALSE, searchable = FALSE), # Hidden: status sort values (0, 1, 2)
+      # Level column (plant_level or comm_level)
+      list(targets = 4, width = "10%", className = "dt-center"),
       # Reference Source - render client-side, sort by hidden column
       list(
-        targets = 4, width = "20%",
-        render = create_reference_link_renderer(), orderData = 5
+        targets = 5, width = "20%",
+        render = create_reference_link_renderer(), orderData = 6
       ),
-      list(targets = 5, visible = FALSE, searchable = FALSE), # Hidden: reference names for sorting
+      list(targets = 6, visible = FALSE, searchable = FALSE), # Hidden: reference names for sorting
       # Observations
-      list(targets = 6, width = "10%", type = "num", className = "dt-right"),
+      list(targets = 7, width = "10%", type = "num", className = "dt-right"),
       # Description
-      list(targets = 7, width = "28%")
+      list(targets = 8, width = "15%")
     ),
     progress_message = paste0("Processing ", concept_type, " concepts table data")
   )
@@ -82,6 +84,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   name_field <- if (is_plant) "plant_name" else "comm_name"
   description_field <- if (is_plant) "plant_description" else "comm_description"
   code_field <- if (is_plant) "pc_code" else "cc_code"
+  level_field <- if (is_plant) "plant_level" else "comm_level"
   name_label <- if (is_plant) "Plant Name" else "Community Name"
 
   shiny::incProgress(0.15, detail = paste0("Cleaning ", concept_type, " names"))
@@ -91,6 +94,9 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   status_raw <- concept_data$current_accepted
   # Sort order: Accepted (0) < Not Current (1) < No Status (2)
   status_sort <- ifelse(is.na(status_raw), 2, ifelse(status_raw == TRUE, 0, 1))
+
+  shiny::incProgress(0.1, detail = paste0("Cleaning ", concept_type, " levels"))
+  levels <- clean_column_data(concept_data, level_field)
 
   shiny::incProgress(0.15, detail = "Preparing reference data")
   # Pass reference codes and names for client-side rendering
@@ -112,6 +118,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     Name = names,
     Status = status_raw,
     status_sort = status_sort,
+    Level = levels,
     "Reference Source" = reference_codes,
     ref_sort = reference_names,
     Observations = obs_counts,
@@ -196,7 +203,7 @@ create_reference_link_renderer <- function() {
       if (type === 'display') {
         // data is the reference code; the display name is in the hidden sort column
         var code = data;
-        var name = row && row.length > 5 ? row[5] : null;
+        var name = row && row.length > 6 ? row[6] : null;
 
         if (name === null || name === undefined) {
           name = '';
