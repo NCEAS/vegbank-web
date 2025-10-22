@@ -116,7 +116,7 @@ server <- function(input, output, session) {
 
   output$comm_table <- DT::renderDataTable({
     build_community_table(comm_concept_data)
-  }, server = FALSE)
+  })
 
   output$proj_table <- DT::renderDataTable({
     build_project_table(project_data)
@@ -128,7 +128,7 @@ server <- function(input, output, session) {
 
   output$plant_table <- DT::renderDataTable({
     build_plant_table(plant_data)
-  }, server = FALSE)
+  })
 
   output$map <- leaflet::renderLeaflet({
     process_map_data(
