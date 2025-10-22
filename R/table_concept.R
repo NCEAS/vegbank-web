@@ -22,9 +22,10 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
   required_sources <- c(data_key)
 
   table_config <- list(
-    # Had to resort to hidden columns to get proper sorting and filtering behavior for status and
-    # reference source columns because translating the R objects into Javascript objects/JSON
-    # interfered with accessing orthogonal data directly in JS renderers
+    # Resorted to hidden columns to get proper sorting behavior for status and reference
+    # source columns because translating the R objects into Javascript objects/JSON
+    # interfered with accessing orthogonal data directly in JS renderers as directed here:
+    # https://datatables.net/manual/data/orthogonal-data
     column_defs = list(
       # Actions
       list(
@@ -34,19 +35,15 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
       # Name
       list(targets = 1, width = "25%"),
       # Status (sorted and filtered by hidden columns)
-      list(
-        targets = 2, width = "12%", className = "dt-center",
-        orderData = 3, searchData = 4
-      ),
+      list(targets = 2, width = "12%", className = "dt-center", orderData = 3),
       list(targets = 3, visible = FALSE, searchable = FALSE), # Hidden: status sort values (0, 1, 2)
-      list(targets = 4, visible = FALSE), # Hidden: status filter text (Accepted, Not Current, No Status)
       # Reference Source (sorted using hidden column)
-      list(targets = 5, width = "20%", orderData = 6),
-      list(targets = 6, visible = FALSE, searchable = FALSE), # Hidden: reference names for sorting
+      list(targets = 4, width = "20%", orderData = 6),
+      list(targets = 5, visible = FALSE, searchable = FALSE), # Hidden: reference names for sorting
       # Observations
-      list(targets = 7, width = "10%", type = "num", className = "dt-right"),
+      list(targets = 6, width = "10%", type = "num", className = "dt-right"),
       # Description
-      list(targets = 8, width = "28%")
+      list(targets = 7, width = "28%")
     ),
     progress_message = paste0("Processing ", concept_type, " concepts table data")
   )
@@ -102,7 +99,6 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     "Actions" = action_codes,
     "Status" = status_columns$display,
     "status_sort" = status_columns$sort,
-    "status_filter" = status_columns$filter,
     "Reference Source" = reference_columns$display,
     "ref_sort" = reference_columns$sort,
     "Observations" = obs_counts,
@@ -116,7 +112,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     Actions = result$Actions,
     setNames(data.frame(names, stringsAsFactors = FALSE), name_label),
     result[, c(
-      "Status", "status_sort", "status_filter",
+      "Status", "status_sort",
       "Reference Source", "ref_sort", "Observations", "Description"
     )]
   )
@@ -148,12 +144,7 @@ create_status_columns <- function(status_vector) {
   # Sort order: Accepted (0) < Not Current (1) < No Status (2)
   sort <- ifelse(is.na(status_vector), 2, ifelse(status_vector == TRUE, 0, 1))
 
-  # Text for filtering
-  filter <- ifelse(is.na(status_vector), "No Status",
-    ifelse(status_vector == TRUE, "Accepted", "Not Current")
-  )
-
-  list(display = display, sort = sort, filter = filter)
+  list(display = display, sort = sort)
 }
 
 #' Create reference column data with display HTML and sort values
