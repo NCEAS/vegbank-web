@@ -22,10 +22,8 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
   required_sources <- c(data_key)
 
   table_config <- list(
-    # Resorted to hidden columns to get proper sorting behavior for status and reference
-    # source columns because translating the R objects into Javascript objects/JSON
-    # interfered with accessing orthogonal data directly in JS renderers as directed here:
-    # https://datatables.net/manual/data/orthogonal-data
+    # Use orthogonal data objects for Status and Reference Source columns
+    # so display and sort/filter values can be provided without hidden columns.
     column_defs = list(
       # Actions
       list(
@@ -34,22 +32,20 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
       ),
       # Name
       list(targets = 1, width = "25%"),
-      # Status - render client-side, sort by hidden column
+      # Status - uses orthogonal data object {display, sort}
       list(
         targets = 2, width = "12%", className = "dt-center",
-        render = create_status_badge_renderer(), orderData = 3
+        render = create_status_badge_renderer()
       ),
-      list(targets = 3, visible = FALSE, searchable = FALSE), # Hidden: status sort values (0, 1, 2)
-      # Reference Source - render client-side, sort by hidden column
+      # Reference Source - uses orthogonal data object {display, sort}
       list(
-        targets = 4, width = "20%",
-        render = create_reference_link_renderer(), orderData = 5
+        targets = 3, width = "20%",
+        render = create_reference_link_renderer()
       ),
-      list(targets = 5, visible = FALSE, searchable = FALSE), # Hidden: reference names for sorting
       # Observations
-      list(targets = 6, width = "10%", type = "num", className = "dt-right"),
+      list(targets = 4, width = "10%", type = "num", className = "dt-right"),
       # Description
-      list(targets = 7, width = "28%")
+      list(targets = 5, width = "28%")
     ),
     progress_message = paste0("Processing ", concept_type, " concepts table data")
   )
@@ -86,16 +82,26 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   names <- clean_column_data(concept_data, name_field)
 
   shiny::incProgress(0.1, detail = "Preparing status data")
-  # Pass raw boolean values for client-side rendering
+  # Build orthogonal status objects with display HTML and sort values
+  # Keep the raw boolean values for creating the display & sort entries
   status_raw <- concept_data$current_accepted
-  # Sort order: Accepted (0) < Not Current (1) < No Status (2)
-  status_sort <- ifelse(is.na(status_raw), 2, ifelse(status_raw == TRUE, 0, 1))
+  status_cols <- create_status_columns(status_raw)
+  status_objects <- mapply(
+    function(disp, sortv, filterv) list(display = disp, sort = sortv, filter = filterv),
+    status_cols$display, status_cols$sort, status_cols$filter,
+    SIMPLIFY = FALSE,
+    USE.NAMES = FALSE
+  )
 
   shiny::incProgress(0.15, detail = "Preparing reference data")
-  # Pass reference codes and names for client-side rendering
-  reference_data <- create_reference_objects(concept_data)
-  reference_codes <- vapply(reference_data, function(x) x$code, character(1))
-  reference_names <- vapply(reference_data, function(x) x$name, character(1))
+  # Build orthogonal reference objects with display HTML and sort values
+  reference_cols <- create_reference_columns(concept_data)
+  reference_objects <- mapply(
+    function(disp, sortv, filterv) list(display = disp, sort = sortv, filter = filterv),
+    reference_cols$display, reference_cols$sort, reference_cols$filter,
+    SIMPLIFY = FALSE,
+    USE.NAMES = FALSE
+  )
 
   shiny::incProgress(0.15, detail = "Cleaning observation counts")
   obs_counts <- as.numeric(clean_column_data(concept_data, "obs_count", "0"))
@@ -109,10 +115,9 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   result <- data.frame(
     "Actions" = action_codes,
-    "Status" = status_raw,  # Raw boolean for client-side rendering
-    "status_sort" = status_sort,  # Numeric for sorting
-    "Reference Source" = I(reference_data),  # List objects for client-side rendering
-    "ref_sort" = reference_names,  # Text for sorting
+    # Status and Reference will be orthogonal list objects (display + sort)
+    "Status" = I(status_objects),
+    "Reference Source" = I(reference_objects),
     "Observations" = obs_counts,
     "Description" = descriptions,
     stringsAsFactors = FALSE,
@@ -124,8 +129,8 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     Actions = result$Actions,
     setNames(data.frame(names, stringsAsFactors = FALSE), name_label),
     result[, c(
-      "Status", "status_sort",
-      "Reference Source", "ref_sort", "Observations", "Description"
+      "Status",
+      "Reference Source", "Observations", "Description"
     )]
   )
 
@@ -156,7 +161,11 @@ create_status_columns <- function(status_vector) {
   # Sort order: Accepted (0) < Not Current (1) < No Status (2)
   sort <- ifelse(is.na(status_vector), 2, ifelse(status_vector == TRUE, 0, 1))
 
-  list(display = display, sort = sort)
+  filter <- ifelse(is.na(status_vector), "No Status",
+    ifelse(status_vector == TRUE, "Accepted", "Not Current")
+  )
+
+  list(display = display, sort = sort, filter = filter)
 }
 
 #' Create reference column data with display HTML and sort values
@@ -185,7 +194,7 @@ create_reference_columns <- function(concept_data) {
     )
   )
 
-  list(display = display, sort = names)
+  list(display = display, sort = names, filter = names)
 }
 
 create_reference_objects <- function(concept_data) {
@@ -240,18 +249,49 @@ create_action_button_renderer <- function(input_id = "link_click", button_label 
 #' @returns A DT::JS object containing the JavaScript renderer function
 #' @noRd
 create_status_badge_renderer <- function() {
+  # Now the cell data will be an object: {display: '<span>...</span>', sort: <numeric>, filter: 'Text'}
   js_code <- "function(data, type, row, meta) {
-      if (type === 'display') {
-        // data is boolean or null
-        if (data === null || data === '' || typeof data === 'undefined') {
-          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--no-status-bg); color: var(--no-status-text);\">No Status</span>';
-        } else if (data === true || data === 'true' || data === 'TRUE') {
-          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--accepted-bg); color: var(--accepted-text);\">Accepted</span>';
-        } else {
-          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--not-current-bg); color: var(--not-current-text);\">Not Current</span>';
+      var fallbackDisplay = '<span class=\"badge rounded-pill\" style=\"background-color: var(--no-status-bg); color: var(--no-status-text);\">No Status</span>';
+      var fallbackFilter = 'No Status';
+      var fallbackSort = 2;
+
+      if (!data || typeof data !== 'object') {
+        if (type === 'display') {
+          return fallbackDisplay;
         }
+        if (type === 'filter') {
+          return fallbackFilter;
+        }
+        if (type === 'sort' || type === 'type') {
+          return fallbackSort;
+        }
+        return fallbackFilter;
       }
-      // For sort/filter/type, return the raw data (sorting handled by hidden column)
+
+      if (type === 'display') {
+        return data.display || fallbackDisplay;
+      }
+
+      if (type === 'filter') {
+        if (data.filter !== undefined && data.filter !== null) {
+          return data.filter;
+        }
+        if (data.sort !== undefined && data.sort !== null) {
+          return data.sort;
+        }
+        return fallbackFilter;
+      }
+
+      if (type === 'sort' || type === 'type') {
+        if (data.sort !== undefined && data.sort !== null) {
+          return data.sort;
+        }
+        if (data.filter !== undefined && data.filter !== null) {
+          return data.filter;
+        }
+        return fallbackSort;
+      }
+
       return data;
     }"
 
@@ -264,25 +304,42 @@ create_status_badge_renderer <- function() {
 #' @returns A DT::JS object containing the JavaScript renderer function
 #' @noRd
 create_reference_link_renderer <- function() {
+  # Expect data object: {display: '<a ...>name</a>', sort: 'Name', filter: 'Name'}
   js_code <- "function(data, type, row, meta) {
-      if (type === 'display') {
-        // data is an object with code and name properties
-        if (!data || typeof data !== 'object') {
-          return '<span>Not provided</span>';
+      var fallbackDisplay = '<span>Not provided</span>';
+      var fallbackText = 'Not provided';
+
+      if (!data || typeof data !== 'object') {
+        if (type === 'display') {
+          return fallbackDisplay;
         }
-        
-        var name = data.name || 'Not provided';
-        var code = data.code;
-        
-        // If \"Not Provided\" or no code, show as plain text
-        if (name === 'Not Provided' || !code || code === '') {
-          return '<span>' + name + '</span>';
-        }
-        
-        // Create clickable link
-        return '<a href=\"#\" data-code=\"' + code + '\" onclick=\"Shiny.setInputValue(\\'ref_link_click\\', \\'' + code + '\\', {priority: \\'event\\'}); return false;\">' + name + '</a>';
+        return fallbackText;
       }
-      // For sort/filter/type, return the raw data (sorting handled by hidden column)
+
+      if (type === 'display') {
+        return data.display || fallbackDisplay;
+      }
+
+      if (type === 'filter') {
+        if (data.filter !== undefined && data.filter !== null && data.filter !== '') {
+          return data.filter;
+        }
+        if (data.sort !== undefined && data.sort !== null) {
+          return data.sort;
+        }
+        return fallbackText;
+      }
+
+      if (type === 'sort' || type === 'type') {
+        if (data.sort !== undefined && data.sort !== null) {
+          return data.sort;
+        }
+        if (data.filter !== undefined && data.filter !== null) {
+          return data.filter;
+        }
+        return fallbackText;
+      }
+
       return data;
     }"
 
