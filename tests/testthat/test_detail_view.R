@@ -47,12 +47,32 @@ mock_plot_data <- list(
 )
 
 mock_comm_concept_data <- data.frame(
+  cc_code = "cc.54321",
   comm_name = "Test Community",
+  comm_code = "TESTCOMM",
+  comm_level = "Association",
   comm_description = "Test <em>description</em> with HTML",
+  concept_rf_code = "rf.999",
+  concept_rf_name = "Reference Community 2023",
   obs_count = 42,
+  party = "Test Ecologist",
+  py_code = "py.777",
+  status = "Active",
+  start_date = "2018-04-15",
+  stop_date = "2024-01-10",
+  parent_name = "Parent Community",
+  parent_cc_code = "cc.54000",
   class_system = "Scientific",
   stringsAsFactors = FALSE
 )
+
+mock_comm_concept_data$children <- I(list(list("cc.54322" = "Child Community")))
+mock_comm_concept_data$correlations <- I(list(NULL))
+mock_comm_concept_data$usages <- I(list(data.frame(
+  class_system = c("Scientific", "Common"),
+  comm_name = c("Prairie Alt", "Prairie Common"),
+  stringsAsFactors = FALSE
+)))
 
 mock_taxon_data <- list(
   author_plant_name = "Test Plant",
@@ -114,18 +134,30 @@ mock_plant_concept_data <- data.frame(
   plant_name = "Test Plant Species",
   plant_code = "TESTPLANT",
   plant_level = "Species",
+  plant_description = "<em>Test plant description</em> with HTML",
+  concept_rf_code = "rf.123",
   concept_rf_name = "Reference Flora 2023",
   obs_count = 150,
   party = "Test Botanist",
+  py_code = "py.123",
   start_date = "2020-01-01",
   stop_date = "2023-12-31",
   status = "Active",
   parent_name = "Test Genus",
   parent_pc_code = "pc.12300",
-  children = '{"pc.12346": "Test Plant var. minor", "pc.12347": "Test Plant var. major"}',
-  usage_names = '{"Synonym": "Old Plant Name", "Common": "Common Plant"}',
   stringsAsFactors = FALSE
 )
+
+mock_plant_concept_data$children <- I(list(list(
+  "pc.12346" = "Test Plant var. minor",
+  "pc.12347" = "Test Plant var. major"
+)))
+mock_plant_concept_data$correlations <- I(list(NULL))
+mock_plant_concept_data$usages <- I(list(data.frame(
+  class_system = c("Synonym", "Common"),
+  plant_name = c("Old Plant Name", "Common Plant"),
+  stringsAsFactors = FALSE
+)))
 
 test_that("build_plot_obs_details_view handles NULL data gracefully", {
   # When NULL data is provided
@@ -164,12 +196,13 @@ test_that("build_comm_concept_details_view handles NULL data gracefully", {
   # It should return a list with placeholder components
   expect_type(result, "list")
   expect_named(result, c(
-    "community_name", "community_description",
-    "observation_count", "community_aliases"
+    "community_concept_name",
+    "community_concept_details",
+    "community_party_perspective"
   ))
 
   # Each component should be a render function
-  expect_true(inherits(result$community_name, "shiny.render.function"))
+  expect_true(inherits(result$community_concept_name, "shiny.render.function"))
 })
 
 test_that("build_comm_concept_details_view formats community data correctly", {
@@ -177,16 +210,16 @@ test_that("build_comm_concept_details_view formats community data correctly", {
 
   # Test structure and types
   expect_type(result, "list")
-  # Verify names in any order
-  expect_setequal(names(result), c(
-    "community_name", "community_description",
-    "observation_count", "community_aliases"
+  expect_named(result, c(
+    "community_concept_name",
+    "community_concept_details",
+    "community_party_perspective"
   ))
 
   # Each component should be a render function
-  expect_true(inherits(result$community_name, "shiny.render.function"))
-  expect_true(inherits(result$community_description, "shiny.render.function"))
-  expect_true(inherits(result$observation_count, "shiny.render.function"))
+  expect_true(inherits(result$community_concept_name, "shiny.render.function"))
+  expect_true(inherits(result$community_concept_details, "shiny.render.function"))
+  expect_true(inherits(result$community_party_perspective, "shiny.render.function"))
 })
 
 test_that("build_comm_class_details_view handles NULL data gracefully", {
@@ -607,7 +640,7 @@ test_that("build_plant_concept_details_view handles valid data", {
     .package = "shiny",
     {
       result <- build_plant_concept_details_view(mock_plant_concept_data)
-      
+
       expect_type(result, "list")
       expect_equal(names(result), c("plant_concept_name", "plant_concept_details", "plant_party_perspective"))
       expect_s3_class(result$plant_concept_name, "shiny.render.function")
@@ -628,7 +661,7 @@ test_that("build_plant_concept_details_view handles null/empty data", {
       result_null <- build_plant_concept_details_view(NULL)
       expect_type(result_null, "list")
       expect_equal(names(result_null), c("plant_concept_name", "plant_concept_details", "plant_party_perspective"))
-      
+
       # Test with empty data frame
       empty_data <- data.frame()
       result_empty <- build_plant_concept_details_view(empty_data)
@@ -645,7 +678,13 @@ test_that("create_party_perspective_ui handles valid JSON data", {
     },
     .package = "shiny",
     {
-      result <- create_party_perspective_ui(mock_plant_concept_data)
+      result <- create_party_perspective_ui(
+        mock_plant_concept_data,
+        "plant",
+        "pc_code",
+        "parent_pc_code",
+        "plant_link_click"
+      )
       expect_s3_class(result, "shiny.render.function")
     }
   )
@@ -653,9 +692,9 @@ test_that("create_party_perspective_ui handles valid JSON data", {
 
 test_that("create_party_perspective_ui handles invalid JSON", {
   invalid_json_data <- mock_plant_concept_data
-  invalid_json_data$children <- '{"invalid": json}'
-  invalid_json_data$usage_names <- '{"invalid": json}'
-  
+  invalid_json_data$children <- I(list('{"invalid": json}'))
+  invalid_json_data$usages <- I(list('{"invalid": json}'))
+
   with_mocked_bindings(
     renderUI = function(expr) {
       structure(list(func = expr), class = "shiny.render.function")
@@ -663,7 +702,13 @@ test_that("create_party_perspective_ui handles invalid JSON", {
     .package = "shiny",
     {
       # Should not throw error even with invalid JSON
-      result <- create_party_perspective_ui(invalid_json_data)
+      result <- create_party_perspective_ui(
+        invalid_json_data,
+        "plant",
+        "pc_code",
+        "parent_pc_code",
+        "plant_link_click"
+      )
       expect_s3_class(result, "shiny.render.function")
     }
   )
@@ -671,68 +716,63 @@ test_that("create_party_perspective_ui handles invalid JSON", {
 
 test_that("create_party_perspective_ui handles NA values", {
   na_data <- mock_plant_concept_data
-  na_data$children <- NA
-  na_data$usage_names <- NA
+  na_data$children <- I(list(NA))
+  na_data$usages <- I(list(NA))
   na_data$party <- NA
   na_data$status <- NA
   na_data$start_date <- NA
   na_data$stop_date <- NA
   na_data$parent_name <- NA
-  
+
   with_mocked_bindings(
     renderUI = function(expr) {
       structure(list(func = expr), class = "shiny.render.function")
     },
     .package = "shiny",
     {
-      result <- create_party_perspective_ui(na_data)
+      result <- create_party_perspective_ui(
+        na_data,
+        "plant",
+        "pc_code",
+        "parent_pc_code",
+        "plant_link_click"
+      )
       expect_s3_class(result, "shiny.render.function")
     }
   )
 })
 
-test_that("create_plant_aliases_ui handles valid JSON data", {
-  result <- create_plant_aliases_ui(mock_plant_concept_data)
-  
-  # Should return HTML tags directly (not renderUI)
+test_that("create_concept_aliases_ui handles plant usages", {
+  result <- create_concept_aliases_ui(mock_plant_concept_data, is_plant = TRUE)
   expect_true(inherits(result, "shiny.tag") || inherits(result, "shiny.tag.list"))
 })
 
-test_that("create_plant_aliases_ui handles invalid JSON", {
-  invalid_json_data <- mock_plant_concept_data
-  invalid_json_data$usage_names <- '{"invalid": json}'
-  
-  # Should not throw error even with invalid JSON
-  result <- create_plant_aliases_ui(invalid_json_data)
+test_that("create_concept_aliases_ui handles invalid usage data", {
+  invalid_data <- mock_plant_concept_data
+  invalid_data$usages <- I(list('{"invalid": json}'))
+  result <- create_concept_aliases_ui(invalid_data, is_plant = TRUE)
   expect_true(inherits(result, "shiny.tag") || inherits(result, "shiny.tag.list"))
 })
 
-test_that("create_plant_aliases_ui handles NA/empty usage_names", {
-  # Test with NA
+test_that("create_concept_aliases_ui handles NA/empty usages", {
   na_data <- mock_plant_concept_data
-  na_data$usage_names <- NA
-  result_na <- create_plant_aliases_ui(na_data)
-  expect_true(inherits(result_na, "shiny.tag"))
-  
-  # Test with empty string
+  na_data$usages <- I(list(NA))
+  expect_true(inherits(create_concept_aliases_ui(na_data, is_plant = TRUE), "shiny.tag"))
+
   empty_data <- mock_plant_concept_data
-  empty_data$usage_names <- ""
-  result_empty <- create_plant_aliases_ui(empty_data)
-  expect_true(inherits(result_empty, "shiny.tag"))
-  
-  # Test with NULL
-  null_data <- mock_plant_concept_data
-  null_data$usage_names <- NULL
-  result_null <- create_plant_aliases_ui(null_data)
-  expect_true(inherits(result_null, "shiny.tag"))
+  empty_data$usages <- I(list(NULL))
+  expect_true(inherits(create_concept_aliases_ui(empty_data, is_plant = TRUE), "shiny.tag"))
 })
 
-test_that("create_plant_aliases_ui sorts usage types alphabetically", {
+test_that("create_concept_aliases_ui sorts usages alphabetically", {
   sorted_data <- mock_plant_concept_data
-  sorted_data$usage_names <- '{"Zebra": "Last name", "Alpha": "First name", "Beta": "Second name"}'
-  
-  result <- create_plant_aliases_ui(sorted_data)
-  # The function should handle sorting internally
+  sorted_data$usages <- I(list(data.frame(
+    class_system = c("Zebra", "Alpha", "Beta"),
+    plant_name = c("Last name", "First name", "Second name"),
+    stringsAsFactors = FALSE
+  )))
+
+  result <- create_concept_aliases_ui(sorted_data, is_plant = TRUE)
   expect_true(inherits(result, "shiny.tag") || inherits(result, "shiny.tag.list"))
 })
 
@@ -745,10 +785,10 @@ test_that("coalesce function (%|||%) works correctly", {
   expect_equal("valid" %|||% "default", "valid")
   expect_equal(0 %|||% "default", 0)
   expect_equal(FALSE %|||% "default", FALSE)
-  
+
   # Test with vectors
-  expect_equal(c(NA, "valid") %|||% "default", "default")  # Takes first element
-  expect_equal(c("valid", "other") %|||% "default", "valid")  # Takes first element
+  expect_equal(c(NA, "valid") %|||% "default", "default") # Takes first element
+  expect_equal(c("valid", "other") %|||% "default", "valid") # Takes first element
 })
 
 test_that("show_detail_view works with plant-concept type", {
@@ -757,9 +797,9 @@ test_that("show_detail_view works with plant-concept type", {
     if (code == "pc.12345") {
       return(mock_plant_concept_data)
     }
-    return(data.frame())
+    data.frame()
   }
-  
+
   # Test that the function returns TRUE for valid data
   result <- mock_get_plant_concept("pc.12345")
   expect_true(nrow(result) > 0)
@@ -769,9 +809,9 @@ test_that("show_detail_view works with plant-concept type", {
 test_that("show_detail_view handles missing plant concept data", {
   # Mock function that returns empty data
   mock_get_plant_concept_empty <- function(code) {
-    return(data.frame())
+    data.frame()
   }
-  
+
   # Test that the function returns empty data for invalid codes
   result <- mock_get_plant_concept_empty("nonexistent")
   expect_true(nrow(result) == 0)
