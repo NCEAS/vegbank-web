@@ -365,7 +365,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
   # Name output
   outputs[[name_output]] <- shiny::renderUI({
     htmltools::div(
-      htmltools::tags$i(result[[level_field]] %|||% "Unspecified level"),
+      htmltools::tags$i(tools::toTitleCase(as.character(result[[level_field]])) %|||% "Unspecified level"),
       htmltools::tags$h5(result[[name_field]], style = "font-weight: 600; margin-bottom: 0px;"),
       if (!is.na(result[[code_field]])) htmltools::tags$p(paste0("(", result[[code_field]], ")"))
     )
