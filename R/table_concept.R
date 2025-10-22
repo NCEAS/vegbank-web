@@ -34,11 +34,17 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
       ),
       # Name
       list(targets = 1, width = "25%"),
-      # Status (sorted and filtered by hidden columns)
-      list(targets = 2, width = "12%", className = "dt-center", orderData = 3),
+      # Status - render client-side, sort by hidden column
+      list(
+        targets = 2, width = "12%", className = "dt-center",
+        render = create_status_badge_renderer(), orderData = 3
+      ),
       list(targets = 3, visible = FALSE, searchable = FALSE), # Hidden: status sort values (0, 1, 2)
-      # Reference Source (sorted using hidden column)
-      list(targets = 4, width = "20%", orderData = 6),
+      # Reference Source - render client-side, sort by hidden column
+      list(
+        targets = 4, width = "20%",
+        render = create_reference_link_renderer(), orderData = 5
+      ),
       list(targets = 5, visible = FALSE, searchable = FALSE), # Hidden: reference names for sorting
       # Observations
       list(targets = 6, width = "10%", type = "num", className = "dt-right"),
@@ -80,10 +86,16 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   names <- clean_column_data(concept_data, name_field)
 
   shiny::incProgress(0.1, detail = "Preparing status data")
-  status_columns <- create_status_columns(concept_data$current_accepted)
+  # Pass raw boolean values for client-side rendering
+  status_raw <- concept_data$current_accepted
+  # Sort order: Accepted (0) < Not Current (1) < No Status (2)
+  status_sort <- ifelse(is.na(status_raw), 2, ifelse(status_raw == TRUE, 0, 1))
 
   shiny::incProgress(0.15, detail = "Preparing reference data")
-  reference_columns <- create_reference_columns(concept_data)
+  # Pass reference codes and names for client-side rendering
+  reference_data <- create_reference_objects(concept_data)
+  reference_codes <- vapply(reference_data, function(x) x$code, character(1))
+  reference_names <- vapply(reference_data, function(x) x$name, character(1))
 
   shiny::incProgress(0.15, detail = "Cleaning observation counts")
   obs_counts <- as.numeric(clean_column_data(concept_data, "obs_count", "0"))
@@ -97,10 +109,10 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   result <- data.frame(
     "Actions" = action_codes,
-    "Status" = status_columns$display,
-    "status_sort" = status_columns$sort,
-    "Reference Source" = reference_columns$display,
-    "ref_sort" = reference_columns$sort,
+    "Status" = status_raw,  # Raw boolean for client-side rendering
+    "status_sort" = status_sort,  # Numeric for sorting
+    "Reference Source" = I(reference_data),  # List objects for client-side rendering
+    "ref_sort" = reference_names,  # Text for sorting
     "Observations" = obs_counts,
     "Description" = descriptions,
     stringsAsFactors = FALSE,
@@ -218,6 +230,61 @@ create_action_button_renderer <- function(input_id = "link_click", button_label 
     input_id,
     button_label
   )
+
+  DT::JS(js_code)
+}
+
+#' Create JavaScript renderer for status badges
+#' Renders badges client-side from raw boolean values
+#'
+#' @returns A DT::JS object containing the JavaScript renderer function
+#' @noRd
+create_status_badge_renderer <- function() {
+  js_code <- "function(data, type, row, meta) {
+      if (type === 'display') {
+        // data is boolean or null
+        if (data === null || data === '' || typeof data === 'undefined') {
+          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--no-status-bg); color: var(--no-status-text);\">No Status</span>';
+        } else if (data === true || data === 'true' || data === 'TRUE') {
+          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--accepted-bg); color: var(--accepted-text);\">Accepted</span>';
+        } else {
+          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--not-current-bg); color: var(--not-current-text);\">Not Current</span>';
+        }
+      }
+      // For sort/filter/type, return the raw data (sorting handled by hidden column)
+      return data;
+    }"
+
+  DT::JS(js_code)
+}
+
+#' Create JavaScript renderer for reference links
+#' Renders clickable links client-side from reference data objects
+#'
+#' @returns A DT::JS object containing the JavaScript renderer function
+#' @noRd
+create_reference_link_renderer <- function() {
+  js_code <- "function(data, type, row, meta) {
+      if (type === 'display') {
+        // data is an object with code and name properties
+        if (!data || typeof data !== 'object') {
+          return '<span>Not provided</span>';
+        }
+        
+        var name = data.name || 'Not provided';
+        var code = data.code;
+        
+        // If \"Not Provided\" or no code, show as plain text
+        if (name === 'Not Provided' || !code || code === '') {
+          return '<span>' + name + '</span>';
+        }
+        
+        // Create clickable link
+        return '<a href=\"#\" data-code=\"' + code + '\" onclick=\"Shiny.setInputValue(\\'ref_link_click\\', \\'' + code + '\\', {priority: \\'event\\'}); return false;\">' + name + '</a>';
+      }
+      // For sort/filter/type, return the raw data (sorting handled by hidden column)
+      return data;
+    }"
 
   DT::JS(js_code)
 }
