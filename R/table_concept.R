@@ -144,7 +144,8 @@ create_action_button_renderer <- function(input_id = "link_click", button_label 
         if (!data || data === '') return '<span>No Data</span>';
 
         return '<div class=\"btn-group btn-group-sm\">' +
-               '<button class=\"btn btn-sm btn-outline-primary\" onclick=\"Shiny.setInputValue(\\'%s\\', \\'' + data + '\\', {priority: \\'event\\'})\">' +
+               '<button class=\"btn btn-sm btn-outline-primary\"' +
+               ' onclick=\"Shiny.setInputValue(\\'%s\\', \\'' + data + '\\', {priority: \\'event\\'})\">' +
                '%s' +
                '</button>' +
                '</div>';
@@ -168,11 +169,14 @@ create_status_badge_renderer <- function() {
       if (type === 'display') {
         // data is boolean or null
         if (data === null || data === '' || typeof data === 'undefined') {
-          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--no-status-bg); color: var(--no-status-text);\">No Status</span>';
+          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--no-status-bg); ' +
+                    'color: var(--no-status-text);\">No Status</span>';
         } else if (data === true || data === 'true' || data === 'TRUE') {
-          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--accepted-bg); color: var(--accepted-text);\">Accepted</span>';
+          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--accepted-bg); ' +
+                    'color: var(--accepted-text);\">Accepted</span>';
         } else {
-          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--not-current-bg); color: var(--not-current-text);\">Not Current</span>';
+          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--not-current-bg); ' +
+                    'color: var(--not-current-text);\">Not Current</span>';
         }
       }
       // For sort/filter/type, return the raw data (sorting handled by hidden column)
@@ -208,7 +212,9 @@ create_reference_link_renderer <- function() {
         }
 
         // Create clickable link
-        return '<a href=\"#\" data-code=\"' + code + '\" onclick=\"Shiny.setInputValue(\\'ref_link_click\\', \\'' + code + '\\', {priority: \\'event\\'}); return false;\">' + name + '</a>';
+        return '<a href=\"#\" data-code=\"' + code + 
+                  '\" onclick=\"Shiny.setInputValue(\\'ref_link_click\\', \\'' + code + 
+                  '\\', {priority: \\'event\\'}); return false;\">' + name + '</a>';
       }
       // For sort/filter/type, return the raw data (sorting handled by hidden column)
       return data;
