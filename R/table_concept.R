@@ -23,7 +23,7 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
 
   table_config <- list(
     # Resorted to hidden columns to get proper sorting behavior for status badge and reference source
-    # columns because server-side processing with R's DT library (which is reccommended for data
+    # columns because server-side processing with R's DT library (which is recommended for data
     # of our size) is incompatible with the orthogonal data structure expected by the base JS library.
     # Server-side processing requires R to sort data, and so even if the data is prepared perfectly
     # in a list or object with values for display, sort, and filter, R is fundamentally unable to compare
