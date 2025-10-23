@@ -5,7 +5,7 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
     plant_level = c("Species", NA),
     current_accepted = c(TRUE, FALSE),
     concept_rf_code = c("rf.1", ""),
-    concept_rf_name = c("Reference A", "Not Provided"),
+    concept_rf_name = c("Reference A", "Not provided"),
     obs_count = c(5, 10),
     plant_description = c("Desc A", "Desc B"),
     stringsAsFactors = FALSE
@@ -82,14 +82,14 @@ test_that("process_concept_data formats plant concepts", {
     ))
 
     expect_equal(result$Actions, plant_test_data$pc_code)
-    expect_equal(result$`Plant Name`, c("Oak", "Not Provided"))
+    expect_equal(result$`Plant Name`, c("Oak", "Not provided"))
     expect_equal(result$Status, plant_test_data$current_accepted)
     expect_equal(result$status_sort, c(0, 2))
     expect_equal(result$Level, c("Species", "Not provided"))
     expect_equal(result$`Reference Source`, c("rf.9", ""))
-    expect_equal(result$ref_sort, c("Oak Ref", "Not Provided"))
+    expect_equal(result$ref_sort, c("Oak Ref", "Not provided"))
     expect_equal(result$Observations, c(15, 0))
-    expect_equal(result$Description, c("Deciduous tree", "Not Provided"))
+    expect_equal(result$Description, c("Deciduous tree", "Not provided"))
   })
 })
 
@@ -104,13 +104,13 @@ test_that("process_concept_data formats community concepts", {
     ))
 
     expect_equal(result$Actions, community_test_data$cc_code)
-    expect_equal(result$`Community Name`, c("Prairie", "Not Provided"))
+    expect_equal(result$`Community Name`, c("Prairie", "Not provided"))
     expect_equal(result$Status, community_test_data$current_accepted)
     expect_equal(result$status_sort, c(1, 2))
     expect_equal(result$Level, c("Alliance", "Not provided"))
     expect_equal(result$`Reference Source`, c("cr.5", NA_character_))
-    expect_equal(result$ref_sort, c("Prairie Ref", "Not Provided"))
+    expect_equal(result$ref_sort, c("Prairie Ref", "Not provided"))
     expect_equal(result$Observations, c(8, 0))
-    expect_equal(result$Description, c("Grassland", "Not Provided"))
+    expect_equal(result$Description, c("Grassland", "Not provided"))
   })
 })

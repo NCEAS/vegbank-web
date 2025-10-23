@@ -37,7 +37,7 @@ test_that("plant concept data includes plant-specific values", {
     plant_level = c("Species", NA),
     current_accepted = c(TRUE, FALSE),
     concept_rf_code = c("rf.9", ""),
-    concept_rf_name = c("Oak Ref", "Not Provided"),
+    concept_rf_name = c("Oak Ref", "Not provided"),
     obs_count = c("15", "7"),
     plant_description = c("Deciduous tree", "Deciduous tree"),
     stringsAsFactors = FALSE

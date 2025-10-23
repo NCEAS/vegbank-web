@@ -104,7 +104,7 @@ create_empty_table <- function(message = NULL) {
 #' @param default_value Value to use for NA/empty values
 #' @returns A character vector with cleaned data
 #' @noRd
-clean_column_data <- function(data, column_name, default_value = "Not Provided") {
+clean_column_data <- function(data, column_name, default_value = "Not provided") {
   if (column_name %in% colnames(data)) {
     cleaned <- dplyr::coalesce(dplyr::na_if(as.character(data[[column_name]]), ""), default_value)
     # Capitalize first letter of first word (vectorized)

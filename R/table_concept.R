@@ -213,8 +213,8 @@ create_reference_link_renderer <- function() {
           name = 'Not provided';
         }
 
-        // If \"Not Provided\" or no code, show as plain text
-        if (name === 'Not Provided' || !code || code === '') {
+        // If \"Not provided\" or no code, show as plain text
+        if (name === 'Not provided' || !code || code === '') {
           return '<span>' + name + '</span>';
         }
 

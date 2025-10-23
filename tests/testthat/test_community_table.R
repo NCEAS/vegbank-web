@@ -37,7 +37,7 @@ test_that("community concept data includes community-specific values", {
     comm_level = c("Alliance", NA),
     current_accepted = c(FALSE, NA),
     concept_rf_code = c("cr.5", ""),
-    concept_rf_name = c("Prairie Ref", "Not Provided"),
+    concept_rf_name = c("Prairie Ref", "Not provided"),
     obs_count = c("8", "0"),
     comm_description = c("Grassland", "Marsh"),
     stringsAsFactors = FALSE
