@@ -651,7 +651,7 @@ build_party_details_view <- function(result) {
   }
 
   # Check for NA
-  if (is.na(a) || a == "" || a == "NA") {
+  if (is.na(a)) {
     return(b)
   }
 
