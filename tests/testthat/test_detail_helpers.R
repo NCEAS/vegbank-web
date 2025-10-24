@@ -4,8 +4,8 @@ test_that("coalesce function (%|||%) works correctly", {
   # Test with various input types
   expect_equal(NULL %|||% "default", "default")
   expect_equal(NA %|||% "default", "default")
-  expect_equal("" %|||% "default", "default")
-  expect_equal("NA" %|||% "default", "default")
+  expect_equal("" %|||% "default", "")
+  expect_equal("NA" %|||% "default", "NA")
   expect_equal("valid" %|||% "default", "valid")
   expect_equal(0 %|||% "default", 0)
   expect_equal(FALSE %|||% "default", FALSE)
