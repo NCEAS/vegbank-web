@@ -107,8 +107,12 @@ create_empty_table <- function(message = NULL) {
 clean_column_data <- function(data, column_name, default_value = "Not provided") {
   if (column_name %in% colnames(data)) {
     cleaned <- dplyr::coalesce(dplyr::na_if(as.character(data[[column_name]]), ""), default_value)
-    # Capitalize first letter of first word (vectorized)
-    substring(cleaned, 1, 1) <- toupper(substring(cleaned, 1, 1))
+    # Capitalize first letter of first word (vectorized), but not for default_value
+    cleaned <- ifelse(
+      cleaned == default_value,
+      cleaned,
+      paste0(toupper(substring(cleaned, 1, 1)), substring(cleaned, 2))
+    )
     cleaned
   } else {
     rep(default_value, nrow(data))
