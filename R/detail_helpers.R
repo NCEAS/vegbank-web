@@ -13,7 +13,7 @@
   if (length(a) > 1) {
     a <- a[1]
   }
-  if (is.na(a) || a == "" || identical(a, "NA")) {
+  if (is.na(a)) {
     return(b)
   }
   a
