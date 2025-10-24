@@ -221,6 +221,7 @@ fieldtype,field_type,Field Type
 floatingcover,floating_cover,Floating Cover
 floristicquality,floristic_quality,Floristic Quality
 floristics,floristics,Floristics
+fullCitation,full_citation,Citation
 fulltext,fulltext,Fulltext
 givenname,given_name,Given Name
 graphic_id,graphic_id,Graphic ID
@@ -438,6 +439,7 @@ projectcontributor_id,project_contributor_id,Project Contributor ID
 projectdescription,project_description,Project Description
 projectname,project_name,Project Name
 pubdate,pub_date,Publication Date
+publicationdate,publication_date,Publication Date
 publicationplace,publication_place,Publication Place
 publisher,publisher,Publisher
 querydescription,query_description,Query Description

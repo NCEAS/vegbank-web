@@ -156,3 +156,22 @@ mock_plant_concept_data$usages <- I(list(data.frame(
   plant_name = c("Old Plant Name", "Common Plant"),
   stringsAsFactors = FALSE
 )))
+
+# Mock reference data
+mock_reference_data <- data.frame(
+  degree = NA,
+  doi = NA,
+  full_citation = "Example Author. 2020. Example citation.",
+  isbn = NA,
+  journal = NA,
+  publication_date = "Wed, 01 Jan 2020 08:00:00 GMT",
+  publication_place = "Example City",
+  publisher = "Example Publisher",
+  reference_type = "Book",
+  rf_code = "rf.123",
+  short_name = "Example Author. 2020.",
+  title = "Example Title",
+  total_pages = 250,
+  url = NA,
+  stringsAsFactors = FALSE
+)

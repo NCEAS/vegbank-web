@@ -55,7 +55,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
                 htmltools::tags$a(
                   href = "#",
                   onclick = sprintf(
-                    "Shiny.setInputValue('reference_link_click', '%s', {priority: 'event'}); return false;",
+                    "Shiny.setInputValue('ref_link_click', '%s', {priority: 'event'}); return false;",
                     result$concept_rf_code
                   ),
                   result$concept_rf_name
@@ -106,8 +106,8 @@ create_concept_aliases_ui <- function(result, is_plant = TRUE) {
   usages_field <- "usages"
 
   if (!is.na(result[[usages_field]]) &&
-      !is.null(result[[usages_field]]) &&
-      length(result[[usages_field]][[1]]) > 0) {
+    !is.null(result[[usages_field]]) &&
+    length(result[[usages_field]][[1]]) > 0) {
     tryCatch(
       {
         usages_data <- result[[usages_field]][[1]]
@@ -162,10 +162,10 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
 
   shiny::renderUI({
     children_links <- NULL
-  if (!is.na(result$children) &&
-    !is.null(result$children) &&
-    result$children != "" &&
-    length(result$children[[1]]) > 0) {
+    if (!is.na(result$children) &&
+      !is.null(result$children) &&
+      result$children != "" &&
+      length(result$children[[1]]) > 0) {
       tryCatch(
         {
           children_data <- result$children[[1]]
@@ -208,10 +208,10 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
     }
 
     correlations_links <- NULL
-  if (!is.na(result$correlations) &&
-    !is.null(result$correlations) &&
-    result$correlations != "" &&
-    length(result$correlations[[1]]) > 0) {
+    if (!is.na(result$correlations) &&
+      !is.null(result$correlations) &&
+      result$correlations != "" &&
+      length(result$correlations[[1]]) > 0) {
       tryCatch(
         {
           corr_data <- result$correlations[[1]]

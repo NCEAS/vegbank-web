@@ -141,6 +141,33 @@ test_that("show_detail_view handles party data correctly", {
   )
 })
 
+test_that("show_detail_view handles reference data correctly", {
+  # Skip on CRAN
+  skip_on_cran()
+
+  messages_captured <- list()
+  fake_session <- list(
+    sendCustomMessage = function(type, message) {
+      messages_captured[[type]] <<- message
+    }
+  )
+  fake_output <- new.env()
+
+  with_mocked_bindings(
+    get_reference = function(rf_code) mock_reference_data,
+    .package = "vegbankr",
+    {
+      with_mock_shiny_notifications({
+        result <- show_detail_view("reference", "RF123", fake_output, fake_session)
+        expect_true(result)
+        expect_true(!is.null(messages_captured$openOverlay))
+        expect_true(!is.null(messages_captured$updateDetailType))
+        expect_equal(messages_captured$updateDetailType$type, "reference")
+      })
+    }
+  )
+})
+
 test_that("show_detail_view works with plant-concept type", {
   mock_get_plant_concept <- function(code) {
     if (code == "pc.12345") {
