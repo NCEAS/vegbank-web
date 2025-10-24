@@ -102,8 +102,8 @@ test_that("create_party_perspective_ui handles valid JSON data", {
 
 test_that("create_party_perspective_ui handles invalid JSON", {
   invalid_json_data <- mock_plant_concept_data
-  invalid_json_data$children <- I(list('{"invalid": json}'))
-  invalid_json_data$usages <- I(list('{"invalid": json}'))
+  invalid_json_data$children <- I(list('{"unclosed":'))
+  invalid_json_data$usages <- I(list('{"unclosed":'))
 
   with_mocked_bindings(
     renderUI = function(expr) {
