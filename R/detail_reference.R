@@ -27,7 +27,7 @@ build_reference_details_view <- function(result) {
     reference_type <- ref$reference_type
     type_available <- !is.null(reference_type) && !is.na(reference_type) && reference_type != ""
     htmltools::tags$div(
-      if (type_available) htmltools::tags$div(htmltools::tags$i(reference_type)),
+      if (type_available) htmltools::tags$div(htmltools::tags$i(tools::toTitleCase(reference_type))),
       htmltools::tags$div(short_name, style = "font-weight: 600;")
     )
   })
