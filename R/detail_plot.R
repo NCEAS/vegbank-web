@@ -26,12 +26,7 @@ build_plot_obs_details_view <- function(result) {
             htmltools::tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
           )
         })
-        htmltools::tags$table(
-          class = "table table-sm table-striped table-hover",
-          htmltools::tags$thead(
-            htmltools::tags$tr(htmltools::tags$th("Scientific Name"), htmltools::tags$th("Cover"))
-          ), htmltools::tags$tbody(rows)
-        )
+        create_detail_table_with_headers(c("Scientific Name", "Cover"), rows)
       },
       error = function(e) {
         paste("Error processing taxa:", e$message)
@@ -51,14 +46,7 @@ build_plot_obs_details_view <- function(result) {
           row <- communities[i, ]
           htmltools::tags$tr(
             htmltools::tags$td(
-              htmltools::tags$a(
-                href = "#",
-                onclick = sprintf(
-                  "Shiny.setInputValue('comm_link_click', '%s', {priority: 'event'}); return false;",
-                  row$cc_code
-                ),
-                row$comm_name
-              )
+              create_detail_link("comm_link_click", row$cc_code, row$comm_name)
             )
           )
         })

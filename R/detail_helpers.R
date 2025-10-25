@@ -69,7 +69,7 @@ get_field_display_names <- function() {
 #' @param dataframe A dataframe containing the data to display
 #' @return An HTML table element or a paragraph tag if no data is available
 #' @noRd
-format_fields_as_detail_table <- function(fields, dataframe) {
+format_fields_for_detail_table <- function(fields, dataframe) {
   display_names <- get_field_display_names()
   valid_fields <- fields[fields %in% colnames(dataframe)]
 
@@ -85,13 +85,13 @@ format_fields_as_detail_table <- function(fields, dataframe) {
     if (is.logical(x)) ifelse(x, "Yes", "No") else x
   })
 
-  create_detail_table_html(values, col_names = display_names)
+  create_detail_table(values, col_names = display_names)
 }
 
 #' Render Detail Fields Table in Shiny UI
 #'
 #' Creates a Shiny renderUI output that displays dataframe fields in a formatted table.
-#' Wraps format_fields_as_detail_table with renderUI for use in Shiny server logic.
+#' Wraps format_fields_for_detail_table with renderUI for use in Shiny server logic.
 #'
 #' @param fields A character vector of field names to display from the dataframe
 #' @param dataframe A dataframe containing the data to display
@@ -99,7 +99,7 @@ format_fields_as_detail_table <- function(fields, dataframe) {
 #' @noRd
 render_detail_table <- function(fields, dataframe) {
   shiny::renderUI({
-    format_fields_as_detail_table(fields, dataframe)
+    format_fields_for_detail_table(fields, dataframe)
   })
 }
 
@@ -111,7 +111,7 @@ render_detail_table <- function(fields, dataframe) {
 #' @param col_names A named vector mapping field names to human-readable display names
 #' @return An htmltools table tag
 #' @noRd
-create_detail_table_html <- function(details, col_names) {
+create_detail_table <- function(details, col_names) {
   htmltools::tags$table(
     class = "table table-sm table-striped table-hover",
     style = "width: 100%; table-layout: fixed; word-break: break-word; white-space: normal;",
@@ -125,4 +125,137 @@ create_detail_table_html <- function(details, col_names) {
       })
     )
   )
+}
+
+#' Create Detail Table with Custom Headers
+#'
+#' Creates an HTML table with custom column headers and data rows.
+#' Useful for tables that don't follow the standard two-column label-value format.
+#'
+#' @param headers Character vector of header labels for table columns
+#' @param rows List of htmltools tr tags representing the table rows
+#' @return An htmltools table tag with thead and tbody
+#' @noRd
+create_detail_table_with_headers <- function(headers, rows) {
+  htmltools::tags$table(
+    class = "table table-sm table-striped table-hover",
+    htmltools::tags$thead(
+      htmltools::tags$tr(
+        lapply(headers, htmltools::tags$th)
+      )
+    ),
+    htmltools::tags$tbody(rows)
+  )
+}
+
+#' Create Empty Detail View Outputs
+#'
+#' Generates a named list of renderUI outputs with a standard "not available" message.
+#' Used when data is NULL or empty to provide consistent empty state handling across
+#' all detail views.
+#'
+#' @param output_names Character vector of output names to create
+#' @param entity_type String describing the entity type (e.g., "Reference", "Party", "Plot")
+#' @return Named list of shiny.render.function objects showing "not available" message
+#' @noRd
+create_empty_detail_view <- function(output_names, entity_type = "Details") {
+  empty_ui <- shiny::renderUI({
+    htmltools::tags$p(paste0(entity_type, " not available"))
+  })
+
+  stats::setNames(
+    rep(list(empty_ui), length(output_names)),
+    output_names
+  )
+}
+
+#' Create Section Header with Border
+#'
+#' Creates a styled section header div with consistent formatting across all detail views.
+#' The header has bold text and a bottom border in the app's color scheme.
+#'
+#' @param title The text to display in the header
+#' @param margin_bottom Optional bottom margin CSS value (default: "8px")
+#' @return An htmltools div tag with styled header
+#' @noRd
+create_section_header <- function(title, margin_bottom = "8px") {
+  htmltools::tags$div(
+    title,
+    style = sprintf(
+      "font-weight: bold; width: 100%%; border-bottom: 1px solid #2c5443; margin-bottom: %s;",
+      margin_bottom
+    )
+  )
+}
+
+#' Create Clickable Detail Link
+#'
+#' Creates a clickable link that triggers a Shiny input event for navigation between
+#' detail views. The link prevents default anchor behavior and sets a Shiny input value
+#' with priority 'event' to ensure proper reactivity.
+#'
+#' @param input_id The Shiny input ID to trigger (e.g., "ref_link_click")
+#' @param code_value The value to send to the input (e.g., rf_code)
+#' @param display_text The text to display in the link
+#' @return An htmltools anchor tag with onclick handler
+#' @noRd
+create_detail_link <- function(input_id, code_value, display_text) {
+  htmltools::tags$a(
+    href = "#",
+    onclick = sprintf(
+      "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
+      input_id,
+      code_value
+    ),
+    display_text
+  )
+}
+
+#' Check if Field Has Valid Value
+#'
+#' Determines whether a field in a dataframe or list contains a valid, non-empty value.
+#' Checks for NULL, NA, zero-length, and empty string values.
+#'
+#' @param data A dataframe or named list containing the field
+#' @param field The field name to check
+#' @return Logical indicating whether the field has a valid value
+#' @noRd
+has_valid_field_value <- function(data, field) {
+  if (!field %in% names(data)) {
+    return(FALSE)
+  }
+
+  value <- data[[field]]
+  if (is.null(value) || length(value) == 0) {
+    return(FALSE)
+  }
+  if (all(is.na(value))) {
+    return(FALSE)
+  }
+  !all(trimws(as.character(value)) == "")
+}
+
+#' Format Date Range for Display
+#'
+#' Formats start and stop dates into a human-readable range string.
+#' Handles cases where only one date is present or both are missing.
+#'
+#' @param start_date Start date (as string or Date object)
+#' @param stop_date Stop date (as string or Date object)
+#' @param format_string Date format string for output (default: "%Y-%m-%d")
+#' @return Formatted date range string (e.g., "From 2020-01-01 to 2023-12-31")
+#' @noRd
+format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d") {
+  start_parsed <- safe_parse_date(start_date)
+  stop_parsed <- safe_parse_date(stop_date)
+
+  if (!is.na(start_parsed) && !is.na(stop_parsed)) {
+    paste0("From ", format(start_parsed, format_string), " to ", format(stop_parsed, format_string))
+  } else if (!is.na(start_parsed)) {
+    paste0("From ", format(start_parsed, format_string))
+  } else if (!is.na(stop_parsed)) {
+    paste0("Until ", format(stop_parsed, format_string))
+  } else {
+    "Date not recorded"
+  }
 }

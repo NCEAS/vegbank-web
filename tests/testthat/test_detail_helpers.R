@@ -15,7 +15,7 @@ test_that("coalesce function (%|||%) works correctly", {
   expect_equal(c("valid", "other") %|||% "default", "valid") # Takes first element
 })
 
-test_that("create_detail_table_html correctly formats data into HTML table", {
+test_that("create_detail_table correctly formats data into HTML table", {
   # Create test data
   test_details <- list(
     field1 = "Value 1",
@@ -26,7 +26,7 @@ test_that("create_detail_table_html correctly formats data into HTML table", {
   display_names <- c(field1 = "Display Name 1", field2 = "Display Name 2")
 
   # Test function
-  result <- create_detail_table_html(test_details, display_names)
+  result <- create_detail_table(test_details, display_names)
 
   # Verify structure
   expect_s3_class(result, "shiny.tag")

@@ -8,13 +8,9 @@
 #' @noRd
 build_reference_details_view <- function(result) {
   if (is.null(result) || nrow(result) == 0) {
-    empty_ui <- shiny::renderUI({
-      htmltools::tags$p("Reference details not available")
-    })
-    return(list(
-      reference_summary = empty_ui,
-      reference_identifiers = empty_ui,
-      reference_publication = empty_ui
+    return(create_empty_detail_view(
+      c("reference_summary", "reference_identifiers", "reference_publication"),
+      "Reference details"
     ))
   }
 
@@ -61,19 +57,8 @@ build_reference_identifiers_ui <- function(ref) {
   identifier_fields <- c("doi", "url", "isbn")
   available_identifier_fields <- identifier_fields[identifier_fields %in% names(ref)]
 
-  has_identifier_value <- function(field) {
-    value <- ref[[field]]
-    if (is.null(value) || length(value) == 0) {
-      return(FALSE)
-    }
-    if (all(is.na(value))) {
-      return(FALSE)
-    }
-    !all(trimws(as.character(value)) == "")
-  }
-
   fields_with_values <- available_identifier_fields[
-    vapply(available_identifier_fields, has_identifier_value, logical(1))
+    vapply(available_identifier_fields, function(field) has_valid_field_value(ref, field), logical(1))
   ]
 
   if (length(fields_with_values) == 0) {
@@ -112,7 +97,7 @@ build_reference_identifiers_ui <- function(ref) {
       field_value
     })
     names(formatted_values) <- fields_with_values
-    create_detail_table_html(formatted_values, col_names = display_names)
+    create_detail_table(formatted_values, col_names = display_names)
   })
 }
 
@@ -133,18 +118,12 @@ build_reference_publication_ui <- function(ref) {
       "total_pages", "degree", "journal"
     )
 
-    table_content <- format_fields_as_detail_table(publication_fields, ref)
+    table_content <- format_fields_for_detail_table(publication_fields, ref)
 
     htmltools::tagList(
-      htmltools::tags$div(
-        "Citation",
-        style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443;"
-      ),
+      create_section_header("Citation"),
       htmltools::tags$p(citation_text, style = "margin-top: 8px; margin-bottom: 16px;"),
-      htmltools::tags$div(
-        "Other information",
-        style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443; margin-bottom: 8px;"
-      ),
+      create_section_header("Other information"),
       table_content
     )
   })

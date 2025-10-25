@@ -2,22 +2,9 @@
 #' @noRd
 build_project_details_view <- function(result) {
   if (is.null(result) || nrow(result) == 0) {
-    return(list(
-      project_name = shiny::renderUI({
-        htmltools::tags$p("project details not available")
-      }),
-      project_description = shiny::renderUI({
-        htmltools::tags$p("No description available")
-      }),
-      project_dates = shiny::renderUI({
-        htmltools::tags$p("No dates available")
-      }),
-      project_observations = shiny::renderUI({
-        htmltools::tags$p("No observations available")
-      }),
-      project_contributors = shiny::renderUI({
-        htmltools::tags$p("No contributors available")
-      })
+    return(create_empty_detail_view(
+      c("project_name", "project_description", "project_dates", "project_observations", "project_contributors"),
+      "Project details"
     ))
   }
 

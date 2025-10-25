@@ -2,19 +2,9 @@
 #' @noRd
 build_taxon_details_view <- function(result) {
   if (is.null(result)) {
-    return(list(
-      taxon_name = shiny::renderUI({
-        htmltools::tags$p("Taxon details not available")
-      }),
-      taxon_coverage = shiny::renderUI({
-        htmltools::tags$p("No coverage data available")
-      }),
-      taxon_aliases = shiny::renderUI({
-        htmltools::tags$p("No aliases available")
-      }),
-      taxon_identifiers = shiny::renderUI({
-        htmltools::tags$p("No identifier information available")
-      })
+    return(create_empty_detail_view(
+      c("taxon_name", "taxon_coverage", "taxon_aliases", "taxon_identifiers"),
+      "Taxon details"
     ))
   }
 
