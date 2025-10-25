@@ -29,15 +29,18 @@ safe_parse_date <- function(date_string) {
     return(NA)
   }
 
-  tryCatch({
-    parsed_date <- as.POSIXct(date_string, format = "%a, %d %b %Y %H:%M:%S", tz = "GMT")
-    if (!is.na(parsed_date)) {
-      return(as.Date(parsed_date))
+  tryCatch(
+    {
+      parsed_date <- as.POSIXct(date_string, format = "%a, %d %b %Y %H:%M:%S", tz = "GMT")
+      if (!is.na(parsed_date)) {
+        return(as.Date(parsed_date))
+      }
+      as.Date(date_string)
+    },
+    error = function(e) {
+      NA
     }
-    as.Date(date_string)
-  }, error = function(e) {
-    NA
-  })
+  )
 }
 
 #' Read Display Names from Lookup Table
@@ -88,7 +91,8 @@ safe_render_details <- function(fields, dataframe) {
 #' @noRd
 create_detail_table <- function(details, col_names) {
   htmltools::tags$table(
-    class = "table table-sm table-striped table-hover",
+    class = "table table-sm table-striped mb-0",
+    style = "width: 100%; table-layout: fixed; word-break: break-word; white-space: normal;",
     htmltools::tags$tbody(
       lapply(names(details), function(name) {
         display_name <- if (name %in% names(col_names)) col_names[[name]] else name
