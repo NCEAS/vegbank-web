@@ -60,38 +60,60 @@ get_field_display_names <- function() {
   }
 }
 
-#' Safely Render Detail Fields in a Shiny UI
+#' Format Dataframe Fields as Detail Table HTML
 #'
-#' This function creates a Shiny renderUI output that displays data fields in a formatted table.
+#' Extracts and formats field values from a dataframe for display in a detail table.
+#' This is a lower-level helper that returns the HTML table directly without renderUI wrapping.
 #'
 #' @param fields A character vector of field names to display from the dataframe
 #' @param dataframe A dataframe containing the data to display
+#' @return An HTML table element or a paragraph tag if no data is available
 #' @noRd
-safe_render_details <- function(fields, dataframe) {
+format_fields_as_detail_table <- function(fields, dataframe) {
   display_names <- get_field_display_names()
+  valid_fields <- fields[fields %in% colnames(dataframe)]
+
+  if (length(valid_fields) == 0) {
+    return(htmltools::tags$p("No data available for this section"))
+  }
+
+  values <- lapply(dataframe[valid_fields], function(x) {
+    if (is.null(x) || all(is.na(x))) "Not recorded" else x
+  })
+
+  values <- lapply(values, function(x) {
+    if (is.logical(x)) ifelse(x, "Yes", "No") else x
+  })
+
+  create_detail_table_html(values, col_names = display_names)
+}
+
+#' Render Detail Fields Table in Shiny UI
+#'
+#' Creates a Shiny renderUI output that displays dataframe fields in a formatted table.
+#' Wraps format_fields_as_detail_table with renderUI for use in Shiny server logic.
+#'
+#' @param fields A character vector of field names to display from the dataframe
+#' @param dataframe A dataframe containing the data to display
+#' @return A shiny.render.function that renders the detail table
+#' @noRd
+render_detail_table <- function(fields, dataframe) {
   shiny::renderUI({
-    valid_fields <- fields[fields %in% colnames(dataframe)]
-    if (length(valid_fields) == 0) {
-      return(htmltools::tags$p("No data available for this section"))
-    }
-
-    values <- lapply(dataframe[valid_fields], function(x) {
-      if (is.null(x) || all(is.na(x))) "Not recorded" else x
-    })
-
-    values <- lapply(values, function(x) {
-      if (is.logical(x)) ifelse(x, "Yes", "No") else x
-    })
-
-    create_detail_table(values, col_names = display_names)
+    format_fields_as_detail_table(fields, dataframe)
   })
 }
 
-#' Create an HTML Table for Detail View
+#' Create Detail Table HTML Element
+#'
+#' Constructs an HTML table element from a named list of values with display names.
+#'
+#' @param details A named list where names are field names and values are formatted display values
+#' @param col_names A named vector mapping field names to human-readable display names
+#' @return An htmltools table tag
 #' @noRd
-create_detail_table <- function(details, col_names) {
+create_detail_table_html <- function(details, col_names) {
   htmltools::tags$table(
-    class = "table table-sm table-striped mb-0",
+    class = "table table-sm table-striped table-hover",
     style = "width: 100%; table-layout: fixed; word-break: break-word; white-space: normal;",
     htmltools::tags$tbody(
       lapply(names(details), function(name) {

@@ -16,10 +16,10 @@ build_comm_class_details_view <- function(result) {
 
   list(
     observation_details = shiny::renderUI({
-      safe_render_details(c("cl_code", "inspection", "table_analysis", "multivariate_analysis"), result)
+      render_detail_table(c("cl_code", "inspection", "table_analysis", "multivariate_analysis"), result)
     }),
     community_interpretation = shiny::renderUI({
-      safe_render_details(c("cc_code", "class_fit", "class_confidence", "comm_authority_id", "type"), result)
+      render_detail_table(c("cc_code", "class_fit", "class_confidence", "comm_authority_id", "type"), result)
     })
   )
 }

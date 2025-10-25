@@ -15,7 +15,7 @@ test_that("coalesce function (%|||%) works correctly", {
   expect_equal(c("valid", "other") %|||% "default", "valid") # Takes first element
 })
 
-test_that("create_detail_table correctly formats data into HTML table", {
+test_that("create_detail_table_html correctly formats data into HTML table", {
   # Create test data
   test_details <- list(
     field1 = "Value 1",
@@ -26,7 +26,7 @@ test_that("create_detail_table correctly formats data into HTML table", {
   display_names <- c(field1 = "Display Name 1", field2 = "Display Name 2")
 
   # Test function
-  result <- create_detail_table(test_details, display_names)
+  result <- create_detail_table_html(test_details, display_names)
 
   # Verify structure
   expect_s3_class(result, "shiny.tag")
@@ -45,7 +45,7 @@ test_that("create_detail_table correctly formats data into HTML table", {
   expect_true(grepl("Value 3", result_text))
 })
 
-test_that("safe_render_details handles valid and invalid fields gracefully", {
+test_that("render_detail_table handles valid and invalid fields gracefully", {
   # Create test data with some fields
   test_data <- data.frame(
     field1 = "Value 1",
@@ -61,19 +61,19 @@ test_that("safe_render_details handles valid and invalid fields gracefully", {
     },
     {
       # Test with valid fields
-      valid_result <- safe_render_details(c("field1", "field2"), test_data)
+      valid_result <- render_detail_table(c("field1", "field2"), test_data)
       expect_s3_class(valid_result, "shiny.render.function")
 
       # Test with invalid fields
-      invalid_result <- safe_render_details(c("non_existent_field"), test_data)
+      invalid_result <- render_detail_table(c("non_existent_field"), test_data)
       expect_s3_class(invalid_result, "shiny.render.function")
 
       # Test with mixed valid and invalid fields
-      mixed_result <- safe_render_details(c("field1", "non_existent_field"), test_data)
+      mixed_result <- render_detail_table(c("field1", "non_existent_field"), test_data)
       expect_s3_class(mixed_result, "shiny.render.function")
 
       # Test with NA values
-      na_result <- safe_render_details(c("field3"), test_data)
+      na_result <- render_detail_table(c("field3"), test_data)
       expect_s3_class(na_result, "shiny.render.function")
     }
   )

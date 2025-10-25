@@ -34,6 +34,6 @@ build_project_details_view <- function(result) {
     project_contributors = shiny::renderUI({
       htmltools::tags$p("No contributors available")
     }),
-    project_dates = safe_render_details(c("start_date", "stop_date", "last_plot_added_date"), result)
+    project_dates = render_detail_table(c("start_date", "stop_date", "last_plot_added_date"), result)
   )
 }

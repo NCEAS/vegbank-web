@@ -34,13 +34,13 @@ build_taxon_details_view <- function(result) {
         )
       )
     }),
-    taxon_aliases = safe_render_details(
+    taxon_aliases = render_detail_table(
       c(
         "int_curr_plant_common", "int_curr_plant_sci_name_no_auth", "int_curr_plant_sci_full",
         "int_orig_plant_common", "int_orig_plant_sci_name_no_auth", "int_orig_plant_sci_full"
       ),
       result
     ),
-    taxon_identifiers = safe_render_details(c("ob_code", "int_curr_pc_code", "int_orig_pc_code"), result)
+    taxon_identifiers = render_detail_table(c("ob_code", "int_curr_pc_code", "int_orig_pc_code"), result)
   )
 }

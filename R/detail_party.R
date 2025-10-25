@@ -44,7 +44,7 @@ build_party_details_view <- function(result) {
         htmltools::tags$p(result$organization_name)
       }
     }),
-    party_contact = safe_render_details(c("contact_instructions"), result),
+    party_contact = render_detail_table(c("contact_instructions"), result),
     party_projects = shiny::renderUI({
       htmltools::tags$p("Associated projects would be displayed here")
     })

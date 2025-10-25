@@ -71,30 +71,30 @@ build_plot_obs_details_view <- function(result) {
   })
 
   list(
-    plot_id_details = safe_render_details(
+    plot_id_details = render_detail_table(
       c("author_obs_code", "author_plot_code"),
       result$plot_observation
     ),
-    location_details = safe_render_details(
+    location_details = render_detail_table(
       c("confidentiality_text", "latitude", "longitude", "location_narrative", "state_province", "country"),
       result$plot_observation
     ),
-    layout_details = safe_render_details(
+    layout_details = render_detail_table(
       c("area", "permanence"),
       result$plot_observation
     ),
-    environmental_details = safe_render_details(
+    environmental_details = render_detail_table(
       c("elevation", "slope_aspect", "slope_gradient"),
       result$plot_observation
     ),
-    methods_details = safe_render_details(
+    methods_details = render_detail_table(
       c(
         "obs_start_date", "project_name", "cover_type", "stratum_method_name", "stratum_method_description",
         "taxon_observation_area", "auto_taxon_cover"
       ),
       result$plot_observation
     ),
-    plot_quality_details = safe_render_details(
+    plot_quality_details = render_detail_table(
       "plot_validation_level_descr",
       result$plot_observation
     ),

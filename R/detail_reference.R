@@ -84,6 +84,7 @@ build_reference_identifiers_ui <- function(ref) {
 
   display_names <- get_field_display_names()
   shiny::renderUI({
+    # Format values with special handling for URLs
     formatted_values <- lapply(fields_with_values, function(field_name) {
       raw_value <- ref[[field_name]]
 
@@ -111,7 +112,7 @@ build_reference_identifiers_ui <- function(ref) {
       field_value
     })
     names(formatted_values) <- fields_with_values
-    create_detail_table(formatted_values, col_names = display_names)
+    create_detail_table_html(formatted_values, col_names = display_names)
   })
 }
 
@@ -131,7 +132,8 @@ build_reference_publication_ui <- function(ref) {
       "title", "publisher", "publication_place", "publication_date",
       "total_pages", "degree", "journal"
     )
-    table_content <- safe_render_details(publication_fields, ref)
+
+    table_content <- format_fields_as_detail_table(publication_fields, ref)
 
     htmltools::tagList(
       htmltools::tags$div(
