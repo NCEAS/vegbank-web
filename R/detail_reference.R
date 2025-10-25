@@ -1,4 +1,10 @@
 #' Build Reference Details View
+#'
+#' Constructs the complete detail view for a reference, including summary, identifiers, and
+#' publication sections. Handles NULL or empty results gracefully by returning empty UI elements.
+#'
+#' @param result A dataframe containing reference data from vegbankr::get_reference()
+#' @return A named list with three shiny.render.function elements: reference_summary, reference_identifiers, reference_publication
 #' @noRd
 build_reference_details_view <- function(result) {
   if (is.null(result) || nrow(result) == 0) {
@@ -32,6 +38,26 @@ build_reference_details_view <- function(result) {
     )
   })
 
+  identifiers_ui <- build_reference_identifiers_ui(ref)
+
+  publication_ui <- build_reference_publication_ui(ref)
+
+  list(
+    reference_summary = summary_ui,
+    reference_identifiers = identifiers_ui,
+    reference_publication = publication_ui
+  )
+}
+
+#' Build Reference Identifiers UI
+#'
+#' Creates a Shiny UI element displaying reference identifiers (DOI, URL, ISBN).
+#' URLs are rendered as clickable links. Shows a fallback message when no identifiers are available.
+#'
+#' @param ref A single-row dataframe containing reference data
+#' @return A shiny.render.function that renders the identifiers table or fallback message
+#' @noRd
+build_reference_identifiers_ui <- function(ref) {
   identifier_fields <- c("doi", "url", "isbn")
   available_identifier_fields <- identifier_fields[identifier_fields %in% names(ref)]
 
@@ -50,26 +76,74 @@ build_reference_details_view <- function(result) {
     vapply(available_identifier_fields, has_identifier_value, logical(1))
   ]
 
-  # TODO: Make url actual link in UI
-  identifiers_ui <-
-    if (length(fields_with_values) == 0) {
-      shiny::renderUI({
-        htmltools::tags$p("No DOI, ISBN, or URL provided")
-      })
-    } else {
-      safe_render_details(fields_with_values, ref)
-    }
+  if (length(fields_with_values) == 0) {
+    return(shiny::renderUI({
+      htmltools::tags$p("No DOI, ISBN, or URL provided")
+    }))
+  }
 
-  # TODO: Format publication details more cleanly?
-  publication_fields <- c(
-    "title", "publisher", "publication_place", "publication_date",
-    "total_pages", "full_citation", "degree", "journal"
-  )
-  publication_ui <- safe_render_details(publication_fields, ref)
+  display_names <- get_field_display_names()
+  shiny::renderUI({
+    formatted_values <- lapply(fields_with_values, function(field_name) {
+      raw_value <- ref[[field_name]]
 
-  list(
-    reference_summary = summary_ui,
-    reference_identifiers = identifiers_ui,
-    reference_publication = publication_ui
-  )
+      # Return "Not recorded" for missing/empty values
+      if (is.null(raw_value) || length(raw_value) == 0 || all(is.na(raw_value))) {
+        return("Not recorded")
+      }
+
+      field_value <- raw_value[1]
+      if (is.na(field_value) || trimws(as.character(field_value)) == "") {
+        return("Not recorded")
+      }
+
+      # Render URLs as clickable links
+      if (field_name == "url") {
+        url_string <- as.character(field_value)
+        return(htmltools::tags$a(
+          href = url_string,
+          target = "_blank",
+          rel = "noopener noreferrer",
+          url_string
+        ))
+      }
+
+      field_value
+    })
+    names(formatted_values) <- fields_with_values
+    create_detail_table(formatted_values, col_names = display_names)
+  })
+}
+
+#' Build Reference Publication UI
+#'
+#' Creates a Shiny UI element displaying reference publication details.
+#' Shows the full citation prominently, followed by additional publication metadata in a table.
+#'
+#' @param ref A single-row dataframe containing reference data
+#' @return A shiny.render.function that renders the citation and publication information table
+#' @noRd
+build_reference_publication_ui <- function(ref) {
+  shiny::renderUI({
+    citation_text <- ref$full_citation %|||% "Not recorded"
+
+    publication_fields <- c(
+      "title", "publisher", "publication_place", "publication_date",
+      "total_pages", "degree", "journal"
+    )
+    table_content <- safe_render_details(publication_fields, ref)
+
+    htmltools::tagList(
+      htmltools::tags$div(
+        "Citation",
+        style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443;"
+      ),
+      htmltools::tags$p(citation_text, style = "margin-top: 8px; margin-bottom: 16px;"),
+      htmltools::tags$div(
+        "Other information",
+        style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443; margin-bottom: 8px;"
+      ),
+      table_content
+    )
+  })
 }
