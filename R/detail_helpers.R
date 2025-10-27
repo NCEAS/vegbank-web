@@ -48,6 +48,8 @@ safe_parse_date <- function(date_string) {
 #' Reads display names from the display_name_lookup.txt file.
 #'
 #' @return A named vector where names are snake_case field names and values are display names
+#' @importFrom stats setNames
+#' @importFrom utils read.csv
 #' @noRd
 get_field_display_names <- function() {
   file_path <- system.file("shiny/www/display_name_lookup.txt", package = "vegbankweb")
