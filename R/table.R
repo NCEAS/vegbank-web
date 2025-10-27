@@ -107,7 +107,7 @@ create_empty_table <- function(message = NULL) {
 clean_column_data <- function(data, column_name, default_value = "Not provided") {
   if (column_name %in% colnames(data)) {
     cleaned <- dplyr::coalesce(dplyr::na_if(as.character(data[[column_name]]), ""), default_value)
-    # Column present and empty, return early to avoid type promotion
+    # Return early if the cleaned vector is empty (avoids unnecessary processing)
     if (length(cleaned) == 0) {
       return(cleaned)
     }
