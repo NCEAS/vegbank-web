@@ -48,14 +48,16 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
       output$methods_details <- shiny::renderUI(NULL)
       output$plot_quality_details <- shiny::renderUI(NULL)
       output$taxa_details <- shiny::renderUI(NULL)
-      output$community_name <- shiny::renderUI(NULL)
-      output$community_description <- shiny::renderUI(NULL)
-      output$observation_count <- shiny::renderUI(NULL)
+      output$communities_details <- shiny::renderUI(NULL)
+      output$community_concept_name <- shiny::renderUI(NULL)
+      output$community_concept_details <- shiny::renderUI(NULL)
+      output$community_party_perspective <- shiny::renderUI(NULL)
       output$taxon_name <- shiny::renderUI(NULL)
       output$taxon_scientific <- shiny::renderUI(NULL)
       output$taxon_common <- shiny::renderUI(NULL)
       output$taxon_coverage <- shiny::renderUI(NULL)
       output$taxon_identifiers <- shiny::renderUI(NULL)
+      output$taxon_aliases <- shiny::renderUI(NULL)
       output$observation_details <- shiny::renderUI(NULL)
       output$community_interpretation <- shiny::renderUI(NULL)
       output$project_name <- shiny::renderUI(NULL)
@@ -97,12 +99,11 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
           output$community_interpretation <- details$community_interpretation
         },
         "community-concept" = {
-          shiny::incProgress(0.5, "Processing community details")
+          shiny::incProgress(0.5, "Processing community concept details")
           details <- build_comm_concept_details_view(result)
-          output$community_name <- details$community_name
-          output$community_description <- details$community_description
-          output$observation_count <- details$observation_count
-          output$community_aliases <- details$community_aliases
+          output$community_concept_name <- details$community_concept_name
+          output$community_concept_details <- details$community_concept_details
+          output$community_party_perspective <- details$community_party_perspective
         },
         "taxon-observation" = {
           shiny::incProgress(0.5, "Processing taxon details")
@@ -316,66 +317,121 @@ build_comm_class_details_view <- function(result) {
   )
 }
 
-#' Build Community Concept Details View
+#' Build Concept Details View (for both Plant and Community Concepts)
 #'
-#' Constructs a list of Shiny UI outputs for displaying detailed community concept information.
+#' Constructs a list of Shiny UI outputs for displaying detailed concept information.
+#' Works with both plant concepts and community concepts which share the same schema.
 #'
-#' @param result A data frame returned by vegbankr::get_community_concept()
+#' @param result A data frame returned by vegbankr::get_plant_concept() or vegbankr::get_community_concept()
+#' @param concept_type Either "plant" or "community" to determine field names and output slots
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags HTML
 #' @importFrom shiny renderUI
-#' @importFrom tidyr pivot_wider
+#' @importFrom jsonlite fromJSON
 #' @noRd
-build_comm_concept_details_view <- function(result) {
+build_concept_details_view <- function(result, concept_type = "plant") {
+  # Determine field names based on concept type
+  is_plant <- concept_type == "plant"
+  name_field <- if (is_plant) "plant_name" else "comm_name"
+  code_field <- if (is_plant) "plant_code" else "comm_code"
+  level_field <- if (is_plant) "plant_level" else "comm_level"
+  description_field <- if (is_plant) "plant_description" else "comm_description"
+  id_field <- if (is_plant) "pc_code" else "cc_code"
+  parent_id_field <- if (is_plant) "parent_pc_code" else "parent_cc_code"
+  link_input_id <- if (is_plant) "plant_link_click" else "comm_link_click"
+
+  # Output slot names
+  name_output <- if (is_plant) "plant_concept_name" else "community_concept_name"
+  details_output <- if (is_plant) "plant_concept_details" else "community_concept_details"
+  perspective_output <- if (is_plant) "plant_party_perspective" else "community_party_perspective"
+
   if (is.null(result) || nrow(result) == 0) {
-    return(list(
-      community_name = shiny::renderUI({
-        htmltools::tags$p("Community details not available")
-      }),
-      community_description = shiny::renderUI({
-        htmltools::tags$p("No description available")
-      }),
-      observation_count = shiny::renderUI({
-        htmltools::tags$p("No observations available")
-      }),
-      community_aliases = shiny::renderUI({
-        htmltools::tags$p("No aliases available")
-      })
-    ))
+    empty_outputs <- list()
+    empty_outputs[[name_output]] <- shiny::renderUI({
+      htmltools::tags$p(paste0(tools::toTitleCase(concept_type), " concept details not available"))
+    })
+    empty_outputs[[details_output]] <- shiny::renderUI({
+      htmltools::tags$p("No details available")
+    })
+    empty_outputs[[perspective_output]] <- shiny::renderUI({
+      htmltools::tags$p("No party perspective available")
+    })
+    return(empty_outputs)
   }
 
-  scientific_class <- subset(result, result$class_system == "Scientific")
+  outputs <- list()
 
-  # Create aliases dataframe with each class_system as a column
-  aliases <- tidyr::pivot_wider(
-    data = result[, c("class_system", "comm_name")],
-    names_from = "class_system",
-    values_from = "comm_name"
-  )
-
-  list(
-    community_name = shiny::renderUI({
-      htmltools::tags$p(scientific_class$comm_name)
-    }),
-    observation_count = shiny::renderUI({
-      htmltools::tags$p(
-        "Number of observations: ",
-        htmltools::tags$strong(scientific_class$obs_count)
-      )
-    }),
-    community_description = shiny::renderUI({
-      # The description contains HTML entities <i></i> that need to be properly rendered
-      htmltools::tags$div(
-        id = "community-description",
-        htmltools::HTML(scientific_class$comm_description)
-      )
-    }),
-    community_aliases = safe_render_details(
-      colnames(aliases),
-      aliases
+  # Name output
+  outputs[[name_output]] <- shiny::renderUI({
+    htmltools::div(
+      htmltools::tags$i(tools::toTitleCase(as.character(result[[level_field]])) %|||% "Unspecified level"),
+      htmltools::tags$h5(result[[name_field]], style = "font-weight: 600; margin-bottom: 0px;"),
+      if (!is.na(result[[code_field]])) htmltools::tags$p(paste0("(", result[[code_field]], ")"))
     )
+  })
+
+  # Details output
+  outputs[[details_output]] <- shiny::renderUI({
+    htmltools::tags$div(
+      htmltools::tags$table(
+        class = "table table-sm table-striped table-hover",
+        htmltools::tags$tbody(
+          htmltools::tags$tr(
+            htmltools::tags$td(paste0(tools::toTitleCase(concept_type), " Code")),
+            htmltools::tags$td(class = "text-end", result[[id_field]])
+          ),
+          htmltools::tags$tr(
+            htmltools::tags$td("Reference"),
+            htmltools::tags$td(
+              class = "text-end",
+              if (!is.na(result$concept_rf_code) && !is.na(result$concept_rf_name)) {
+                htmltools::tags$a(
+                  href = "#",
+                  onclick = sprintf(
+                    "Shiny.setInputValue('reference_link_click', '%s', {priority: 'event'}); return false;",
+                    result$concept_rf_code
+                  ),
+                  result$concept_rf_name
+                )
+              } else {
+                result$concept_rf_name %|||% "Not specified"
+              }
+            )
+          ),
+          htmltools::tags$tr(
+            htmltools::tags$td("Observation Count"),
+            htmltools::tags$td(class = "text-end", result$obs_count %|||% "0")
+          )
+        )
+      ),
+      # Add description if it exists
+      if (!is.na(result[[description_field]])) {
+        htmltools::tags$div(
+          style = "margin-top: 15px;",
+          htmltools::tags$div(
+            "Description",
+            style = "width: 100%; border-bottom: 1px solid #2c5443; margin-bottom: 10px;"
+          ),
+          htmltools::tags$div(
+            id = "concept-description",
+            htmltools::HTML(result[[description_field]] %|||% "No description available")
+          )
+        )
+      }
+    )
+  })
+
+  # Party perspective output
+  outputs[[perspective_output]] <- create_party_perspective_ui(
+    result,
+    concept_type,
+    id_field,
+    parent_id_field,
+    link_input_id
   )
+
+  outputs
 }
 
 #' Build Project Details View
@@ -578,9 +634,9 @@ build_party_details_view <- function(result) {
 
 
 #' Coalesce Function for NULL or NA
-#' Returns the first argument if it is not NULL, NA, "NA" or ""; otherwise returns the second argument
+#' Returns the first argument if it is not NULL or NA; otherwise returns the second argument
 #' @param a First value to check
-#' @param b Second value to return if the first is NULL, NA, or empty string
+#' @param b Second value to return if the first is NULL or NA
 #' @return The first value if valid, otherwise the second value
 #' @noRd
 `%|||%` <- function(a, b) {
@@ -594,9 +650,8 @@ build_party_details_view <- function(result) {
     a <- a[1]
   }
 
-  # TODO: There should not be any "NA" strings in the data, but if we find them we should send a warning
-  # Check for NA, empty string, or "NA" string
-  if (is.na(a) || a == "" || a == "NA") {
+  # Check for NA
+  if (is.na(a)) {
     return(b)
   }
 
@@ -629,85 +684,74 @@ safe_parse_date <- function(date_string) {
 }
 
 
-#' Build Plant Concept Details View
+#' Build Plant Concept Details View (wrapper for backward compatibility)
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed plant concept information.
 #'
-#' @param result A data frame returned by get_plant_concept_mock()
+#' @param result A data frame returned by vegbankr::get_plant_concept()
 #' @return A list of Shiny UI outputs.
-#'
-#' @importFrom htmltools tags HTML
-#' @importFrom shiny renderUI
-#' @importFrom jsonlite fromJSON
 #' @noRd
 build_plant_concept_details_view <- function(result) {
-  if (is.null(result) || nrow(result) == 0) {
-    return(list(
-      plant_concept_name = shiny::renderUI({
-        htmltools::tags$p("Plant concept details not available")
-      }),
-      plant_concept_details = shiny::renderUI({
-        htmltools::tags$p("No concept details available")
-      }),
-      plant_party_perspective = shiny::renderUI({
-        htmltools::tags$p("No party perspective available")
-      })
-    ))
-  }
-
-  # TODO: Link to USDA plant page if appropriate
-  list(
-    plant_concept_name = shiny::renderUI({
-      htmltools::div(
-        htmltools::tags$i(result$plant_level %|||% "Unspecified level"),
-        htmltools::tags$h5(result$plant_name, style = "font-weight: 600; margin-bottom: 0px;"),
-        if (!is.na(result$plant_code)) htmltools::tags$p(paste0("(", result$plant_code, ")"))
-      )
-    }),
-    plant_concept_details = shiny::renderUI({
-      htmltools::tags$table(
-        class = "table table-sm table-striped table-hover",
-        htmltools::tags$tbody(
-          htmltools::tags$tr(
-            htmltools::tags$td("Plant Code"),
-            htmltools::tags$td(class = "text-end", result$pc_code)
-          ),
-          htmltools::tags$tr(
-            htmltools::tags$td("Reference"),
-            htmltools::tags$td(class = "text-end", result$concept_rf_name %|||% "Not specified")
-          ),
-          htmltools::tags$tr(
-            htmltools::tags$td("Observation Count"),
-            htmltools::tags$td(class = "text-end", result$obs_count %|||% "0")
-          )
-        )
-      )
-    }),
-    plant_party_perspective = create_party_perspective_ui(result)
-  )
+  build_concept_details_view(result, concept_type = "plant")
 }
 
-#' Create Party Perspective UI for Plant Concept
+#' Build Community Concept Details View (wrapper using new generalized function)
 #'
-#' @param result Plant concept data frame row
+#' Constructs a list of Shiny UI outputs for displaying detailed community concept information.
+#'
+#' @param result A data frame returned by vegbankr::get_community_concept()
+#' @return A list of Shiny UI outputs.
+#' @noRd
+build_comm_concept_details_view <- function(result) {
+  build_concept_details_view(result, concept_type = "community")
+}
+
+#' Create Party Perspective UI for Concept (Plant or Community)
+#'
+#' @param result Concept data frame row (plant or community)
+#' @param concept_type Either "plant" or "community"
+#' @param id_field The code field name (pc_code or cc_code)
+#' @param parent_id_field The parent code field name
+#' @param link_input_id The Shiny input ID for clicking links
 #' @return A shiny::renderUI function
 #' @noRd
-create_party_perspective_ui <- function(result) {
-  # TODO: What to do for synonyms/convergence? What about for comm concepts?
+create_party_perspective_ui <- function(result, concept_type, id_field, parent_id_field, link_input_id) {
+  is_plant <- concept_type == "plant"
+
   shiny::renderUI({
     # Parse children JSON if it exists and is not NA
     children_links <- NULL
-    if (!is.na(result$children) && !is.null(result$children) && result$children != "") {
+    if (!is.na(result$children) && !is.null(result$children) && result$children != "" && 
+        length(result$children[[1]]) > 0) {
       tryCatch(
         {
-          children_data <- jsonlite::fromJSON(result$children)
-          if (length(children_data) > 0) {
+          children_data <- result$children[[1]]
+          if (is.data.frame(children_data) && nrow(children_data) > 0) {
+            # Children is a list column containing a dataframe
+            children_links <- lapply(seq_len(nrow(children_data)), function(i) {
+              child_code <- children_data[[id_field]][i]
+              child_name <- children_data[[if(is_plant) "plant_name" else "comm_name"]][i]
+              htmltools::tags$li(
+                htmltools::tags$a(
+                  href = "#",
+                  onclick = sprintf(
+                    "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
+                    link_input_id,
+                    child_code
+                  ),
+                  child_name
+                )
+              )
+            })
+          } else if (is.list(children_data) && length(children_data) > 0) {
+            # Children is a named list with codes as names
             children_links <- lapply(names(children_data), function(child_code) {
               htmltools::tags$li(
                 htmltools::tags$a(
                   href = "#",
                   onclick = sprintf(
-                    "Shiny.setInputValue('plant_link_click', '%s', {priority: 'event'}); return false;",
+                    "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
+                    link_input_id,
                     child_code
                   ),
                   children_data[[child_code]]
@@ -717,25 +761,74 @@ create_party_perspective_ui <- function(result) {
           }
         },
         error = function(e) {
-          # If JSON parsing fails, show the raw children data
-          children_links <- htmltools::tags$p(result$children)
+          # If parsing fails, show a message
+          children_links <- NULL
+        }
+      )
+    }
+
+    # Parse correlations JSON if it exists
+    correlations_links <- NULL
+    if (!is.na(result$correlations) && !is.null(result$correlations) && result$correlations != "" &&
+          length(result$correlations[[1]]) > 0) {
+      tryCatch(
+        {
+          corr_data <- result$correlations[[1]]
+          if (is.data.frame(corr_data) && nrow(corr_data) > 0) {
+            correlations_links <- lapply(seq_len(nrow(corr_data)), function(i) {
+              corr_code <- corr_data[[id_field]][i]
+              corr_name <- corr_data[[if(is_plant) "plant_name" else "comm_name"]][i]
+              corr_type <- if ("correlation_type" %in% names(corr_data)) {
+                paste0(" (", corr_data$correlation_type[i], ")")
+              } else ""
+              htmltools::tags$li(
+                htmltools::tags$a(
+                  href = "#",
+                  onclick = sprintf(
+                    "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
+                    link_input_id,
+                    corr_code
+                  ),
+                  paste0(corr_name, corr_type)
+                )
+              )
+            })
+          }
+        },
+        error = function(e) {
+          correlations_links <- NULL
         }
       )
     }
 
     htmltools::tags$div(
-      htmltools::tags$b(result$party %|||% "Party not recorded"),
+      htmltools::tags$b(
+        if (!is.na(result$py_code) && !is.na(result$party)) {
+          htmltools::tags$a(
+            href = "#",
+            onclick = sprintf(
+              "Shiny.setInputValue('party_link_click', '%s', {priority: 'event'}); return false;",
+              result$py_code
+            ),
+            result$party
+          )
+        } else {
+          result$party %|||% "Party not recorded"
+        }
+      ),
+      # TODO: This status varies from the current_accepted badge in the table.
+      #       Do we want to show that badge here instead?
       htmltools::tags$span(
         if (!is.na(result$status)) {
-          htmltools::tags$i(paste0("(", result$status, ")"))
+          htmltools::tags$i(paste0(" (", result$status, ")"))
         } else {
-          "(Status not recorded)"
+          " (Status not recorded)"
         }
       ),
       htmltools::tags$p({
         start_parsed <- safe_parse_date(result$start_date)
         stop_parsed <- safe_parse_date(result$stop_date)
-        
+
         if (!is.na(start_parsed) && !is.na(stop_parsed)) {
           paste0(
             "From ", format(start_parsed, "%Y-%m-%d"),
@@ -753,9 +846,9 @@ create_party_perspective_ui <- function(result) {
         "Aliases",
         style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443;"
       ),
-      create_plant_aliases_ui(result),
+      create_concept_aliases_ui(result, is_plant),
       htmltools::tags$div(
-        "Taxonomic Hierarchy",
+        if (is_plant) "Taxonomic Hierarchy" else "Classification Hierarchy",
         style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443;"
       ),
       htmltools::tags$table(
@@ -769,8 +862,9 @@ create_party_perspective_ui <- function(result) {
                 htmltools::tags$a(
                   href = "#",
                   onclick = sprintf(
-                    "Shiny.setInputValue('plant_link_click', '%s', {priority: 'event'}); return false;",
-                    result$parent_pc_code
+                    "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
+                    link_input_id,
+                    result[[parent_id_field]]
                   ),
                   result$parent_name
                 )
@@ -789,6 +883,12 @@ create_party_perspective_ui <- function(result) {
               htmltools::tags$td("Children"),
               htmltools::tags$td(class = "text-end", "None")
             )
+          },
+          if (!is.null(correlations_links)) {
+            htmltools::tags$tr(
+              htmltools::tags$td("Correlations"),
+              htmltools::tags$td(class = "text-end", htmltools::tags$ul(correlations_links))
+            )
           }
         )
       )
@@ -796,27 +896,65 @@ create_party_perspective_ui <- function(result) {
   })
 }
 
-#' Create Plant Aliases UI
+#' Create Concept Aliases UI (for Plant or Community)
 #'
-#' @param result Plant concept data frame row
+#' @param result Concept data frame row (plant or community)
+#' @param is_plant Boolean indicating if this is a plant concept
 #' @return HTML tags for aliases table or message
 #' @noRd
-create_plant_aliases_ui <- function(result) {
-  # Parse usage_names JSON if it exists
+create_concept_aliases_ui <- function(result, is_plant = TRUE) {
+  # Parse usages list column if it exists
   aliases_content <- NULL
-  if (!is.na(result$usage_names) && !is.null(result$usage_names) && result$usage_names != "") {
+  usages_field <- "usages"
+
+  if (!is.na(result[[usages_field]]) && !is.null(result[[usages_field]]) && 
+        length(result[[usages_field]][[1]]) > 0) {
     tryCatch(
       {
-        usage_names_data <- jsonlite::fromJSON(result$usage_names)
-        if (length(usage_names_data) > 0) {
-          # Sort the usage types alphabetically
-          sorted_usage_types <- sort(names(usage_names_data))
-          aliases_rows <- lapply(sorted_usage_types, function(usage_type) {
+        usages_data <- result[[usages_field]][[1]]
+        if (is.data.frame(usages_data) && nrow(usages_data) > 0) {
+          # Usages is a list column containing a dataframe with columns like:
+          # class_system, name (or plant_name/comm_name), party
+
+          # Determine which columns to use
+          class_system_col <- if ("class_system" %in% names(usages_data)) {
+            "class_system"
+          } else {
+            NULL
+          }
+
+          # Get the name column - could be "name", "plant_name", "comm_name"
+          name_col <- if ("name" %in% names(usages_data)) {
+            "name"
+          } else if (is_plant && "plant_name" %in% names(usages_data)) {
+            "plant_name"
+          } else if (!is_plant && "comm_name" %in% names(usages_data)) {
+            "comm_name"
+          } else {
+            # Fallback to second column
+            names(usages_data)[2]
+          }
+
+          # Sort by class_system/usage_type if available
+          if (!is.null(class_system_col)) {
+            usages_data <- usages_data[order(usages_data[[class_system_col]]), ]
+          }
+
+          aliases_rows <- lapply(seq_len(nrow(usages_data)), function(i) {
+            # Get the classification system (e.g., "Scientific", "Code", etc.)
+            class_system <- if (!is.null(class_system_col)) {
+              usages_data[[class_system_col]][i]
+            } else {
+              "Usage"
+            }
+            usage_name <- usages_data[[name_col]][i]
+
             htmltools::tags$tr(
-              htmltools::tags$td(usage_type),
-              htmltools::tags$td(class = "text-end", usage_names_data[[usage_type]])
+              htmltools::tags$td(class_system),
+              htmltools::tags$td(class = "text-end", usage_name)
             )
           })
+
           aliases_content <- htmltools::tags$table(
             class = "table table-sm table-striped table-hover",
             htmltools::tags$tbody(aliases_rows)
@@ -824,8 +962,8 @@ create_plant_aliases_ui <- function(result) {
         }
       },
       error = function(e) {
-        # If JSON parsing fails, show the raw usage_names data
-        aliases_content <- htmltools::tags$p(result$usage_names)
+        # If parsing fails, show error message
+        aliases_content <- htmltools::tags$p(paste("Error parsing aliases:", e$message))
       }
     )
   }

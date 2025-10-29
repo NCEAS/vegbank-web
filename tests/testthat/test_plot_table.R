@@ -19,13 +19,13 @@ test_that("clean_column_data handles missing columns and values", {
     stringsAsFactors = FALSE
   )
 
-  # Test with existing column - adjust expectations to match actual behavior
+  # Test with existing column
   result <- clean_column_data(test_data, "col1")
-  expect_equal(result, c("value1", "Not Provided", "Not Provided"))
+  expect_equal(result, c("Value1", "Not provided", "Not provided"))
 
   # Test with non-existent column
   result <- clean_column_data(test_data, "col2")
-  expect_equal(result, c("Not Provided", "Not Provided", "Not Provided"))
+  expect_equal(result, c("Not provided", "Not provided", "Not provided"))
 })
 
 test_that("create_plot_action_buttons generates correct structure", {

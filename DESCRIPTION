@@ -7,17 +7,17 @@ Authors@R:
 Description: "This package provides a Shiny web interface to browse, search, inspect and download vegetation plot data."
 License: Apache License (>= 2)
 Imports: 
-    bslib (>= 0.3.1),
-    dplyr (>= 1.0.7),
-    DT (>= 0.18),
-    ggplot2 (>= 3.3.6),
-    htmltools (>= 0.5.2),
-    htmlwidgets (>= 1.5.4),
-    jsonlite (>= 1.8.0),
-    leaflet (>= 2.0.0),
-    markdown (>= 1.1),
-    shiny (>= 1.10.0),
-    tidyr (>= 1.1.4),
+    bslib (>= 0.8.0),
+    dplyr (>= 1.0.10),
+    DT (>= 0.34.0),
+    ggplot2 (>= 3.5.2),
+    htmltools (>= 0.5.8.1),
+    htmlwidgets (>= 1.6.2),
+    jsonlite (>= 2.0.0),
+    leaflet (>= 2.2.2),
+    markdown (>= 2.0),
+    shiny (>= 1.11.1),
+    tidyr (>= 1.3.1),
     vegbankr
 Encoding: UTF-8
 LazyData: true
