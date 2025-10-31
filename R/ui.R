@@ -29,6 +29,13 @@ ui <- function(req) {
       }
     });
 
+    Shiny.addCustomMessageHandler('closeOverlay', function(message) {
+      var overlay = document.getElementById('detail-overlay');
+      if (overlay) {
+        overlay.style.right = '-400px';
+      }
+    });
+
     Shiny.addCustomMessageHandler('invalidateMapSize', function(message) {
       var mapWidget = HTMLWidgets.find('#map');
       if (mapWidget) {

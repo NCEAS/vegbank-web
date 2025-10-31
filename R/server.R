@@ -44,6 +44,159 @@ server <- function(input, output, session) {
     map_zoom = map_state$map_zoom
   )
 
+  state$current_tab <- shiny::reactiveVal("Overview")
+
+  updating_from_query <- shiny::reactiveVal(FALSE)
+  history_initialized <- shiny::reactiveVal(FALSE)
+
+  first_param <- function(value) {
+    if (is.null(value) || length(value) == 0) {
+      return(NULL)
+    }
+    value[[1]]
+  }
+
+  is_valid_param <- function(value) {
+    candidate <- first_param(value)
+    !is.null(candidate) && !is.na(candidate) && nzchar(candidate)
+  }
+
+  encode_query_value <- function(value) {
+    utils::URLencode(as.character(value), reserved = TRUE)
+  }
+
+  # Read the browser query string and normalize null/NA cases to empty string
+  current_query_string <- function() {
+    query <- session$clientData$url_search
+    if (is.null(query) || length(query) == 0 || isTRUE(is.na(query)) || identical(query, "")) {
+      ""
+    } else {
+      query
+    }
+  }
+
+  # Update the browser history to reflect the active tab and detail view
+  update_app_query <- function(mode = c("push", "replace"), tab = NULL, detail_type = NULL, detail_code = NULL) {
+    mode <- match.arg(mode)
+
+    if (is.null(tab)) {
+      tab <- state$current_tab()
+    }
+
+    if (is.null(tab) || !nzchar(tab)) {
+      tab <- "Overview"
+    }
+
+    if (is.null(detail_type) || is.null(detail_code)) {
+      if (isTRUE(state$details_open())) {
+        detail_type <- state$detail_type()
+        detail_code <- state$selected_code()
+      } else {
+        detail_type <- NULL
+        detail_code <- NULL
+      }
+    }
+
+    params <- list()
+    if (!is.null(tab) && nzchar(tab)) {
+      params$tab <- tab
+    }
+
+    if (!is.null(detail_type) && !is.null(detail_code) && nzchar(detail_type) && nzchar(detail_code)) {
+      params$detail <- detail_type
+      params$code <- detail_code
+    }
+
+    target_query <- if (length(params) > 0) {
+      paste0(
+        "?",
+        paste(
+          names(params),
+          vapply(params, encode_query_value, character(1)),
+          sep = "=",
+          collapse = "&"
+        )
+      )
+    } else {
+      ""
+    }
+
+    if (identical(target_query, current_query_string())) {
+      return(invisible(FALSE))
+    }
+
+    shiny::updateQueryString(target_query, mode = mode, session = session)
+    invisible(TRUE)
+  }
+
+  # Open the requested detail overlay and optionally capture the change in history
+  open_detail <- function(detail_type, vb_code, push_history = TRUE, history_mode = "push") {
+    # Ensure we have an up-to-date record of the current tab
+    state$current_tab(input$page %||% state$current_tab())
+
+    args <- list(
+      state = state,
+      session = session,
+      output = output,
+      vb_code = vb_code,
+      detail_type = detail_type
+    )
+
+    if (detail_type %in% c("community-classification", "taxon-observation")) {
+      args$comm_class_data <- comm_class_data
+      args$taxa_data <- taxa_data
+      args$plot_data <- plot_data
+    }
+
+    success <- do.call(open_code_details, args)
+
+    if (isTRUE(success) && push_history) {
+      update_app_query(
+        mode = history_mode,
+        tab = state$current_tab(),
+        detail_type = detail_type,
+        detail_code = vb_code
+      )
+    }
+
+    invisible(success)
+  }
+
+  # Close the detail overlay and clear browser URL parameters when needed
+  close_detail <- function(push_history = TRUE, history_mode = "push", hide_overlay = TRUE) {
+    if (!isTRUE(state$details_open())) {
+      state$detail_type(NULL)
+      state$selected_code(NULL)
+      return(invisible(FALSE))
+    }
+
+    state$details_open(FALSE)
+    state$detail_type(NULL)
+    state$selected_code(NULL)
+
+    if (hide_overlay) {
+      session$sendCustomMessage("closeOverlay", list())
+    }
+
+    session$sendCustomMessage("clearAllTableSelections", list())
+
+    if (push_history) {
+      update_app_query(mode = history_mode, tab = state$current_tab(), detail_type = NULL, detail_code = NULL)
+    }
+
+    invisible(TRUE)
+  }
+
+  # Reactive accessor for the current query parameters so observers can react
+  current_query <- shiny::reactive({
+    query_string <- current_query_string()
+    if (identical(query_string, "")) {
+      list()
+    } else {
+      shiny::parseQueryString(query_string)
+    }
+  })
+
 
   # DATA LOADING -----------------------------------------------------------------------------------
 
@@ -95,6 +248,64 @@ server <- function(input, output, session) {
       vegbankr::get_all_parties
     )
   })
+
+  # Keep the app state in sync when the user navigates via browser history
+  shiny::observeEvent(current_query(), {
+    params <- current_query()
+
+    updating_from_query(TRUE)
+
+    requested_tab <- first_param(params$tab)
+    if (!is_valid_param(requested_tab)) {
+      requested_tab <- "Overview"
+    }
+
+    if (!identical(state$current_tab(), requested_tab)) {
+      state$current_tab(requested_tab)
+      shiny::updateNavbarPage(session, "page", selected = requested_tab)
+    } else {
+      state$current_tab(requested_tab)
+    }
+
+    target_type <- NULL
+    target_code <- NULL
+
+    detail_valid <- is_valid_param(params$detail) && is_valid_param(params$code)
+
+    if (detail_valid) {
+      target_type <- first_param(params$detail)
+      target_code <- first_param(params$code)
+
+      needs_open <- !identical(state$detail_type(), target_type) ||
+        !identical(state$selected_code(), target_code) ||
+        !isTRUE(state$details_open())
+
+      if (needs_open) {
+        open_detail(target_type, target_code, push_history = FALSE)
+      }
+    } else if (isTRUE(state$details_open())) {
+      close_detail(push_history = FALSE, hide_overlay = TRUE)
+    } else if (!is.null(params$detail) || !is.null(params$code)) {
+      update_app_query(
+        mode = "replace",
+        tab = requested_tab,
+        detail_type = NULL,
+        detail_code = NULL
+      )
+    }
+
+    if (!is_valid_param(params$tab)) {
+      update_app_query(
+        mode = "replace",
+        tab = requested_tab,
+        detail_type = if (detail_valid) target_type else NULL,
+        detail_code = if (detail_valid) target_code else NULL
+      )
+    }
+
+    updating_from_query(FALSE)
+    history_initialized(TRUE)
+  }, ignoreNULL = FALSE)
 
   # RENDER UI ELEMENTS --------------------------------------------------------------------------------
 
@@ -160,15 +371,35 @@ server <- function(input, output, session) {
     ignoreInit = TRUE
   )
 
+  shiny::observeEvent(input$page,
+    {
+      if (is.null(input$page) || !nzchar(input$page)) {
+        return()
+      }
+
+      state$current_tab(input$page)
+
+      if (isTRUE(updating_from_query())) {
+        return()
+      }
+
+      mode <- if (isTRUE(history_initialized())) "push" else "replace"
+
+      update_app_query(
+        mode = mode,
+        tab = input$page,
+        detail_type = if (isTRUE(state$details_open())) state$detail_type() else NULL,
+        detail_code = if (isTRUE(state$details_open())) state$selected_code() else NULL
+      )
+
+      history_initialized(TRUE)
+    },
+    ignoreNULL = FALSE
+  )
+
   shiny::observeEvent(input$see_obs_details, {
     vb_code <- input$see_obs_details
-    open_code_details(
-      state,
-      session,
-      output,
-      vb_code,
-      "plot-observation"
-    )
+    open_detail("plot-observation", vb_code)
   })
 
   shiny::observeEvent(input$show_on_map,
@@ -216,162 +447,51 @@ server <- function(input, output, session) {
   )
 
   shiny::observeEvent(input$close_details, {
-    state$details_open(FALSE)
-    session$sendCustomMessage("clearAllTableSelections", list())
-    session$doBookmark()
+    close_detail(push_history = TRUE)
   })
 
   shiny::observeEvent(input$label_link_click, {
     vb_code <- input$label_link_click
     if (!is.null(vb_code) && nchar(vb_code) > 0) {
-      open_code_details(state, session, output, vb_code, "plot-observation")
+      open_detail("plot-observation", vb_code)
     }
   })
 
   shiny::observeEvent(input$comm_class_link_click, {
     vb_code <- input$comm_class_link_click
-    open_code_details(
-      state, session, output,
-      vb_code, "community-classification",
-      NULL, comm_class_data, taxa_data, plot_data
-    )
+    open_detail("community-classification", vb_code)
   })
 
   shiny::observeEvent(input$comm_link_click, {
     vb_code <- input$comm_link_click
-    open_code_details(state, session, output, vb_code, "community-concept")
+    open_detail("community-concept", vb_code)
   })
 
   shiny::observeEvent(input$taxa_link_click, {
     vb_code <- input$taxa_link_click
-    open_code_details(
-      state, session, output,
-      vb_code, "taxon-observation",
-      NULL, comm_class_data, taxa_data, plot_data
-    )
+    open_detail("taxon-observation", vb_code)
   })
 
   shiny::observeEvent(input$proj_link_click, {
     vb_code <- input$proj_link_click
-    open_code_details(state, session, output, vb_code, "project")
+    open_detail("project", vb_code)
   })
 
   shiny::observeEvent(input$party_link_click, {
     vb_code <- input$party_link_click
-    open_code_details(state, session, output, vb_code, "party")
+    open_detail("party", vb_code)
   })
 
   shiny::observeEvent(input$plant_link_click, {
     vb_code <- input$plant_link_click
-    open_code_details(state, session, output, vb_code, "plant-concept")
+    open_detail("plant-concept", vb_code)
   })
 
   shiny::observeEvent(input$ref_link_click, {
     vb_code <- input$ref_link_click
-    open_code_details(state, session, output, vb_code, "reference")
+    open_detail("reference", vb_code)
   })
 
-  # STATE PERSISTENCE ----------------------------------------------------------------------------------
-  shiny::onBookmark(function(state_obj) {
-    state_obj$values$current_tab <- input$page
-    state_obj$values$detail_type <- state$detail_type()
-    state_obj$values$selected_code <- state$selected_code()
-    state_obj$values$details_open <- state$details_open()
-    state_obj$values$map_center_lat <- state$map_center_lat()
-    state_obj$values$map_center_lng <- state$map_center_lng()
-    state_obj$values$map_zoom <- state$map_zoom()
-
-    state_obj
-  })
-
-  shiny::onBookmarked(function(url) {
-    shiny::updateQueryString(url)
-  })
-
-  shiny::onRestore(function(context) {
-    # Restore the tab
-    if (!is.null(context$values$current_tab)) {
-      shiny::updateNavbarPage(session, "page", selected = context$values$current_tab)
-    }
-
-    # Restore map state
-    if (!is.null(context$values$map_center_lat)) {
-      state$map_center_lat(context$values$map_center_lat)
-    }
-    if (!is.null(context$values$map_center_lng)) {
-      state$map_center_lng(context$values$map_center_lng)
-    }
-    if (!is.null(context$values$map_zoom)) {
-      state$map_zoom(context$values$map_zoom)
-    }
-
-    # Use a self-destroying observer to handle map initialization from URL
-    # This observer is in the onRestore function to ensure it runs after state
-    # restoration and is only created when necessary instead of on every session
-    map_init_observer <- shiny::observeEvent(session$clientData$url_search,
-      {
-        # Only update map if we have restored state values
-        if (state$map_center_lat() != DEFAULT_MAP_LAT ||
-          state$map_center_lng() != DEFAULT_MAP_LNG ||
-          state$map_zoom() != DEFAULT_MAP_ZOOM) {
-          leaflet::leafletProxy("map", session) |>
-            leaflet::setView(
-              lng = state$map_center_lng(),
-              lat = state$map_center_lat(),
-              zoom = state$map_zoom()
-            )
-        }
-
-        # Destroy this observer after first run
-        map_init_observer$destroy()
-      },
-      once = TRUE
-    )
-
-    # Safely reopen the detail overlay
-    if (isTRUE(context$values$details_open)) {
-      detail_open_observer <- shiny::observe({
-        state$detail_type(context$values$detail_type)
-        state$selected_code(context$values$selected_code)
-        state$details_open(TRUE)
-
-        # Show the detail view first
-        show_detail_view(
-          state$detail_type(),
-          state$selected_code(),
-          output,
-          session
-        )
-
-        # Then select the row - the JavaScript will handle timing via DataTable events
-        vb_code <- state$selected_code()
-        detail_type <- state$detail_type()
-
-        message("DEBUG onRestore: Restoring detail view - ", detail_type, ": ", vb_code)
-
-        # Look up the correct row code in case of indirect links (comm class and taxon obs)
-        if (!is.null(vb_code) && !is.null(detail_type)) {
-          row_code <- find_row_selection_code(
-            detail_type, vb_code, comm_class_data, taxa_data, plot_data
-          )
-          if (!is.null(row_code)) {
-            select_table_row_by_code(session, row_code)
-          }
-        }
-
-        detail_open_observer$destroy()
-      })
-    }
-
-    invisible(NULL)
-  })
-
-  shiny::observe({
-    shiny::reactiveValuesToList(input)
-    session$doBookmark()
-  })
-
-  shiny::setBookmarkExclude(generate_bookmark_exclusions())
 }
 
 
@@ -426,34 +546,6 @@ open_code_details <- function(
 is_valid_vb_code <- function(vb_code) {
   !is.null(vb_code) && !is.na(vb_code) &&
     nchar(as.character(vb_code)) > 0 && vb_code != "NA"
-}
-
-#' Generates a character vector of bookmark exclusions for all tables defined
-#' in dt_output_ids and the map so the bookmark URL doesn't become too long.
-#'
-#' @noRd
-generate_bookmark_exclusions <- function() {
-  dt_output_ids <- c("plot_table", "comm_table", "proj_table", "party_table", "plant_table")
-
-  # Base exclusions to apply to all DataTables
-  table_exclusions <- c(
-    "_cells_selected", "_cell_clicked", "_columns_selected", "_row_last_clicked",
-    "_rows_all", "_rows_current", "_rows_selected", "_search", "_state"
-  )
-
-  # Generate exclusions for each table
-  all_table_exclusions <- unlist(lapply(dt_output_ids, function(table_id) {
-    paste0(table_id, table_exclusions)
-  }))
-
-  # Map-specific exclusions
-  map_exclusions <- c(
-    "map_bounds", "map_center", "map_click", "map_marker_click",
-    "map_marker_mouseout", "map_marker_mouseover", "map_zoom"
-  )
-
-  # Combine and return all exclusions
-  c(all_table_exclusions, map_exclusions)
 }
 
 #' Move the map to the specified latitude and longitude with a popup message
