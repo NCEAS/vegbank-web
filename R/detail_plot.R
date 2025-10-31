@@ -26,12 +26,7 @@ build_plot_obs_details_view <- function(result) {
             htmltools::tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
           )
         })
-        htmltools::tags$table(
-          class = "table table-sm table-striped table-hover",
-          htmltools::tags$thead(
-            htmltools::tags$tr(htmltools::tags$th("Scientific Name"), htmltools::tags$th("Cover"))
-          ), htmltools::tags$tbody(rows)
-        )
+        create_detail_table_with_headers(c("Scientific Name", "Cover"), rows)
       },
       error = function(e) {
         paste("Error processing taxa:", e$message)
@@ -51,14 +46,7 @@ build_plot_obs_details_view <- function(result) {
           row <- communities[i, ]
           htmltools::tags$tr(
             htmltools::tags$td(
-              htmltools::tags$a(
-                href = "#",
-                onclick = sprintf(
-                  "Shiny.setInputValue('comm_link_click', '%s', {priority: 'event'}); return false;",
-                  row$cc_code
-                ),
-                row$comm_name
-              )
+              create_detail_link("comm_link_click", row$cc_code, row$comm_name)
             )
           )
         })
@@ -71,30 +59,30 @@ build_plot_obs_details_view <- function(result) {
   })
 
   list(
-    plot_id_details = safe_render_details(
+    plot_id_details = render_detail_table(
       c("author_obs_code", "author_plot_code"),
       result$plot_observation
     ),
-    location_details = safe_render_details(
+    location_details = render_detail_table(
       c("confidentiality_text", "latitude", "longitude", "location_narrative", "state_province", "country"),
       result$plot_observation
     ),
-    layout_details = safe_render_details(
+    layout_details = render_detail_table(
       c("area", "permanence"),
       result$plot_observation
     ),
-    environmental_details = safe_render_details(
+    environmental_details = render_detail_table(
       c("elevation", "slope_aspect", "slope_gradient"),
       result$plot_observation
     ),
-    methods_details = safe_render_details(
+    methods_details = render_detail_table(
       c(
         "obs_start_date", "project_name", "cover_type", "stratum_method_name", "stratum_method_description",
         "taxon_observation_area", "auto_taxon_cover"
       ),
       result$plot_observation
     ),
-    plot_quality_details = safe_render_details(
+    plot_quality_details = render_detail_table(
       "plot_validation_level_descr",
       result$plot_observation
     ),

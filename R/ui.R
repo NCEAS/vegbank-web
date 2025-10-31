@@ -138,11 +138,12 @@ ui <- function(req) {
       const projectCards = document.getElementById('project-details-cards');
       const partyCards = document.getElementById('party-details-cards');
       const plantConceptCards = document.getElementById('plant-concept-details-cards');
+      const referenceCards = document.getElementById('reference-details-cards');
 
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards &&
-      taxonObservationCards && projectCards && partyCards && plantConceptCards) {
+      taxonObservationCards && projectCards && partyCards && plantConceptCards && referenceCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
@@ -151,6 +152,7 @@ ui <- function(req) {
         projectCards.style.display = 'none';
         partyCards.style.display = 'none';
         plantConceptCards.style.display = 'none';
+        referenceCards.style.display = 'none';
 
         // Show the requested type
         if (type === 'plot-observation') {
@@ -174,6 +176,9 @@ ui <- function(req) {
         } else if (type === 'plant-concept') {
           console.log('Showing plant concept details');
           plantConceptCards.style.display = 'block';
+        } else if (type === 'reference') {
+          console.log('Showing reference details');
+          referenceCards.style.display = 'block';
         }
       }
     });
@@ -465,7 +470,16 @@ build_detail_overlay <- function() {
           class = "detail-section",
           bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_name")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("plant_concept_details")),
-          bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("plant_party_perspective")),
+          bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("plant_party_perspective"))
+        ),
+
+        # Reference Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "reference-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Reference"), shiny::uiOutput("reference_summary")),
+          bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("reference_identifiers")),
+          bslib::card(bslib::card_header("Publication"), shiny::uiOutput("reference_publication"))
         )
       )
     )

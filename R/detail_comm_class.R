@@ -4,22 +4,20 @@
 #' @noRd
 build_comm_class_details_view <- function(result) {
   if (is.null(result) || nrow(result) == 0) {
-    return(list(
-      observation_details = shiny::renderUI({
-        htmltools::tags$p("Community details not available")
-      }),
-      community_interpretation = shiny::renderUI({
-        htmltools::tags$p("No description available")
-      })
+    return(create_empty_detail_view(
+      c("observation_details", "community_interpretation"),
+      "Community details"
     ))
   }
 
   list(
-    observation_details = shiny::renderUI({
-      safe_render_details(c("cl_code", "inspection", "table_analysis", "multivariate_analysis"), result)
-    }),
-    community_interpretation = shiny::renderUI({
-      safe_render_details(c("cc_code", "class_fit", "class_confidence", "comm_authority_id", "type"), result)
-    })
+    observation_details = render_detail_table(
+      c("cl_code", "inspection", "table_analysis", "multivariate_analysis"),
+      result
+    ),
+    community_interpretation = render_detail_table(
+      c("cc_code", "class_fit", "class_confidence", "comm_authority_id", "type"),
+      result
+    )
   )
 }

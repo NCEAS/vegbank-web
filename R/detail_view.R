@@ -25,7 +25,8 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
         "plot-observation" = vegbankr::get_plot_observation_details(vb_code),
         "project" = vegbankr::get_project(vb_code),
         "party" = vegbankr::get_party(vb_code),
-        "plant-concept" = vegbankr::get_plant_concept(vb_code)
+        "plant-concept" = vegbankr::get_plant_concept(vb_code),
+        "reference" = vegbankr::get_reference(vb_code)
       )
 
       if (length(result) == 0) {
@@ -69,6 +70,9 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
       output$plant_concept_name <- shiny::renderUI(NULL)
       output$plant_concept_details <- shiny::renderUI(NULL)
       output$plant_party_perspective <- shiny::renderUI(NULL)
+      output$reference_summary <- shiny::renderUI(NULL)
+      output$reference_identifiers <- shiny::renderUI(NULL)
+      output$reference_publication <- shiny::renderUI(NULL)
 
       shiny::incProgress(0.5, "Processing details")
 
@@ -122,6 +126,12 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
           output$plant_concept_name <- details$plant_concept_name
           output$plant_concept_details <- details$plant_concept_details
           output$plant_party_perspective <- details$plant_party_perspective
+        },
+        "reference" = {
+          details <- build_reference_details_view(result)
+          output$reference_summary <- details$reference_summary
+          output$reference_identifiers <- details$reference_identifiers
+          output$reference_publication <- details$reference_publication
         }
       )
 

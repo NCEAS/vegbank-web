@@ -15,17 +15,11 @@ build_concept_details_view <- function(result, concept_type = "plant") {
   perspective_output <- if (is_plant) "plant_party_perspective" else "community_party_perspective"
 
   if (is.null(result) || nrow(result) == 0) {
-    empty_outputs <- list()
-    empty_outputs[[name_output]] <- shiny::renderUI({
-      htmltools::tags$p(paste0(tools::toTitleCase(concept_type), " concept details not available"))
-    })
-    empty_outputs[[details_output]] <- shiny::renderUI({
-      htmltools::tags$p("No details available")
-    })
-    empty_outputs[[perspective_output]] <- shiny::renderUI({
-      htmltools::tags$p("No party perspective available")
-    })
-    return(empty_outputs)
+    output_names <- c(name_output, details_output, perspective_output)
+    return(create_empty_detail_view(
+      output_names,
+      paste0(tools::toTitleCase(concept_type), " concept details")
+    ))
   }
 
   outputs <- list()
@@ -52,14 +46,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
             htmltools::tags$td(
               class = "text-end",
               if (!is.na(result$concept_rf_code) && !is.na(result$concept_rf_name)) {
-                htmltools::tags$a(
-                  href = "#",
-                  onclick = sprintf(
-                    "Shiny.setInputValue('reference_link_click', '%s', {priority: 'event'}); return false;",
-                    result$concept_rf_code
-                  ),
-                  result$concept_rf_name
-                )
+                create_detail_link("ref_link_click", result$concept_rf_code, result$concept_rf_name)
               } else {
                 result$concept_rf_name %|||% "Not specified"
               }
@@ -74,10 +61,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
       if (!is.na(result[[description_field]])) {
         htmltools::tags$div(
           style = "margin-top: 15px;",
-          htmltools::tags$div(
-            "Description",
-            style = "width: 100%; border-bottom: 1px solid #2c5443; margin-bottom: 10px;"
-          ),
+          create_section_header("Description", "10px"),
           htmltools::tags$div(
             id = "concept-description",
             htmltools::HTML(result[[description_field]] %|||% "No description available")
@@ -106,8 +90,8 @@ create_concept_aliases_ui <- function(result, is_plant = TRUE) {
   usages_field <- "usages"
 
   if (!is.na(result[[usages_field]]) &&
-      !is.null(result[[usages_field]]) &&
-      length(result[[usages_field]][[1]]) > 0) {
+    !is.null(result[[usages_field]]) &&
+    length(result[[usages_field]][[1]]) > 0) {
     tryCatch(
       {
         usages_data <- result[[usages_field]][[1]]
@@ -162,10 +146,10 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
 
   shiny::renderUI({
     children_links <- NULL
-  if (!is.na(result$children) &&
-    !is.null(result$children) &&
-    result$children != "" &&
-    length(result$children[[1]]) > 0) {
+    if (!is.na(result$children) &&
+      !is.null(result$children) &&
+      result$children != "" &&
+      length(result$children[[1]]) > 0) {
       tryCatch(
         {
           children_data <- result$children[[1]]
@@ -174,29 +158,13 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
               child_code <- children_data[[id_field]][i]
               child_name <- children_data[[if (is_plant) "plant_name" else "comm_name"]][i]
               htmltools::tags$li(
-                htmltools::tags$a(
-                  href = "#",
-                  onclick = sprintf(
-                    "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
-                    link_input_id,
-                    child_code
-                  ),
-                  child_name
-                )
+                create_detail_link(link_input_id, child_code, child_name)
               )
             })
           } else if (is.list(children_data) && length(children_data) > 0) {
             children_links <- lapply(names(children_data), function(child_code) {
               htmltools::tags$li(
-                htmltools::tags$a(
-                  href = "#",
-                  onclick = sprintf(
-                    "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
-                    link_input_id,
-                    child_code
-                  ),
-                  children_data[[child_code]]
-                )
+                create_detail_link(link_input_id, child_code, children_data[[child_code]])
               )
             })
           }
@@ -208,10 +176,10 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
     }
 
     correlations_links <- NULL
-  if (!is.na(result$correlations) &&
-    !is.null(result$correlations) &&
-    result$correlations != "" &&
-    length(result$correlations[[1]]) > 0) {
+    if (!is.na(result$correlations) &&
+      !is.null(result$correlations) &&
+      result$correlations != "" &&
+      length(result$correlations[[1]]) > 0) {
       tryCatch(
         {
           corr_data <- result$correlations[[1]]
@@ -225,15 +193,7 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
                 ""
               }
               htmltools::tags$li(
-                htmltools::tags$a(
-                  href = "#",
-                  onclick = sprintf(
-                    "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
-                    link_input_id,
-                    corr_code
-                  ),
-                  paste0(corr_name, corr_type)
-                )
+                create_detail_link(link_input_id, corr_code, paste0(corr_name, corr_type))
               )
             })
           }
@@ -247,14 +207,7 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
     htmltools::tags$div(
       htmltools::tags$b({
         if (!is.na(result$py_code) && !is.na(result$party)) {
-          htmltools::tags$a(
-            href = "#",
-            onclick = sprintf(
-              "Shiny.setInputValue('party_link_click', '%s', {priority: 'event'}); return false;",
-              result$py_code
-            ),
-            result$party
-          )
+          create_detail_link("party_link_click", result$py_code, result$party)
         } else {
           result$party %|||% "Party not recorded"
         }
@@ -266,28 +219,10 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
           " (Status not recorded)"
         }
       ),
-      htmltools::tags$p({
-        start_parsed <- safe_parse_date(result$start_date)
-        stop_parsed <- safe_parse_date(result$stop_date)
-        if (!is.na(start_parsed) && !is.na(stop_parsed)) {
-          paste0("From ", format(start_parsed, "%Y-%m-%d"), " to ", format(stop_parsed, "%Y-%m-%d"))
-        } else if (!is.na(start_parsed)) {
-          paste0("From ", format(start_parsed, "%Y-%m-%d"))
-        } else if (!is.na(stop_parsed)) {
-          paste0("Until ", format(stop_parsed, "%Y-%m-%d"))
-        } else {
-          "Date not recorded"
-        }
-      }),
-      htmltools::tags$div(
-        "Aliases",
-        style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443;"
-      ),
+      htmltools::tags$p(format_date_range(result$start_date, result$stop_date)),
+      create_section_header("Aliases"),
       create_concept_aliases_ui(result, is_plant),
-      htmltools::tags$div(
-        if (is_plant) "Taxonomic Hierarchy" else "Classification Hierarchy",
-        style = "font-weight: bold; width: 100%; border-bottom: 1px solid #2c5443;"
-      ),
+      create_section_header(if (is_plant) "Taxonomic Hierarchy" else "Classification Hierarchy"),
       htmltools::tags$table(
         class = "table table-sm table-striped table-hover",
         htmltools::tags$tbody(
@@ -296,15 +231,7 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
             htmltools::tags$td(
               class = "text-end",
               if (!is.na(result$parent_name)) {
-                htmltools::tags$a(
-                  href = "#",
-                  onclick = sprintf(
-                    "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
-                    link_input_id,
-                    result[[parent_id_field]]
-                  ),
-                  result$parent_name
-                )
+                create_detail_link(link_input_id, result[[parent_id_field]], result$parent_name)
               } else {
                 "None"
               }

@@ -107,13 +107,18 @@ create_empty_table <- function(message = NULL) {
 clean_column_data <- function(data, column_name, default_value = "Not provided") {
   if (column_name %in% colnames(data)) {
     cleaned <- dplyr::coalesce(dplyr::na_if(as.character(data[[column_name]]), ""), default_value)
-    # Capitalize first letter of first word (vectorized), but not for default_value
+    # Return early if the cleaned vector is empty (avoids unnecessary processing)
+    if (length(cleaned) == 0) {
+      return(cleaned)
+    }
+    # Column has data, capitalize first letter of first word of data (vectorized), but leave default_value
     cleaned <- ifelse(
       cleaned == default_value,
       cleaned,
       paste0(toupper(substring(cleaned, 1, 1)), substring(cleaned, 2))
     )
     cleaned
+    # Column not present, return vector of default values
   } else {
     rep(default_value, nrow(data))
   }

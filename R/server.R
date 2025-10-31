@@ -266,6 +266,10 @@ server <- function(input, output, session) {
     open_code_details(state, session, output, vb_code, "plant-concept")
   })
 
+  shiny::observeEvent(input$ref_link_click, {
+    vb_code <- input$ref_link_click
+    open_code_details(state, session, output, vb_code, "reference")
+  })
 
   # STATE PERSISTENCE ----------------------------------------------------------------------------------
   shiny::onBookmark(function(state_obj) {

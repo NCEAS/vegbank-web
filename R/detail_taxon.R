@@ -2,19 +2,9 @@
 #' @noRd
 build_taxon_details_view <- function(result) {
   if (is.null(result)) {
-    return(list(
-      taxon_name = shiny::renderUI({
-        htmltools::tags$p("Taxon details not available")
-      }),
-      taxon_coverage = shiny::renderUI({
-        htmltools::tags$p("No coverage data available")
-      }),
-      taxon_aliases = shiny::renderUI({
-        htmltools::tags$p("No aliases available")
-      }),
-      taxon_identifiers = shiny::renderUI({
-        htmltools::tags$p("No identifier information available")
-      })
+    return(create_empty_detail_view(
+      c("taxon_name", "taxon_coverage", "taxon_aliases", "taxon_identifiers"),
+      "Taxon details"
     ))
   }
 
@@ -34,13 +24,13 @@ build_taxon_details_view <- function(result) {
         )
       )
     }),
-    taxon_aliases = safe_render_details(
+    taxon_aliases = render_detail_table(
       c(
         "int_curr_plant_common", "int_curr_plant_sci_name_no_auth", "int_curr_plant_sci_full",
         "int_orig_plant_common", "int_orig_plant_sci_name_no_auth", "int_orig_plant_sci_full"
       ),
       result
     ),
-    taxon_identifiers = safe_render_details(c("ob_code", "int_curr_pc_code", "int_orig_pc_code"), result)
+    taxon_identifiers = render_detail_table(c("ob_code", "int_curr_pc_code", "int_orig_pc_code"), result)
   )
 }

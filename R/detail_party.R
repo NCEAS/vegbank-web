@@ -2,19 +2,9 @@
 #' @noRd
 build_party_details_view <- function(result) {
   if (is.null(result) || nrow(result) == 0) {
-    return(list(
-      party_name = shiny::renderUI({
-        htmltools::tags$p("Party details not available")
-      }),
-      party_organization = shiny::renderUI({
-        htmltools::tags$p("No organization available")
-      }),
-      party_contact = shiny::renderUI({
-        htmltools::tags$p("No contact information available")
-      }),
-      party_projects = shiny::renderUI({
-        htmltools::tags$p("No projects available")
-      })
+    return(create_empty_detail_view(
+      c("party_name", "party_organization", "party_contact", "party_projects"),
+      "Party details"
     ))
   }
 
@@ -44,7 +34,7 @@ build_party_details_view <- function(result) {
         htmltools::tags$p(result$organization_name)
       }
     }),
-    party_contact = safe_render_details(c("contact_instructions"), result),
+    party_contact = render_detail_table(c("contact_instructions"), result),
     party_projects = shiny::renderUI({
       htmltools::tags$p("Associated projects would be displayed here")
     })
