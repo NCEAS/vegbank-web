@@ -48,7 +48,87 @@ ui <- function(req) {
 
     // Store pending row selections until tables are ready
     var pendingSelections = [];
+    var pendingTableStates = [];
     var currentSelection = null; // Track the currently selected VegBank code
+
+    function applyTableState(tableId, state) {
+      var tableNode = $('#' + tableId);
+      if (tableNode.length === 0 || !$.fn.dataTable || !$.fn.dataTable.isDataTable(tableNode)) {
+        return false;
+      }
+
+      var table = tableNode.DataTable();
+      if (!table) {
+        return false;
+      }
+
+      var hasChanges = false;
+
+      if (state.search !== undefined && state.search !== null) {
+        var targetSearch = String(state.search);
+        if (table.search() !== targetSearch) {
+          table.search(targetSearch);
+          hasChanges = true;
+        }
+      }
+
+      if (Array.isArray(state.order)) {
+        var targetOrder = state.order.map(function(item) {
+          return [parseInt(item.column, 10), item.dir];
+        }).filter(function(pair) {
+          return !isNaN(pair[0]) && pair[1];
+        });
+
+        var currentOrder = table.order();
+        var orderDiffers = targetOrder.length !== currentOrder.length ||
+          targetOrder.some(function(pair, index) {
+            var currentPair = currentOrder[index];
+            return !currentPair || currentPair[0] !== pair[0] || currentPair[1] !== pair[1];
+          });
+
+        if (orderDiffers) {
+          table.order(targetOrder);
+          hasChanges = true;
+        }
+      }
+
+      var targetLength = null;
+      if (state.length !== undefined && state.length !== null) {
+        targetLength = parseInt(state.length, 10);
+        if (!isNaN(targetLength) && table.page.len() !== targetLength) {
+          table.page.len(targetLength);
+          hasChanges = true;
+        }
+      }
+
+      var targetPage = null;
+      if (state.page !== undefined && state.page !== null) {
+        targetPage = parseInt(state.page, 10);
+      } else if (state.start !== undefined && state.start !== null && targetLength) {
+        targetPage = Math.floor(parseInt(state.start, 10) / targetLength);
+      }
+
+      if (targetPage !== null && !isNaN(targetPage) && table.page() !== targetPage) {
+        table.page(targetPage);
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
+        table.draw(false);
+      }
+
+      return true;
+    }
+
+    Shiny.addCustomMessageHandler('applyTableState', function(message) {
+      if (!message || !message.tableId || !message.state) {
+        return;
+      }
+
+      if (!applyTableState(message.tableId, message.state)) {
+        pendingTableStates.push(message);
+      }
+    });
     
     // Listen for native DataTables draw events to restore selections
     $(document).on('draw.dt', function(e, settings) {
@@ -72,6 +152,15 @@ ui <- function(req) {
           // Remove from pending list and set as current selection
           currentSelection = pendingSelection.vbCode;
           pendingSelections.splice(i, 1);
+        }
+      }
+
+      for (var j = pendingTableStates.length - 1; j >= 0; j--) {
+        var pendingState = pendingTableStates[j];
+        if (pendingState.tableId === tableId) {
+          if (applyTableState(pendingState.tableId, pendingState.state)) {
+            pendingTableStates.splice(j, 1);
+          }
         }
       }
     });
@@ -135,6 +224,32 @@ ui <- function(req) {
         }
       }
      });
+
+    $(document).on('stateSaveParams.dt', function(e, settings, data) {
+      if (!settings || !settings.sTableId || !data) {
+        return;
+      }
+
+      Shiny.setInputValue(settings.sTableId + '_state', {
+        start: data.start,
+        length: data.length,
+        order: data.order || [],
+        search: data.search ? data.search.search : ''
+      }, {priority: 'event'});
+    });
+
+    $(document).on('stateLoaded.dt', function(e, settings, data) {
+      if (!settings || !settings.sTableId || !data) {
+        return;
+      }
+
+      Shiny.setInputValue(settings.sTableId + '_state', {
+        start: data.start,
+        length: data.length,
+        order: data.order || [],
+        search: data.search ? data.search.search : ''
+      }, {priority: 'event'});
+    });
 
     Shiny.addCustomMessageHandler('updateDetailType', function(message) {
       const type = message.type;
