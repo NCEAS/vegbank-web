@@ -30,28 +30,38 @@ server <- function(input, output, session) {
   DEFAULT_MAP_ZOOM <- map_defaults$zoom
 
   # STATE INITIALIZATION ---------------------------------------------------------------------------
+  # Browser history and URL synchronization state management:
+  # - updating_from_query: prevents circular updates when restoring state from URL
+  # - history_initialized: ensures first navigation uses replace mode instead of push
+  # - state$current_tab: tracks active navigation tab
+  # - state$details_open: tracks whether detail overlay is visible
+  # - state$detail_type/selected_code: identify which entity detail is shown
+  # - state$map_center_lat/lng/zoom: current map view state
+  # - state$map_has_custom_state: flag indicating map has moved from defaults
+  # - state$table_states: reactiveValues storing pagination/sort/filter for each table
+  # - state$map_request: temporary holder for "show on map" requests during tab transitions
+
+  updating_from_query <- shiny::reactiveVal(FALSE)
+  history_initialized <- shiny::reactiveVal(FALSE)
 
   # Initialize map state with defaults
   map_state <- initialize_map_state()
 
   state <- list(
-    map_request = shiny::reactiveVal(NULL),
+    current_tab = shiny::reactiveVal("Overview"),
+    details_open = shiny::reactiveVal(FALSE),
     detail_type = shiny::reactiveVal(NULL),
     selected_code = shiny::reactiveVal(NULL),
-    details_open = shiny::reactiveVal(FALSE),
     map_center_lat = map_state$map_center_lat,
     map_center_lng = map_state$map_center_lng,
-    map_zoom = map_state$map_zoom
+    map_zoom = map_state$map_zoom,
+    map_has_custom_state = shiny::reactiveVal(FALSE),
+    map_request = shiny::reactiveVal(NULL),
+    table_states = shiny::reactiveValues()
   )
 
-  state$current_tab <- shiny::reactiveVal("Overview")
-
-  updating_from_query <- shiny::reactiveVal(FALSE)
-  history_initialized <- shiny::reactiveVal(FALSE)
-
-  state$map_has_custom_state <- shiny::reactiveVal(FALSE)
-  state$table_states <- shiny::reactiveValues()
-
+  # Table registry: maps tab names to table IDs and default page lengths
+  # Used to encode/decode table state in the URL query string
   table_registry <- list(
     plots = list(tab = "Plots", table_id = "plot_table", default_length = 100L),
     plants = list(tab = "Plants", table_id = "plant_table", default_length = 100L),
@@ -60,8 +70,14 @@ server <- function(input, output, session) {
     projects = list(tab = "Projects", table_id = "proj_table", default_length = 100L)
   )
 
+  # Reverse lookup: tab name -> table key
   tab_to_key <- setNames(names(table_registry), vapply(table_registry, `[[`, character(1), "tab"))
 
+  #' Get table key from tab name safely
+  #'
+  #' @param tab_name The name of the navigation tab
+  #' @return The table registry key, or NULL if tab has no table
+  #' @noRd
   get_table_key <- function(tab_name) {
     if (is.null(tab_name) || !nzchar(tab_name)) {
       return(NULL)
@@ -74,33 +90,34 @@ server <- function(input, output, session) {
     tab_to_key[[tab_name]]
   }
 
-  nearly_equal <- function(a, b, tol = 1e-6) {
-    if (is.null(a) || is.null(b)) {
-      return(FALSE)
+  # HELPER FUNCTIONS: Query Parameter Parsing & Formatting ----------------------------------------
+
+  #' Extract first element from query parameter array
+  #' @noRd
+  first_param <- function(value) {
+    if (is.null(value) || length(value) == 0) {
+      return(NULL)
     }
-    diff <- suppressWarnings(abs(as.numeric(a) - as.numeric(b)))
-    !is.na(diff) && diff <= tol
+    value[[1]]
   }
 
-  map_is_default <- function(lat, lng, zoom) {
-    nearly_equal(lat, DEFAULT_MAP_LAT) &&
-      nearly_equal(lng, DEFAULT_MAP_LNG) &&
-      nearly_equal(zoom, DEFAULT_MAP_ZOOM)
+  #' Check if query parameter is valid (non-null, non-empty)
+  #' @noRd
+  is_valid_param <- function(value) {
+    candidate <- first_param(value)
+    !is.null(candidate) && !is.na(candidate) && nzchar(candidate)
   }
 
-  update_map_custom_flag <- function(lat = state$map_center_lat(), lng = state$map_center_lng(), zoom = state$map_zoom()) {
-    state$map_has_custom_state(!map_is_default(lat, lng, zoom))
+  #' URL-encode query parameter value
+  #' @noRd
+  encode_query_value <- function(value) {
+    utils::URLencode(as.character(value), reserved = TRUE)
   }
 
-  format_coord <- function(value) {
-    sprintf("%.5f", as.numeric(value))
-  }
-
-  format_zoom <- function(value) {
-    formatted <- format(signif(as.numeric(value), digits = 6), trim = TRUE, scientific = FALSE)
-    sub("\\.0+$", "", formatted)
-  }
-
+  #' Parse numeric query parameter safely
+  #' @param value Query parameter value (may be NULL, NA, or empty)
+  #' @return Numeric value or NULL if invalid
+  #' @noRd
   parse_numeric_param <- function(value) {
     raw_value <- first_param(value)
     if (is.null(raw_value) || isTRUE(is.na(raw_value)) || identical(raw_value, "")) {
@@ -111,6 +128,51 @@ server <- function(input, output, session) {
     if (length(candidate) == 0 || isTRUE(is.na(candidate))) NULL else candidate
   }
 
+  #' Format coordinate for URL query string (5 decimal places)
+  #' @noRd
+  format_coord <- function(value) {
+    sprintf("%.5f", as.numeric(value))
+  }
+
+  #' Format zoom level for URL query string
+  #' @noRd
+  format_zoom <- function(value) {
+    formatted <- format(signif(as.numeric(value), digits = 6), trim = TRUE, scientific = FALSE)
+    sub("\\.0+$", "", formatted)
+  }
+
+  # HELPER FUNCTIONS: Map State Management --------------------------------------------------------
+
+  #' Compare numeric values with tolerance for floating point precision
+  #' @noRd
+  nearly_equal <- function(a, b, tol = 1e-6) {
+    if (is.null(a) || is.null(b)) {
+      return(FALSE)
+    }
+    diff <- suppressWarnings(abs(as.numeric(a) - as.numeric(b)))
+    !is.na(diff) && diff <= tol
+  }
+
+  #' Check if map state matches default values
+  #' @noRd
+  map_is_default <- function(lat, lng, zoom) {
+    nearly_equal(lat, DEFAULT_MAP_LAT) &&
+      nearly_equal(lng, DEFAULT_MAP_LNG) &&
+      nearly_equal(zoom, DEFAULT_MAP_ZOOM)
+  }
+
+  #' Update flag indicating whether map has custom state
+  #' @noRd
+  update_map_custom_flag <- function(lat = state$map_center_lat(), lng = state$map_center_lng(), zoom = state$map_zoom()) {
+    state$map_has_custom_state(!map_is_default(lat, lng, zoom))
+  }
+
+  # HELPER FUNCTIONS: Table State Management ------------------------------------------------------
+
+  #' Parse DataTables order entries from various formats
+  #' @param entries Order data from DataTables state (list, data.frame, or matrix)
+  #' @return List of order entries with column and direction, or NULL
+  #' @noRd
   parse_order_entries <- function(entries) {
     if (is.null(entries)) {
       return(NULL)
@@ -143,6 +205,10 @@ server <- function(input, output, session) {
     if (length(parsed) == 0) NULL else parsed
   }
 
+  #' Normalize and validate DataTables state object
+  #' @param raw_state Raw state object from DataTables
+  #' @return Sanitized state list with start, length, order, search
+  #' @noRd
   sanitize_table_state <- function(raw_state) {
     if (is.null(raw_state)) {
       return(NULL)
@@ -171,6 +237,10 @@ server <- function(input, output, session) {
     )
   }
 
+  #' Serialize table sort order for URL query string
+  #' @param order List of order entries from table state
+  #' @return Comma-separated string like "0:asc,1:desc"
+  #' @noRd
   serialize_order_for_query <- function(order) {
     if (is.null(order) || length(order) == 0) {
       return(NULL)
@@ -183,6 +253,10 @@ server <- function(input, output, session) {
     paste(parts, collapse = ",")
   }
 
+  #' Deserialize table sort order from URL query string
+  #' @param order_string Query parameter value like "0:asc,1:desc"
+  #' @return List of order entries with column and direction
+  #' @noRd
   deserialize_order_from_query <- function(order_string) {
     order_value <- first_param(order_string)
     if (is.null(order_value) || !nzchar(order_value)) {
@@ -211,6 +285,11 @@ server <- function(input, output, session) {
     if (length(parsed) == 0) NULL else parsed
   }
 
+  #' Extract table state from URL query parameters
+  #' @param key Table registry key (e.g., "plots")
+  #' @param params Parsed query string parameters
+  #' @return Table state list or NULL if no state present
+  #' @noRd
   extract_table_state_from_query <- function(key, params) {
     prefix <- key
     start <- parse_numeric_param(params[[paste0(prefix, "_start")]])
@@ -222,10 +301,10 @@ server <- function(input, output, session) {
       return(NULL)
     }
 
-  default_length <- table_registry[[key]]$default_length %||% 100
+    default_length <- table_registry[[key]]$default_length %||% 100
 
-  if (is.null(start)) start <- 0
-  if (is.null(length) || length <= 0) length <- default_length
+    if (is.null(start)) start <- 0
+    if (is.null(length) || length <= 0) length <- default_length
 
     list(
       start = as.integer(start),
@@ -235,6 +314,11 @@ server <- function(input, output, session) {
     )
   }
 
+  #' Build custom message for applying table state on client side
+  #' @param key Table registry key
+  #' @param state Sanitized table state
+  #' @return Message list for custom JS handler
+  #' @noRd
   table_state_message <- function(key, state) {
     table_id <- table_registry[[key]]$table_id
     if (is.null(table_id) || is.null(state)) {
@@ -260,6 +344,8 @@ server <- function(input, output, session) {
     )
   }
 
+  #' Check if table state matches default values (no pagination/sort/filter)
+  #' @noRd
   is_default_table_state <- function(key, state) {
     if (is.null(state)) {
       return(TRUE)
@@ -274,6 +360,8 @@ server <- function(input, output, session) {
     start_default && length_default && search_default && order_default
   }
 
+  #' Send table state to client-side JavaScript to restore view
+  #' @noRd
   send_table_state_to_client <- function(key, state) {
     message <- table_state_message(key, state)
     if (!is.null(message)) {
@@ -281,6 +369,10 @@ server <- function(input, output, session) {
     }
   }
 
+  #' Store table state and optionally update URL query string
+  #' @param key Table registry key
+  #' @param raw_state Raw state from DataTables
+  #' @noRd
   store_table_state <- function(key, raw_state) {
     sanitized <- sanitize_table_state(raw_state)
     if (is.null(sanitized)) {
@@ -312,23 +404,11 @@ server <- function(input, output, session) {
     }
   }
 
-  first_param <- function(value) {
-    if (is.null(value) || length(value) == 0) {
-      return(NULL)
-    }
-    value[[1]]
-  }
+  # CORE URL SYNCHRONIZATION FUNCTIONS ------------------------------------------------------------
 
-  is_valid_param <- function(value) {
-    candidate <- first_param(value)
-    !is.null(candidate) && !is.na(candidate) && nzchar(candidate)
-  }
-
-  encode_query_value <- function(value) {
-    utils::URLencode(as.character(value), reserved = TRUE)
-  }
-
-  # Read the browser query string and normalize null/NA cases to empty string
+  #' Get current browser query string safely
+  #' @return Query string (e.g., "?tab=Map&map_lat=40.5") or empty string
+  #' @noRd
   current_query_string <- function() {
     query <- session$clientData$url_search
     if (is.null(query) || length(query) == 0 || isTRUE(is.na(query)) || identical(query, "")) {
@@ -338,8 +418,18 @@ server <- function(input, output, session) {
     }
   }
 
-  # Update the browser history to reflect the active tab and detail view
-  update_app_query <- function(mode = c("push", "replace"), tab = NULL, detail_type = NULL, detail_code = NULL) {
+  #' Update the browser history to reflect current app state
+  #'
+  #' Encodes tab, detail view, map position, and table state into URL query string.
+  #' Uses "push" mode to add to history stack or "replace" to update current entry.
+  #'
+  #' @param mode "push" (add history entry) or "replace" (update current entry)
+  #' @param tab Tab name; if NULL, uses state$current_tab()
+  #' @param detail_type Entity type for detail overlay (e.g., "plot-observation")
+  #' @param detail_code Entity code for detail overlay
+  #' @noRd
+  update_app_query <- function(mode = c("push", "replace"),
+                               tab = NULL, detail_type = NULL, detail_code = NULL) {
     mode <- match.arg(mode)
 
     if (is.null(tab)) {
@@ -382,7 +472,7 @@ server <- function(input, output, session) {
       params$map_zoom <- format_zoom(map_zoom)
     }
 
-  table_key <- get_table_key(tab)
+    table_key <- get_table_key(tab)
     if (!is.null(table_key)) {
       table_state <- state$table_states[[table_key]]
       if (!is.null(table_state)) {
@@ -422,7 +512,13 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  # Open the requested detail overlay and optionally capture the change in history
+  #' Open entity detail overlay with optional history tracking
+  #'
+  #' @param detail_type Entity type (e.g., "plot-observation", "plant-concept")
+  #' @param vb_code VegBank entity code
+  #' @param push_history Whether to update URL and add history entry
+  #' @param history_mode "push" or "replace" for history API
+  #' @noRd
   open_detail <- function(detail_type, vb_code, push_history = TRUE, history_mode = "push") {
     # Ensure we have an up-to-date record of the current tab
     state$current_tab(input$page %||% state$current_tab())
@@ -455,7 +551,12 @@ server <- function(input, output, session) {
     invisible(success)
   }
 
-  # Close the detail overlay and clear browser URL parameters when needed
+  #' Close entity detail overlay with optional history tracking
+  #'
+  #' @param push_history Whether to update URL and add history entry
+  #' @param history_mode "push" or "replace" for history API
+  #' @param hide_overlay Whether to hide the overlay UI element
+  #' @noRd
   close_detail <- function(push_history = TRUE, history_mode = "push", hide_overlay = TRUE) {
     if (!isTRUE(state$details_open())) {
       state$detail_type(NULL)
@@ -480,7 +581,13 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  # Reactive accessor for the current query parameters so observers can react
+  #' Reactive accessor for current URL query parameters
+  #'
+  #' Parses the browser query string into a named list. Used by observers
+  #' to detect navigation events and restore state from URL.
+  #'
+  #' @return Named list of query parameters
+  #' @noRd
   current_query <- shiny::reactive({
     query_string <- current_query_string()
     if (identical(query_string, "")) {
@@ -542,148 +649,160 @@ server <- function(input, output, session) {
     )
   })
 
-  # Keep the app state in sync when the user navigates via browser history
-  shiny::observeEvent(current_query(), {
-    params <- current_query()
+  # URL/HISTORY SYNCHRONIZATION OBSERVER -----------------------------------------------------------
+  # This observer runs whenever the browser URL changes (back/forward, refresh, direct link).
+  # It parses query parameters and restores tab, detail overlay, map view, and table state.
+  # The updating_from_query flag prevents circular updates when we programmatically change the URL.
 
-    updating_from_query(TRUE)
+  shiny::observeEvent(current_query(),
+    {
+      params <- current_query()
 
-    requested_tab <- first_param(params$tab)
-    if (!is_valid_param(requested_tab)) {
-      requested_tab <- "Overview"
-    }
+      updating_from_query(TRUE)
 
-    if (!identical(state$current_tab(), requested_tab)) {
-      state$current_tab(requested_tab)
-      shiny::updateNavbarPage(session, "page", selected = requested_tab)
-    } else {
-      state$current_tab(requested_tab)
-    }
-
-    target_type <- NULL
-    target_code <- NULL
-
-    detail_valid <- is_valid_param(params$detail) && is_valid_param(params$code)
-
-    if (detail_valid) {
-      target_type <- first_param(params$detail)
-      target_code <- first_param(params$code)
-
-      needs_open <- !identical(state$detail_type(), target_type) ||
-        !identical(state$selected_code(), target_code) ||
-        !isTRUE(state$details_open())
-
-      if (needs_open) {
-        open_detail(target_type, target_code, push_history = FALSE)
-      }
-    } else if (isTRUE(state$details_open())) {
-      close_detail(push_history = FALSE, hide_overlay = TRUE)
-    } else if (!is.null(params$detail) || !is.null(params$code)) {
-      update_app_query(
-        mode = "replace",
-        tab = requested_tab,
-        detail_type = NULL,
-        detail_code = NULL
-      )
-    }
-
-    map_lat_param <- params$map_lat
-    map_lng_param <- params$map_lng
-    map_zoom_param <- params$map_zoom
-
-    map_lat <- parse_numeric_param(map_lat_param)
-    map_lng <- parse_numeric_param(map_lng_param)
-    map_zoom <- parse_numeric_param(map_zoom_param)
-
-    map_params_present <- !is.null(map_lat_param) || !is.null(map_lng_param) || !is.null(map_zoom_param)
-    if (!is.null(map_lat) && !is.null(map_lng)) {
-      if (!nearly_equal(state$map_center_lat(), map_lat, tol = 1e-5)) {
-        state$map_center_lat(map_lat)
-      }
-      if (!nearly_equal(state$map_center_lng(), map_lng, tol = 1e-5)) {
-        state$map_center_lng(map_lng)
+      # Parse and apply requested tab
+      requested_tab <- first_param(params$tab)
+      if (!is_valid_param(requested_tab)) {
+        requested_tab <- "Overview"
       }
 
-      if (!is.null(map_zoom) && !nearly_equal(state$map_zoom(), map_zoom, tol = 1e-4)) {
-        state$map_zoom(map_zoom)
+      if (!identical(state$current_tab(), requested_tab)) {
+        state$current_tab(requested_tab)
+        shiny::updateNavbarPage(session, "page", selected = requested_tab)
+      } else {
+        state$current_tab(requested_tab)
       }
 
-      target_zoom <- if (!is.null(map_zoom)) map_zoom else state$map_zoom()
-      update_map_custom_flag(map_lat, map_lng, target_zoom)
+      # Parse and apply detail overlay state
+      target_type <- NULL
+      target_code <- NULL
 
-      if (identical(requested_tab, "Map")) {
-        leaflet::leafletProxy("map", session) |>
-          leaflet::setView(lng = map_lng, lat = map_lat, zoom = target_zoom)
+      detail_valid <- is_valid_param(params$detail) && is_valid_param(params$code)
+
+      if (detail_valid) {
+        target_type <- first_param(params$detail)
+        target_code <- first_param(params$code)
+
+        needs_open <- !identical(state$detail_type(), target_type) ||
+          !identical(state$selected_code(), target_code) ||
+          !isTRUE(state$details_open())
+
+        if (needs_open) {
+          open_detail(target_type, target_code, push_history = FALSE)
+        }
+      } else if (isTRUE(state$details_open())) {
+        close_detail(push_history = FALSE, hide_overlay = TRUE)
+      } else if (!is.null(params$detail) || !is.null(params$code)) {
+        update_app_query(
+          mode = "replace",
+          tab = requested_tab,
+          detail_type = NULL,
+          detail_code = NULL
+        )
       }
-    } else if (map_params_present) {
-      state$map_center_lat(DEFAULT_MAP_LAT)
-      state$map_center_lng(DEFAULT_MAP_LNG)
-      state$map_zoom(DEFAULT_MAP_ZOOM)
-      update_map_custom_flag(DEFAULT_MAP_LAT, DEFAULT_MAP_LNG, DEFAULT_MAP_ZOOM)
 
-      update_app_query(
-        mode = "replace",
-        tab = requested_tab,
-        detail_type = if (detail_valid) target_type else NULL,
-        detail_code = if (detail_valid) target_code else NULL
-      )
-    } else if (identical(requested_tab, "Map")) {
-      if (!map_params_present && !map_is_default(state$map_center_lat(), state$map_center_lng(), state$map_zoom())) {
+      # Parse and apply map view state
+      map_lat_param <- params$map_lat
+      map_lng_param <- params$map_lng
+      map_zoom_param <- params$map_zoom
+
+      map_lat <- parse_numeric_param(map_lat_param)
+      map_lng <- parse_numeric_param(map_lng_param)
+      map_zoom <- parse_numeric_param(map_zoom_param)
+
+      map_params_present <- !is.null(map_lat_param) || !is.null(map_lng_param) || !is.null(map_zoom_param)
+      if (!is.null(map_lat) && !is.null(map_lng)) {
+        if (!nearly_equal(state$map_center_lat(), map_lat, tol = 1e-5)) {
+          state$map_center_lat(map_lat)
+        }
+        if (!nearly_equal(state$map_center_lng(), map_lng, tol = 1e-5)) {
+          state$map_center_lng(map_lng)
+        }
+
+        if (!is.null(map_zoom) && !nearly_equal(state$map_zoom(), map_zoom, tol = 1e-4)) {
+          state$map_zoom(map_zoom)
+        }
+
+        target_zoom <- if (!is.null(map_zoom)) map_zoom else state$map_zoom()
+        update_map_custom_flag(map_lat, map_lng, target_zoom)
+
+        if (identical(requested_tab, "Map")) {
+          leaflet::leafletProxy("map", session) |>
+            leaflet::setView(lng = map_lng, lat = map_lat, zoom = target_zoom)
+        }
+      } else if (map_params_present) {
         state$map_center_lat(DEFAULT_MAP_LAT)
         state$map_center_lng(DEFAULT_MAP_LNG)
         state$map_zoom(DEFAULT_MAP_ZOOM)
-      }
+        update_map_custom_flag(DEFAULT_MAP_LAT, DEFAULT_MAP_LNG, DEFAULT_MAP_ZOOM)
 
-      update_map_custom_flag()
-
-      leaflet::leafletProxy("map", session) |>
-        leaflet::setView(
-          lng = state$map_center_lng(),
-          lat = state$map_center_lat(),
-          zoom = state$map_zoom()
+        update_app_query(
+          mode = "replace",
+          tab = requested_tab,
+          detail_type = if (detail_valid) target_type else NULL,
+          detail_code = if (detail_valid) target_code else NULL
         )
-    }
-
-  table_key <- get_table_key(requested_tab)
-    if (!is.null(table_key)) {
-      table_params_present <- any(vapply(
-        c("_start", "_length", "_order", "_search"),
-        function(suffix) {
-          !is.null(params[[paste0(table_key, suffix)]])
-        },
-        logical(1)
-      ))
-
-      table_state_from_query <- extract_table_state_from_query(table_key, params)
-
-      if (is.null(table_state_from_query) || is_default_table_state(table_key, table_state_from_query)) {
-        state$table_states[[table_key]] <- NULL
-        if (table_params_present) {
-          update_app_query(
-            mode = "replace",
-            tab = requested_tab,
-            detail_type = if (detail_valid) target_type else NULL,
-            detail_code = if (detail_valid) target_code else NULL
-          )
+      } else if (identical(requested_tab, "Map")) {
+        if (!map_params_present && !map_is_default(state$map_center_lat(), state$map_center_lng(), state$map_zoom())) {
+          state$map_center_lat(DEFAULT_MAP_LAT)
+          state$map_center_lng(DEFAULT_MAP_LNG)
+          state$map_zoom(DEFAULT_MAP_ZOOM)
         }
-      } else {
-        state$table_states[[table_key]] <- table_state_from_query
-        send_table_state_to_client(table_key, table_state_from_query)
+
+        update_map_custom_flag()
+
+        leaflet::leafletProxy("map", session) |>
+          leaflet::setView(
+            lng = state$map_center_lng(),
+            lat = state$map_center_lat(),
+            zoom = state$map_zoom()
+          )
       }
-    }
 
-    if (!is_valid_param(params$tab)) {
-      update_app_query(
-        mode = "replace",
-        tab = requested_tab,
-        detail_type = if (detail_valid) target_type else NULL,
-        detail_code = if (detail_valid) target_code else NULL
-      )
-    }
+      # Parse and apply table state (pagination, sorting, filtering)
+      table_key <- get_table_key(requested_tab)
+      if (!is.null(table_key)) {
+        table_params_present <- any(vapply(
+          c("_start", "_length", "_order", "_search"),
+          function(suffix) {
+            !is.null(params[[paste0(table_key, suffix)]])
+          },
+          logical(1)
+        ))
 
-    updating_from_query(FALSE)
-    history_initialized(TRUE)
-  }, ignoreNULL = FALSE)
+        table_state_from_query <- extract_table_state_from_query(table_key, params)
+
+        if (is.null(table_state_from_query) || is_default_table_state(table_key, table_state_from_query)) {
+          state$table_states[[table_key]] <- NULL
+          if (table_params_present) {
+            update_app_query(
+              mode = "replace",
+              tab = requested_tab,
+              detail_type = if (detail_valid) target_type else NULL,
+              detail_code = if (detail_valid) target_code else NULL
+            )
+          }
+        } else {
+          state$table_states[[table_key]] <- table_state_from_query
+          send_table_state_to_client(table_key, table_state_from_query)
+        }
+      }
+
+      # Ensure tab parameter is present in URL
+      if (!is_valid_param(params$tab)) {
+        update_app_query(
+          mode = "replace",
+          tab = requested_tab,
+          detail_type = if (detail_valid) target_type else NULL,
+          detail_code = if (detail_valid) target_code else NULL
+        )
+      }
+
+      updating_from_query(FALSE)
+      history_initialized(TRUE)
+    },
+    ignoreNULL = FALSE
+  )
 
   # RENDER UI ELEMENTS --------------------------------------------------------------------------------
 
@@ -812,9 +931,12 @@ server <- function(input, output, session) {
       table_key <- key
       input_id <- paste0(table_registry[[table_key]]$table_id, "_state")
 
-      shiny::observeEvent(input[[input_id]], {
-        store_table_state(table_key, input[[input_id]])
-      }, ignoreNULL = TRUE)
+      shiny::observeEvent(input[[input_id]],
+        {
+          store_table_state(table_key, input[[input_id]])
+        },
+        ignoreNULL = TRUE
+      )
     })
   }
 
@@ -925,7 +1047,6 @@ server <- function(input, output, session) {
     vb_code <- input$ref_link_click
     open_detail("reference", vb_code)
   })
-
 }
 
 
