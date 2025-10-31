@@ -838,14 +838,27 @@ server <- function(input, output, session) {
         return()
       }
 
-      # Store the map data for the observer
-      state$map_request(list(lat = lat, lng = lng, code = code))
+      target_zoom <- map_defaults$detail_zoom %||% DEFAULT_MAP_ZOOM
+
+      state$map_center_lat(lat)
+      state$map_center_lng(lng)
+      state$map_zoom(target_zoom)
+      update_map_custom_flag(lat, lng, target_zoom)
+
+      state$map_request(list(lat = lat, lng = lng, code = code, zoom = target_zoom))
+
+      state$current_tab("Map")
+
+      mode <- if (isTRUE(history_initialized())) "push" else "replace"
+      update_app_query(
+        mode = mode,
+        tab = "Map",
+        detail_type = if (isTRUE(state$details_open())) state$detail_type() else NULL,
+        detail_code = if (isTRUE(state$details_open())) state$selected_code() else NULL
+      )
       shiny::updateNavbarPage(session, "page", selected = "Map")
 
-      # Create a self-destroying observer (necessary to avoid updating
-      # the map before we're on the map page)
       map_update_observer <- shiny::observe({
-        # Only proceed if we're on the map page
         shiny::req(input$page == "Map")
 
         map_req <- state$map_request()
