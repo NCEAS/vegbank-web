@@ -30,19 +30,7 @@ server <- function(input, output, session) {
   DEFAULT_MAP_ZOOM <- map_defaults$zoom
 
   # STATE INITIALIZATION ---------------------------------------------------------------------------
-  # Browser history and URL synchronization state management:
-  # - updating_from_query: prevents circular updates when restoring state from URL
-  # - history_initialized: ensures first navigation uses replace mode instead of push
-  # - state$current_tab: tracks active navigation tab
-  # - state$details_open: tracks whether detail overlay is visible
-  # - state$detail_type/selected_code: identify which entity detail is shown
-  # - state$map_center_lat/lng/zoom: current map view state
-  # - state$map_has_custom_state: flag indicating map has moved from defaults
-  # - state$table_states: reactiveValues storing pagination/sort/filter for each table
-  # - state$map_request: temporary holder for "show on map" requests during tab transitions
-
-  updating_from_query <- shiny::reactiveVal(FALSE)
-  history_initialized <- shiny::reactiveVal(FALSE)
+  # Browser history and URL synchronization state management
 
   # Initialize map state with defaults
   map_state <- initialize_map_state()
@@ -70,248 +58,23 @@ server <- function(input, output, session) {
     projects = list(tab = "Projects", table_id = "proj_table", default_length = 100L)
   )
 
-  # Reverse lookup: tab name -> table key
-  tab_to_key <- setNames(names(table_registry), vapply(table_registry, `[[`, character(1), "tab"))
+  # Initialize URL State Manager with defaults and table registry
+  url_manager <- URLStateManager$new(
+    session = session,
+    defaults = list(
+      map_lat = DEFAULT_MAP_LAT,
+      map_lng = DEFAULT_MAP_LNG,
+      map_zoom = DEFAULT_MAP_ZOOM
+    ),
+    table_registry = table_registry
+  )
 
-  #' Get table key from tab name safely
-  #'
-  #' @param tab_name The name of the navigation tab
-  #' @return The table registry key, or NULL if tab has no table
-  #' @noRd
-  get_table_key <- function(tab_name) {
-    if (is.null(tab_name) || !nzchar(tab_name)) {
-      return(NULL)
-    }
-
-    if (!tab_name %in% names(tab_to_key)) {
-      return(NULL)
-    }
-
-    tab_to_key[[tab_name]]
-  }
-
-  # HELPER FUNCTIONS: Query Parameter Parsing & Formatting ----------------------------------------
-
-  #' Extract first element from query parameter array
-  #' @noRd
-  first_param <- function(value) {
-    if (is.null(value) || length(value) == 0) {
-      return(NULL)
-    }
-    value[[1]]
-  }
-
-  #' Check if query parameter is valid (non-null, non-empty)
-  #' @noRd
-  is_valid_param <- function(value) {
-    candidate <- first_param(value)
-    !is.null(candidate) && !is.na(candidate) && nzchar(candidate)
-  }
-
-  #' URL-encode query parameter value
-  #' @noRd
-  encode_query_value <- function(value) {
-    utils::URLencode(as.character(value), reserved = TRUE)
-  }
-
-  #' Parse numeric query parameter safely
-  #' @param value Query parameter value (may be NULL, NA, or empty)
-  #' @return Numeric value or NULL if invalid
-  #' @noRd
-  parse_numeric_param <- function(value) {
-    raw_value <- first_param(value)
-    if (is.null(raw_value) || isTRUE(is.na(raw_value)) || identical(raw_value, "")) {
-      return(NULL)
-    }
-
-    candidate <- suppressWarnings(as.numeric(raw_value))
-    if (length(candidate) == 0 || isTRUE(is.na(candidate))) NULL else candidate
-  }
-
-  #' Format coordinate for URL query string (5 decimal places)
-  #' @noRd
-  format_coord <- function(value) {
-    sprintf("%.5f", as.numeric(value))
-  }
-
-  #' Format zoom level for URL query string
-  #' @noRd
-  format_zoom <- function(value) {
-    formatted <- format(signif(as.numeric(value), digits = 6), trim = TRUE, scientific = FALSE)
-    sub("\\.0+$", "", formatted)
-  }
-
-  # HELPER FUNCTIONS: Map State Management --------------------------------------------------------
-
-  #' Compare numeric values with tolerance for floating point precision
-  #' @noRd
-  nearly_equal <- function(a, b, tol = 1e-6) {
-    if (is.null(a) || is.null(b)) {
-      return(FALSE)
-    }
-    diff <- suppressWarnings(abs(as.numeric(a) - as.numeric(b)))
-    !is.na(diff) && diff <= tol
-  }
-
-  #' Check if map state matches default values
-  #' @noRd
-  map_is_default <- function(lat, lng, zoom) {
-    nearly_equal(lat, DEFAULT_MAP_LAT) &&
-      nearly_equal(lng, DEFAULT_MAP_LNG) &&
-      nearly_equal(zoom, DEFAULT_MAP_ZOOM)
-  }
+  # HELPER FUNCTIONS -------------------------------------------------------------------------------
 
   #' Update flag indicating whether map has custom state
   #' @noRd
   update_map_custom_flag <- function(lat = state$map_center_lat(), lng = state$map_center_lng(), zoom = state$map_zoom()) {
-    state$map_has_custom_state(!map_is_default(lat, lng, zoom))
-  }
-
-  # HELPER FUNCTIONS: Table State Management ------------------------------------------------------
-
-  #' Parse DataTables order entries from various formats
-  #' @param entries Order data from DataTables state (list, data.frame, or matrix)
-  #' @return List of order entries with column and direction, or NULL
-  #' @noRd
-  parse_order_entries <- function(entries) {
-    if (is.null(entries)) {
-      return(NULL)
-    }
-
-    if (is.data.frame(entries) || is.matrix(entries)) {
-      entries <- split(entries, seq_len(nrow(entries)))
-    }
-
-    if (!is.list(entries)) {
-      return(NULL)
-    }
-
-    parsed <- lapply(entries, function(item) {
-      if (is.null(item)) {
-        return(NULL)
-      }
-
-      column <- suppressWarnings(as.integer(item[[1]]))
-      direction <- as.character(item[[2]] %||% "")
-
-      if (is.na(column) || !nzchar(direction)) {
-        return(NULL)
-      }
-
-      list(column = column, dir = direction)
-    })
-
-    parsed[vapply(parsed, is.null, logical(1))] <- NULL
-    if (length(parsed) == 0) NULL else parsed
-  }
-
-  #' Normalize and validate DataTables state object
-  #' @param raw_state Raw state object from DataTables
-  #' @return Sanitized state list with start, length, order, search
-  #' @noRd
-  sanitize_table_state <- function(raw_state) {
-    if (is.null(raw_state)) {
-      return(NULL)
-    }
-
-    start <- suppressWarnings(as.integer(raw_state$start %||% raw_state[["start"]]))
-    length <- suppressWarnings(as.integer(raw_state$length %||% raw_state[["length"]]))
-    search <- raw_state$search %||% raw_state[["search"]] %||% ""
-
-    if (!is.null(search) && is.list(search)) {
-      search <- search$search %||% search[["search"]] %||% ""
-    }
-
-    order_entries <- raw_state$order %||% raw_state[["order"]]
-    order <- parse_order_entries(order_entries)
-
-    if (is.na(start)) start <- 0L
-    if (is.na(length) || length <= 0) length <- 100L
-    if (is.null(search)) search <- ""
-
-    list(
-      start = start,
-      length = length,
-      order = order,
-      search = as.character(search)
-    )
-  }
-
-  #' Serialize table sort order for URL query string
-  #' @param order List of order entries from table state
-  #' @return Comma-separated string like "0:asc,1:desc"
-  #' @noRd
-  serialize_order_for_query <- function(order) {
-    if (is.null(order) || length(order) == 0) {
-      return(NULL)
-    }
-
-    parts <- vapply(order, function(item) {
-      paste(item$column, item$dir, sep = ":")
-    }, character(1))
-
-    paste(parts, collapse = ",")
-  }
-
-  #' Deserialize table sort order from URL query string
-  #' @param order_string Query parameter value like "0:asc,1:desc"
-  #' @return List of order entries with column and direction
-  #' @noRd
-  deserialize_order_from_query <- function(order_string) {
-    order_value <- first_param(order_string)
-    if (is.null(order_value) || !nzchar(order_value)) {
-      return(NULL)
-    }
-
-    order_tokens <- strsplit(order_value, ",", fixed = TRUE)[[1]]
-    if (length(order_tokens) == 0 || identical(order_tokens, "")) {
-      return(NULL)
-    }
-
-    parsed <- lapply(order_tokens, function(token) {
-      parts <- strsplit(token, ":", fixed = TRUE)[[1]]
-      if (length(parts) != 2) {
-        return(NULL)
-      }
-      column <- suppressWarnings(as.integer(parts[1]))
-      direction <- parts[2]
-      if (is.na(column) || !nzchar(direction)) {
-        return(NULL)
-      }
-      list(column = column, dir = direction)
-    })
-
-    parsed[vapply(parsed, is.null, logical(1))] <- NULL
-    if (length(parsed) == 0) NULL else parsed
-  }
-
-  #' Extract table state from URL query parameters
-  #' @param key Table registry key (e.g., "plots")
-  #' @param params Parsed query string parameters
-  #' @return Table state list or NULL if no state present
-  #' @noRd
-  extract_table_state_from_query <- function(key, params) {
-    prefix <- key
-    start <- parse_numeric_param(params[[paste0(prefix, "_start")]])
-    length <- parse_numeric_param(params[[paste0(prefix, "_length")]])
-    order <- deserialize_order_from_query(params[[paste0(prefix, "_order")]])
-    search <- first_param(params[[paste0(prefix, "_search")]]) %||% ""
-
-    if (is.null(start) && is.null(length) && is.null(order) && !nzchar(search)) {
-      return(NULL)
-    }
-
-    default_length <- table_registry[[key]]$default_length %||% 100
-
-    if (is.null(start)) start <- 0
-    if (is.null(length) || length <= 0) length <- default_length
-
-    list(
-      start = as.integer(start),
-      length = as.integer(length),
-      order = order,
-      search = as.character(search)
-    )
+    state$map_has_custom_state(!url_manager$is_map_default(lat, lng, zoom))
   }
 
   #' Build custom message for applying table state on client side
@@ -344,22 +107,6 @@ server <- function(input, output, session) {
     )
   }
 
-  #' Check if table state matches default values (no pagination/sort/filter)
-  #' @noRd
-  is_default_table_state <- function(key, state) {
-    if (is.null(state)) {
-      return(TRUE)
-    }
-
-    default_length <- table_registry[[key]]$default_length %||% 100L
-    start_default <- is.null(state$start) || state$start <= 0
-    length_default <- is.null(state$length) || identical(as.integer(state$length), as.integer(default_length))
-    search_default <- is.null(state$search) || identical(state$search, "")
-    order_default <- is.null(state$order) || length(state$order) == 0
-
-    start_default && length_default && search_default && order_default
-  }
-
   #' Send table state to client-side JavaScript to restore view
   #' @noRd
   send_table_state_to_client <- function(key, state) {
@@ -374,18 +121,18 @@ server <- function(input, output, session) {
   #' @param raw_state Raw state from DataTables
   #' @noRd
   store_table_state <- function(key, raw_state) {
-    sanitized <- sanitize_table_state(raw_state)
+    sanitized <- url_manager$sanitize_table_state(raw_state)
     if (is.null(sanitized)) {
       return()
     }
 
     tab_for_key <- table_registry[[key]]$tab
 
-    if (is_default_table_state(key, sanitized)) {
+    if (url_manager$is_default_table_state(key, sanitized)) {
       if (!is.null(state$table_states[[key]])) {
         state$table_states[[key]] <- NULL
 
-        if (!isTRUE(updating_from_query()) && identical(tab_for_key, state$current_tab())) {
+        if (!url_manager$is_updating() && identical(tab_for_key, state$current_tab())) {
           update_app_query(mode = "replace")
         }
       }
@@ -399,24 +146,12 @@ server <- function(input, output, session) {
 
     state$table_states[[key]] <- sanitized
 
-    if (!isTRUE(updating_from_query()) && identical(tab_for_key, state$current_tab())) {
+    if (!url_manager$is_updating() && identical(tab_for_key, state$current_tab())) {
       update_app_query(mode = "replace")
     }
   }
 
   # CORE URL SYNCHRONIZATION FUNCTIONS ------------------------------------------------------------
-
-  #' Get current browser query string safely
-  #' @return Query string (e.g., "?tab=Map&map_lat=40.5") or empty string
-  #' @noRd
-  current_query_string <- function() {
-    query <- session$clientData$url_search
-    if (is.null(query) || length(query) == 0 || isTRUE(is.na(query)) || identical(query, "")) {
-      ""
-    } else {
-      query
-    }
-  }
 
   #' Update the browser history to reflect current app state
   #'
@@ -436,10 +171,6 @@ server <- function(input, output, session) {
       tab <- state$current_tab()
     }
 
-    if (is.null(tab) || !nzchar(tab)) {
-      tab <- "Overview"
-    }
-
     if (is.null(detail_type) || is.null(detail_code)) {
       if (isTRUE(state$details_open())) {
         detail_type <- state$detail_type()
@@ -450,66 +181,19 @@ server <- function(input, output, session) {
       }
     }
 
-    params <- list()
-    if (!is.null(tab) && nzchar(tab)) {
-      params$tab <- tab
-    }
+    # Build query string using URL manager
+    target_query <- url_manager$build_query_string(
+      tab = tab,
+      detail_type = detail_type,
+      detail_code = detail_code,
+      map_lat = state$map_center_lat(),
+      map_lng = state$map_center_lng(),
+      map_zoom = state$map_zoom(),
+      map_has_custom_state = state$map_has_custom_state(),
+      table_states = shiny::reactiveValuesToList(state$table_states)
+    )
 
-    if (!is.null(detail_type) && !is.null(detail_code) && nzchar(detail_type) && nzchar(detail_code)) {
-      params$detail <- detail_type
-      params$code <- detail_code
-    }
-
-    include_map_params <- identical(tab, "Map") || isTRUE(state$map_has_custom_state())
-
-    map_lat <- state$map_center_lat()
-    map_lng <- state$map_center_lng()
-    map_zoom <- state$map_zoom()
-
-    if (include_map_params && !anyNA(c(map_lat, map_lng, map_zoom))) {
-      params$map_lat <- format_coord(map_lat)
-      params$map_lng <- format_coord(map_lng)
-      params$map_zoom <- format_zoom(map_zoom)
-    }
-
-    table_key <- get_table_key(tab)
-    if (!is.null(table_key)) {
-      table_state <- state$table_states[[table_key]]
-      if (!is.null(table_state)) {
-        params[[paste0(table_key, "_start")]] <- as.character(table_state$start)
-        params[[paste0(table_key, "_length")]] <- as.character(table_state$length)
-
-        order_string <- serialize_order_for_query(table_state$order)
-        if (!is.null(order_string)) {
-          params[[paste0(table_key, "_order")]] <- order_string
-        }
-
-        if (!is.null(table_state$search) && nzchar(table_state$search)) {
-          params[[paste0(table_key, "_search")]] <- table_state$search
-        }
-      }
-    }
-
-    target_query <- if (length(params) > 0) {
-      paste0(
-        "?",
-        paste(
-          names(params),
-          vapply(params, encode_query_value, character(1)),
-          sep = "=",
-          collapse = "&"
-        )
-      )
-    } else {
-      ""
-    }
-
-    if (identical(target_query, current_query_string())) {
-      return(invisible(FALSE))
-    }
-
-    shiny::updateQueryString(target_query, mode = mode, session = session)
-    invisible(TRUE)
+    url_manager$update_query_string(target_query, mode = mode)
   }
 
   #' Open entity detail overlay with optional history tracking
@@ -589,12 +273,7 @@ server <- function(input, output, session) {
   #' @return Named list of query parameters
   #' @noRd
   current_query <- shiny::reactive({
-    query_string <- current_query_string()
-    if (identical(query_string, "")) {
-      list()
-    } else {
-      shiny::parseQueryString(query_string)
-    }
+    url_manager$parse_query_string()
   })
 
 
@@ -652,17 +331,17 @@ server <- function(input, output, session) {
   # URL/HISTORY SYNCHRONIZATION OBSERVER -----------------------------------------------------------
   # This observer runs whenever the browser URL changes (back/forward, refresh, direct link).
   # It parses query parameters and restores tab, detail overlay, map view, and table state.
-  # The updating_from_query flag prevents circular updates when we programmatically change the URL.
+  # The URL manager's updating flag prevents circular updates when we programmatically change the URL.
 
   shiny::observeEvent(current_query(),
     {
       params <- current_query()
 
-      updating_from_query(TRUE)
+      url_manager$set_updating(TRUE)
 
       # Parse and apply requested tab
-      requested_tab <- first_param(params$tab)
-      if (!is_valid_param(requested_tab)) {
+      requested_tab <- url_manager$first_param(params$tab)
+      if (!url_manager$is_valid_param(requested_tab)) {
         requested_tab <- "Overview"
       }
 
@@ -677,11 +356,11 @@ server <- function(input, output, session) {
       target_type <- NULL
       target_code <- NULL
 
-      detail_valid <- is_valid_param(params$detail) && is_valid_param(params$code)
+      detail_valid <- url_manager$is_valid_param(params$detail) && url_manager$is_valid_param(params$code)
 
       if (detail_valid) {
-        target_type <- first_param(params$detail)
-        target_code <- first_param(params$code)
+        target_type <- url_manager$first_param(params$detail)
+        target_code <- url_manager$first_param(params$code)
 
         needs_open <- !identical(state$detail_type(), target_type) ||
           !identical(state$selected_code(), target_code) ||
@@ -706,20 +385,20 @@ server <- function(input, output, session) {
       map_lng_param <- params$map_lng
       map_zoom_param <- params$map_zoom
 
-      map_lat <- parse_numeric_param(map_lat_param)
-      map_lng <- parse_numeric_param(map_lng_param)
-      map_zoom <- parse_numeric_param(map_zoom_param)
+      map_lat <- url_manager$parse_numeric_param(map_lat_param)
+      map_lng <- url_manager$parse_numeric_param(map_lng_param)
+      map_zoom <- url_manager$parse_numeric_param(map_zoom_param)
 
       map_params_present <- !is.null(map_lat_param) || !is.null(map_lng_param) || !is.null(map_zoom_param)
       if (!is.null(map_lat) && !is.null(map_lng)) {
-        if (!nearly_equal(state$map_center_lat(), map_lat, tol = 1e-5)) {
+        if (!url_manager$nearly_equal(state$map_center_lat(), map_lat, tol = 1e-5)) {
           state$map_center_lat(map_lat)
         }
-        if (!nearly_equal(state$map_center_lng(), map_lng, tol = 1e-5)) {
+        if (!url_manager$nearly_equal(state$map_center_lng(), map_lng, tol = 1e-5)) {
           state$map_center_lng(map_lng)
         }
 
-        if (!is.null(map_zoom) && !nearly_equal(state$map_zoom(), map_zoom, tol = 1e-4)) {
+        if (!is.null(map_zoom) && !url_manager$nearly_equal(state$map_zoom(), map_zoom, tol = 1e-4)) {
           state$map_zoom(map_zoom)
         }
 
@@ -743,7 +422,7 @@ server <- function(input, output, session) {
           detail_code = if (detail_valid) target_code else NULL
         )
       } else if (identical(requested_tab, "Map")) {
-        if (!map_params_present && !map_is_default(state$map_center_lat(), state$map_center_lng(), state$map_zoom())) {
+        if (!map_params_present && !url_manager$is_map_default(state$map_center_lat(), state$map_center_lng(), state$map_zoom())) {
           state$map_center_lat(DEFAULT_MAP_LAT)
           state$map_center_lng(DEFAULT_MAP_LNG)
           state$map_zoom(DEFAULT_MAP_ZOOM)
@@ -760,7 +439,7 @@ server <- function(input, output, session) {
       }
 
       # Parse and apply table state (pagination, sorting, filtering)
-      table_key <- get_table_key(requested_tab)
+      table_key <- url_manager$get_table_key(requested_tab)
       if (!is.null(table_key)) {
         table_params_present <- any(vapply(
           c("_start", "_length", "_order", "_search"),
@@ -770,9 +449,9 @@ server <- function(input, output, session) {
           logical(1)
         ))
 
-        table_state_from_query <- extract_table_state_from_query(table_key, params)
+        table_state_from_query <- url_manager$extract_table_state_from_query(table_key, params)
 
-        if (is.null(table_state_from_query) || is_default_table_state(table_key, table_state_from_query)) {
+        if (is.null(table_state_from_query) || url_manager$is_default_table_state(table_key, table_state_from_query)) {
           state$table_states[[table_key]] <- NULL
           if (table_params_present) {
             update_app_query(
@@ -789,7 +468,7 @@ server <- function(input, output, session) {
       }
 
       # Ensure tab parameter is present in URL
-      if (!is_valid_param(params$tab)) {
+      if (!url_manager$is_valid_param(params$tab)) {
         update_app_query(
           mode = "replace",
           tab = requested_tab,
@@ -798,8 +477,8 @@ server <- function(input, output, session) {
         )
       }
 
-      updating_from_query(FALSE)
-      history_initialized(TRUE)
+      url_manager$set_updating(FALSE)
+      url_manager$set_history_initialized(TRUE)
     },
     ignoreNULL = FALSE
   )
@@ -859,12 +538,12 @@ server <- function(input, output, session) {
       }
 
       previous_zoom <- state$map_zoom()
-      changed <- !nearly_equal(previous_zoom, zoom, tol = 1e-4)
+      changed <- !url_manager$nearly_equal(previous_zoom, zoom, tol = 1e-4)
 
       state$map_zoom(zoom)
       update_map_custom_flag()
 
-      if (changed && !isTRUE(updating_from_query())) {
+      if (changed && !url_manager$is_updating()) {
         update_app_query(mode = "replace")
       }
     },
@@ -887,13 +566,13 @@ server <- function(input, output, session) {
 
       previous_lat <- state$map_center_lat()
       previous_lng <- state$map_center_lng()
-      changed <- !nearly_equal(previous_lat, lat, tol = 1e-5) || !nearly_equal(previous_lng, lng, tol = 1e-5)
+      changed <- !url_manager$nearly_equal(previous_lat, lat, tol = 1e-5) || !url_manager$nearly_equal(previous_lng, lng, tol = 1e-5)
 
       state$map_center_lat(lat)
       state$map_center_lng(lng)
       update_map_custom_flag()
 
-      if (changed && !isTRUE(updating_from_query())) {
+      if (changed && !url_manager$is_updating()) {
         update_app_query(mode = "replace")
       }
     },
@@ -908,11 +587,11 @@ server <- function(input, output, session) {
 
       state$current_tab(input$page)
 
-      if (isTRUE(updating_from_query())) {
+      if (url_manager$is_updating()) {
         return()
       }
 
-      mode <- if (isTRUE(history_initialized())) "push" else "replace"
+      mode <- if (url_manager$is_history_initialized()) "push" else "replace"
 
       update_app_query(
         mode = mode,
@@ -921,7 +600,7 @@ server <- function(input, output, session) {
         detail_code = if (isTRUE(state$details_open())) state$selected_code() else NULL
       )
 
-      history_initialized(TRUE)
+      url_manager$set_history_initialized(TRUE)
     },
     ignoreNULL = FALSE
   )
@@ -971,7 +650,7 @@ server <- function(input, output, session) {
 
       state$current_tab("Map")
 
-      mode <- if (isTRUE(history_initialized())) "push" else "replace"
+      mode <- if (url_manager$is_history_initialized()) "push" else "replace"
       update_app_query(
         mode = mode,
         tab = "Map",
