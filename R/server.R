@@ -69,19 +69,30 @@ server <- function(input, output, session) {
     table_registry = table_registry
   )
 
-  # HELPER FUNCTIONS -------------------------------------------------------------------------------
+  # Reactive accessor for current URL query parameters
+  current_query <- shiny::reactive({
+    url_manager$parse_query_string()
+  })
 
-  #' Update flag indicating whether map has custom state
-  #' @noRd
+  # INTERNAL HELPER FUNCTIONS ----------------------------------------------------------------------
+  # These functions are nested within server() to access closure variables (state, url_manager, etc.)
+
+  # --- Map State Helpers -----
+
+  # Update the flag that tracks whether the map is at default position or has been customized
+  # This flag determines whether map coordinates should be included in the URL query string
   update_map_custom_flag <- function(lat = state$map_center_lat(), lng = state$map_center_lng(), zoom = state$map_zoom()) {
     state$map_has_custom_state(!url_manager$is_map_default(lat, lng, zoom))
   }
 
-  #' Build custom message for applying table state on client side
-  #' @param key Table registry key
-  #' @param state Sanitized table state
-  #' @return Message list for custom JS handler
-  #' @noRd
+  # --- DataTable State Management -----
+
+  # Build a message object for applying table state on the client side via custom JavaScript handler
+  # Converts server-side table state into format expected by DataTables JavaScript API
+  # Parameters:
+  #   key - Table registry key (e.g., "plots", "plants")
+  #   state - Sanitized table state with start, length, order, search
+  # Returns: Message list for custom JS handler, or NULL if invalid inputs
   table_state_message <- function(key, state) {
     table_id <- table_registry[[key]]$table_id
     if (is.null(table_id) || is.null(state)) {
@@ -107,8 +118,9 @@ server <- function(input, output, session) {
     )
   }
 
-  #' Send table state to client-side JavaScript to restore view
-  #' @noRd
+  # Send table state to client-side JavaScript to restore DataTable view
+  # Used when navigating via browser history or direct URL to restore pagination,
+  # sorting, filtering, and search state
   send_table_state_to_client <- function(key, state) {
     message <- table_state_message(key, state)
     if (!is.null(message)) {
@@ -116,10 +128,12 @@ server <- function(input, output, session) {
     }
   }
 
-  #' Store table state and optionally update URL query string
-  #' @param key Table registry key
-  #' @param raw_state Raw state from DataTables
-  #' @noRd
+  # Store table state from DataTables and conditionally update URL query string
+  # Called when user interacts with table (pagination, sorting, filtering, search)
+  # Only updates URL if state differs from default and user is on the corresponding tab
+  # Parameters:
+  #   key - Table registry key
+  #   raw_state - Raw state object from DataTables (needs sanitization)
   store_table_state <- function(key, raw_state) {
     sanitized <- url_manager$sanitize_table_state(raw_state)
     if (is.null(sanitized)) {
@@ -128,6 +142,7 @@ server <- function(input, output, session) {
 
     tab_for_key <- table_registry[[key]]$tab
 
+    # If state has returned to defaults, remove from state and URL
     if (url_manager$is_default_table_state(key, sanitized)) {
       if (!is.null(state$table_states[[key]])) {
         state$table_states[[key]] <- NULL
@@ -139,6 +154,7 @@ server <- function(input, output, session) {
       return()
     }
 
+    # Only update if state has actually changed
     current <- state$table_states[[key]]
     if (!is.null(current) && identical(current, sanitized)) {
       return()
@@ -146,23 +162,29 @@ server <- function(input, output, session) {
 
     state$table_states[[key]] <- sanitized
 
+    # Update URL if we're on the table's tab and not in the middle of a URL sync operation
     if (!url_manager$is_updating() && identical(tab_for_key, state$current_tab())) {
       update_app_query(mode = "replace")
     }
   }
 
-  # CORE URL SYNCHRONIZATION FUNCTIONS ------------------------------------------------------------
+  # --- URL and Browser History Management ---
 
-  #' Update the browser history to reflect current app state
-  #'
-  #' Encodes tab, detail view, map position, and table state into URL query string.
-  #' Uses "push" mode to add to history stack or "replace" to update current entry.
-  #'
-  #' @param mode "push" (add history entry) or "replace" (update current entry)
-  #' @param tab Tab name; if NULL, uses state$current_tab()
-  #' @param detail_type Entity type for detail overlay (e.g., "plot-observation")
-  #' @param detail_code Entity code for detail overlay
-  #' @noRd
+  # Update the browser history to reflect current application state
+  # This is the core function that encodes all app state (tab, detail view, map, tables)
+  # into a URL query string and pushes it to browser history via History API
+  #
+  # The URL encodes:
+  #   - Current tab (tab=Plots)
+  #   - Detail overlay state (detail=plot-observation&code=VB.123)
+  #   - Map position if non-default (map_lat, map_lng, map_zoom)
+  #   - Table state for current tab (plots_start, plots_length, plots_order, plots_search)
+  #
+  # Parameters:
+  #   mode - "push" to create new history entry, "replace" to update current entry
+  #   tab - Tab name; if NULL, uses current tab from state
+  #   detail_type - Entity type for detail overlay (e.g., "plot-observation")
+  #   detail_code - Entity code for detail overlay (e.g., "VB.123")
   update_app_query <- function(mode = c("push", "replace"),
                                tab = NULL, detail_type = NULL, detail_code = NULL) {
     mode <- match.arg(mode)
@@ -171,6 +193,7 @@ server <- function(input, output, session) {
       tab <- state$current_tab()
     }
 
+    # If detail params not provided, get from current state if overlay is open
     if (is.null(detail_type) || is.null(detail_code)) {
       if (isTRUE(state$details_open())) {
         detail_type <- state$detail_type()
@@ -196,17 +219,23 @@ server <- function(input, output, session) {
     url_manager$update_query_string(target_query, mode = mode)
   }
 
-  #' Open entity detail overlay with optional history tracking
-  #'
-  #' @param detail_type Entity type (e.g., "plot-observation", "plant-concept")
-  #' @param vb_code VegBank entity code
-  #' @param push_history Whether to update URL and add history entry
-  #' @param history_mode "push" or "replace" for history API
-  #' @noRd
+  # --- Detail Overlay Navigation -----
+
+  # Open entity detail overlay (sidebar) with optional browser history tracking
+  # Displays detailed information about a specific entity (plot, taxon, community, etc.)
+  # Optionally updates browser URL and history to make detail view shareable/bookmarkable
+  #
+  # Parameters:
+  #   detail_type - Entity type: "plot-observation", "plant-concept", "community-concept",
+  #                 "taxon-observation", "community-classification", "project", "party", "reference"
+  #   vb_code - VegBank entity code (e.g., "VB.123")
+  #   push_history - If TRUE, updates URL and adds browser history entry
+  #   history_mode - "push" creates new history entry, "replace" updates current entry
   open_detail <- function(detail_type, vb_code, push_history = TRUE, history_mode = "push") {
     # Ensure we have an up-to-date record of the current tab
     state$current_tab(input$page %||% state$current_tab())
 
+    # Prepare arguments for open_code_details helper
     args <- list(
       state = state,
       session = session,
@@ -215,6 +244,7 @@ server <- function(input, output, session) {
       detail_type = detail_type
     )
 
+    # Some detail types require additional data for row selection
     if (detail_type %in% c("community-classification", "taxon-observation")) {
       args$comm_class_data <- comm_class_data
       args$taxa_data <- taxa_data
@@ -223,6 +253,7 @@ server <- function(input, output, session) {
 
     success <- do.call(open_code_details, args)
 
+    # Update URL and browser history if successful and requested
     if (isTRUE(success) && push_history) {
       update_app_query(
         mode = history_mode,
@@ -235,46 +266,42 @@ server <- function(input, output, session) {
     invisible(success)
   }
 
-  #' Close entity detail overlay with optional history tracking
-  #'
-  #' @param push_history Whether to update URL and add history entry
-  #' @param history_mode "push" or "replace" for history API
-  #' @param hide_overlay Whether to hide the overlay UI element
-  #' @noRd
+  # Close entity detail overlay with optional browser history tracking
+  # Hides the detail sidebar and clears detail state
+  # Optionally updates browser URL to remove detail parameters
+  #
+  # Parameters:
+  #   push_history - If TRUE, updates URL and adds browser history entry
+  #   history_mode - "push" creates new history entry, "replace" updates current entry
+  #   hide_overlay - If TRUE, sends message to client to close overlay UI
   close_detail <- function(push_history = TRUE, history_mode = "push", hide_overlay = TRUE) {
+    # If already closed, just ensure state is cleared
     if (!isTRUE(state$details_open())) {
       state$detail_type(NULL)
       state$selected_code(NULL)
       return(invisible(FALSE))
     }
 
+    # Clear detail state
     state$details_open(FALSE)
     state$detail_type(NULL)
     state$selected_code(NULL)
 
+    # Hide overlay UI element via custom message
     if (hide_overlay) {
       session$sendCustomMessage("closeOverlay", list())
     }
 
+    # Clear any table row selections
     session$sendCustomMessage("clearAllTableSelections", list())
 
+    # Update URL to remove detail parameters
     if (push_history) {
       update_app_query(mode = history_mode, tab = state$current_tab(), detail_type = NULL, detail_code = NULL)
     }
 
     invisible(TRUE)
   }
-
-  #' Reactive accessor for current URL query parameters
-  #'
-  #' Parses the browser query string into a named list. Used by observers
-  #' to detect navigation events and restore state from URL.
-  #'
-  #' @return Named list of query parameters
-  #' @noRd
-  current_query <- shiny::reactive({
-    url_manager$parse_query_string()
-  })
 
 
   # DATA LOADING -----------------------------------------------------------------------------------
