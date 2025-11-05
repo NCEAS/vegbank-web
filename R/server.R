@@ -519,8 +519,9 @@ server <- function(input, output, session) {
       "You can also view the plot locations on a map by navigating to the 'Map' tab. ",
       "Clicking on the see details button in a row in the table or a link in the pin label on the ",
       "map will display detailed information about that plot observation including information ",
-      "about the plot location, species observed, and other details. Clicking on a taxon or community",
-      " link will open a detailed view of that plant observation or community concept.",
+      "about the plot location, species observed, and other details. Clicking on buttons in the other ",
+      "tables or links in a detail view will open another detail views of the selected entity. You can ",
+      " navigate back to previous views using your browser's back button.",
     )
   })
 
