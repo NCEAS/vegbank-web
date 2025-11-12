@@ -91,6 +91,10 @@ server <- function(input, output, session) {
     state$map_has_custom_state(!url_manager$is_map_default(lat, lng, zoom))
   }
 
+  can_mutate_history <- function() {
+    url_manager$is_history_initialized() && !url_manager$is_updating()
+  }
+
   # --- DataTable State Management -----
 
   # Build a message object for applying table state on the client side via custom JavaScript handler
@@ -147,18 +151,13 @@ server <- function(input, output, session) {
     }
 
     tab_for_key <- table_registry[[key]]$tab
-    history_ready <- url_manager$is_history_initialized()
 
     # If state has returned to defaults, remove from state and URL
     if (url_manager$is_default_table_state(key, sanitized)) {
       if (!is.null(state$table_states[[key]])) {
         state$table_states[[key]] <- NULL
 
-        if (!history_ready || url_manager$is_updating()) {
-          return()
-        }
-
-        if (identical(tab_for_key, state$current_tab())) {
+        if (can_mutate_history() && identical(tab_for_key, state$current_tab())) {
           update_app_query(mode = "replace")
         }
       }
@@ -173,7 +172,7 @@ server <- function(input, output, session) {
 
     state$table_states[[key]] <- sanitized
 
-    if (!history_ready || url_manager$is_updating()) {
+    if (!can_mutate_history()) {
       return()
     }
 
@@ -377,7 +376,6 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(current_query(),
     {
-      was_initialized <- url_manager$is_history_initialized()
       params <- current_query()
 
       url_manager$set_updating(TRUE)
@@ -526,10 +524,6 @@ server <- function(input, output, session) {
           detail_code = if (detail_valid) target_code else NULL
         )
       }
-      if (!was_initialized) {
-        session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
-        url_manager$set_history_initialized(TRUE)
-      }
     },
     ignoreNULL = FALSE
   )
@@ -595,7 +589,7 @@ server <- function(input, output, session) {
       state$map_zoom(zoom)
       update_map_custom_flag()
 
-      if (changed && url_manager$is_history_initialized() && !url_manager$is_updating()) {
+      if (changed && can_mutate_history()) {
         update_app_query(mode = "replace")
       }
     },
@@ -624,7 +618,7 @@ server <- function(input, output, session) {
       state$map_center_lng(lng)
       update_map_custom_flag()
 
-      if (changed && url_manager$is_history_initialized() && !url_manager$is_updating()) {
+      if (changed && can_mutate_history()) {
         update_app_query(mode = "replace")
       }
     },
@@ -640,11 +634,7 @@ server <- function(input, output, session) {
       state$current_tab(input$page)
 
       # Defer history mutations until the initial URL restoration has completed
-      if (!url_manager$is_history_initialized()) {
-        return()
-      }
-
-      if (url_manager$is_updating()) {
+      if (!can_mutate_history()) {
         return()
       }
 
