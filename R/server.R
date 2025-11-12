@@ -69,6 +69,12 @@ server <- function(input, output, session) {
     table_registry = table_registry
   )
 
+  session$onFlushed(function() {
+    if (!url_manager$is_history_initialized()) {
+      session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
+    }
+  }, once = TRUE)
+
   # Reactive accessor for current URL query parameters
   current_query <- shiny::reactive({
     url_manager$parse_query_string()
@@ -141,13 +147,18 @@ server <- function(input, output, session) {
     }
 
     tab_for_key <- table_registry[[key]]$tab
+    history_ready <- url_manager$is_history_initialized()
 
     # If state has returned to defaults, remove from state and URL
     if (url_manager$is_default_table_state(key, sanitized)) {
       if (!is.null(state$table_states[[key]])) {
         state$table_states[[key]] <- NULL
 
-        if (!url_manager$is_updating() && identical(tab_for_key, state$current_tab())) {
+        if (!history_ready || url_manager$is_updating()) {
+          return()
+        }
+
+        if (identical(tab_for_key, state$current_tab())) {
           update_app_query(mode = "replace")
         }
       }
@@ -162,8 +173,12 @@ server <- function(input, output, session) {
 
     state$table_states[[key]] <- sanitized
 
+    if (!history_ready || url_manager$is_updating()) {
+      return()
+    }
+
     # Update URL if we're on the table's tab and not in the middle of a URL sync operation
-    if (!url_manager$is_updating() && identical(tab_for_key, state$current_tab())) {
+    if (identical(tab_for_key, state$current_tab())) {
       update_app_query(mode = "replace")
     }
   }
@@ -362,9 +377,17 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(current_query(),
     {
+      was_initialized <- url_manager$is_history_initialized()
       params <- current_query()
 
       url_manager$set_updating(TRUE)
+      on.exit({
+        url_manager$set_updating(FALSE)
+        if (!url_manager$is_history_initialized()) {
+          session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+          url_manager$set_history_initialized(TRUE)
+        }
+      }, add = TRUE)
 
       # Parse and apply requested tab
       requested_tab <- url_manager$first_param(params$tab)
@@ -503,9 +526,10 @@ server <- function(input, output, session) {
           detail_code = if (detail_valid) target_code else NULL
         )
       }
-
-      url_manager$set_updating(FALSE)
-      url_manager$set_history_initialized(TRUE)
+      if (!was_initialized) {
+        session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+        url_manager$set_history_initialized(TRUE)
+      }
     },
     ignoreNULL = FALSE
   )
@@ -571,7 +595,7 @@ server <- function(input, output, session) {
       state$map_zoom(zoom)
       update_map_custom_flag()
 
-      if (changed && !url_manager$is_updating()) {
+      if (changed && url_manager$is_history_initialized() && !url_manager$is_updating()) {
         update_app_query(mode = "replace")
       }
     },
@@ -600,7 +624,7 @@ server <- function(input, output, session) {
       state$map_center_lng(lng)
       update_map_custom_flag()
 
-      if (changed && !url_manager$is_updating()) {
+      if (changed && url_manager$is_history_initialized() && !url_manager$is_updating()) {
         update_app_query(mode = "replace")
       }
     },
@@ -615,20 +639,21 @@ server <- function(input, output, session) {
 
       state$current_tab(input$page)
 
+      # Defer history mutations until the initial URL restoration has completed
+      if (!url_manager$is_history_initialized()) {
+        return()
+      }
+
       if (url_manager$is_updating()) {
         return()
       }
 
-      mode <- if (url_manager$is_history_initialized()) "push" else "replace"
-
       update_app_query(
-        mode = mode,
+        mode = "push",
         tab = input$page,
         detail_type = if (isTRUE(state$details_open())) state$detail_type() else NULL,
         detail_code = if (isTRUE(state$details_open())) state$selected_code() else NULL
       )
-
-      url_manager$set_history_initialized(TRUE)
     },
     ignoreNULL = FALSE
   )

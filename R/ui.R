@@ -51,6 +51,55 @@ ui <- function(req) {
     var pendingTableStates = [];
     var currentSelection = null; // Track the currently selected VegBank code
 
+    function setNavbarDisabled(disabled) {
+      var navbar = document.querySelector('.navbar');
+      if (!navbar) {
+        return;
+      }
+
+      navbar.classList.toggle('nav-disabled', Boolean(disabled));
+
+      var navLinks = navbar.querySelectorAll('.navbar-nav .nav-link');
+      navLinks.forEach(function(link) {
+        if (disabled) {
+          link.setAttribute('aria-disabled', 'true');
+          link.setAttribute('tabindex', '-1');
+          link.classList.add('disabled');
+          if (link.tagName === 'BUTTON') {
+            link.disabled = true;
+          }
+        } else {
+          link.removeAttribute('aria-disabled');
+          link.removeAttribute('tabindex');
+          link.classList.remove('disabled');
+          if (link.tagName === 'BUTTON') {
+            link.disabled = false;
+          }
+        }
+      });
+
+      var toggler = document.querySelector('.navbar-toggler');
+      if (toggler) {
+        toggler.disabled = Boolean(disabled);
+        if (disabled) {
+          toggler.setAttribute('aria-disabled', 'true');
+        } else {
+          toggler.removeAttribute('aria-disabled');
+        }
+      }
+    }
+
+    setNavbarDisabled(true);
+
+    document.addEventListener('DOMContentLoaded', function() {
+      setNavbarDisabled(true);
+    });
+
+    Shiny.addCustomMessageHandler('setNavInteractivity', function(message) {
+      var disabled = Boolean(message && message.disabled);
+      setNavbarDisabled(disabled);
+    });
+
     function applyTableState(tableId, state) {
       var tableNode = $('#' + tableId);
       if (tableNode.length === 0 || !$.fn.dataTable || !$.fn.dataTable.isDataTable(tableNode)) {
@@ -369,6 +418,16 @@ custom_theme <- bslib::bs_add_rules(
       min-height: 56px !important;
       display: flex;
       align-items: center;
+  }
+  .navbar.nav-disabled {
+    pointer-events: none;
+  }
+  .navbar.nav-disabled .nav-link {
+    cursor: not-allowed !important;
+    opacity: 0.65;
+  }
+  .navbar.nav-disabled .navbar-toggler {
+    pointer-events: none;
   }
   .navbar-nav {
       display: flex;
