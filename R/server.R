@@ -69,6 +69,12 @@ server <- function(input, output, session) {
     table_registry = table_registry
   )
 
+  session$onFlushed(function() {
+    if (!url_manager$is_history_initialized()) {
+      session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
+    }
+  }, once = TRUE)
+
   # Reactive accessor for current URL query parameters
   current_query <- shiny::reactive({
     url_manager$parse_query_string()
@@ -83,6 +89,10 @@ server <- function(input, output, session) {
   # This flag determines whether map coordinates should be included in the URL query string
   update_map_custom_flag <- function(lat = state$map_center_lat(), lng = state$map_center_lng(), zoom = state$map_zoom()) {
     state$map_has_custom_state(!url_manager$is_map_default(lat, lng, zoom))
+  }
+
+  can_mutate_history <- function() {
+    url_manager$is_history_initialized() && !url_manager$is_updating()
   }
 
   # --- DataTable State Management -----
@@ -147,7 +157,7 @@ server <- function(input, output, session) {
       if (!is.null(state$table_states[[key]])) {
         state$table_states[[key]] <- NULL
 
-        if (!url_manager$is_updating() && identical(tab_for_key, state$current_tab())) {
+        if (can_mutate_history() && identical(tab_for_key, state$current_tab())) {
           update_app_query(mode = "replace")
         }
       }
@@ -162,8 +172,12 @@ server <- function(input, output, session) {
 
     state$table_states[[key]] <- sanitized
 
+    if (!can_mutate_history()) {
+      return()
+    }
+
     # Update URL if we're on the table's tab and not in the middle of a URL sync operation
-    if (!url_manager$is_updating() && identical(tab_for_key, state$current_tab())) {
+    if (identical(tab_for_key, state$current_tab())) {
       update_app_query(mode = "replace")
     }
   }
@@ -365,6 +379,13 @@ server <- function(input, output, session) {
       params <- current_query()
 
       url_manager$set_updating(TRUE)
+      on.exit({
+        url_manager$set_updating(FALSE)
+        if (!url_manager$is_history_initialized()) {
+          session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+          url_manager$set_history_initialized(TRUE)
+        }
+      }, add = TRUE)
 
       # Parse and apply requested tab
       requested_tab <- url_manager$first_param(params$tab)
@@ -503,9 +524,6 @@ server <- function(input, output, session) {
           detail_code = if (detail_valid) target_code else NULL
         )
       }
-
-      url_manager$set_updating(FALSE)
-      url_manager$set_history_initialized(TRUE)
     },
     ignoreNULL = FALSE
   )
@@ -571,7 +589,7 @@ server <- function(input, output, session) {
       state$map_zoom(zoom)
       update_map_custom_flag()
 
-      if (changed && !url_manager$is_updating()) {
+      if (changed && can_mutate_history()) {
         update_app_query(mode = "replace")
       }
     },
@@ -600,7 +618,7 @@ server <- function(input, output, session) {
       state$map_center_lng(lng)
       update_map_custom_flag()
 
-      if (changed && !url_manager$is_updating()) {
+      if (changed && can_mutate_history()) {
         update_app_query(mode = "replace")
       }
     },
@@ -615,20 +633,17 @@ server <- function(input, output, session) {
 
       state$current_tab(input$page)
 
-      if (url_manager$is_updating()) {
+      # Defer history mutations until the initial URL restoration has completed
+      if (!can_mutate_history()) {
         return()
       }
 
-      mode <- if (url_manager$is_history_initialized()) "push" else "replace"
-
       update_app_query(
-        mode = mode,
+        mode = "push",
         tab = input$page,
         detail_type = if (isTRUE(state$details_open())) state$detail_type() else NULL,
         detail_code = if (isTRUE(state$details_open())) state$selected_code() else NULL
       )
-
-      url_manager$set_history_initialized(TRUE)
     },
     ignoreNULL = FALSE
   )
