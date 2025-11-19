@@ -3,6 +3,27 @@
 #' Provides generalized functions for creating and manipulating concept data tables
 #' (both plant and community concepts).
 
+PLANT_TABLE_PAGE_LENGTH <- 100L
+PLANT_TABLE_FIELDS <- c(
+  "pc_code",
+  "plant_name",
+  "current_accepted",
+  "plant_level",
+  "concept_rf_code",
+  "concept_rf_name",
+  "obs_count",
+  "plant_description"
+)
+PLANT_COUNT_CACHE <- new.env(parent = emptyenv())
+SUPPORTS_REMOTE_SEARCH <- TRUE
+
+empty_plant_source_df <- {
+  cols <- stats::setNames(rep(list(character()), length(PLANT_TABLE_FIELDS)), PLANT_TABLE_FIELDS)
+  as.data.frame(cols, stringsAsFactors = FALSE)
+}
+
+clean_dt_frame <- get("cleanDataFrame", envir = asNamespace("DT"))
+
 #' Main function to process and build a concept table
 #'
 #' @param concept_data Data frame of concept data (plant or community)
@@ -15,11 +36,6 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
 
   # Determine input ID based on concept type
   link_input_id <- if (is_plant) "plant_link_click" else "comm_link_click"
-
-  data_sources <- list()
-  data_sources[[data_key]] <- concept_data
-
-  required_sources <- c(data_key)
 
   table_config <- list(
     # Resorted to hidden columns to get proper sorting behavior for status badge and reference source
@@ -59,6 +75,15 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
     progress_message = paste0("Processing ", concept_type, " concepts table data")
   )
 
+  if (is_plant && !is.null(shiny::getDefaultReactiveDomain())) {
+    table_config$page_length <- PLANT_TABLE_PAGE_LENGTH
+    return(build_remote_plant_concept_table(table_config))
+  }
+
+  data_sources <- list()
+  data_sources[[data_key]] <- concept_data
+  required_sources <- c(data_key)
+
   create_table(
     data_sources = data_sources,
     required_sources = required_sources,
@@ -73,7 +98,7 @@ build_concept_table <- function(concept_data, concept_type = "plant") {
 #' @param concept_type Either "plant" or "community"
 #' @returns A data frame ready for display
 #' @noRd
-process_concept_data <- function(data_sources, concept_type = "plant") {
+process_concept_data <- function(data_sources, concept_type = "plant", use_progress = TRUE) {
   is_plant <- concept_type == "plant"
 
   # Get the data from the appropriate key
@@ -87,29 +112,43 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   level_field <- if (is_plant) "plant_level" else "comm_level"
   name_label <- if (is_plant) "Plant Name" else "Community Name"
 
-  shiny::incProgress(0.15, detail = paste0("Cleaning ", concept_type, " names"))
+  if (isTRUE(use_progress)) {
+    safe_inc_progress(0.15, detail = paste0("Cleaning ", concept_type, " names"))
+  }
   names <- clean_column_data(concept_data, name_field)
 
-  shiny::incProgress(0.1, detail = "Preparing status data")
+  if (isTRUE(use_progress)) {
+    safe_inc_progress(0.1, detail = "Preparing status data")
+  }
   status_raw <- concept_data$current_accepted
   # Sort order: Accepted (0) < Not Current (1) < No Status (2)
   status_sort <- ifelse(is.na(status_raw), 2, ifelse(status_raw == TRUE, 0, 1))
 
-  shiny::incProgress(0.1, detail = paste0("Cleaning ", concept_type, " levels"))
+  if (isTRUE(use_progress)) {
+    safe_inc_progress(0.1, detail = paste0("Cleaning ", concept_type, " levels"))
+  }
   levels <- clean_column_data(concept_data, level_field)
 
-  shiny::incProgress(0.15, detail = "Preparing reference data")
+  if (isTRUE(use_progress)) {
+    safe_inc_progress(0.15, detail = "Preparing reference data")
+  }
   # Pass reference codes and names for client-side rendering
   reference_codes <- concept_data$concept_rf_code
   reference_names <- clean_column_data(concept_data, "concept_rf_name")
 
-  shiny::incProgress(0.15, detail = "Cleaning observation counts")
+  if (isTRUE(use_progress)) {
+    safe_inc_progress(0.15, detail = "Cleaning observation counts")
+  }
   obs_counts <- as.numeric(clean_column_data(concept_data, "obs_count", "0"))
 
-  shiny::incProgress(0.15, detail = paste0("Cleaning ", concept_type, " descriptions"))
+  if (isTRUE(use_progress)) {
+    safe_inc_progress(0.15, detail = paste0("Cleaning ", concept_type, " descriptions"))
+  }
   descriptions <- clean_column_data(concept_data, description_field)
 
-  shiny::incProgress(0.1, detail = "Preparing action codes")
+  if (isTRUE(use_progress)) {
+    safe_inc_progress(0.1, detail = "Preparing action codes")
+  }
   # Pass the code value directly - will be rendered by JavaScript
   action_codes <- concept_data[[code_field]]
 
@@ -131,6 +170,270 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   names(result)[names(result) == "Name"] <- name_label
 
   result
+}
+
+build_remote_plant_concept_table <- function(table_config) {
+  page_length <- table_config$page_length %||% PLANT_TABLE_PAGE_LENGTH
+
+  initial_display <- process_concept_data(
+    list(plant_data = empty_plant_source_df[FALSE, , drop = FALSE]),
+    concept_type = "plant",
+    use_progress = FALSE
+  )
+
+  table_config$use_progress <- FALSE
+  table_config$initial_data <- initial_display
+  table_config$page_length <- page_length
+
+  default_remote_options <- list(
+    serverSide = TRUE,
+    lengthChange = FALSE,
+    ordering = FALSE,
+    searching = TRUE,
+    language = list(processing = "Loading plant concepts...")
+  )
+
+  table_config$options <- if (is.null(table_config$options)) {
+    default_remote_options
+  } else {
+    utils::modifyList(default_remote_options, table_config$options)
+  }
+
+  table_config$ajax <- function(session) {
+    if (is.null(session)) {
+      stop("A Shiny session is required to initialize the plant concept table.")
+    }
+
+    if (is.null(session$userData$plant_total_cache)) {
+      session$userData$plant_total_cache <- new.env(parent = emptyenv())
+      session$userData$plant_total_cache$count <- NULL
+    }
+
+    total_cache <- session$userData$plant_total_cache
+
+    remote_filter <- function(data, params) {
+      draw <- as.integer(params$draw %||% 0L)
+
+      offset <- as.integer(params$start %||% 0L)
+      if (is.na(offset) || offset < 0L) {
+        offset <- 0L
+      }
+
+      search_term <- NULL
+      if (!is.null(params$search)) {
+        search_term <- normalize_search_term(params$search$value)
+      }
+      if (!SUPPORTS_REMOTE_SEARCH) {
+        search_term <- NULL
+      }
+
+      page <- fetch_plants_page(limit = page_length, offset = offset, search = search_term)
+      normalized <- normalize_plants(page$data)
+
+      display_rows <- process_concept_data(
+        list(plant_data = normalized),
+        concept_type = "plant",
+        use_progress = FALSE
+      )
+
+      details <- page$details
+      reported_total <- extract_reported_total(details)
+      if (is.na(reported_total)) {
+        reported_total <- fetch_plants_count(search_term)
+      }
+
+      if (is.null(search_term) && !is.na(reported_total)) {
+        total_cache$count <- reported_total
+      }
+
+      total_records <- total_cache$count
+      if (is.null(total_records) || !length(total_records) || is.na(total_records)) {
+        total_records <- fetch_plants_count(NULL)
+      }
+      if (is.null(total_records) || !length(total_records) || is.na(total_records)) {
+        total_records <- nrow(normalized)
+      }
+      total_records <- as.integer(round(total_records))
+
+      filtered_records <- reported_total
+      if (is.null(filtered_records) || !length(filtered_records) || is.na(filtered_records)) {
+        filtered_records <- if (is.null(search_term)) total_records else nrow(normalized)
+      }
+      filtered_records <- as.integer(round(filtered_records))
+
+      list(
+        draw = draw,
+        recordsTotal = total_records,
+        recordsFiltered = filtered_records,
+        data = clean_dt_frame(display_rows)
+      )
+    }
+
+    ajax_url <- DT::dataTableAjax(
+      session = session,
+      data = initial_display,
+      filter = remote_filter,
+      outputId = "plant_table"
+    )
+
+    list(url = ajax_url)
+  }
+
+  create_table(
+    data_sources = list(),
+    required_sources = character(0),
+    process_function = NULL,
+    table_config = table_config
+  )
+}
+
+normalize_search_term <- function(value) {
+  term <- value %||% ""
+  term <- httpuv::decodeURIComponent(term)
+  term <- trimws(term)
+  if (!nzchar(term)) {
+    return(NULL)
+  }
+  term
+}
+
+extract_reported_total <- function(details) {
+  if (is.null(details)) {
+    return(NA_integer_)
+  }
+  val <- details["count_reported"]
+  if (is.null(val) || !length(val)) {
+    return(NA_integer_)
+  }
+  suppressWarnings(total <- as.numeric(val[1]))
+  if (is.na(total)) {
+    return(NA_integer_)
+  }
+  as.integer(round(total))
+}
+
+parse_logical_vector <- function(x) {
+  if (is.logical(x)) {
+    return(x)
+  }
+  parsed <- rep(NA, length(x))
+  lower <- tolower(as.character(x))
+  parsed[lower %in% c("true", "t", "1")] <- TRUE
+  parsed[lower %in% c("false", "f", "0")] <- FALSE
+  parsed
+}
+
+normalize_plants <- function(df) {
+  if (is.null(df)) {
+    return(empty_plant_source_df[FALSE, ])
+  }
+  if (!is.data.frame(df)) {
+    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) empty_plant_source_df[FALSE, ])
+  }
+  if (!nrow(df)) {
+    return(empty_plant_source_df[FALSE, ])
+  }
+
+  missing_fields <- setdiff(PLANT_TABLE_FIELDS, names(df))
+  for (field in missing_fields) {
+    df[[field]] <- NA_character_
+  }
+
+  df <- df[, PLANT_TABLE_FIELDS, drop = FALSE]
+
+  df$pc_code <- as.character(df$pc_code)
+  df$plant_name <- as.character(df$plant_name)
+  df$plant_level <- as.character(df$plant_level)
+  df$concept_rf_code <- as.character(df$concept_rf_code)
+  df$concept_rf_name <- as.character(df$concept_rf_name)
+  df$plant_description <- as.character(df$plant_description)
+  df$current_accepted <- parse_logical_vector(df$current_accepted)
+  suppressWarnings(df$obs_count <- as.numeric(df$obs_count))
+  df$obs_count[is.na(df$obs_count)] <- 0
+
+  rownames(df) <- NULL
+  df
+}
+
+coerce_api_page <- function(parsed) {
+  if (is.null(parsed)) {
+    return(empty_plant_source_df[FALSE, ])
+  }
+  if (is.data.frame(parsed)) {
+    return(parsed)
+  }
+  if (is.list(parsed)) {
+    if (!is.null(parsed$data)) {
+      return(coerce_api_page(parsed$data))
+    }
+    if (length(parsed) == 1) {
+      return(coerce_api_page(parsed[[1]]))
+    }
+  }
+  tryCatch(
+    as.data.frame(parsed, stringsAsFactors = FALSE),
+    error = function(e) empty_plant_source_df[FALSE, ]
+  )
+}
+
+fetch_plants_page <- function(limit, offset, search = NULL) {
+  vb_result <- try(
+    suppressWarnings(
+      vegbankr:::get_all_resources(
+        "plant-concepts",
+        limit = limit,
+        offset = offset,
+        detail = "full",
+        parquet = FALSE,
+        search = search
+      )
+    ),
+    silent = TRUE
+  )
+
+  if (inherits(vb_result, "try-error")) {
+    vb_error <- attr(vb_result, "condition")
+    warning(
+      "vegbankr:::get_all_resources failed: ",
+      if (!is.null(vb_error)) conditionMessage(vb_error) else "unknown error"
+    )
+    return(list(data = empty_plant_source_df[FALSE, ], details = NULL))
+  }
+
+  details <- tryCatch(vegbankr::get_page_details(vb_result), error = function(e) NULL)
+  list(data = coerce_api_page(vb_result), details = details)
+}
+
+fetch_plants_count <- function(search = NULL) {
+  key <- if (is.null(search)) "__all__" else search
+  if (exists(key, envir = PLANT_COUNT_CACHE, inherits = FALSE)) {
+    return(get(key, envir = PLANT_COUNT_CACHE, inherits = FALSE))
+  }
+
+  vb_result <- try(
+    suppressWarnings(
+      vegbankr:::get_all_resources(
+        "plant-concepts",
+        limit = 1,
+        offset = 0,
+        detail = "full",
+        parquet = FALSE,
+        search = search
+      )
+    ),
+    silent = TRUE
+  )
+
+  if (inherits(vb_result, "try-error")) {
+    return(NA_integer_)
+  }
+
+  details <- tryCatch(vegbankr::get_page_details(vb_result), error = function(e) NULL)
+  total <- extract_reported_total(details)
+  if (!is.na(total)) {
+    assign(key, total, envir = PLANT_COUNT_CACHE)
+  }
+  total
 }
 
 # -------------- JS Renderers ---------------------

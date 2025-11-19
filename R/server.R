@@ -350,12 +350,6 @@ server <- function(input, output, session) {
       vegbankr::get_all_taxon_observations
     )
 
-    plant_data <- load_data_type(
-      "plant concepts",
-      "inst/cached_data/pc_20251017.RDS",
-      vegbankr::get_all_plant_concepts
-    )
-
     project_data <- load_data_type(
       "projects",
       "inst/cached_data/pj_20251014.rds",
@@ -560,7 +554,7 @@ server <- function(input, output, session) {
   })
 
   output$plant_table <- DT::renderDataTable({
-    build_plant_table(plant_data)
+    build_plant_table()
   })
 
   output$map <- leaflet::renderLeaflet({
