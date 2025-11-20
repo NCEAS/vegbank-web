@@ -98,6 +98,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   obs_counts[is.na(obs_counts)] <- 0
 
   descriptions <- clean_column_data(concept_data, config$description_field)
+  descriptions <- truncate_text_with_ellipsis(descriptions, max_chars = 680L)
 
   action_codes <- concept_data[[config$code_field]]
 
@@ -118,6 +119,31 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   names(result)[names(result) == "Name"] <- config$name_label
 
   result
+}
+
+#' Truncate long text values and append ellipses
+#'
+#' Limits string length for table display, appending "..." when values exceed
+#' the maximum number of characters. Preserves NA and empty values.
+#'
+#' @param values Character vector to truncate
+#' @param max_chars Maximum number of characters to keep before appending ellipses
+#' @returns Character vector with truncated values where needed
+#' @noRd
+truncate_text_with_ellipsis <- function(values, max_chars = 680L) {
+  if (is.null(values) || !length(values)) {
+    return(values)
+  }
+
+  values <- as.character(values)
+  char_counts <- nchar(values, allowNA = TRUE, type = "chars")
+  needs_truncation <- !is.na(char_counts) & char_counts > max_chars
+
+  if (any(needs_truncation)) {
+    values[needs_truncation] <- paste0(substr(values[needs_truncation], 1, max_chars), "...")
+  }
+
+  values
 }
 
 #' Build table configuration for remote concept data tables
