@@ -13,7 +13,6 @@ CONCEPT_CONFIG <- list(
     level_field = "plant_level",
     description_field = "plant_description",
     name_label = "Plant Name",
-    session_cache_key = "plant_total_cache",
     remote_label = "plant concepts",
     fields = c(
       "pc_code",
@@ -36,7 +35,6 @@ CONCEPT_CONFIG <- list(
     level_field = "comm_level",
     description_field = "comm_description",
     name_label = "Community Name",
-    session_cache_key = "community_total_cache",
     remote_label = "community concepts",
     fields = c(
       "cc_code",
@@ -50,8 +48,6 @@ CONCEPT_CONFIG <- list(
     )
   )
 )
-
-CONCEPT_COUNT_CACHE <- new.env(parent = emptyenv())
 
 clean_dt_frame <- get("cleanDataFrame", envir = asNamespace("DT"))
 
@@ -85,10 +81,10 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   concept_data <- data_sources[[config$data_key]]
   if (is.null(concept_data)) {
-    concept_data <- concept_empty_source_df(concept_type)[FALSE, , drop = FALSE]
+    concept_data <- create_empty_source_df(concept_type)[FALSE, , drop = FALSE]
   }
 
-  names <- clean_column_data(concept_data, config$name_field)
+  display_names <- clean_column_data(concept_data, config$name_field)
 
   status_raw <- concept_data$current_accepted
   status_sort <- ifelse(is.na(status_raw), 2, ifelse(status_raw == TRUE, 0, 1))
@@ -107,7 +103,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   result <- data.frame(
     Actions = action_codes,
-    Name = names,
+    Name = display_names,
     Status = status_raw,
     status_sort = status_sort,
     Level = levels,
@@ -141,7 +137,7 @@ concept_table_config <- function(config) {
     page_length = config$page_length
   )
 
-  empty_sources <- setNames(list(concept_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]), config$data_key)
+  empty_sources <- setNames(list(create_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]), config$data_key)
   initial_display <- process_concept_data(empty_sources, concept_type = config$concept_type)
 
   table_config$use_progress <- FALSE
@@ -228,7 +224,6 @@ concept_ajax_config <- function(session, config, initial_display) {
   }
 
   page_length <- config$page_length %||% TABLE_PAGE_LENGTH
-  total_cache <- get_session_total_cache(session, config)
 
   remote_filter <- function(data, params) {
     draw <- as.integer(params$draw %||% 0L)
@@ -249,13 +244,12 @@ concept_ajax_config <- function(session, config, initial_display) {
     data_sources <- setNames(list(normalized), config$data_key)
     display_rows <- process_concept_data(data_sources, concept_type = config$concept_type)
 
+    # Extract total from API response or query separately
     details <- page$details
     reported_total <- extract_reported_total(details)
-    if (is.null(search_term) && !is.na(reported_total)) {
-      total_cache$count <- reported_total
-    }
 
-    total_records <- total_cache$count
+    # Always fetch fresh unfiltered total count
+    total_records <- reported_total
     if (is.null(total_records) || !length(total_records) || is.na(total_records)) {
       total_records <- fetch_concept_count(config$concept_type, NULL)
     }
@@ -264,6 +258,7 @@ concept_ajax_config <- function(session, config, initial_display) {
     }
     total_records <- as.integer(round(total_records))
 
+    # Calculate filtered count (may differ from total if search is active)
     filtered_records <- reported_total
     if (is.null(filtered_records) || !length(filtered_records) || is.na(filtered_records)) {
       if (is.null(search_term)) {
@@ -367,13 +362,13 @@ parse_logical_vector <- function(x) {
 #' @noRd
 normalize_concepts <- function(df, concept_type) {
   if (is.null(df)) {
-    return(concept_empty_source_df(concept_type)[FALSE, , drop = FALSE])
+    return(create_empty_source_df(concept_type)[FALSE, , drop = FALSE])
   }
   if (!is.data.frame(df)) {
-    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) concept_empty_source_df(concept_type)[FALSE, , drop = FALSE])
+    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) create_empty_source_df(concept_type)[FALSE, , drop = FALSE])
   }
   if (!nrow(df)) {
-    return(concept_empty_source_df(concept_type)[FALSE, , drop = FALSE])
+    return(create_empty_source_df(concept_type)[FALSE, , drop = FALSE])
   }
 
   config <- get_concept_config(concept_type)
@@ -406,7 +401,7 @@ normalize_concepts <- function(df, concept_type) {
 #' @param concept_type Either "plant" or "community"
 #' @returns A zero-row data frame with all expected concept columns
 #' @noRd
-concept_empty_source_df <- function(concept_type) {
+create_empty_source_df <- function(concept_type) {
   config <- get_concept_config(concept_type)
   cols <- stats::setNames(rep(list(character()), length(config$fields)), config$fields)
   as.data.frame(cols, stringsAsFactors = FALSE)
@@ -424,7 +419,7 @@ concept_empty_source_df <- function(concept_type) {
 #' @noRd
 coerce_api_page <- function(parsed, concept_type) {
   if (is.null(parsed)) {
-    return(concept_empty_source_df(concept_type)[FALSE, , drop = FALSE])
+    return(create_empty_source_df(concept_type)[FALSE, , drop = FALSE])
   }
   if (is.data.frame(parsed)) {
     return(parsed)
@@ -439,7 +434,7 @@ coerce_api_page <- function(parsed, concept_type) {
   }
   tryCatch(
     as.data.frame(parsed, stringsAsFactors = FALSE),
-    error = function(e) concept_empty_source_df(concept_type)[FALSE, , drop = FALSE]
+    error = function(e) create_empty_source_df(concept_type)[FALSE, , drop = FALSE]
   )
 }
 
@@ -478,7 +473,7 @@ fetch_concept_page <- function(concept_type, limit, offset, search = NULL) {
       "vegbankr:::get_all_resources failed for ", concept_type, ": ",
       if (!is.null(vb_error)) conditionMessage(vb_error) else "unknown error"
     )
-    return(list(data = concept_empty_source_df(concept_type)[FALSE, , drop = FALSE], details = NULL))
+    return(list(data = create_empty_source_df(concept_type)[FALSE, , drop = FALSE], details = NULL))
   }
 
   details <- tryCatch(vegbankr::get_page_details(vb_result), error = function(e) NULL)
@@ -488,20 +483,13 @@ fetch_concept_page <- function(concept_type, limit, offset, search = NULL) {
 #' Fetch total count of concept records matching a search term
 #'
 #' Queries the VegBank API to determine the total number of records matching
-#' an optional search filter. Results are cached per concept type and search term
-#' to minimize redundant API calls. Returns NA if the count cannot be determined.
+#' an optional search filter. Always performs a fresh query to avoid stale counts.
 #'
 #' @param concept_type Either "plant" or "community"
 #' @param search Optional search term (NULL for total unfiltered count)
 #' @returns An integer count, or NA_integer_ if unavailable
 #' @noRd
 fetch_concept_count <- function(concept_type, search = NULL) {
-  cache <- get_concept_count_cache(concept_type)
-  key <- if (is.null(search)) "__all__" else search
-  if (exists(key, envir = cache, inherits = FALSE)) {
-    return(get(key, envir = cache, inherits = FALSE))
-  }
-
   config <- get_concept_config(concept_type)
 
   vb_result <- try(
@@ -523,11 +511,7 @@ fetch_concept_count <- function(concept_type, search = NULL) {
   }
 
   details <- tryCatch(vegbankr::get_page_details(vb_result), error = function(e) NULL)
-  total <- extract_reported_total(details)
-  if (!is.na(total)) {
-    assign(key, total, envir = cache)
-  }
-  total
+  extract_reported_total(details)
 }
 
 #' Retrieve configuration for a given concept type
@@ -544,43 +528,6 @@ get_concept_config <- function(concept_type) {
     stop("Unsupported concept type: ", concept_type)
   }
   config
-}
-
-#' Get or create the count cache environment for a concept type
-#'
-#' Retrieves the caching environment used to store API count results for a specific
-#' concept type. Creates a new environment if one does not already exist.
-#' Each concept type has its own isolated cache to prevent key collisions.
-#'
-#' @param concept_type Either "plant" or "community"
-#' @returns An environment used for caching count queries
-#' @noRd
-get_concept_count_cache <- function(concept_type) {
-  if (!exists(concept_type, envir = CONCEPT_COUNT_CACHE, inherits = FALSE)) {
-    assign(concept_type, new.env(parent = emptyenv()), envir = CONCEPT_COUNT_CACHE)
-  }
-  get(concept_type, envir = CONCEPT_COUNT_CACHE, inherits = FALSE)
-}
-
-#' Get or create the session-specific total count cache
-#'
-#' Retrieves (or initializes) the Shiny session's cache for storing the unfiltered
-#' total record count. This count is stored in session$userData to persist across
-#' multiple AJAX requests without re-querying the API unnecessarily.
-#'
-#' @param session The Shiny session object
-#' @param config A concept configuration list from CONCEPT_CONFIG
-#' @returns An environment with a 'count' slot for caching the total
-#' @noRd
-get_session_total_cache <- function(session, config) {
-  key <- config$session_cache_key
-  cache <- session$userData[[key]]
-  if (is.null(cache)) {
-    cache <- new.env(parent = emptyenv())
-    cache$count <- NULL
-    session$userData[[key]] <- cache
-  }
-  cache
 }
 
 # -------------- JS Renderers ---------------------
