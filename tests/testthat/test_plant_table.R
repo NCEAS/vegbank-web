@@ -1,29 +1,24 @@
 test_that("build_plant_table delegates to concept builder with plant config", {
-  sample_data <- data.frame(
-    pc_code = "pc.001",
-    plant_name = "Sample Plant",
-    stringsAsFactors = FALSE
-  )
-
   pkg_env <- asNamespace("vegbankweb")
 
   with_mocked_bindings(
     create_table = function(data_sources, required_sources, process_function, table_config) {
-      expect_equal(names(data_sources), "plant_data")
-      expect_equal(data_sources$plant_data, sample_data)
-      expect_equal(required_sources, "plant_data")
+      expect_equal(length(data_sources), 0)
+      expect_length(required_sources, 0)
+      expect_null(process_function)
       expect_equal(length(table_config$column_defs), 9)
       expect_equal(table_config$column_defs[[2]]$targets, 1)
       expect_equal(table_config$column_defs[[2]]$width, "25%")
       expect_equal(table_config$column_defs[[3]]$targets, 2)
       expect_equal(table_config$column_defs[[4]]$visible, FALSE)
       expect_equal(table_config$column_defs[[7]]$visible, FALSE)
+      expect_true(is.function(table_config$ajax))
       structure(list(options = list()), class = "datatables")
     },
     .env = pkg_env,
     {
       with_mock_shiny_notifications({
-        result <- build_plant_table(sample_data)
+        result <- build_plant_table()
         expect_s3_class(result, "datatables")
       })
     }

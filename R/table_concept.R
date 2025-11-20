@@ -61,38 +61,19 @@ clean_dt_frame <- get("cleanDataFrame", envir = asNamespace("DT"))
 
 #' Build the concept DataTable for a given concept type
 #'
-#' @param concept_data Optional data frame used when outside of a Shiny session (testing)
 #' @param concept_type Either "plant" or "community"
 #' @returns A DT datatable object ready for display in a Shiny app
 #' @noRd
-build_concept_table <- function(concept_data = NULL, concept_type = c("plant", "community")) {
+build_concept_table <- function(concept_type = c("plant", "community")) {
   concept_type <- match.arg(concept_type)
   config <- get_concept_config(concept_type)
 
-  session <- shiny::getDefaultReactiveDomain()
-  remote_enabled <- !is.null(session) && is.null(concept_data)
-
-  table_config <- concept_table_config(config, remote_enabled)
-
-  data_sources <- list()
-  required_sources <- character(0)
-  process_function <- NULL
-
-  if (!remote_enabled) {
-    data_key <- config$data_key
-    if (is.null(concept_data)) {
-      data_sources[[data_key]] <- concept_empty_source_df(concept_type)[FALSE, , drop = FALSE]
-    } else {
-      data_sources[[data_key]] <- concept_data
-      required_sources <- data_key
-    }
-    process_function <- function(ds) process_concept_data(ds, concept_type)
-  }
+  table_config <- concept_table_config(config)
 
   create_table(
-    data_sources = data_sources,
-    required_sources = required_sources,
-    process_function = process_function,
+    data_sources = list(),
+    required_sources = character(0),
+    process_function = NULL,
     table_config = table_config
   )
 }
@@ -169,7 +150,7 @@ process_concept_data <- function(data_sources, concept_type = "plant", use_progr
   result
 }
 
-concept_table_config <- function(config, remote_enabled) {
+concept_table_config <- function(config) {
   link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
 
   table_config <- list(
@@ -178,16 +159,14 @@ concept_table_config <- function(config, remote_enabled) {
     page_length = config$page_length
   )
 
-  if (remote_enabled) {
-    empty_sources <- setNames(list(concept_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]), config$data_key)
-    initial_display <- process_concept_data(empty_sources, concept_type = config$concept_type, use_progress = FALSE)
+  empty_sources <- setNames(list(concept_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]), config$data_key)
+  initial_display <- process_concept_data(empty_sources, concept_type = config$concept_type, use_progress = FALSE)
 
-    table_config$use_progress <- FALSE
-    table_config$initial_data <- initial_display
-    table_config$options <- concept_remote_options(config)
-    table_config$ajax <- function(session) {
-      concept_ajax_config(session, config, initial_display)
-    }
+  table_config$use_progress <- FALSE
+  table_config$initial_data <- initial_display
+  table_config$options <- concept_remote_options(config)
+  table_config$ajax <- function(session) {
+    concept_ajax_config(session, config, initial_display)
   }
 
   table_config
