@@ -2,8 +2,6 @@
 #'
 #' Provides server-side DataTable builders for plant and community concepts.
 
-CONCEPT_TABLE_PAGE_LENGTH <- 100L
-
 CONCEPT_CONFIG <- list(
   plant = list(
     concept_type = "plant",
@@ -17,7 +15,6 @@ CONCEPT_CONFIG <- list(
     name_label = "Plant Name",
     session_cache_key = "plant_total_cache",
     remote_label = "plant concepts",
-    page_length = CONCEPT_TABLE_PAGE_LENGTH,
     fields = c(
       "pc_code",
       "plant_name",
@@ -41,7 +38,6 @@ CONCEPT_CONFIG <- list(
     name_label = "Community Name",
     session_cache_key = "community_total_cache",
     remote_label = "community concepts",
-    page_length = CONCEPT_TABLE_PAGE_LENGTH,
     fields = c(
       "cc_code",
       "comm_name",
@@ -82,10 +78,9 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
 #'
 #' @param data_sources List containing concept data keyed by concept type
 #' @param concept_type Either "plant" or "community"
-#' @param use_progress Whether to increment the Shiny progress bar
 #' @returns A data frame ready for display
 #' @noRd
-process_concept_data <- function(data_sources, concept_type = "plant", use_progress = TRUE) {
+process_concept_data <- function(data_sources, concept_type = "plant") {
   config <- get_concept_config(concept_type)
 
   concept_data <- data_sources[[config$data_key]]
@@ -93,42 +88,21 @@ process_concept_data <- function(data_sources, concept_type = "plant", use_progr
     concept_data <- concept_empty_source_df(concept_type)[FALSE, , drop = FALSE]
   }
 
-  if (isTRUE(use_progress)) {
-    safe_inc_progress(0.15, detail = paste0("Cleaning ", concept_type, " names"))
-  }
   names <- clean_column_data(concept_data, config$name_field)
 
-  if (isTRUE(use_progress)) {
-    safe_inc_progress(0.1, detail = "Preparing status data")
-  }
   status_raw <- concept_data$current_accepted
   status_sort <- ifelse(is.na(status_raw), 2, ifelse(status_raw == TRUE, 0, 1))
 
-  if (isTRUE(use_progress)) {
-    safe_inc_progress(0.1, detail = paste0("Cleaning ", concept_type, " levels"))
-  }
   levels <- clean_column_data(concept_data, config$level_field)
 
-  if (isTRUE(use_progress)) {
-    safe_inc_progress(0.15, detail = "Preparing reference data")
-  }
   reference_codes <- concept_data$concept_rf_code
   reference_names <- clean_column_data(concept_data, "concept_rf_name")
 
-  if (isTRUE(use_progress)) {
-    safe_inc_progress(0.15, detail = "Cleaning observation counts")
-  }
   obs_counts <- suppressWarnings(as.numeric(clean_column_data(concept_data, "obs_count", "0")))
   obs_counts[is.na(obs_counts)] <- 0
 
-  if (isTRUE(use_progress)) {
-    safe_inc_progress(0.15, detail = paste0("Cleaning ", concept_type, " descriptions"))
-  }
   descriptions <- clean_column_data(concept_data, config$description_field)
 
-  if (isTRUE(use_progress)) {
-    safe_inc_progress(0.1, detail = "Preparing action codes")
-  }
   action_codes <- concept_data[[config$code_field]]
 
   result <- data.frame(
@@ -150,6 +124,14 @@ process_concept_data <- function(data_sources, concept_type = "plant", use_progr
   result
 }
 
+#' Build table configuration for remote concept data tables
+#'
+#' Creates the complete configuration object needed for server-side concept tables,
+#' including column definitions, AJAX setup, and remote data options.
+#'
+#' @param config A concept configuration list from CONCEPT_CONFIG
+#' @returns A list containing table_config elements for create_table()
+#' @noRd
 concept_table_config <- function(config) {
   link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
 
@@ -160,7 +142,7 @@ concept_table_config <- function(config) {
   )
 
   empty_sources <- setNames(list(concept_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]), config$data_key)
-  initial_display <- process_concept_data(empty_sources, concept_type = config$concept_type, use_progress = FALSE)
+  initial_display <- process_concept_data(empty_sources, concept_type = config$concept_type)
 
   table_config$use_progress <- FALSE
   table_config$initial_data <- initial_display
@@ -172,6 +154,14 @@ concept_table_config <- function(config) {
   table_config
 }
 
+#' Create column definitions for concept DataTables
+#'
+#' Defines column-specific rendering, visibility, width, and sorting behavior for concept tables.
+#' Includes hidden columns for proper server-side sorting of status badges and reference links.
+#'
+#' @param detail_input_id The Shiny input ID for the detail button click handler
+#' @returns A list of DataTables columnDefs configuration objects
+#' @noRd
 concept_column_defs <- function(detail_input_id) {
   list(
     list(
@@ -193,16 +183,24 @@ concept_column_defs <- function(detail_input_id) {
     list(targets = 4, width = "10%", className = "dt-center"),
     list(
       targets = 5,
-      width = "20%",
+      width = "10%",
       render = create_reference_link_renderer(),
       orderData = 6
     ),
     list(targets = 6, visible = FALSE, searchable = FALSE),
     list(targets = 7, width = "10%", type = "num", className = "dt-right"),
-    list(targets = 8, width = "15%")
+    list(targets = 8, width = "25%")
   )
 }
 
+#' Create DataTables options for remote server-side concept tables
+#'
+#' Configures DataTables for server-side processing, disabling client-side features
+#' that are incompatible with remote pagination and filtering.
+#'
+#' @param config A concept configuration list from CONCEPT_CONFIG
+#' @returns A list of DataTables options for server-side mode
+#' @noRd
 concept_remote_options <- function(config) {
   list(
     serverSide = TRUE,
@@ -213,12 +211,23 @@ concept_remote_options <- function(config) {
   )
 }
 
+#' Configure AJAX endpoint for remote concept data fetching
+#'
+#' Sets up the server-side AJAX callback that handles pagination, filtering, and search
+#' for concept tables. Creates a remote_filter function that fetches data from the VegBank API,
+#' processes it for display, and returns the proper DataTables response structure.
+#'
+#' @param session The Shiny session object
+#' @param config A concept configuration list from CONCEPT_CONFIG
+#' @param initial_display The initial empty data frame structure for the table
+#' @returns A list with an 'url' element pointing to the registered AJAX endpoint
+#' @noRd
 concept_ajax_config <- function(session, config, initial_display) {
   if (is.null(session)) {
     stop("A Shiny session is required to initialize the concept table.")
   }
 
-  page_length <- config$page_length %||% CONCEPT_TABLE_PAGE_LENGTH
+  page_length <- config$page_length %||% TABLE_PAGE_LENGTH
   total_cache <- get_session_total_cache(session, config)
 
   remote_filter <- function(data, params) {
@@ -238,7 +247,7 @@ concept_ajax_config <- function(session, config, initial_display) {
     normalized <- normalize_concepts(page$data, config$concept_type)
 
     data_sources <- setNames(list(normalized), config$data_key)
-    display_rows <- process_concept_data(data_sources, concept_type = config$concept_type, use_progress = FALSE)
+    display_rows <- process_concept_data(data_sources, concept_type = config$concept_type)
 
     details <- page$details
     reported_total <- extract_reported_total(details)
@@ -286,6 +295,14 @@ concept_ajax_config <- function(session, config, initial_display) {
   list(url = ajax_url)
 }
 
+#' Normalize and validate search term from DataTables request
+#'
+#' Decodes, trims, and validates the search term from a DataTables AJAX request.
+#' Returns NULL for empty or whitespace-only search strings.
+#'
+#' @param value The raw search value from DataTables params
+#' @returns A trimmed search string, or NULL if empty
+#' @noRd
 normalize_search_term <- function(value) {
   term <- value %||% ""
   term <- httpuv::decodeURIComponent(term)
@@ -296,6 +313,14 @@ normalize_search_term <- function(value) {
   term
 }
 
+#' Extract reported total count from VegBank API page details
+#'
+#' Safely extracts the total record count from the page details returned by vegbankr.
+#' Handles missing, NULL, or malformed count values gracefully.
+#'
+#' @param details The page details object from vegbankr::get_page_details()
+#' @returns An integer total count, or NA_integer_ if unavailable
+#' @noRd
 extract_reported_total <- function(details) {
   if (is.null(details)) {
     return(NA_integer_)
@@ -311,6 +336,14 @@ extract_reported_total <- function(details) {
   as.integer(round(total))
 }
 
+#' Parse character or mixed vector into logical values
+#'
+#' Converts various string representations of boolean values (true/false, t/f, 1/0)
+#' into R logical values. Case-insensitive. Unrecognized values become NA.
+#'
+#' @param x A vector to parse into logical values
+#' @returns A logical vector of the same length as x
+#' @noRd
 parse_logical_vector <- function(x) {
   if (is.logical(x)) {
     return(x)
@@ -322,6 +355,16 @@ parse_logical_vector <- function(x) {
   parsed
 }
 
+#' Normalize and validate concept data from API response
+#'
+#' Ensures API response data contains all required fields with proper types.
+#' Fills missing fields with NA, coerces types, and ensures consistent structure
+#' for downstream processing. Returns an empty data frame if input is invalid.
+#'
+#' @param df A data frame (or coercible object) from the VegBank API
+#' @param concept_type Either "plant" or "community"
+#' @returns A validated and normalized data frame with all expected columns
+#' @noRd
 normalize_concepts <- function(df, concept_type) {
   if (is.null(df)) {
     return(concept_empty_source_df(concept_type)[FALSE, , drop = FALSE])
@@ -355,12 +398,30 @@ normalize_concepts <- function(df, concept_type) {
   df
 }
 
+#' Create an empty data frame with concept-specific schema
+#'
+#' Generates a zero-row data frame with all required columns for a given concept type.
+#' Used as a template for empty tables and to ensure consistent structure.
+#'
+#' @param concept_type Either "plant" or "community"
+#' @returns A zero-row data frame with all expected concept columns
+#' @noRd
 concept_empty_source_df <- function(concept_type) {
   config <- get_concept_config(concept_type)
   cols <- stats::setNames(rep(list(character()), length(config$fields)), config$fields)
   as.data.frame(cols, stringsAsFactors = FALSE)
 }
 
+#' Coerce API response into a data frame
+#'
+#' Recursively extracts and converts various API response structures into a data frame.
+#' Handles nested lists, single-element wrappers, and already-formatted data frames.
+#' Returns an empty concept-specific data frame if coercion fails.
+#'
+#' @param parsed The parsed API response object
+#' @param concept_type Either "plant" or "community"
+#' @returns A data frame, or an empty concept-specific data frame on failure
+#' @noRd
 coerce_api_page <- function(parsed, concept_type) {
   if (is.null(parsed)) {
     return(concept_empty_source_df(concept_type)[FALSE, , drop = FALSE])
@@ -382,6 +443,18 @@ coerce_api_page <- function(parsed, concept_type) {
   )
 }
 
+#' Fetch a page of concept records from the VegBank API
+#'
+#' Retrieves a paginated slice of plant or community concept data using vegbankr.
+#' Handles API errors gracefully by returning an empty result structure.
+#' Supports optional search filtering.
+#'
+#' @param concept_type Either "plant" or "community"
+#' @param limit Maximum number of records to fetch
+#' @param offset Starting position for pagination (0-based)
+#' @param search Optional search term to filter results
+#' @returns A list with 'data' (data frame) and 'details' (page metadata)
+#' @noRd
 fetch_concept_page <- function(concept_type, limit, offset, search = NULL) {
   config <- get_concept_config(concept_type)
 
@@ -412,6 +485,16 @@ fetch_concept_page <- function(concept_type, limit, offset, search = NULL) {
   list(data = coerce_api_page(vb_result, concept_type), details = details)
 }
 
+#' Fetch total count of concept records matching a search term
+#'
+#' Queries the VegBank API to determine the total number of records matching
+#' an optional search filter. Results are cached per concept type and search term
+#' to minimize redundant API calls. Returns NA if the count cannot be determined.
+#'
+#' @param concept_type Either "plant" or "community"
+#' @param search Optional search term (NULL for total unfiltered count)
+#' @returns An integer count, or NA_integer_ if unavailable
+#' @noRd
 fetch_concept_count <- function(concept_type, search = NULL) {
   cache <- get_concept_count_cache(concept_type)
   key <- if (is.null(search)) "__all__" else search
@@ -447,6 +530,14 @@ fetch_concept_count <- function(concept_type, search = NULL) {
   total
 }
 
+#' Retrieve configuration for a given concept type
+#'
+#' Looks up the configuration list from CONCEPT_CONFIG for the specified concept type.
+#' Throws an error if the concept type is not recognized.
+#'
+#' @param concept_type Either "plant" or "community"
+#' @returns The configuration list for the specified concept type
+#' @noRd
 get_concept_config <- function(concept_type) {
   config <- CONCEPT_CONFIG[[concept_type]]
   if (is.null(config)) {
@@ -455,6 +546,15 @@ get_concept_config <- function(concept_type) {
   config
 }
 
+#' Get or create the count cache environment for a concept type
+#'
+#' Retrieves the caching environment used to store API count results for a specific
+#' concept type. Creates a new environment if one does not already exist.
+#' Each concept type has its own isolated cache to prevent key collisions.
+#'
+#' @param concept_type Either "plant" or "community"
+#' @returns An environment used for caching count queries
+#' @noRd
 get_concept_count_cache <- function(concept_type) {
   if (!exists(concept_type, envir = CONCEPT_COUNT_CACHE, inherits = FALSE)) {
     assign(concept_type, new.env(parent = emptyenv()), envir = CONCEPT_COUNT_CACHE)
@@ -462,6 +562,16 @@ get_concept_count_cache <- function(concept_type) {
   get(concept_type, envir = CONCEPT_COUNT_CACHE, inherits = FALSE)
 }
 
+#' Get or create the session-specific total count cache
+#'
+#' Retrieves (or initializes) the Shiny session's cache for storing the unfiltered
+#' total record count. This count is stored in session$userData to persist across
+#' multiple AJAX requests without re-querying the API unnecessarily.
+#'
+#' @param session The Shiny session object
+#' @param config A concept configuration list from CONCEPT_CONFIG
+#' @returns An environment with a 'count' slot for caching the total
+#' @noRd
 get_session_total_cache <- function(session, config) {
   key <- config$session_cache_key
   cache <- session$userData[[key]]

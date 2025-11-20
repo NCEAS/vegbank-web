@@ -2,6 +2,8 @@
 #'
 #' Provides common table functions that can be used across different data types.
 
+# Default number of rows per DataTable page when pagination is enabled
+TABLE_PAGE_LENGTH <- 100L
 
 #' Create a table with the given configuration
 #'
@@ -44,7 +46,7 @@ create_table <- function(data_sources, required_sources, process_function = NULL
     options <- list(
       stateSave = table_config$state_save %||% TRUE,
       dom = table_config$dom %||% "frtip",
-      pageLength = table_config$page_length %||% 100,
+      pageLength = table_config$page_length %||% TABLE_PAGE_LENGTH,
       scrollY = table_config$scroll_y %||% "calc(100vh - 235px)",
       scrollX = table_config$scroll_x %||% TRUE,
       scrollCollapse = table_config$scroll_collapse %||% FALSE,
