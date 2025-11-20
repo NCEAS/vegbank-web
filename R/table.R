@@ -15,78 +15,63 @@ TABLE_PAGE_LENGTH <- 100L
 #' @noRd
 create_table <- function(data_sources, required_sources, process_function = NULL, table_config = list()) {
   session <- shiny::getDefaultReactiveDomain()
-  use_progress <- table_config$use_progress %||% TRUE
-  progress_message <- table_config$progress_message %||% "Processing table data"
-  progress_value <- table_config$progress_value %||% 0
+  required_sources <- required_sources %||% character(0)
 
-  build_table <- function() {
-    required_sources <- required_sources %||% character(0)
-
-    if (length(required_sources) > 0) {
-      if (is_any_data_missing(data_sources, required_sources, table_config$empty_message)) {
-        return(create_empty_table(table_config$empty_message))
-      }
+  if (length(required_sources) > 0) {
+    if (is_any_data_missing(data_sources, required_sources, table_config$empty_message)) {
+      return(create_empty_table(table_config$empty_message))
     }
-
-    display_data <- table_config$initial_data
-
-    if (is.null(display_data) && !is.null(process_function)) {
-      if (isTRUE(use_progress)) {
-        safe_inc_progress(0.2, detail = table_config$process_detail %||% "Processing data sources")
-      }
-      display_data <- process_function(data_sources)
-    }
-
-    if (is.null(display_data)) {
-      display_data <- data.frame()
-    }
-
-    column_defs <- table_config$column_defs %||% list()
-
-    options <- list(
-      stateSave = table_config$state_save %||% TRUE,
-      dom = table_config$dom %||% "frtip",
-      pageLength = table_config$page_length %||% TABLE_PAGE_LENGTH,
-      scrollY = table_config$scroll_y %||% "calc(100vh - 235px)",
-      scrollX = table_config$scroll_x %||% TRUE,
-      scrollCollapse = table_config$scroll_collapse %||% FALSE,
-      deferRender = table_config$defer_render %||% TRUE,
-      processing = table_config$processing %||% TRUE,
-      columnDefs = column_defs
-    )
-
-    if (!is.null(table_config$options)) {
-      options <- utils::modifyList(options, table_config$options)
-    }
-
-    if (!is.null(table_config$ajax)) {
-      ajax_config <- table_config$ajax
-      if (is.function(ajax_config)) {
-        ajax_config <- ajax_config(session)
-      }
-      options$ajax <- ajax_config
-    }
-
-    datatable_args <- list(
-      data = display_data,
-      rownames = table_config$rownames %||% FALSE,
-      escape = table_config$escape %||% FALSE,
-      selection = table_config$selection %||% "none",
-      options = options
-    )
-
-    if (!is.null(table_config$datatable_args)) {
-      datatable_args <- utils::modifyList(datatable_args, table_config$datatable_args)
-    }
-
-    do.call(DT::datatable, datatable_args)
   }
 
-  if (isTRUE(use_progress)) {
-    shiny::withProgress(expr = build_table(), message = progress_message, value = progress_value)
-  } else {
-    build_table()
+  display_data <- table_config$initial_data
+
+  if (is.null(display_data) && !is.null(process_function)) {
+    display_data <- process_function(data_sources)
   }
+
+  if (is.null(display_data)) {
+    display_data <- data.frame()
+  }
+
+  column_defs <- table_config$column_defs %||% list()
+
+  options <- list(
+    stateSave = table_config$state_save %||% TRUE,
+    dom = table_config$dom %||% "frtip",
+    pageLength = table_config$page_length %||% TABLE_PAGE_LENGTH,
+    scrollY = table_config$scroll_y %||% "calc(100vh - 235px)",
+    scrollX = table_config$scroll_x %||% TRUE,
+    scrollCollapse = table_config$scroll_collapse %||% FALSE,
+    deferRender = table_config$defer_render %||% TRUE,
+    processing = table_config$processing %||% TRUE,
+    columnDefs = column_defs
+  )
+
+  if (!is.null(table_config$options)) {
+    options <- utils::modifyList(options, table_config$options)
+  }
+
+  if (!is.null(table_config$ajax)) {
+    ajax_config <- table_config$ajax
+    if (is.function(ajax_config)) {
+      ajax_config <- ajax_config(session)
+    }
+    options$ajax <- ajax_config
+  }
+
+  datatable_args <- list(
+    data = display_data,
+    rownames = table_config$rownames %||% FALSE,
+    escape = table_config$escape %||% FALSE,
+    selection = table_config$selection %||% "none",
+    options = options
+  )
+
+  if (!is.null(table_config$datatable_args)) {
+    datatable_args <- utils::modifyList(datatable_args, table_config$datatable_args)
+  }
+
+  do.call(DT::datatable, datatable_args)
 }
 
 #' Check if any required data sources are missing
