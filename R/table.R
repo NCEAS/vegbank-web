@@ -3,6 +3,7 @@
 #' Provides common table functions that can be used across different data types.
 
 # Default number of rows per DataTable page when pagination is enabled
+#' @noRd
 TABLE_PAGE_LENGTH <- 100L
 
 #' Create a table with the given configuration

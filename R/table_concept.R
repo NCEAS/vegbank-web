@@ -1,7 +1,7 @@
 #' Concept Table Functions Module
 #'
 #' Provides server-side DataTable builders for plant and community concepts.
-
+#' @noRd
 CONCEPT_CONFIG <- list(
   plant = build_table_module_config(
     type = "plant",
