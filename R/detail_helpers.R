@@ -138,9 +138,12 @@ create_detail_table <- function(details, col_names) {
 #' @param rows List of htmltools tr tags representing the table rows
 #' @return An htmltools table tag with thead and tbody
 #' @noRd
-create_detail_table_with_headers <- function(headers, rows) {
+create_detail_table_with_headers <- function(headers, rows,
+                                             table_class = "table table-sm table-striped table-hover",
+                                             table_style = NULL) {
   htmltools::tags$table(
-    class = "table table-sm table-striped table-hover",
+    class = table_class,
+    style = table_style,
     htmltools::tags$thead(
       htmltools::tags$tr(
         lapply(headers, htmltools::tags$th)

@@ -1,32 +1,221 @@
+#' @noRd
+plot_detail_output_names <- c(
+  "plot_id_details", "location_details", "layout_details",
+  "environmental_details", "methods_details", "plot_quality_details",
+  "taxa_details", "communities_details"
+)
+
+#' Bind Nested Rows into a Single Data Frame
+#'
+#' Attempts to combine nested list or data frame elements into a single data frame.
+#' Handles various input formats gracefully and returns an empty data frame on failure.
+#'
+#' @param nested A nested structure that may be NULL, a data frame, or a list of
+#'   data frames to combine.
+#' @return A data frame containing the combined rows, or an empty data frame if
+#'   the input cannot be processed.
+#' @noRd
+bind_nested_rows <- function(nested) {
+  if (is.null(nested)) {
+    return(data.frame())
+  }
+
+  if (is.data.frame(nested)) {
+    return(nested)
+  }
+
+  if (is.list(nested) && length(nested) > 0) {
+    return(tryCatch(dplyr::bind_rows(nested), error = function(e) data.frame()))
+  }
+
+  data.frame()
+}
+
+#' Extract Nested Table from Data Frame Column
+#'
+#' Extracts a nested table (stored as a list-column) from a single-row data frame
+#' and returns it as a standard data frame. Handles various nesting formats and
+#' returns an empty data frame if the column is missing or invalid.
+#'
+#' @param row_df A single-row data frame containing the nested column.
+#' @param column_name Character string naming the column to extract.
+#' @return A data frame containing the extracted nested table, or an empty data
+#'   frame if extraction fails.
+#' @noRd
+extract_nested_table <- function(row_df, column_name) {
+  if (is.null(row_df) || nrow(row_df) == 0 || !column_name %in% names(row_df)) {
+    return(data.frame())
+  }
+
+  column <- row_df[[column_name]]
+
+  if (is.null(column)) {
+    return(data.frame())
+  }
+
+  if (is.data.frame(column)) {
+    return(column)
+  }
+
+  if (!is.list(column) || length(column) == 0) {
+    return(data.frame())
+  }
+
+  bind_nested_rows(column[[1]])
+}
+
+#' Normalize Plot Observation Result Payload
+#'
+#' Transforms the API payload for plot observations into a standardized structure
+#' with separate components for plot metadata, taxa observations, and community
+#' classifications. Extracts nested list-columns and removes them from the main
+#' observation data frame.
+#'
+#' @param result A single-row data frame from vegbankr containing nested
+#'   `top_taxon_observations` and `top_classifications` list-columns.
+#' @return A list with four elements:
+#'   \describe{
+#'     \item{plot_observation}{Data frame of plot-level metadata with nested
+#'       columns removed}
+#'     \item{top_taxon_observations}{Data frame of taxon observations}
+#'     \item{communities}{Data frame of community classifications}
+#'     \item{has_data}{Logical indicating whether valid data was found}
+#'   }
+#' @noRd
+normalize_plot_obs_result <- function(result) {
+  empty <- list(
+    plot_observation = data.frame(),
+    top_taxon_observations = data.frame(),
+    communities = data.frame(),
+    has_data = FALSE
+  )
+
+  if (is.null(result)) {
+    return(empty)
+  }
+
+  if (!is.data.frame(result) || nrow(result) == 0) {
+    return(empty)
+  }
+
+  plot_observation <- result[1, , drop = FALSE]
+  taxa <- extract_nested_table(plot_observation, "top_taxon_observations")
+  communities <- extract_nested_table(plot_observation, "top_classifications")
+
+  nested_cols <- intersect(c("top_taxon_observations", "top_classifications"), names(plot_observation))
+  if (length(nested_cols) > 0) {
+    plot_observation[nested_cols] <- NULL
+  }
+
+  list(
+    plot_observation = plot_observation,
+    top_taxon_observations = taxa,
+    communities = communities,
+    has_data = TRUE
+  )
+}
+
+#' Prepare Taxa Data for Display
+#'
+#' Processes raw taxon observation data by normalizing stratum labels, sorting
+#' by stratum group and cover percentage, and formatting cover values for display.
+#' Taxa with missing stratum are labeled as "-all-" and placed at the end. Cover
+#' values are rounded to two decimal places and suffixed with "%".
+#'
+#' @param taxa A data frame of taxon observations containing `stratum_name` and
+#'   `cover` columns (these columns are added as NA if missing).
+#' @return The input data frame with additional columns:
+#'   \describe{
+#'     \item{stratum_label}{Normalized stratum name ("Unspecified" for missing values)}
+#'     \item{cover_numeric}{Numeric cover value}
+#'     \item{cover_numeric_order}{Cover value for sorting (missing values as -Inf)}
+#'     \item{cover_display}{Formatted cover string (e.g., "25.40%") or "Not recorded"}
+#'   }
+#'   Rows are sorted by stratum group, then descending by cover within each group.
+#' @noRd
+prepare_taxa_display <- function(taxa) {
+  if (is.null(taxa) || nrow(taxa) == 0) {
+    return(data.frame())
+  }
+
+  if (!"stratum_name" %in% names(taxa)) {
+    taxa$stratum_name <- NA_character_
+  }
+  if (!"cover" %in% names(taxa)) {
+    taxa$cover <- NA_real_
+  }
+
+  stratum_values <- as.character(taxa$stratum_name)
+  stratum_values[is.na(stratum_values)] <- ""
+  stratum_values <- trimws(stratum_values)
+  taxa$stratum_label <- ifelse(stratum_values == "", "Unspecified", stratum_values)
+
+  taxa$cover_numeric <- suppressWarnings(as.numeric(taxa$cover))
+  taxa$cover_numeric_order <- ifelse(is.na(taxa$cover_numeric), -Inf, taxa$cover_numeric)
+
+  stratum_levels <- unique(taxa$stratum_label)
+  stratum_levels <- stratum_levels[stratum_levels != "-all-"]
+  if (any(taxa$stratum_label == "-all-")) {
+    stratum_levels <- c(stratum_levels, "-all-")
+  }
+
+  order_index <- order(match(taxa$stratum_label, stratum_levels), -taxa$cover_numeric_order)
+  sorted_taxa <- taxa[order_index, , drop = FALSE]
+
+  sorted_taxa$cover_display <- ifelse(
+    !is.na(sorted_taxa$cover_numeric),
+    sprintf("%.2f%%", round(sorted_taxa$cover_numeric, 2)),
+    "Not recorded"
+  )
+
+  sorted_taxa
+}
+
 #' Build Plot Observation Details View
 #'
 #' Constructs a list of Shiny UI outputs for displaying detailed plot observation information.
 #'
-#' @param result A list of 3 dataframes (plot_observation, taxa, and communities)
+#' @param result A single-row dataframe returned by vegbankr with nested
+#'   `top_taxon_observations` and `top_classifications` list-columns.
 #' @return A list of Shiny UI outputs.
 #'
 #' @importFrom htmltools tags
 #' @importFrom shiny renderUI
 #' @noRd
 build_plot_obs_details_view <- function(result) {
+  normalized <- normalize_plot_obs_result(result)
+
+  if (!normalized$has_data) {
+    return(create_empty_detail_view(plot_detail_output_names, "Plot observation details"))
+  }
+
+  plot_observation <- normalized$plot_observation
+
   taxa_details_ui <- shiny::renderUI({
     tryCatch(
       {
-        taxa <- result$taxa
+        taxa <- normalized$top_taxon_observations
         if (is.null(taxa) || nrow(taxa) == 0) {
           return(htmltools::tags$p("No taxa recorded"))
         }
 
-        taxa$cover <- as.numeric(taxa$cover)
-        sorted_taxa <- taxa[order(-taxa$cover), ]
+        sorted_taxa <- prepare_taxa_display(taxa)
+
         rows <- lapply(seq_len(nrow(sorted_taxa)), function(i) {
-          row <- sorted_taxa[i, ]
+          row <- sorted_taxa[i, , drop = FALSE]
+
           htmltools::tags$tr(
-            htmltools::tags$td(row$int_curr_plant_sci_name_no_auth),
-            htmltools::tags$td(style = "text-align: right;", sprintf("%.2f%%", row$cover))
+            htmltools::tags$td(create_detail_link("plant_link_click", row$pc_code, row$plant_name)),
+            htmltools::tags$td(row$stratum_label),
+            htmltools::tags$td(style = "text-align: right;", row$cover_display)
           )
         })
-        create_detail_table_with_headers(c("Scientific Name", "Cover"), rows)
+        table_tag <- create_detail_table_with_headers(
+          c("Name", "Stratum", "Cover"),
+          rows,
+          table_style = "width: 100%; table-layout: fixed; word-break: break-word;"
+        )
+        table_tag
       },
       error = function(e) {
         paste("Error processing taxa:", e$message)
@@ -37,7 +226,7 @@ build_plot_obs_details_view <- function(result) {
   communities_details_ui <- shiny::renderUI({
     tryCatch(
       {
-        communities <- result$communities
+        communities <- normalized$communities
         if (is.null(communities) || nrow(communities) == 0) {
           return(htmltools::tags$p("No communities recorded"))
         }
@@ -61,30 +250,30 @@ build_plot_obs_details_view <- function(result) {
   list(
     plot_id_details = render_detail_table(
       c("author_obs_code", "author_plot_code"),
-      result$plot_observation
+      plot_observation
     ),
     location_details = render_detail_table(
       c("confidentiality_text", "latitude", "longitude", "location_narrative", "state_province", "country"),
-      result$plot_observation
+      plot_observation
     ),
     layout_details = render_detail_table(
       c("area", "permanence"),
-      result$plot_observation
+      plot_observation
     ),
     environmental_details = render_detail_table(
       c("elevation", "slope_aspect", "slope_gradient"),
-      result$plot_observation
+      plot_observation
     ),
     methods_details = render_detail_table(
       c(
         "obs_start_date", "project_name", "cover_type", "stratum_method_name", "stratum_method_description",
         "taxon_observation_area", "auto_taxon_cover"
       ),
-      result$plot_observation
+      plot_observation
     ),
     plot_quality_details = render_detail_table(
       "plot_validation_level_descr",
-      result$plot_observation
+      plot_observation
     ),
     taxa_details = taxa_details_ui,
     communities_details = communities_details_ui

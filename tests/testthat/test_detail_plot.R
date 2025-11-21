@@ -30,3 +30,70 @@ test_that("build_plot_obs_details_view formats plot data correctly", {
   # Each component should be a render function
   expect_true(inherits(result$plot_id_details, "shiny.render.function"))
 })
+
+test_that("normalize_plot_obs_result handles dataframe payload format", {
+  payload <- data.frame(
+    author_obs_code = "ACAD.206",
+    author_plot_code = "ACAD.206",
+    latitude = 44.343921905,
+    longitude = -68.046130404,
+    plot_validation_level_descr = "Validated",
+    stringsAsFactors = FALSE
+  )
+
+  payload$top_classifications <- I(list(data.frame(
+    cc_code = "cc.47305",
+    comm_name = "Picea mariana / Kalmia angustifolia Woodland",
+    stringsAsFactors = FALSE
+  )))
+
+  payload$top_taxon_observations <- I(list(data.frame(
+    pc_code = c("pc.8790", "pc.10653"),
+    plant_name = c("Amelanchier stolonifera", "Aronia melanocarpa"),
+    stratum_name = c("Shrub", "-all-"),
+    cover = c(0.5625, 0.0625),
+    stringsAsFactors = FALSE
+  )))
+
+  normalized <- vegbankweb:::normalize_plot_obs_result(payload)
+
+  expect_true(normalized$has_data)
+  expect_equal(normalized$plot_observation$author_obs_code, "ACAD.206")
+  expect_false("top_taxon_observations" %in% names(normalized$plot_observation))
+  expect_equal(nrow(normalized$top_taxon_observations), 2)
+  expect_equal(normalized$top_taxon_observations$pc_code[1], "pc.8790")
+  expect_equal(nrow(normalized$communities), 1)
+  expect_equal(normalized$communities$cc_code[1], "cc.47305")
+})
+
+test_that("normalize_plot_obs_result rejects legacy list payload format", {
+  legacy_payload <- list(
+    plot_observation = list(author_obs_code = "LEGACY"),
+    top_taxon_observations = list(data.frame(plant_name = "Legacy", stringsAsFactors = FALSE)),
+    communities = list(data.frame(cc_code = "cc.1", stringsAsFactors = FALSE))
+  )
+
+  normalized <- vegbankweb:::normalize_plot_obs_result(legacy_payload)
+
+  expect_false(normalized$has_data)
+  expect_equal(nrow(normalized$plot_observation), 0)
+  expect_equal(nrow(normalized$top_taxon_observations), 0)
+  expect_equal(nrow(normalized$communities), 0)
+})
+
+test_that("prepare_taxa_display groups by stratum and sorts cover", {
+  taxa <- data.frame(
+    plant_name = c("A", "B", "C", "D"),
+    stratum_name = c("Canopy", "Shrub", NA, "Shrub"),
+    cover = c(25.4, 60.2, 40.8, 20.1),
+    stringsAsFactors = FALSE
+  )
+
+  prepared <- vegbankweb:::prepare_taxa_display(taxa)
+
+  expect_equal(prepared$stratum_label, c("Canopy", "Shrub", "Shrub", "-all-"))
+  expect_true(prepared$cover_numeric[2] >= prepared$cover_numeric[4])
+  expect_equal(tail(prepared$stratum_label, 1), "-all-")
+  expect_equal(prepared$cover_display[1], "25.40%")
+  expect_equal(prepared$cover_display[2], "60.20%")
+})
