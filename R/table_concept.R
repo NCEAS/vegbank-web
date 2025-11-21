@@ -121,31 +121,6 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   result
 }
 
-#' Truncate long text values and append ellipses
-#'
-#' Limits string length for table display, appending "..." when values exceed
-#' the maximum number of characters. Preserves NA and empty values.
-#'
-#' @param values Character vector to truncate
-#' @param max_chars Maximum number of characters to keep before appending ellipses
-#' @returns Character vector with truncated values where needed
-#' @noRd
-truncate_text_with_ellipsis <- function(values, max_chars = 680L) {
-  if (is.null(values) || !length(values)) {
-    return(values)
-  }
-
-  values <- as.character(values)
-  char_counts <- nchar(values, allowNA = TRUE, type = "chars")
-  needs_truncation <- !is.na(char_counts) & char_counts > max_chars
-
-  if (any(needs_truncation)) {
-    values[needs_truncation] <- paste0(substr(values[needs_truncation], 1, max_chars), "...")
-  }
-
-  values
-}
-
 #' Build table configuration for remote concept data tables
 #'
 #' Creates the complete configuration object needed for server-side concept tables,
@@ -157,23 +132,32 @@ truncate_text_with_ellipsis <- function(values, max_chars = 680L) {
 create_concept_table_config <- function(config) {
   link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
 
-  table_config <- list(
-    column_defs = create_concept_column_defs(link_input_id),
-    progress_message = paste0("Processing ", config$remote_label, " table data"),
-    page_length = config$page_length
-  )
-
+  column_defs <- create_concept_column_defs(link_input_id)
   empty_sources <- setNames(list(create_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]), config$data_key)
   initial_display <- process_concept_data(empty_sources, concept_type = config$concept_type)
+  empty_factory <- function() create_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]
 
-  table_config$use_progress <- FALSE
-  table_config$initial_data <- initial_display
-  table_config$options <- create_concept_remote_options(config)
-  table_config$ajax <- function(session) {
-    create_concept_ajax_config(session, config, initial_display)
-  }
-
-  table_config
+  build_remote_table_config(
+    column_defs = column_defs,
+    initial_data = initial_display,
+    remote = list(
+      table_id = config$table_id,
+      endpoint = config$endpoint,
+      page_length = config$page_length %||% TABLE_PAGE_LENGTH,
+      coerce_fn = function(parsed) coerce_api_page(parsed, config$concept_type),
+      normalize_fn = function(data) normalize_concepts(data, config$concept_type),
+      display_fn = function(normalized) {
+        data_sources <- setNames(list(normalized), config$data_key)
+        process_concept_data(data_sources, concept_type = config$concept_type)
+      },
+      empty_factory = empty_factory,
+      clean_rows_fn = clean_dt_frame,
+      count_clean_names = FALSE
+    ),
+    remote_label = config$remote_label,
+    page_length = config$page_length,
+    options = list()
+  )
 }
 
 #' Create column definitions for concept DataTables
@@ -213,167 +197,6 @@ create_concept_column_defs <- function(detail_input_id) {
     list(targets = 7, width = "10%", type = "num", className = "dt-right"),
     list(targets = 8, width = "25%")
   )
-}
-
-#' Create DataTables options for remote server-side concept tables
-#'
-#' Configures DataTables for server-side processing, disabling client-side features
-#' that are incompatible with remote pagination and filtering.
-#'
-#' @param config A concept configuration list from CONCEPT_CONFIG
-#' @returns A list of DataTables options for server-side mode
-#' @noRd
-create_concept_remote_options <- function(config) {
-  list(
-    serverSide = TRUE,
-    lengthChange = FALSE,
-    ordering = FALSE,
-    searching = TRUE,
-    language = list(processing = paste0("Loading ", config$remote_label, "..."))
-  )
-}
-
-#' Configure AJAX endpoint for remote concept data fetching
-#'
-#' Sets up the server-side AJAX callback that handles pagination, filtering, and search
-#' for concept tables. Creates a remote_filter function that fetches data from the VegBank API,
-#' processes it for display, and returns the proper DataTables response structure.
-#'
-#' @param session The Shiny session object
-#' @param config A concept configuration list from CONCEPT_CONFIG
-#' @param initial_display The initial empty data frame structure for the table
-#' @returns A list with an 'url' element pointing to the registered AJAX endpoint
-#' @noRd
-create_concept_ajax_config <- function(session, config, initial_display) {
-  if (is.null(session)) {
-    stop("A Shiny session is required to initialize the concept table.")
-  }
-
-  page_length <- config$page_length %||% TABLE_PAGE_LENGTH
-
-  remote_filter <- function(data, params) {
-    draw <- as.integer(params$draw %||% 0L)
-
-    offset <- as.integer(params$start %||% 0L)
-    if (is.na(offset) || offset < 0L) {
-      offset <- 0L
-    }
-
-    search_term <- NULL
-    if (!is.null(params$search)) {
-      search_term <- normalize_search_term(params$search$value)
-    }
-
-    empty_factory <- function() create_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]
-    page <- fetch_remote_page(
-      endpoint = config$endpoint,
-      limit = page_length,
-      offset = offset,
-      detail = "full",
-      parquet = FALSE,
-      clean_names = FALSE,
-      search = search_term,
-      coerce_fn = function(parsed) coerce_api_page(parsed, config$concept_type),
-      empty_factory = empty_factory
-    )
-    normalized <- normalize_concepts(page$data, config$concept_type)
-
-    data_sources <- setNames(list(normalized), config$data_key)
-    display_rows <- process_concept_data(data_sources, concept_type = config$concept_type)
-
-    # Extract total from API response or query separately
-    details <- page$details
-    reported_total <- extract_reported_total(details)
-
-    # If no total in query response fetch fresh unfiltered total count
-    total_records <- reported_total
-    if (is.null(total_records) || !length(total_records) || is.na(total_records)) {
-      total_records <- fetch_remote_count(
-        endpoint = config$endpoint,
-        search = NULL,
-        detail = "minimal",
-        parquet = FALSE,
-        clean_names = FALSE
-      )
-    }
-    if (is.null(total_records) || !length(total_records) || is.na(total_records)) {
-      total_records <- nrow(normalized)
-    }
-    total_records <- as.integer(round(total_records))
-
-    # Calculate filtered count (may differ from total if search is active)
-    filtered_records <- reported_total
-    if (is.null(filtered_records) || !length(filtered_records) || is.na(filtered_records)) {
-      if (is.null(search_term)) {
-        filtered_records <- total_records
-      } else {
-        filtered_records <- fetch_remote_count(
-          endpoint = config$endpoint,
-          search = search_term,
-          detail = "minimal",
-          parquet = FALSE,
-          clean_names = FALSE
-        )
-        if (is.null(filtered_records) || !length(filtered_records) || is.na(filtered_records)) {
-          filtered_records <- nrow(normalized)
-        }
-      }
-    }
-    filtered_records <- as.integer(round(filtered_records))
-
-    list(
-      draw = draw,
-      recordsTotal = total_records,
-      recordsFiltered = filtered_records,
-      data = clean_dt_frame(display_rows)
-    )
-  }
-
-  ajax_url <- DT::dataTableAjax(
-    session = session,
-    data = initial_display,
-    filter = remote_filter,
-    outputId = config$table_id
-  )
-
-  list(url = ajax_url)
-}
-
-#' Normalize and validate search term from DataTables request
-#'
-#' Decodes, trims, and validates the search term from a DataTables AJAX request.
-#' Returns NULL for empty or whitespace-only search strings.
-#'
-#' @param value The raw search value from DataTables params
-#' @returns A trimmed search string, or NULL if empty
-#' @noRd
-normalize_search_term <- function(value) {
-  term <- value %||% ""
-  term <- httpuv::decodeURIComponent(term)
-  term <- trimws(term)
-  if (!nzchar(term)) {
-    return(NULL)
-  }
-  term
-}
-
-#' Parse character or mixed vector into logical values
-#'
-#' Converts various string representations of boolean values (true/false, t/f, 1/0)
-#' into R logical values. Case-insensitive. Unrecognized values become NA.
-#'
-#' @param x A vector to parse into logical values
-#' @returns A logical vector of the same length as x
-#' @noRd
-parse_logical_vector <- function(x) {
-  if (is.logical(x)) {
-    return(x)
-  }
-  parsed <- rep(NA, length(x))
-  lower <- tolower(as.character(x))
-  parsed[lower %in% c("true", "t", "1")] <- TRUE
-  parsed[lower %in% c("false", "f", "0")] <- FALSE
-  parsed
 }
 
 #' Normalize and validate concept data from API response
