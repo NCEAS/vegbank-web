@@ -60,7 +60,7 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
   concept_type <- match.arg(concept_type)
   config <- get_concept_config(concept_type)
 
-  table_config <- concept_table_config(config)
+  table_config <- create_concept_table_config(config)
 
   create_table(
     data_sources = list(),
@@ -154,11 +154,11 @@ truncate_text_with_ellipsis <- function(values, max_chars = 680L) {
 #' @param config A concept configuration list from CONCEPT_CONFIG
 #' @returns A list containing table_config elements for create_table()
 #' @noRd
-concept_table_config <- function(config) {
+create_concept_table_config <- function(config) {
   link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
 
   table_config <- list(
-    column_defs = concept_column_defs(link_input_id),
+    column_defs = create_concept_column_defs(link_input_id),
     progress_message = paste0("Processing ", config$remote_label, " table data"),
     page_length = config$page_length
   )
@@ -168,9 +168,9 @@ concept_table_config <- function(config) {
 
   table_config$use_progress <- FALSE
   table_config$initial_data <- initial_display
-  table_config$options <- concept_remote_options(config)
+  table_config$options <- create_concept_remote_options(config)
   table_config$ajax <- function(session) {
-    concept_ajax_config(session, config, initial_display)
+    create_concept_ajax_config(session, config, initial_display)
   }
 
   table_config
@@ -184,7 +184,7 @@ concept_table_config <- function(config) {
 #' @param detail_input_id The Shiny input ID for the detail button click handler
 #' @returns A list of DataTables columnDefs configuration objects
 #' @noRd
-concept_column_defs <- function(detail_input_id) {
+create_concept_column_defs <- function(detail_input_id) {
   list(
     list(
       targets = 0,
@@ -223,7 +223,7 @@ concept_column_defs <- function(detail_input_id) {
 #' @param config A concept configuration list from CONCEPT_CONFIG
 #' @returns A list of DataTables options for server-side mode
 #' @noRd
-concept_remote_options <- function(config) {
+create_concept_remote_options <- function(config) {
   list(
     serverSide = TRUE,
     lengthChange = FALSE,
@@ -244,7 +244,7 @@ concept_remote_options <- function(config) {
 #' @param initial_display The initial empty data frame structure for the table
 #' @returns A list with an 'url' element pointing to the registered AJAX endpoint
 #' @noRd
-concept_ajax_config <- function(session, config, initial_display) {
+create_concept_ajax_config <- function(session, config, initial_display) {
   if (is.null(session)) {
     stop("A Shiny session is required to initialize the concept table.")
   }
@@ -264,7 +264,12 @@ concept_ajax_config <- function(session, config, initial_display) {
       search_term <- normalize_search_term(params$search$value)
     }
 
-    page <- fetch_concept_page(config$concept_type, limit = page_length, offset = offset, search = search_term)
+    page <- fetch_concept_page(
+      config$concept_type,
+      limit = page_length,
+      offset = offset,
+      search = search_term
+    )
     normalized <- normalize_concepts(page$data, config$concept_type)
 
     data_sources <- setNames(list(normalized), config$data_key)
@@ -274,7 +279,7 @@ concept_ajax_config <- function(session, config, initial_display) {
     details <- page$details
     reported_total <- extract_reported_total(details)
 
-    # Always fetch fresh unfiltered total count
+    # If no total in query response fetch fresh unfiltered total count
     total_records <- reported_total
     if (is.null(total_records) || !length(total_records) || is.na(total_records)) {
       total_records <- fetch_concept_count(config$concept_type, NULL)
@@ -391,7 +396,10 @@ normalize_concepts <- function(df, concept_type) {
     return(create_empty_source_df(concept_type)[FALSE, , drop = FALSE])
   }
   if (!is.data.frame(df)) {
-    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) create_empty_source_df(concept_type)[FALSE, , drop = FALSE])
+    df <- tryCatch(
+      as.data.frame(df, stringsAsFactors = FALSE),
+      error = function(e) create_empty_source_df(concept_type)[FALSE, , drop = FALSE]
+    )
   }
   if (!nrow(df)) {
     return(create_empty_source_df(concept_type)[FALSE, , drop = FALSE])
@@ -640,8 +648,8 @@ create_reference_link_renderer <- function() {
         }
 
         // Create clickable link
-        return '<a href=\"#\" data-code=\"' + code + 
-                  '\" onclick=\"Shiny.setInputValue(\\'ref_link_click\\', \\'' + code + 
+        return '<a href=\"#\" data-code=\"' + code +
+                  '\" onclick=\"Shiny.setInputValue(\\'ref_link_click\\', \\'' + code +
                   '\\', {priority: \\'event\\'}); return false;\">' + name + '</a>';
       }
       // For sort/filter/type, return the raw data (sorting handled by hidden column)
@@ -650,4 +658,3 @@ create_reference_link_renderer <- function() {
 
   DT::JS(js_code)
 }
-
