@@ -55,8 +55,6 @@ CONCEPT_CONFIG <- list(
   )
 )
 
-clean_dt_frame <- get("cleanDataFrame", envir = asNamespace("DT"))
-
 #' Build the concept DataTable for a given concept type
 #'
 #' @param concept_type Either "plant" or "community"
@@ -156,7 +154,7 @@ create_concept_table_config <- function(config) {
     schema_fields = config$fields,
     empty_factory = function() create_empty_source_df(config$concept_type),
     page_length = config$page_length %||% TABLE_PAGE_LENGTH,
-    clean_rows_fn = clean_dt_frame,
+    clean_rows_fn = sanitize_dt_rows,
     count_clean_names = FALSE
   )
 
