@@ -148,6 +148,7 @@ clean_column_data <- function(data, column_name, default_value = "Not provided")
   }
 }
 
+# TODO: Soon to be deprecated by JS renderer
 #' Create generic action buttons for each row
 #'
 #' @param data Data frame
@@ -329,6 +330,100 @@ extract_reported_total <- function(details) {
   as.integer(round(total))
 }
 
+#' Build a standardized table module configuration entry
+#'
+#' Provides a consistent structure for table configuration maps (e.g., concepts,
+#' plots, parties) so new table modules can share the same metadata contract.
+#'
+#' @param type Unique identifier for the table variant (e.g., "plant")
+#' @param table_id Output ID of the DT widget
+#' @param endpoint VegBank (or other API) endpoint used for remote data
+#' @param data_key Name of the data source entry used inside processing helpers
+#' @param remote_label Friendly label for progress/loading messages
+#' @param fields Character vector describing the canonical data schema
+#' @param extra Named list merged into the base entry for module-specific values
+#' @returns A list entry that can be stored inside a table config map
+#' @noRd
+build_table_module_config <- function(type,
+                                      table_id,
+                                      endpoint,
+                                      data_key,
+                                      remote_label,
+                                      fields,
+                                      extra = list()) {
+  base <- list(
+    table_type = type,
+    table_id = table_id,
+    endpoint = endpoint,
+    data_key = data_key,
+    remote_label = remote_label,
+    fields = fields
+  )
+
+  utils::modifyList(base, extra)
+}
+
+#' Build a normalized data source specification
+#'
+#' Convenience helper that collects the functions and options required for
+#' server-side paginated tables into a single validated structure. Future table
+#' modules can call this once and pass the result to `build_remote_table_config()`.
+#'
+#' @param table_id Output ID of the DT widget
+#' @param endpoint Remote endpoint used for page fetches
+#' @param coerce_fn Function converting raw API results into a data frame
+#' @param normalize_fn Function enforcing schema/typing on the coerced data
+#' @param display_fn Function transforming normalized data into display rows
+#' @param label Optional friendly label for progress text
+#' @param schema_fields Optional character vector describing the schema; when
+#'   provided, the spec automatically supplies an `empty_factory` returning a
+#'   zero-row data frame with those columns
+#' @param empty_factory Optional custom function returning empty data (overrides
+#'   the schema-driven factory when supplied)
+#' @param ... Additional named options merged into the spec (detail, parquet,
+#'   clean_names, search_normalizer, clean_rows_fn, count_* overrides, query, etc.)
+#' @returns A list tagged with class `data_source_spec`
+#' @noRd
+build_data_source_spec <- function(table_id,
+                                   endpoint,
+                                   coerce_fn = identity,
+                                   normalize_fn = identity,
+                                   display_fn = identity,
+                                   label = NULL,
+                                   schema_fields = NULL,
+                                   empty_factory = NULL,
+                                   ...) {
+  if (is.null(table_id) || !nzchar(table_id)) {
+    stop("table_id is required for a data source specification")
+  }
+  if (is.null(endpoint) || !nzchar(endpoint)) {
+    stop("endpoint is required for a data source specification")
+  }
+
+  if (!is.function(display_fn)) {
+    stop("display_fn must be a function")
+  }
+
+  schema_factory <- empty_factory
+  if (is.null(schema_factory) && !is.null(schema_fields)) {
+    schema_factory <- function() build_zero_row_df(schema_fields)
+  }
+
+  spec <- list(
+    table_id = table_id,
+    endpoint = endpoint,
+    label = label,
+    coerce_fn = coerce_fn %||% identity,
+    normalize_fn = normalize_fn %||% identity,
+    display_fn = display_fn,
+    empty_factory = schema_factory,
+    ...
+  )
+
+  class(spec) <- c("data_source_spec", class(spec))
+  spec
+}
+
 #' Build AJAX configuration for server-side DataTables
 #'
 #' Creates a reusable `remote_filter` closure that fetches paginated data from a
@@ -338,7 +433,7 @@ extract_reported_total <- function(details) {
 #' @param session Shiny session used by `DT::dataTableAjax`
 #' @param table_id Output ID of the DT widget
 #' @param initial_data Zero-row data frame describing the table schema
-#' @param remote List describing the remote data behavior (endpoint, handlers, etc.).
+#' @param data_source_spec List describing the remote data behavior (endpoint, handlers, etc.).
 #'   Expected entries include `endpoint`, optional handler overrides (e.g.,
 #'   `coerce_fn`, `normalize_fn`, `display_fn`, `empty_factory`), and transport
 #'   options such as `page_length`, `detail`, `parquet`, `query`, and `count_*` overrides.
@@ -353,10 +448,10 @@ build_remote_ajax_config <- function(session,
   }
 
   if (is.null(data_source_spec) || !is.list(data_source_spec)) {
-    stop("remote specification must be a list")
+    stop("data_source_spec must be a list")
   }
 
-  endpoint <- data_source_spec$endpoint %||% stop("remote$endpoint is required")
+  endpoint <- data_source_spec$endpoint %||% stop("data_source_spec$endpoint is required")
   page_length <- data_source_spec$page_length %||% TABLE_PAGE_LENGTH
   coerce_fn <- data_source_spec$coerce_fn %||% identity
   normalize_fn <- data_source_spec$normalize_fn %||% identity
@@ -375,7 +470,7 @@ build_remote_ajax_config <- function(session,
   count_query <- data_source_spec$count_query %||% query
 
   if (!is.function(display_fn)) {
-    stop("remote$display_fn must be a function")
+    stop("data_source_spec$display_fn must be a function")
   }
 
   remote_filter <- function(data, params) {
@@ -471,7 +566,7 @@ build_remote_ajax_config <- function(session,
 #'
 #' @param column_defs Column definition list for DataTables
 #' @param initial_data Zero-row data frame representing the table schema
-#' @param remote List describing how to fetch, normalize, and display remote data.
+#' @param data_source_spec List describing how to fetch, normalize, and display remote data.
 #'   Must include `table_id`, `endpoint`, and optionally:
 #'   `page_length`, `coerce_fn`, `normalize_fn`, `display_fn`, `empty_factory`,
 #'   `detail`, `parquet`, `clean_names`, `search_normalizer`, `clean_rows_fn`,
@@ -492,13 +587,13 @@ build_remote_table_config <- function(column_defs,
                                       options = list(),
                                       datatable_args = list()) {
   if (is.null(data_source_spec) || !is.list(data_source_spec)) {
-    stop("remote specification must be a list")
+    stop("data_source_spec must be a list")
   }
   if (is.null(data_source_spec$table_id)) {
-    stop("remote$table_id is required")
+    stop("data_source_spec$table_id is required")
   }
   if (is.null(data_source_spec$endpoint)) {
-    stop("remote$endpoint is required")
+    stop("data_source_spec$endpoint is required")
   }
 
   remote_label <- remote_label %||% data_source_spec$label %||% "data"
@@ -524,7 +619,7 @@ build_remote_table_config <- function(column_defs,
       session = session,
       table_id = data_source_spec$table_id,
       initial_data = initial_data,
-      remote = data_source_spec
+      data_source_spec = data_source_spec
     )
   }
 
@@ -538,6 +633,32 @@ build_remote_table_config <- function(column_defs,
     datatable_args = datatable_args,
     ajax = ajax_factory
   )
+}
+
+#' Build a zero-row data frame with the requested columns
+#'
+#' Creates a typed, zero-row data frame that can be used as a schema template
+#' for remote tables and empty data sources.
+#'
+#' @param column_names Character vector of column names to include
+#' @param column_types Optional named list of prototype vectors (e.g., list(a = numeric())).
+#'   Columns without an explicit prototype default to character() columns.
+#' @returns A zero-row data frame suitable for use as an empty template
+#' @noRd
+build_zero_row_df <- function(column_names, column_types = NULL) {
+  if (is.null(column_names) || !length(column_names)) {
+    return(data.frame()[FALSE, , drop = FALSE])
+  }
+
+  column_types <- column_types %||% list()
+  template <- stats::setNames(vector("list", length(column_names)), column_names)
+
+  for (name in column_names) {
+    prototype <- column_types[[name]] %||% character()
+    template[[name]] <- prototype
+  }
+
+  as.data.frame(template, stringsAsFactors = FALSE)[FALSE, , drop = FALSE]
 }
 
 #' Normalize and validate search term from DataTables request

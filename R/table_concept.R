@@ -3,16 +3,11 @@
 #' Provides server-side DataTable builders for plant and community concepts.
 
 CONCEPT_CONFIG <- list(
-  plant = list(
-    concept_type = "plant",
+  plant = build_table_module_config(
+    type = "plant",
     table_id = "plant_table",
     endpoint = "plant-concepts",
     data_key = "plant_data",
-    code_field = "pc_code",
-    name_field = "plant_name",
-    level_field = "plant_level",
-    description_field = "plant_description",
-    name_label = "Plant Name",
     remote_label = "plant concepts",
     fields = c(
       "pc_code",
@@ -23,18 +18,21 @@ CONCEPT_CONFIG <- list(
       "concept_rf_name",
       "obs_count",
       "plant_description"
+    ),
+    extra = list(
+      concept_type = "plant",
+      code_field = "pc_code",
+      name_field = "plant_name",
+      level_field = "plant_level",
+      description_field = "plant_description",
+      name_label = "Plant Name"
     )
   ),
-  community = list(
-    concept_type = "community",
+  community = build_table_module_config(
+    type = "community",
     table_id = "comm_table",
     endpoint = "community-concepts",
     data_key = "community_data",
-    code_field = "cc_code",
-    name_field = "comm_name",
-    level_field = "comm_level",
-    description_field = "comm_description",
-    name_label = "Community Name",
     remote_label = "community concepts",
     fields = c(
       "cc_code",
@@ -45,6 +43,14 @@ CONCEPT_CONFIG <- list(
       "concept_rf_name",
       "obs_count",
       "comm_description"
+    ),
+    extra = list(
+      concept_type = "community",
+      code_field = "cc_code",
+      name_field = "comm_name",
+      level_field = "comm_level",
+      description_field = "comm_description",
+      name_label = "Community Name"
     )
   )
 )
@@ -81,7 +87,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   concept_data <- data_sources[[config$data_key]]
   if (is.null(concept_data)) {
-    concept_data <- create_empty_source_df(concept_type)[FALSE, , drop = FALSE]
+    concept_data <- create_empty_source_df(concept_type)
   }
 
   display_names <- clean_column_data(concept_data, config$name_field)
@@ -133,27 +139,31 @@ create_concept_table_config <- function(config) {
   link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
 
   column_defs <- create_concept_column_defs(link_input_id)
-  empty_sources <- setNames(list(create_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]), config$data_key)
+  empty_source <- create_empty_source_df(config$concept_type)
+  empty_sources <- setNames(list(empty_source), config$data_key)
   initial_display <- process_concept_data(empty_sources, concept_type = config$concept_type)
-  empty_factory <- function() create_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]
+
+  data_source_spec <- build_data_source_spec(
+    table_id = config$table_id,
+    endpoint = config$endpoint,
+    coerce_fn = function(parsed) coerce_api_page(parsed, config$concept_type),
+    normalize_fn = function(data) normalize_concepts(data, config$concept_type),
+    display_fn = function(normalized) {
+      data_sources <- setNames(list(normalized), config$data_key)
+      process_concept_data(data_sources, concept_type = config$concept_type)
+    },
+    label = config$remote_label,
+    schema_fields = config$fields,
+    empty_factory = function() create_empty_source_df(config$concept_type),
+    page_length = config$page_length %||% TABLE_PAGE_LENGTH,
+    clean_rows_fn = clean_dt_frame,
+    count_clean_names = FALSE
+  )
 
   build_remote_table_config(
     column_defs = column_defs,
     initial_data = initial_display,
-    remote = list(
-      table_id = config$table_id,
-      endpoint = config$endpoint,
-      page_length = config$page_length %||% TABLE_PAGE_LENGTH,
-      coerce_fn = function(parsed) coerce_api_page(parsed, config$concept_type),
-      normalize_fn = function(data) normalize_concepts(data, config$concept_type),
-      display_fn = function(normalized) {
-        data_sources <- setNames(list(normalized), config$data_key)
-        process_concept_data(data_sources, concept_type = config$concept_type)
-      },
-      empty_factory = empty_factory,
-      clean_rows_fn = clean_dt_frame,
-      count_clean_names = FALSE
-    ),
+    data_source_spec = data_source_spec,
     remote_label = config$remote_label,
     page_length = config$page_length,
     options = list()
@@ -211,16 +221,16 @@ create_concept_column_defs <- function(detail_input_id) {
 #' @noRd
 normalize_concepts <- function(df, concept_type) {
   if (is.null(df)) {
-    return(create_empty_source_df(concept_type)[FALSE, , drop = FALSE])
+    return(create_empty_source_df(concept_type))
   }
   if (!is.data.frame(df)) {
     df <- tryCatch(
       as.data.frame(df, stringsAsFactors = FALSE),
-      error = function(e) create_empty_source_df(concept_type)[FALSE, , drop = FALSE]
+      error = function(e) create_empty_source_df(concept_type)
     )
   }
   if (!nrow(df)) {
-    return(create_empty_source_df(concept_type)[FALSE, , drop = FALSE])
+    return(create_empty_source_df(concept_type))
   }
 
   config <- get_concept_config(concept_type)
@@ -255,8 +265,7 @@ normalize_concepts <- function(df, concept_type) {
 #' @noRd
 create_empty_source_df <- function(concept_type) {
   config <- get_concept_config(concept_type)
-  cols <- stats::setNames(rep(list(character()), length(config$fields)), config$fields)
-  as.data.frame(cols, stringsAsFactors = FALSE)
+  build_zero_row_df(config$fields)
 }
 
 #' Coerce API response into a data frame
@@ -271,7 +280,7 @@ create_empty_source_df <- function(concept_type) {
 #' @noRd
 coerce_api_page <- function(parsed, concept_type) {
   if (is.null(parsed)) {
-    return(create_empty_source_df(concept_type)[FALSE, , drop = FALSE])
+    return(create_empty_source_df(concept_type))
   }
   if (is.data.frame(parsed)) {
     return(parsed)
@@ -286,7 +295,7 @@ coerce_api_page <- function(parsed, concept_type) {
   }
   tryCatch(
     as.data.frame(parsed, stringsAsFactors = FALSE),
-    error = function(e) create_empty_source_df(concept_type)[FALSE, , drop = FALSE]
+    error = function(e) create_empty_source_df(concept_type)
   )
 }
 
