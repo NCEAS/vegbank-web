@@ -264,11 +264,17 @@ create_concept_ajax_config <- function(session, config, initial_display) {
       search_term <- normalize_search_term(params$search$value)
     }
 
-    page <- fetch_concept_page(
-      config$concept_type,
+    empty_factory <- function() create_empty_source_df(config$concept_type)[FALSE, , drop = FALSE]
+    page <- fetch_remote_page(
+      endpoint = config$endpoint,
       limit = page_length,
       offset = offset,
-      search = search_term
+      detail = "full",
+      parquet = FALSE,
+      clean_names = FALSE,
+      search = search_term,
+      coerce_fn = function(parsed) coerce_api_page(parsed, config$concept_type),
+      empty_factory = empty_factory
     )
     normalized <- normalize_concepts(page$data, config$concept_type)
 
@@ -282,7 +288,13 @@ create_concept_ajax_config <- function(session, config, initial_display) {
     # If no total in query response fetch fresh unfiltered total count
     total_records <- reported_total
     if (is.null(total_records) || !length(total_records) || is.na(total_records)) {
-      total_records <- fetch_concept_count(config$concept_type, NULL)
+      total_records <- fetch_remote_count(
+        endpoint = config$endpoint,
+        search = NULL,
+        detail = "minimal",
+        parquet = FALSE,
+        clean_names = FALSE
+      )
     }
     if (is.null(total_records) || !length(total_records) || is.na(total_records)) {
       total_records <- nrow(normalized)
@@ -295,7 +307,13 @@ create_concept_ajax_config <- function(session, config, initial_display) {
       if (is.null(search_term)) {
         filtered_records <- total_records
       } else {
-        filtered_records <- fetch_concept_count(config$concept_type, search_term)
+        filtered_records <- fetch_remote_count(
+          endpoint = config$endpoint,
+          search = search_term,
+          detail = "minimal",
+          parquet = FALSE,
+          clean_names = FALSE
+        )
         if (is.null(filtered_records) || !length(filtered_records) || is.na(filtered_records)) {
           filtered_records <- nrow(normalized)
         }
@@ -337,29 +355,6 @@ normalize_search_term <- function(value) {
     return(NULL)
   }
   term
-}
-
-#' Extract reported total count from VegBank API page details
-#'
-#' Safely extracts the total record count from the page details returned by vegbankr.
-#' Handles missing, NULL, or malformed count values gracefully.
-#'
-#' @param details The page details object from vegbankr::get_page_details()
-#' @returns An integer total count, or NA_integer_ if unavailable
-#' @noRd
-extract_reported_total <- function(details) {
-  if (is.null(details)) {
-    return(NA_integer_)
-  }
-  val <- details["count_reported"]
-  if (is.null(val) || !length(val)) {
-    return(NA_integer_)
-  }
-  suppressWarnings(total <- as.numeric(val[1]))
-  if (is.na(total)) {
-    return(NA_integer_)
-  }
-  as.integer(round(total))
 }
 
 #' Parse character or mixed vector into logical values
@@ -470,82 +465,6 @@ coerce_api_page <- function(parsed, concept_type) {
     as.data.frame(parsed, stringsAsFactors = FALSE),
     error = function(e) create_empty_source_df(concept_type)[FALSE, , drop = FALSE]
   )
-}
-
-#' Fetch a page of concept records from the VegBank API
-#'
-#' Retrieves a paginated slice of plant or community concept data using vegbankr.
-#' Handles API errors gracefully by returning an empty result structure.
-#' Supports optional search filtering.
-#'
-#' @param concept_type Either "plant" or "community"
-#' @param limit Maximum number of records to fetch
-#' @param offset Starting position for pagination (0-based)
-#' @param search Optional search term to filter results
-#' @returns A list with 'data' (data frame) and 'details' (page metadata)
-#' @noRd
-fetch_concept_page <- function(concept_type, limit, offset, search = NULL) {
-  config <- get_concept_config(concept_type)
-
-  vb_result <- try(
-    suppressWarnings(
-      vegbankr:::get_all_resources(
-        config$endpoint,
-        limit = limit,
-        offset = offset,
-        detail = "full",
-        parquet = FALSE,
-        search = search
-      )
-    ),
-    silent = TRUE
-  )
-
-  if (inherits(vb_result, "try-error")) {
-    vb_error <- attr(vb_result, "condition")
-    warning(
-      "vegbankr:::get_all_resources failed for ", concept_type, ": ",
-      if (!is.null(vb_error)) conditionMessage(vb_error) else "unknown error"
-    )
-    return(list(data = create_empty_source_df(concept_type)[FALSE, , drop = FALSE], details = NULL))
-  }
-
-  details <- tryCatch(vegbankr::get_page_details(vb_result), error = function(e) NULL)
-  list(data = coerce_api_page(vb_result, concept_type), details = details)
-}
-
-#' Fetch total count of concept records matching a search term
-#'
-#' Queries the VegBank API to determine the total number of records matching
-#' an optional search filter. Always performs a fresh query to avoid stale counts.
-#'
-#' @param concept_type Either "plant" or "community"
-#' @param search Optional search term (NULL for total unfiltered count)
-#' @returns An integer count, or NA_integer_ if unavailable
-#' @noRd
-fetch_concept_count <- function(concept_type, search = NULL) {
-  config <- get_concept_config(concept_type)
-
-  vb_result <- try(
-    suppressWarnings(
-      vegbankr:::get_all_resources(
-        config$endpoint,
-        limit = 1,
-        offset = 0,
-        detail = "full",
-        parquet = FALSE,
-        search = search
-      )
-    ),
-    silent = TRUE
-  )
-
-  if (inherits(vb_result, "try-error")) {
-    return(NA_integer_)
-  }
-
-  details <- tryCatch(vegbankr::get_page_details(vb_result), error = function(e) NULL)
-  extract_reported_total(details)
 }
 
 #' Retrieve configuration for a given concept type

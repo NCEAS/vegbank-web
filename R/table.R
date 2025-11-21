@@ -191,3 +191,138 @@ create_action_buttons <- function(data, actions) {
 safe_inc_progress <- function(amount, detail = NULL) {
   try(shiny::incProgress(amount, detail = detail), silent = TRUE)
 }
+
+#' Fetch a paginated VegBank resource page
+#'
+#' Provides a shared wrapper around vegbankr:::get_all_resources with consistent
+#' error handling and optional data coercion.
+#'
+#' @param endpoint VegBank resource endpoint (e.g., "plant-concepts")
+#' @param limit Number of rows to request
+#' @param offset Row offset for pagination
+#' @param detail API detail level ("minimal" or "full")
+#' @param parquet Whether to request parquet output (default FALSE for JSON)
+#' @param clean_names Whether to clean column names (passed to vegbankr)
+#' @param search Optional search term to pass through to VegBank
+#' @param coerce_fn Function that converts the raw vegbankr response into the
+#'   structure required by the caller (defaults to identity)
+#' @param empty_factory Optional function that returns an empty structure if the
+#'   request fails or coercion errors
+#' @param query Named list of additional query parameters to append
+#' @returns A list containing `data`, `details`, and optional `error`
+#' @noRd
+fetch_remote_page <- function(endpoint,
+                              limit,
+                              offset,
+                              detail = c("minimal", "full"),
+                              parquet = FALSE,
+                              clean_names = FALSE,
+                              search = NULL,
+                              coerce_fn = identity,
+                              empty_factory = NULL,
+                              query = list()) {
+  detail <- match.arg(detail)
+
+  args <- list(
+    resource = endpoint,
+    limit = limit,
+    offset = offset,
+    detail = detail,
+    parquet = parquet,
+    clean_names = clean_names
+  )
+
+  if (!is.null(search)) {
+    args$search <- search
+  }
+
+  if (length(query)) {
+    args <- c(args, query)
+  }
+
+  vb_result <- try(
+    suppressWarnings(do.call(vegbankr:::get_all_resources, args)),
+    silent = TRUE
+  )
+
+  if (inherits(vb_result, "try-error")) {
+    vb_error <- attr(vb_result, "condition")
+    warning(
+      "vegbankr:::get_all_resources failed for ", endpoint, ": ",
+      if (!is.null(vb_error)) conditionMessage(vb_error) else "unknown error"
+    )
+    data <- if (!is.null(empty_factory)) empty_factory() else NULL
+    return(list(data = data, details = NULL, error = vb_error))
+  }
+
+  data <- tryCatch(
+    coerce_fn(vb_result),
+    error = function(e) {
+      if (!is.null(empty_factory)) empty_factory() else NULL
+    }
+  )
+
+  details <- tryCatch(vegbankr::get_page_details(vb_result), error = function(e) NULL)
+
+  list(data = data, details = details, error = NULL)
+}
+
+#' Fetch total record count for a VegBank resource
+#'
+#' Convenience wrapper that requests a single record and reads the
+#' `count_reported` metadata to avoid redundant implementations across tables.
+#'
+#' @param endpoint VegBank resource endpoint (e.g., "plant-concepts")
+#' @param search Optional search term to include in the count query
+#' @param detail API detail level (defaults to "minimal" for efficiency)
+#' @param parquet Whether to request parquet output (default FALSE)
+#' @param clean_names Whether to clean column names
+#' @param query Additional query parameters to pass through
+#' @returns Integer count or NA_integer_ when unavailable
+#' @noRd
+fetch_remote_count <- function(endpoint,
+                               search = NULL,
+                               detail = c("minimal", "full"),
+                               parquet = FALSE,
+                               clean_names = TRUE,
+                               query = list()) {
+  detail <- match.arg(detail)
+
+  page <- fetch_remote_page(
+    endpoint = endpoint,
+    limit = 1L,
+    offset = 0L,
+    detail = detail,
+    parquet = parquet,
+    clean_names = clean_names,
+    search = search,
+    coerce_fn = identity,
+    empty_factory = function() NULL,
+    query = query
+  )
+
+  extract_reported_total(page$details)
+}
+
+#' Extract reported total count from VegBank API page details
+#'
+#' Safely extracts the total record count from the `count_reported` element of
+#' a page details object, handling NULL or malformed values.
+#'
+#' @param details A list returned by `vegbankr::get_page_details()`
+#' @returns Integer total or NA_integer_ if unavailable
+#' @noRd
+extract_reported_total <- function(details) {
+  if (is.null(details)) {
+    return(NA_integer_)
+  }
+  val <- details["count_reported"]
+  if (is.null(val) || !length(val)) {
+    return(NA_integer_)
+  }
+  suppressWarnings(total <- as.numeric(val[1]))
+  if (is.na(total)) {
+    return(NA_integer_)
+  }
+  as.integer(round(total))
+}
