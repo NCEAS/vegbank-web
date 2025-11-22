@@ -1,16 +1,15 @@
-# Shim to support temporary resource fetching until vegbankr is updated
+#' @noRd 
+MAX_TAXA_RETURNED <- 100000
+
+# Shim to support temporary plot fetching until vegbankr is updated
+# TODO: Replace when vegbankr:::get_resource_by_code is updated
 get_plot_observation <- function(ob_code) {
   vegbankr:::get_all_resources(
     resource = paste("plot-observations", ob_code, sep = "/"),
     detail = "full",
     with_nested = TRUE,
-    num_taxa = 100000
+    num_taxa = MAX_TAXA_RETURNED
   )
-}
-
-# Shim to support temporary resource fetching until vegbankr is updated
-get_resource_by_code_tmp <- function(resource, vb_code, ...) {
-  vegbankr:::get_all_resources(resource = paste(resource, vb_code, sep = "/"), ...)
 }
 
 #' Detail View Router

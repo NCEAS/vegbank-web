@@ -146,6 +146,14 @@ create_detail_table_with_headers <- function(headers, rows,
                                              table_class = "table table-sm table-striped table-hover",
                                              table_style = NULL,
                                              header_styles = NULL) {
+  # Validate header_styles length if provided
+  if (!is.null(header_styles) && length(header_styles) != length(headers)) {
+    warning(
+      "header_styles length (", length(header_styles),
+      ") does not match headers length (", length(headers), ")"
+    )
+  }
+
   # Build header cells with optional styles
   header_cells <- if (is.null(header_styles)) {
     lapply(headers, htmltools::tags$th)
