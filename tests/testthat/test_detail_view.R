@@ -11,10 +11,7 @@ test_that("show_detail_view handles API errors appropriately", {
   )
 
   with_mocked_bindings(
-    get_plot_observation_details = function(ob_code) list(),
-    get_community_concept = function(cc_code) list(),
-    get_taxon_observation = function(to_code) list(),
-    .package = "vegbankr",
+    get_plot_observation = function(ob_code) list(),
     {
       with_mock_shiny_notifications({
         result <- show_detail_view("plot-observation", "TEST123", test_output, test_session)
@@ -42,10 +39,7 @@ test_that("show_detail_view handles success case for plot details", {
   fake_output <- new.env()
 
   with_mocked_bindings(
-    get_plot_observation_details = function(ob_code) mock_plot_data,
-    get_community_concept = function(cc_code) list(),
-    get_taxon_observation = function(to_code) list(),
-    .package = "vegbankr",
+    get_plot_observation = function(ob_code) mock_plot_data,
     {
       with_mock_shiny_notifications({
         result <- show_detail_view("plot-observation", "TEST123", fake_output, fake_session)
