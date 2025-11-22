@@ -15,12 +15,11 @@ plot_detail_output_names <- c(
 #' @param result A single-row data frame from vegbankr containing nested
 #'   `top_taxon_observations` and `top_classifications` list-columns.
 #' @return A list with four elements:
-#'   \describe{
-#'     \item{plot_observation}{Data frame of plot-level metadata with nested
-#'       columns removed}
-#'     \item{top_taxon_observations}{Data frame of taxon observations}
-#'     \item{communities}{Data frame of community classifications}
-#'     \item{has_data}{Logical indicating whether valid data was found}
+#'   - plot_observation = Data frame of plot-level metadata with nested
+#'     columns removed
+#'   - top_taxon_observations = Data frame of taxon observations
+#'   - communities = Data frame of community classifications
+#'   - has_data = Logical indicating whether valid data was found
 #'   }
 #' @noRd
 normalize_plot_obs_result <- function(result) {
@@ -66,11 +65,10 @@ normalize_plot_obs_result <- function(result) {
 #' @param taxa A data frame of taxon observations containing `stratum_name` and
 #'   `cover` columns (these columns are added as NA if missing).
 #' @return The input data frame with additional columns:
-#'   \describe{
-#'     \item{stratum_label}{Normalized stratum name ("Unspecified" for missing values)}
-#'     \item{cover_numeric}{Numeric cover value}
-#'     \item{cover_numeric_order}{Cover value for sorting (missing values as -Inf)}
-#'     \item{cover_display}{Formatted cover string (e.g., "25.40%") or "Not recorded"}
+#'     - stratum_label = Normalized stratum name ("Unspecified" for missing values)
+#'     - cover_numeric = Numeric cover value
+#'     - cover_numeric_order = Cover value for sorting (missing values as -Inf)
+#'     - cover_display = Formatted cover string (e.g., "25.40%") or "Not recorded"
 #'   }
 #'   Rows are sorted by stratum group, then descending by cover within each group.
 #' @noRd
@@ -177,7 +175,7 @@ build_plot_obs_details_view <- function(result) {
           row <- communities[i, ]
           htmltools::tags$tr(
             htmltools::tags$td(
-              create_detail_link("comm_link_click", row$cc_code, row$comm_name)
+              create_detail_link("comm_class_link_click", row$cl_code, row$comm_name)
             )
           )
         })
