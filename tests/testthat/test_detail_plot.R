@@ -91,9 +91,9 @@ test_that("prepare_taxa_display groups by stratum and sorts cover", {
 
   prepared <- vegbankweb:::prepare_taxa_display(taxa)
 
-  expect_equal(prepared$stratum_label, c("Canopy", "Shrub", "Shrub", "-all-"))
+  expect_equal(prepared$stratum_label, c("Canopy", "Shrub", "Shrub", "Unspecified"))
   expect_true(prepared$cover_numeric[2] >= prepared$cover_numeric[4])
-  expect_equal(tail(prepared$stratum_label, 1), "-all-")
+  expect_equal(tail(prepared$stratum_label, 1), "Unspecified")
   expect_equal(prepared$cover_display[1], "25.40%")
   expect_equal(prepared$cover_display[2], "60.20%")
 })
