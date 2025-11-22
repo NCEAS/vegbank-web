@@ -151,12 +151,13 @@ build_plot_obs_details_view <- function(result) {
             htmltools::tags$td(style = "text-align: right;", row$cover_display)
           )
         })
-        table_tag <- create_detail_table_with_headers(
+
+        create_detail_table_with_headers(
           c("Name", "Stratum", "Cover"),
           rows,
-          table_style = "width: 100%; table-layout: fixed; word-break: break-word;"
+          table_style = "width: 100%; table-layout: fixed; word-break: break-word;",
+          header_styles = c("text-align: left;", "text-align: left;", "text-align: right;")
         )
-        table_tag
       },
       error = function(e) {
         paste("Error processing taxa:", e$message)

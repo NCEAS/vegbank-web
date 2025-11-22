@@ -136,18 +136,34 @@ create_detail_table <- function(details, col_names) {
 #'
 #' @param headers Character vector of header labels for table columns
 #' @param rows List of htmltools tr tags representing the table rows
+#' @param table_class CSS class(es) to apply to the table
+#' @param table_style CSS style string to apply to the table
+#' @param header_styles Character vector of CSS style strings to apply to each header,
+#'   or NULL for no custom styles. Length should match headers if provided.
 #' @return An htmltools table tag with thead and tbody
 #' @noRd
 create_detail_table_with_headers <- function(headers, rows,
                                              table_class = "table table-sm table-striped table-hover",
-                                             table_style = NULL) {
+                                             table_style = NULL,
+                                             header_styles = NULL) {
+  # Build header cells with optional styles
+  header_cells <- if (is.null(header_styles)) {
+    lapply(headers, htmltools::tags$th)
+  } else {
+    mapply(function(header, style) {
+      if (is.null(style) || style == "") {
+        htmltools::tags$th(header)
+      } else {
+        htmltools::tags$th(style = style, header)
+      }
+    }, headers, header_styles, SIMPLIFY = FALSE, USE.NAMES = FALSE)
+  }
+
   htmltools::tags$table(
     class = table_class,
     style = table_style,
     htmltools::tags$thead(
-      htmltools::tags$tr(
-        lapply(headers, htmltools::tags$th)
-      )
+      htmltools::tags$tr(header_cells)
     ),
     htmltools::tags$tbody(rows)
   )
