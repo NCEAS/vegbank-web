@@ -59,7 +59,7 @@ normalize_plot_obs_result <- function(result) {
 #'
 #' Processes raw taxon observation data by normalizing stratum labels, sorting
 #' by stratum group and cover percentage, and formatting cover values for display.
-#' Taxa with missing stratum are labeled as "-all-" and placed at the end. Cover
+#' Taxa with missing stratum are labeled as "Unspecified" and placed at the end. Cover
 #' values are rounded to two decimal places and suffixed with "%".
 #'
 #' @param taxa A data frame of taxon observations containing `stratum_name` and
@@ -103,7 +103,7 @@ prepare_taxa_display <- function(taxa) {
 
   sorted_taxa$cover_display <- ifelse(
     !is.na(sorted_taxa$cover_numeric),
-    sprintf("%.2f%%", round(sorted_taxa$cover_numeric, 2)),
+    sprintf("%.2f%%", sorted_taxa$cover_numeric),
     "Not recorded"
   )
 

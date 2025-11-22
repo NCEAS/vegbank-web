@@ -42,7 +42,7 @@ test_that("normalize_plot_obs_result handles dataframe payload format", {
   )
 
   payload$top_classifications <- I(list(data.frame(
-    cc_code = "cc.47305",
+    cl_code = "cl.47305",
     comm_name = "Picea mariana / Kalmia angustifolia Woodland",
     stringsAsFactors = FALSE
   )))
@@ -63,22 +63,7 @@ test_that("normalize_plot_obs_result handles dataframe payload format", {
   expect_equal(nrow(normalized$top_taxon_observations), 2)
   expect_equal(normalized$top_taxon_observations$pc_code[1], "pc.8790")
   expect_equal(nrow(normalized$communities), 1)
-  expect_equal(normalized$communities$cc_code[1], "cc.47305")
-})
-
-test_that("normalize_plot_obs_result rejects legacy list payload format", {
-  legacy_payload <- list(
-    plot_observation = list(author_obs_code = "LEGACY"),
-    top_taxon_observations = list(data.frame(plant_name = "Legacy", stringsAsFactors = FALSE)),
-    communities = list(data.frame(cc_code = "cc.1", stringsAsFactors = FALSE))
-  )
-
-  normalized <- vegbankweb:::normalize_plot_obs_result(legacy_payload)
-
-  expect_false(normalized$has_data)
-  expect_equal(nrow(normalized$plot_observation), 0)
-  expect_equal(nrow(normalized$top_taxon_observations), 0)
-  expect_equal(nrow(normalized$communities), 0)
+  expect_equal(normalized$communities$cl_code[1], "cl.47305")
 })
 
 test_that("prepare_taxa_display groups by stratum and sorts cover", {

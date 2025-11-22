@@ -50,7 +50,7 @@ mock_plot_data$top_taxon_observations <- I(list(data.frame(
 )))
 
 mock_plot_data$top_classifications <- I(list(data.frame(
-  cc_code = "cc.54321",
+  cl_code = "cl.1553",
   comm_name = "Test Community",
   stringsAsFactors = FALSE
 )))
