@@ -86,57 +86,47 @@ build_concept_details_view <- function(result, concept_type = "plant") {
 #' Create Concept Aliases UI (for Plant or Community)
 #' @noRd
 create_concept_aliases_ui <- function(result, is_plant = TRUE) {
-  aliases_content <- NULL
-  usages_field <- "usages"
+  usages_data <- extract_nested_table(result, "usages")
 
-  if (!is.na(result[[usages_field]]) &&
-    !is.null(result[[usages_field]]) &&
-    length(result[[usages_field]][[1]]) > 0) {
-    tryCatch(
-      {
-        usages_data <- result[[usages_field]][[1]]
-        if (is.data.frame(usages_data) && nrow(usages_data) > 0) {
-          class_system_col <- if ("class_system" %in% names(usages_data)) "class_system" else NULL
-          name_col <- if ("name" %in% names(usages_data)) {
-            "name"
-          } else if (is_plant && "plant_name" %in% names(usages_data)) {
-            "plant_name"
-          } else if (!is_plant && "comm_name" %in% names(usages_data)) {
-            "comm_name"
-          } else {
-            names(usages_data)[2]
-          }
+  if (nrow(usages_data) == 0) {
+    return(htmltools::tags$p("No aliases available"))
+  }
 
-          if (!is.null(class_system_col)) {
-            usages_data <- usages_data[order(usages_data[[class_system_col]]), ]
-          }
-
-          aliases_rows <- lapply(seq_len(nrow(usages_data)), function(i) {
-            class_system <- if (!is.null(class_system_col)) usages_data[[class_system_col]][i] else "Usage"
-            usage_name <- usages_data[[name_col]][i]
-            htmltools::tags$tr(
-              htmltools::tags$td(class_system),
-              htmltools::tags$td(class = "text-end", usage_name)
-            )
-          })
-
-          aliases_content <- htmltools::tags$table(
-            class = "table table-sm table-striped table-hover",
-            htmltools::tags$tbody(aliases_rows)
-          )
-        }
-      },
-      error = function(e) {
-        aliases_content <- htmltools::tags$p(paste("Error parsing aliases:", e$message))
+  tryCatch(
+    {
+      class_system_col <- if ("class_system" %in% names(usages_data)) "class_system" else NULL
+      name_col <- if ("name" %in% names(usages_data)) {
+        "name"
+      } else if (is_plant && "plant_name" %in% names(usages_data)) {
+        "plant_name"
+      } else if (!is_plant && "comm_name" %in% names(usages_data)) {
+        "comm_name"
+      } else {
+        names(usages_data)[2]
       }
-    )
-  }
 
-  if (is.null(aliases_content)) {
-    htmltools::tags$p("No aliases available")
-  } else {
-    aliases_content
-  }
+      if (!is.null(class_system_col)) {
+        usages_data <- usages_data[order(usages_data[[class_system_col]]), ]
+      }
+
+      aliases_rows <- lapply(seq_len(nrow(usages_data)), function(i) {
+        class_system <- if (!is.null(class_system_col)) usages_data[[class_system_col]][i] else "Usage"
+        usage_name <- usages_data[[name_col]][i]
+        htmltools::tags$tr(
+          htmltools::tags$td(class_system),
+          htmltools::tags$td(class = "text-end", usage_name)
+        )
+      })
+
+      htmltools::tags$table(
+        class = "table table-sm table-striped table-hover",
+        htmltools::tags$tbody(aliases_rows)
+      )
+    },
+    error = function(e) {
+      htmltools::tags$p(paste("Error parsing aliases:", e$message))
+    }
+  )
 }
 
 #' Create Party Perspective UI for Concept (Plant or Community)
@@ -145,29 +135,20 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
   is_plant <- concept_type == "plant"
 
   shiny::renderUI({
+    # Extract children data
+    children_data <- extract_nested_table(result, "children")
     children_links <- NULL
-    if (!is.na(result$children) &&
-      !is.null(result$children) &&
-      result$children != "" &&
-      length(result$children[[1]]) > 0) {
+
+    if (nrow(children_data) > 0) {
       tryCatch(
         {
-          children_data <- result$children[[1]]
-          if (is.data.frame(children_data) && nrow(children_data) > 0) {
-            children_links <- lapply(seq_len(nrow(children_data)), function(i) {
-              child_code <- children_data[[id_field]][i]
-              child_name <- children_data[[if (is_plant) "plant_name" else "comm_name"]][i]
-              htmltools::tags$li(
-                create_detail_link(link_input_id, child_code, child_name)
-              )
-            })
-          } else if (is.list(children_data) && length(children_data) > 0) {
-            children_links <- lapply(names(children_data), function(child_code) {
-              htmltools::tags$li(
-                create_detail_link(link_input_id, child_code, children_data[[child_code]])
-              )
-            })
-          }
+          children_links <- lapply(seq_len(nrow(children_data)), function(i) {
+            child_code <- children_data[[id_field]][i]
+            child_name <- children_data[[if (is_plant) "plant_name" else "comm_name"]][i]
+            htmltools::tags$li(
+              create_detail_link(link_input_id, child_code, child_name)
+            )
+          })
         },
         error = function(e) {
           children_links <- NULL
@@ -175,28 +156,25 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
       )
     }
 
+    # Extract correlations data
+    corr_data <- extract_nested_table(result, "correlations")
     correlations_links <- NULL
-    if (!is.na(result$correlations) &&
-      !is.null(result$correlations) &&
-      result$correlations != "" &&
-      length(result$correlations[[1]]) > 0) {
+
+    if (nrow(corr_data) > 0) {
       tryCatch(
         {
-          corr_data <- result$correlations[[1]]
-          if (is.data.frame(corr_data) && nrow(corr_data) > 0) {
-            correlations_links <- lapply(seq_len(nrow(corr_data)), function(i) {
-              corr_code <- corr_data[[id_field]][i]
-              corr_name <- corr_data[[if (is_plant) "plant_name" else "comm_name"]][i]
-              corr_type <- if ("correlation_type" %in% names(corr_data)) {
-                paste0(" (", corr_data$correlation_type[i], ")")
-              } else {
-                ""
-              }
-              htmltools::tags$li(
-                create_detail_link(link_input_id, corr_code, paste0(corr_name, corr_type))
-              )
-            })
-          }
+          correlations_links <- lapply(seq_len(nrow(corr_data)), function(i) {
+            corr_code <- corr_data[[id_field]][i]
+            corr_name <- corr_data[[if (is_plant) "plant_name" else "comm_name"]][i]
+            corr_type <- if ("correlation_type" %in% names(corr_data)) {
+              paste0(" (", corr_data$correlation_type[i], ")")
+            } else {
+              ""
+            }
+            htmltools::tags$li(
+              create_detail_link(link_input_id, corr_code, paste0(corr_name, corr_type))
+            )
+          })
         },
         error = function(e) {
           correlations_links <- NULL

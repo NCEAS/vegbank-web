@@ -5,65 +5,6 @@ plot_detail_output_names <- c(
   "taxa_details", "communities_details"
 )
 
-#' Bind Nested Rows into a Single Data Frame
-#'
-#' Attempts to combine nested list or data frame elements into a single data frame.
-#' Handles various input formats gracefully and returns an empty data frame on failure.
-#'
-#' @param nested A nested structure that may be NULL, a data frame, or a list of
-#'   data frames to combine.
-#' @return A data frame containing the combined rows, or an empty data frame if
-#'   the input cannot be processed.
-#' @noRd
-bind_nested_rows <- function(nested) {
-  if (is.null(nested)) {
-    return(data.frame())
-  }
-
-  if (is.data.frame(nested)) {
-    return(nested)
-  }
-
-  if (is.list(nested) && length(nested) > 0) {
-    return(tryCatch(dplyr::bind_rows(nested), error = function(e) data.frame()))
-  }
-
-  data.frame()
-}
-
-#' Extract Nested Table from Data Frame Column
-#'
-#' Extracts a nested table (stored as a list-column) from a single-row data frame
-#' and returns it as a standard data frame. Handles various nesting formats and
-#' returns an empty data frame if the column is missing or invalid.
-#'
-#' @param row_df A single-row data frame containing the nested column.
-#' @param column_name Character string naming the column to extract.
-#' @return A data frame containing the extracted nested table, or an empty data
-#'   frame if extraction fails.
-#' @noRd
-extract_nested_table <- function(row_df, column_name) {
-  if (is.null(row_df) || nrow(row_df) == 0 || !column_name %in% names(row_df)) {
-    return(data.frame())
-  }
-
-  column <- row_df[[column_name]]
-
-  if (is.null(column)) {
-    return(data.frame())
-  }
-
-  if (is.data.frame(column)) {
-    return(column)
-  }
-
-  if (!is.list(column) || length(column) == 0) {
-    return(data.frame())
-  }
-
-  bind_nested_rows(column[[1]])
-}
-
 #' Normalize Plot Observation Result Payload
 #'
 #' Transforms the API payload for plot observations into a standardized structure
