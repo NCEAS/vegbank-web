@@ -495,6 +495,10 @@ ui <- function(req) {
       return tableNode.DataTable();
     }
 
+    function isDataTableReady(table) {
+      return Boolean(table && Array.isArray(table.context) && table.context.length > 0);
+    }
+
     function applyTableState(tableId, state, settings) {
       var widgetId = resolveWidgetId(tableId);
       var targetId = widgetId || tableId;
@@ -502,6 +506,11 @@ ui <- function(req) {
 
       var table = getDataTableApi(targetId, settings);
       if (!table) {
+        return false;
+      }
+
+      if (!isDataTableReady(table)) {
+        console.warn('DataTable API not ready for table:', targetId, 'deferring state application');
         return false;
       }
 
@@ -523,6 +532,13 @@ ui <- function(req) {
         });
 
         var currentOrder = table.order();
+        if (!Array.isArray(currentOrder)) {
+          if (currentOrder && typeof currentOrder.toArray === 'function') {
+            currentOrder = currentOrder.toArray();
+          } else {
+            currentOrder = [];
+          }
+        }
         var orderDiffers = targetOrder.length !== currentOrder.length ||
           targetOrder.some(function(pair, index) {
             var currentPair = currentOrder[index];
@@ -535,10 +551,16 @@ ui <- function(req) {
         }
       }
 
+      var pageApiAvailable = table.page && typeof table.page === 'function';
       var targetLength = null;
       if (state.length !== undefined && state.length !== null) {
         targetLength = parseInt(state.length, 10);
-        if (!isNaN(targetLength) && table.page.len() !== targetLength) {
+        if (
+          pageApiAvailable &&
+          typeof table.page.len === 'function' &&
+          !isNaN(targetLength) &&
+          table.page.len() !== targetLength
+        ) {
           table.page.len(targetLength);
           hasChanges = true;
         }
@@ -551,9 +573,24 @@ ui <- function(req) {
         targetPage = Math.floor(parseInt(state.start, 10) / targetLength);
       }
 
-      if (targetPage !== null && !isNaN(targetPage) && table.page() !== targetPage) {
-        table.page(targetPage);
-        hasChanges = true;
+      if (pageApiAvailable && targetPage !== null && !isNaN(targetPage)) {
+        if (typeof table.page.info === 'function') {
+          var pageInfo = table.page.info();
+          if (pageInfo && typeof pageInfo.pages === 'number') {
+            var maxPageIndex = Math.max(0, pageInfo.pages - 1);
+            if (targetPage > maxPageIndex) {
+              targetPage = maxPageIndex;
+            }
+          }
+        }
+        if (targetPage < 0) {
+          targetPage = 0;
+        }
+
+        if (table.page() !== targetPage) {
+          table.page(targetPage);
+          hasChanges = true;
+        }
       }
 
       if (hasChanges) {
@@ -629,11 +666,12 @@ ui <- function(req) {
 
       if (widgetId && pendingInitialStates[widgetId]) {
         var initialState = pendingInitialStates[widgetId];
-        applyTableState(widgetId, initialState, settings);
-        finalizeInitialTableState(widgetId, settings, initialState);
-        clearPendingTableStates(widgetId);
-        tableInitialStateApplied[widgetId] = true;
-        delete pendingInitialStates[widgetId];
+        if (applyTableState(widgetId, initialState, settings)) {
+          finalizeInitialTableState(widgetId, settings, initialState);
+          clearPendingTableStates(widgetId);
+          tableInitialStateApplied[widgetId] = true;
+          delete pendingInitialStates[widgetId];
+        }
       }
       
       // Restore current selection after table redraw
