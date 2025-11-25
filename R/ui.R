@@ -51,6 +51,384 @@ ui <- function(req) {
     var pendingTableStates = [];
     var currentSelection = null; // Track the currently selected VegBank code
 
+    var tableIdToKey = {
+      'plot_table': 'plots',
+      'plant_table': 'plants',
+      'comm_table': 'communities',
+      'party_table': 'people',
+      'proj_table': 'projects'
+    };
+
+    var tableInitialUrlState = {};
+    var tableStateLoadComplete = {};
+    var tableInitialStateApplied = {};
+    var dataTableIdToWidgetId = {};
+    var widgetIdToDataTableId = {};
+    var pendingInitialStates = {};
+
+    Object.keys(tableIdToKey).forEach(function(id) {
+      tableStateLoadComplete[id] = true;
+      tableInitialStateApplied[id] = false;
+    });
+
+    function resolveWidgetId(tableId) {
+      if (!tableId) {
+        return null;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(tableIdToKey, tableId)) {
+        return tableId;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(dataTableIdToWidgetId, tableId)) {
+        return dataTableIdToWidgetId[tableId];
+      }
+
+      return tableId;
+    }
+
+    function registerDataTableMapping(settings) {
+      if (!settings || !settings.nTable || !settings.sTableId) {
+        return null;
+      }
+
+      var widgetId = $(settings.nTable).closest('.datatables').attr('id');
+      if (!widgetId) {
+        return null;
+      }
+
+      dataTableIdToWidgetId[settings.sTableId] = widgetId;
+      widgetIdToDataTableId[widgetId] = settings.sTableId;
+
+      if (!Object.prototype.hasOwnProperty.call(tableStateLoadComplete, widgetId)) {
+        tableStateLoadComplete[widgetId] = true;
+      }
+
+      if (!Object.prototype.hasOwnProperty.call(tableInitialStateApplied, widgetId)) {
+        tableInitialStateApplied[widgetId] = false;
+      }
+
+      return widgetId;
+    }
+
+    function getDataTableNode(tableId) {
+      if (!tableId) {
+        return $();
+      }
+
+      var rawNode = $('#' + tableId);
+      if (rawNode.length && rawNode.is('table')) {
+        return rawNode;
+      }
+
+      var widgetId = resolveWidgetId(tableId);
+      var widgetNode = widgetId ? $('#' + widgetId) : $();
+      if (widgetNode.length) {
+        var nestedTable = widgetNode.find('table.dataTable').first();
+        if (nestedTable.length) {
+          return nestedTable;
+        }
+        nestedTable = widgetNode.find('table').first();
+        if (nestedTable.length) {
+          return nestedTable;
+        }
+      }
+
+      if (rawNode.length && !rawNode.is('table')) {
+        var fallback = rawNode.find('table.dataTable').first();
+        if (fallback.length) {
+          return fallback;
+        }
+        fallback = rawNode.find('table').first();
+        if (fallback.length) {
+          return fallback;
+        }
+      }
+
+      return rawNode;
+    }
+
+    function buildDefaultDtState(settings) {
+      var columns = Array.isArray(settings.aoColumns)
+        ? settings.aoColumns.map(function(col) {
+            return {
+              visible: col.bVisible !== undefined ? col.bVisible : true,
+              search: {
+                search: col.sSearch || '',
+                smart: true,
+                regex: false,
+                caseInsensitive: true
+              }
+            };
+          })
+        : [];
+
+      return {
+        time: Date.now(),
+        start: settings._iDisplayStart || 0,
+        length: settings._iDisplayLength || 10,
+        order: Array.isArray(settings.aaSorting) ? settings.aaSorting.slice() : [],
+        search: {
+          search: settings.oPreviousSearch ? settings.oPreviousSearch.sSearch || '' : '',
+          smart: true,
+          regex: false,
+          caseInsensitive: true
+        },
+        columns: columns
+      };
+    }
+
+    function parseOrderParam(orderParam) {
+      if (typeof orderParam !== 'string' || orderParam.length === 0) {
+        return [];
+      }
+
+      return orderParam.split(',').map(function(token) {
+        var parts = token.split(':');
+        if (parts.length !== 2) {
+          return null;
+        }
+        var column = parseInt(parts[0], 10);
+        var dir = parts[1];
+        if (isNaN(column) || !dir) {
+          return null;
+        }
+        dir = dir.toLowerCase() === 'desc' ? 'desc' : 'asc';
+        return [column, dir];
+      }).filter(Boolean);
+    }
+
+    function getTableKeyFromId(tableId) {
+      var widgetId = resolveWidgetId(tableId);
+      return tableIdToKey[widgetId] || null;
+    }
+
+    function getUrlTableState(tableId) {
+      if (!tableId) {
+        return null;
+      }
+
+      var widgetId = resolveWidgetId(tableId);
+      var tableKey = getTableKeyFromId(widgetId);
+      if (!tableKey) {
+        return null;
+      }
+
+      var params = new URLSearchParams(window.location.search);
+      var startParam = params.get(tableKey + '_start');
+      var lengthParam = params.get(tableKey + '_length');
+      var orderParam = params.get(tableKey + '_order');
+      var searchParam = params.get(tableKey + '_search');
+
+      if (!startParam && !lengthParam && !orderParam && !searchParam) {
+        return null;
+      }
+
+      var state = {};
+      var startValue = parseInt(startParam, 10);
+      if (!isNaN(startValue) && startValue >= 0) {
+        state.start = startValue;
+      }
+
+      var lengthValue = parseInt(lengthParam, 10);
+      if (!isNaN(lengthValue) && lengthValue > 0) {
+        state.length = lengthValue;
+      }
+
+      var orderValue = parseOrderParam(orderParam);
+      if (orderValue.length > 0) {
+        state.order = orderValue;
+      }
+
+      if (typeof searchParam === 'string') {
+        state.search = searchParam;
+      }
+
+      return state;
+    }
+
+    function getInitialUrlState(tableId) {
+      if (!tableId) {
+        return null;
+      }
+
+      var widgetId = resolveWidgetId(tableId);
+      if (!widgetId) {
+        return null;
+      }
+
+      if (!Object.prototype.hasOwnProperty.call(tableInitialUrlState, widgetId)) {
+        var parsed = getUrlTableState(widgetId);
+        tableInitialUrlState[widgetId] = parsed;
+
+        if (parsed) {
+          tableStateLoadComplete[widgetId] = false;
+        }
+      }
+
+      return tableInitialUrlState[widgetId];
+    }
+
+    function normalizeUrlStateForDataTable(tableId, urlState, settings) {
+      if (!urlState) {
+        return null;
+      }
+
+      var resolvedLength = typeof urlState.length === 'number' && urlState.length > 0
+        ? urlState.length
+        : ((settings && settings._iDisplayLength) || 10);
+
+      var resolvedStart = typeof urlState.start === 'number' && urlState.start >= 0
+        ? urlState.start
+        : 0;
+
+      var normalizedOrder = Array.isArray(urlState.order)
+        ? urlState.order.map(function(entry) {
+            if (!entry) {
+              return null;
+            }
+            var column = parseInt(entry.column, 10);
+            if (isNaN(column)) {
+              return null;
+            }
+            var dir = (entry.dir || 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
+            return { column: column, dir: dir };
+          }).filter(Boolean)
+        : [];
+
+      return {
+        start: resolvedStart,
+        length: resolvedLength,
+        page: resolvedLength > 0 ? Math.floor(resolvedStart / resolvedLength) : 0,
+        search: typeof urlState.search === 'string' ? urlState.search : '',
+        order: normalizedOrder
+      };
+    }
+
+    function clearPendingTableStates(tableId) {
+      var widgetId = resolveWidgetId(tableId);
+      for (var i = pendingTableStates.length - 1; i >= 0; i--) {
+        if (pendingTableStates[i].tableId === widgetId) {
+          pendingTableStates.splice(i, 1);
+        }
+      }
+    }
+
+    function finalizeInitialTableState(tableId, settings, normalizedState) {
+      var widgetId = resolveWidgetId(tableId);
+      tableStateLoadComplete[widgetId] = true;
+
+      if (!window.Shiny || typeof Shiny.setInputValue !== 'function') {
+        return;
+      }
+
+      var orderPayload = Array.isArray(normalizedState.order)
+        ? normalizedState.order.map(function(entry) {
+            return [entry.column, entry.dir];
+          })
+        : [];
+
+      var statePayload = sanitizeStatePayload(settings, {
+        start: normalizedState.start,
+        length: normalizedState.length,
+        order: orderPayload,
+        search: {
+          search: normalizedState.search || '',
+          smart: true,
+          regex: false,
+          caseInsensitive: true
+        }
+      });
+
+      if (statePayload && widgetId) {
+        Shiny.setInputValue(widgetId + '_state', statePayload, {priority: 'event'});
+      }
+    }
+
+    window.vegbankLoadTableState = function(settings) {
+      registerDataTableMapping(settings);
+
+      var tableId = resolveWidgetId(settings && settings.sTableId);
+      console.log('vegbankLoadTableState called for table:', tableId);
+      if (!tableId) {
+        return null;
+      }
+
+      var urlState = getInitialUrlState(tableId);
+      if (!urlState) {
+        tableStateLoadComplete[tableId] = true;
+        return null;
+      }
+
+      tableStateLoadComplete[tableId] = false;
+
+      var state = buildDefaultDtState(settings);
+      var hasOverride = false;
+
+      if (typeof urlState.start === 'number') {
+        state.start = urlState.start;
+        hasOverride = true;
+      }
+
+      if (typeof urlState.length === 'number') {
+        state.length = urlState.length;
+        hasOverride = true;
+      }
+
+      if (Array.isArray(urlState.order) && urlState.order.length > 0) {
+        state.order = urlState.order;
+        hasOverride = true;
+      }
+
+      if (typeof urlState.search === 'string') {
+        state.search.search = urlState.search;
+        hasOverride = hasOverride || urlState.search.length > 0;
+      }
+
+      return hasOverride ? state : null;
+    };
+
+
+    function sanitizeStatePayload(settings, data) {
+      if (!data) {
+        return null;
+      }
+
+      var payload = {
+        start: typeof data.start === 'number' ? data.start : 0,
+        length: typeof data.length === 'number' ? data.length : (settings && settings._iDisplayLength) || 10,
+        order: Array.isArray(data.order) ? data.order : [],
+        search: data.search && typeof data.search.search === 'string' ? data.search.search : ''
+      };
+
+      return payload;
+    }
+
+    window.vegbankSaveTableState = function(settings, data) {
+      if (!window.Shiny || typeof Shiny.setInputValue !== 'function') {
+        return;
+      }
+
+      var tableId = settings && settings.sTableId;
+      if (!tableId) {
+        return;
+      }
+
+       if (tableStateLoadComplete[tableId] === false) {
+         return;
+       }
+
+      var payload = sanitizeStatePayload(settings, data);
+      if (!payload) {
+        return;
+      }
+
+      var widgetId = resolveWidgetId(tableId);
+      if (widgetId) {
+        Shiny.setInputValue(widgetId + '_state', payload, {priority: 'event'});
+      }
+    };
+
     function setNavbarDisabled(disabled) {
       var navbar = document.querySelector('.navbar');
       if (!navbar) {
@@ -100,13 +478,29 @@ ui <- function(req) {
       setNavbarDisabled(disabled);
     });
 
-    function applyTableState(tableId, state) {
-      var tableNode = $('#' + tableId);
-      if (tableNode.length === 0 || !$.fn.dataTable || !$.fn.dataTable.isDataTable(tableNode)) {
-        return false;
+    function getDataTableApi(tableId, settings) {
+      if (settings && $.fn && $.fn.dataTable) {
+        try {
+          return new $.fn.dataTable.Api(settings);
+        } catch (error) {
+          console.warn('Failed to build DataTables API from settings for', tableId, error);
+        }
       }
 
-      var table = tableNode.DataTable();
+      var tableNode = getDataTableNode(tableId);
+      if (tableNode.length === 0 || !$.fn.dataTable || !$.fn.dataTable.isDataTable(tableNode)) {
+        return null;
+      }
+
+      return tableNode.DataTable();
+    }
+
+    function applyTableState(tableId, state, settings) {
+      var widgetId = resolveWidgetId(tableId);
+      var targetId = widgetId || tableId;
+      console.log('Applying state to table:', targetId, state);
+
+      var table = getDataTableApi(targetId, settings);
       if (!table) {
         return false;
       }
@@ -174,15 +568,73 @@ ui <- function(req) {
         return;
       }
 
-      if (!applyTableState(message.tableId, message.state)) {
-        pendingTableStates.push(message);
+      var widgetId = resolveWidgetId(message.tableId);
+      if (!applyTableState(widgetId, message.state)) {
+        pendingTableStates.push({ tableId: widgetId, state: message.state });
       }
     });
-    
-    // Listen for native DataTables draw events to restore selections
+
+    $(document).on('preInit.dt', function(e, settings) {
+      if (!settings || !settings.oInit) {
+        return;
+      }
+
+      settings.oInit.stateSave = true;
+      settings.oInit.stateDuration = 0;
+      settings.oInit.stateLoadCallback = function(dtSettings) {
+        if (window.vegbankLoadTableState) {
+          return window.vegbankLoadTableState(dtSettings);
+        }
+        return null;
+      };
+      settings.oInit.stateSaveCallback = function(dtSettings, data) {
+        if (window.vegbankSaveTableState) {
+          window.vegbankSaveTableState(dtSettings, data);
+        }
+      };
+    });
+
+    $(document).on('init.dt', function(e, settings) {
+      if (!settings || !settings.sTableId) {
+        return;
+      }
+
+      var widgetId = registerDataTableMapping(settings) || resolveWidgetId(settings.sTableId);
+      var tableId = widgetId || settings.sTableId;
+
+      var urlState = getInitialUrlState(tableId);
+      if (!urlState) {
+        tableStateLoadComplete[tableId] = true;
+        tableInitialStateApplied[tableId] = true;
+        return;
+      }
+
+      var normalizedState = normalizeUrlStateForDataTable(tableId, urlState, settings);
+      if (!normalizedState) {
+        tableStateLoadComplete[tableId] = true;
+        tableInitialStateApplied[tableId] = true;
+        return;
+      }
+
+      tableStateLoadComplete[tableId] = false;
+      tableInitialStateApplied[tableId] = false;
+      pendingInitialStates[tableId] = normalizedState;
+
+      applyTableState(tableId, normalizedState, settings);
+    });
+
     $(document).on('draw.dt', function(e, settings) {
-      var tableId = settings.sTableId;
-      console.log('DataTable draw event for:', tableId);
+      var widgetId = resolveWidgetId(settings.sTableId);
+      console.log('DataTable draw event for:', widgetId || settings.sTableId);
+
+      if (widgetId && pendingInitialStates[widgetId]) {
+        var initialState = pendingInitialStates[widgetId];
+        applyTableState(widgetId, initialState, settings);
+        finalizeInitialTableState(widgetId, settings, initialState);
+        clearPendingTableStates(widgetId);
+        tableInitialStateApplied[widgetId] = true;
+        delete pendingInitialStates[widgetId];
+      }
       
       // Restore current selection after table redraw
       if (currentSelection) {
@@ -206,8 +658,8 @@ ui <- function(req) {
 
       for (var j = pendingTableStates.length - 1; j >= 0; j--) {
         var pendingState = pendingTableStates[j];
-        if (pendingState.tableId === tableId) {
-          if (applyTableState(pendingState.tableId, pendingState.state)) {
+        if (pendingState.tableId === widgetId) {
+          if (applyTableState(pendingState.tableId, pendingState.state, settings)) {
             pendingTableStates.splice(j, 1);
           }
         }
@@ -274,32 +726,25 @@ ui <- function(req) {
       }
      });
 
-    $(document).on('stateSaveParams.dt', function(e, settings, data) {
-      if (!settings || !settings.sTableId || !data) {
-        return;
-      }
-
-      Shiny.setInputValue(settings.sTableId + '_state', {
-        start: data.start,
-        length: data.length,
-        order: data.order || [],
-        search: data.search ? data.search.search : ''
-      }, {priority: 'event'});
-    });
-
     $(document).on('stateLoaded.dt', function(e, settings, data) {
-      if (!settings || !settings.sTableId || !data) {
+      if (!settings || !settings.sTableId) {
         return;
       }
 
-      Shiny.setInputValue(settings.sTableId + '_state', {
-        start: data.start,
-        length: data.length,
-        order: data.order || [],
-        search: data.search ? data.search.search : ''
-      }, {priority: 'event'});
-    });
+      var tableId = settings.sTableId;
+      tableStateLoadComplete[tableId] = true;
 
+      if (!window.Shiny || typeof Shiny.setInputValue !== 'function') {
+        return;
+      }
+
+      var payload = sanitizeStatePayload(settings, data);
+      if (!payload) {
+        return;
+      }
+
+      Shiny.setInputValue(tableId + '_state', payload, {priority: 'event'});
+    });
     Shiny.addCustomMessageHandler('updateDetailType', function(message) {
       const type = message.type;
       const plotCards = document.getElementById('plot-details-cards');

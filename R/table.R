@@ -32,7 +32,10 @@ create_table <- function(data_sources, required_sources, process_function, table
         escape = FALSE,
         selection = "none",
         options = list(
-          stateSave = TRUE, # Save pagination, filtering, sorting to local storage
+          stateSave = TRUE, # Allow DataTables to request initial state via custom callback
+          stateDuration = 0,
+          stateLoadCallback = DT::JS("function(settings) {\n            if (window.vegbankLoadTableState) {\n              return window.vegbankLoadTableState(settings);\n            }\n            return null;\n          }"),
+          stateSaveCallback = DT::JS("function(settings, data) {\n            if (window.vegbankSaveTableState) {\n              window.vegbankSaveTableState(settings, data);\n            }\n          }"),
           dom = table_config$dom %||% "frtip",
           pageLength = table_config$page_length %||% 100,
           scrollY = table_config$scroll_y %||% "calc(100vh - 235px)",

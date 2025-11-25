@@ -45,7 +45,8 @@ server <- function(input, output, session) {
     map_zoom = map_state$map_zoom,
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
-    table_states = shiny::reactiveValues()
+    table_states = shiny::reactiveValues(),
+    table_sync_pending = shiny::reactiveValues()
   )
 
   # Table registry: maps tab names to table IDs and default page lengths
@@ -57,6 +58,10 @@ server <- function(input, output, session) {
     people = list(tab = "People", table_id = "party_table", default_length = 100L),
     projects = list(tab = "Projects", table_id = "proj_table", default_length = 100L)
   )
+
+  for (key in names(table_registry)) {
+    state$table_sync_pending[[key]] <- FALSE
+  }
 
   # Initialize URL State Manager with defaults and table registry
   url_manager <- URLStateManager$new(
@@ -151,6 +156,21 @@ server <- function(input, output, session) {
     }
 
     tab_for_key <- table_registry[[key]]$tab
+    pending_sync <- shiny::isolate(isTRUE(state$table_sync_pending[[key]]))
+    stored_state <- shiny::isolate(state$table_states[[key]])
+
+    if (pending_sync) {
+      if (!is.null(stored_state) && identical(stored_state, sanitized)) {
+        state$table_sync_pending[[key]] <- FALSE
+        return()
+      }
+
+      if (url_manager$is_default_table_state(key, sanitized)) {
+        return()
+      }
+
+      state$table_sync_pending[[key]] <- FALSE
+    }
 
     # If state has returned to defaults, remove from state and URL
     if (url_manager$is_default_table_state(key, sanitized)) {
@@ -420,12 +440,14 @@ server <- function(input, output, session) {
       } else if (isTRUE(state$details_open())) {
         close_detail(push_history = FALSE, hide_overlay = TRUE)
       } else if (!is.null(params$detail) || !is.null(params$code)) {
-        update_app_query(
-          mode = "replace",
-          tab = requested_tab,
-          detail_type = NULL,
-          detail_code = NULL
-        )
+        if (url_manager$is_history_initialized()) {
+          update_app_query(
+            mode = "replace",
+            tab = requested_tab,
+            detail_type = NULL,
+            detail_code = NULL
+          )
+        }
       }
 
       # Parse and apply map view state
@@ -463,12 +485,14 @@ server <- function(input, output, session) {
         state$map_zoom(DEFAULT_MAP_ZOOM)
         update_map_custom_flag(DEFAULT_MAP_LAT, DEFAULT_MAP_LNG, DEFAULT_MAP_ZOOM)
 
-        update_app_query(
-          mode = "replace",
-          tab = requested_tab,
-          detail_type = if (detail_valid) target_type else NULL,
-          detail_code = if (detail_valid) target_code else NULL
-        )
+        if (url_manager$is_history_initialized()) {
+          update_app_query(
+            mode = "replace",
+            tab = requested_tab,
+            detail_type = if (detail_valid) target_type else NULL,
+            detail_code = if (detail_valid) target_code else NULL
+          )
+        }
       } else if (identical(requested_tab, "Map")) {
         if (!map_params_present && !url_manager$is_map_default(state$map_center_lat(), state$map_center_lng(), state$map_zoom())) {
           state$map_center_lat(DEFAULT_MAP_LAT)
@@ -501,28 +525,34 @@ server <- function(input, output, session) {
 
         if (is.null(table_state_from_query) || url_manager$is_default_table_state(table_key, table_state_from_query)) {
           state$table_states[[table_key]] <- NULL
+          state$table_sync_pending[[table_key]] <- FALSE
           if (table_params_present) {
-            update_app_query(
-              mode = "replace",
-              tab = requested_tab,
-              detail_type = if (detail_valid) target_type else NULL,
-              detail_code = if (detail_valid) target_code else NULL
-            )
+            if (url_manager$is_history_initialized()) {
+              update_app_query(
+                mode = "replace",
+                tab = requested_tab,
+                detail_type = if (detail_valid) target_type else NULL,
+                detail_code = if (detail_valid) target_code else NULL
+              )
+            }
           }
         } else {
           state$table_states[[table_key]] <- table_state_from_query
+          state$table_sync_pending[[table_key]] <- TRUE
           send_table_state_to_client(table_key, table_state_from_query)
         }
       }
 
       # Ensure tab parameter is present in URL
       if (!url_manager$is_valid_param(params$tab)) {
-        update_app_query(
-          mode = "replace",
-          tab = requested_tab,
-          detail_type = if (detail_valid) target_type else NULL,
-          detail_code = if (detail_valid) target_code else NULL
-        )
+        if (url_manager$is_history_initialized()) {
+          update_app_query(
+            mode = "replace",
+            tab = requested_tab,
+            detail_type = if (detail_valid) target_type else NULL,
+            detail_code = if (detail_valid) target_code else NULL
+          )
+        }
       }
     },
     ignoreNULL = FALSE
@@ -543,23 +573,23 @@ server <- function(input, output, session) {
     )
   })
 
-  output$plot_table <- DT::renderDataTable({
+  output$plot_table <- DT::renderDataTable(server = FALSE, {
     build_plot_table(plot_data, taxa_data, comm_class_data)
   })
 
-  output$comm_table <- DT::renderDataTable({
+  output$comm_table <- DT::renderDataTable(server = FALSE, {
     build_community_table(comm_concept_data)
   })
 
-  output$proj_table <- DT::renderDataTable({
+  output$proj_table <- DT::renderDataTable(server = FALSE, {
     build_project_table(project_data)
   })
 
-  output$party_table <- DT::renderDataTable({
+  output$party_table <- DT::renderDataTable(server = FALSE, {
     build_party_table(party_data)
   })
 
-  output$plant_table <- DT::renderDataTable({
+  output$plant_table <- DT::renderDataTable(server = FALSE, {
     build_plant_table(plant_data)
   })
 
