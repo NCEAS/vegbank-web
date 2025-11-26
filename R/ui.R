@@ -46,6 +46,17 @@ ui <- function(req) {
       }
     });
 
+    // DataTables/Shiny state synchronization overview:
+    // 1. DataTables calls `stateLoadCallback` (vegbankLoadTableState) during init,
+    //    which pulls values from URL params so pagination/search/order are set
+    //    before the first draw.
+    // 2. Subsequent user interactions trigger `stateSaveCallback`
+    //    (vegbankSaveTableState) which emits `<tableId>_state` inputs back to
+    //    Shiny; the server may then update the encoded URL.
+    // 3. When the server needs to push state down later (e.g., browser history
+    //    navigation) it sends an `applyTableState` custom message, which uses the
+    //    same `applyTableState` helper below to drive the DataTables API.
+
     // Store pending row selections until tables are ready
     var pendingSelections = [];
     var pendingTableStates = [];

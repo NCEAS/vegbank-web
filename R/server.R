@@ -133,9 +133,12 @@ server <- function(input, output, session) {
     )
   }
 
-  # Send table state to client-side JavaScript to restore DataTable view
-  # Used when navigating via browser history or direct URL to restore pagination,
-  # sorting, filtering, and search state
+  # Send table state to client-side JavaScript to restore DataTable view.
+  # During a deep-link/URL restoration this function is a no-op until the
+  # browser history is fully initialized; afterwards it is used whenever the
+  # server needs to push a previously saved state back down (e.g., browser
+  # back/forward). The payload matches the structure expected by the
+  # client-side `applyTableState` handler in `R/ui.R`.
   send_table_state_to_client <- function(key, state) {
     if (!url_manager$is_history_initialized()) {
       return()
@@ -147,9 +150,12 @@ server <- function(input, output, session) {
     }
   }
 
-  # Store table state from DataTables and conditionally update URL query string
-  # Called when user interacts with table (pagination, sorting, filtering, search)
-  # Only updates URL if state differs from default and user is on the corresponding tab
+  # Store table state received from the JS `stateSaveCallback` and decide whether
+  # to update the encoded URL. Each DataTable widget sends its state through a
+  # Shiny input (`<table_id>_state`); we sanitize the payload, de-dupe against the
+  # current snapshot, and only mutate browser history when the active tab matches
+  # the table emitting the event. This keeps the URL and Shiny’s authoritative
+  # state in sync without double-applying DT settings.
   # Parameters:
   #   key - Table registry key
   #   raw_state - Raw state object from DataTables (needs sanitization)
