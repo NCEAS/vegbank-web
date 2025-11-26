@@ -1,22 +1,12 @@
 test_that("build_concept_table configures datatable with hidden sort columns", {
-  sample_data <- data.frame(
-    pc_code = c("pc.001", "pc.002"),
-    plant_name = c("Sample Plant 1", "Sample Plant 2"),
-    plant_level = c("Species", NA),
-    current_accepted = c(TRUE, FALSE),
-    concept_rf_code = c("rf.1", ""),
-    concept_rf_name = c("Reference A", "Not provided"),
-    obs_count = c(5, 10),
-    plant_description = c("Desc A", "Desc B"),
-    stringsAsFactors = FALSE
-  )
-
   pkg_env <- asNamespace("vegbankweb")
 
   with_mocked_bindings(
     create_table = function(data_sources, required_sources, process_function, table_config) {
-      expect_equal(names(data_sources), "plant_data")
-      expect_equal(required_sources, "plant_data")
+      expect_equal(length(data_sources), 0)
+      expect_length(required_sources, 0)
+      expect_null(process_function)
+
       expect_equal(length(table_config$column_defs), 9)
 
       status_col <- table_config$column_defs[[3]]
@@ -36,12 +26,16 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
       expect_false(ref_sort_col$visible)
       expect_false(ref_sort_col$searchable)
 
+      expect_false(is.null(table_config$initial_data))
+      expect_s3_class(table_config$initial_data, "data.frame")
+      expect_true(is.function(table_config$ajax))
+
       structure(list(options = list()), class = "datatables")
     },
     .env = pkg_env,
     {
       with_mock_shiny_notifications({
-        result <- build_concept_table(sample_data, concept_type = "plant")
+        result <- build_concept_table(concept_type = "plant")
         expect_s3_class(result, "datatables")
       })
     }
