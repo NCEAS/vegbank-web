@@ -61,14 +61,12 @@ ui <- function(req) {
 
     var tableInitialUrlState = {};
     var tableStateLoadComplete = {};
-    var tableInitialStateApplied = {};
     var dataTableIdToWidgetId = {};
     var widgetIdToDataTableId = {};
-    var pendingInitialStates = {};
+    
 
     Object.keys(tableIdToKey).forEach(function(id) {
       tableStateLoadComplete[id] = true;
-      tableInitialStateApplied[id] = false;
     });
 
     function resolveWidgetId(tableId) {
@@ -102,10 +100,6 @@ ui <- function(req) {
 
       if (!Object.prototype.hasOwnProperty.call(tableStateLoadComplete, widgetId)) {
         tableStateLoadComplete[widgetId] = true;
-      }
-
-      if (!Object.prototype.hasOwnProperty.call(tableInitialStateApplied, widgetId)) {
-        tableInitialStateApplied[widgetId] = false;
       }
 
       return widgetId;
@@ -267,82 +261,6 @@ ui <- function(req) {
       }
 
       return tableInitialUrlState[widgetId];
-    }
-
-    function normalizeUrlStateForDataTable(tableId, urlState, settings) {
-      if (!urlState) {
-        return null;
-      }
-
-      var resolvedLength = typeof urlState.length === 'number' && urlState.length > 0
-        ? urlState.length
-        : ((settings && settings._iDisplayLength) || 10);
-
-      var resolvedStart = typeof urlState.start === 'number' && urlState.start >= 0
-        ? urlState.start
-        : 0;
-
-      var normalizedOrder = Array.isArray(urlState.order)
-        ? urlState.order.map(function(entry) {
-            if (!entry) {
-              return null;
-            }
-            var column = parseInt(entry.column, 10);
-            if (isNaN(column)) {
-              return null;
-            }
-            var dir = (entry.dir || 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
-            return { column: column, dir: dir };
-          }).filter(Boolean)
-        : [];
-
-      return {
-        start: resolvedStart,
-        length: resolvedLength,
-        page: resolvedLength > 0 ? Math.floor(resolvedStart / resolvedLength) : 0,
-        search: typeof urlState.search === 'string' ? urlState.search : '',
-        order: normalizedOrder
-      };
-    }
-
-    function clearPendingTableStates(tableId) {
-      var widgetId = resolveWidgetId(tableId);
-      for (var i = pendingTableStates.length - 1; i >= 0; i--) {
-        if (pendingTableStates[i].tableId === widgetId) {
-          pendingTableStates.splice(i, 1);
-        }
-      }
-    }
-
-    function finalizeInitialTableState(tableId, settings, normalizedState) {
-      var widgetId = resolveWidgetId(tableId);
-      tableStateLoadComplete[widgetId] = true;
-
-      if (!window.Shiny || typeof Shiny.setInputValue !== 'function') {
-        return;
-      }
-
-      var orderPayload = Array.isArray(normalizedState.order)
-        ? normalizedState.order.map(function(entry) {
-            return [entry.column, entry.dir];
-          })
-        : [];
-
-      var statePayload = sanitizeStatePayload(settings, {
-        start: normalizedState.start,
-        length: normalizedState.length,
-        order: orderPayload,
-        search: {
-          search: normalizedState.search || '',
-          smart: true,
-          regex: false,
-          caseInsensitive: true
-        }
-      });
-
-      if (statePayload && widgetId) {
-        Shiny.setInputValue(widgetId + '_state', statePayload, {priority: 'event'});
-      }
     }
 
     window.vegbankLoadTableState = function(settings) {
@@ -638,41 +556,19 @@ ui <- function(req) {
 
       var widgetId = registerDataTableMapping(settings) || resolveWidgetId(settings.sTableId);
       var tableId = widgetId || settings.sTableId;
+      if (!tableId) {
+        return;
+      }
 
       var urlState = getInitialUrlState(tableId);
-      if (!urlState) {
+      if (!urlState && !Object.prototype.hasOwnProperty.call(tableStateLoadComplete, tableId)) {
         tableStateLoadComplete[tableId] = true;
-        tableInitialStateApplied[tableId] = true;
-        return;
       }
-
-      var normalizedState = normalizeUrlStateForDataTable(tableId, urlState, settings);
-      if (!normalizedState) {
-        tableStateLoadComplete[tableId] = true;
-        tableInitialStateApplied[tableId] = true;
-        return;
-      }
-
-      tableStateLoadComplete[tableId] = false;
-      tableInitialStateApplied[tableId] = false;
-      pendingInitialStates[tableId] = normalizedState;
-
-      applyTableState(tableId, normalizedState, settings);
     });
 
     $(document).on('draw.dt', function(e, settings) {
       var widgetId = resolveWidgetId(settings.sTableId);
       console.log('DataTable draw event for:', widgetId || settings.sTableId);
-
-      if (widgetId && pendingInitialStates[widgetId]) {
-        var initialState = pendingInitialStates[widgetId];
-        if (applyTableState(widgetId, initialState, settings)) {
-          finalizeInitialTableState(widgetId, settings, initialState);
-          clearPendingTableStates(widgetId);
-          tableInitialStateApplied[widgetId] = true;
-          delete pendingInitialStates[widgetId];
-        }
-      }
       
       // Restore current selection after table redraw
       if (currentSelection) {

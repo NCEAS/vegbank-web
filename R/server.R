@@ -137,6 +137,10 @@ server <- function(input, output, session) {
   # Used when navigating via browser history or direct URL to restore pagination,
   # sorting, filtering, and search state
   send_table_state_to_client <- function(key, state) {
+    if (!url_manager$is_history_initialized()) {
+      return()
+    }
+
     message <- table_state_message(key, state)
     if (!is.null(message)) {
       session$sendCustomMessage("applyTableState", message)
