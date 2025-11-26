@@ -557,7 +557,7 @@ server <- function(input, output, session) {
     )
   })
 
-  output$plot_table <- DT::renderDataTable(server = FALSE, {
+  output$plot_table <- DT::renderDataTable({
     build_plot_table(plot_data, taxa_data, comm_class_data)
   })
 
@@ -565,11 +565,11 @@ server <- function(input, output, session) {
     build_community_table()
   })
 
-  output$proj_table <- DT::renderDataTable(server = FALSE, {
+  output$proj_table <- DT::renderDataTable({
     build_project_table(project_data)
   })
 
-  output$party_table <- DT::renderDataTable(server = FALSE, {
+  output$party_table <- DT::renderDataTable({
     build_party_table(party_data)
   })
 
