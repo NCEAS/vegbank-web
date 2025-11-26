@@ -538,26 +538,6 @@ ui <- function(req) {
       }
     });
 
-    $(document).on('preInit.dt', function(e, settings) {
-      if (!settings || !settings.oInit) {
-        return;
-      }
-
-      settings.oInit.stateSave = true;
-      settings.oInit.stateDuration = 0;
-      settings.oInit.stateLoadCallback = function(dtSettings) {
-        if (window.vegbankLoadTableState) {
-          return window.vegbankLoadTableState(dtSettings);
-        }
-        return null;
-      };
-      settings.oInit.stateSaveCallback = function(dtSettings, data) {
-        if (window.vegbankSaveTableState) {
-          window.vegbankSaveTableState(dtSettings, data);
-        }
-      };
-    });
-
     $(document).on('init.dt', function(e, settings) {
       if (!settings || !settings.sTableId) {
         return;
