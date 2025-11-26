@@ -271,6 +271,7 @@ fetch_remote_page <- function(endpoint,
   list(data = data, details = details, error = NULL)
 }
 
+# TODO: Replace this with vegbankr::get_resource_count() when available
 #' Fetch total record count for a VegBank resource
 #'
 #' Convenience wrapper that requests a single record and reads the
@@ -463,12 +464,7 @@ build_remote_ajax_config <- function(session,
   clean_names <- data_source_spec$clean_names %||% FALSE
   search_normalizer <- data_source_spec$search_normalizer %||% normalize_search_term
   clean_rows_fn <- data_source_spec$clean_rows_fn %||% identity
-  count_endpoint <- data_source_spec$count_endpoint %||% endpoint
-  count_detail <- data_source_spec$count_detail %||% "minimal"
-  count_parquet <- data_source_spec$count_parquet %||% parquet
-  count_clean_names <- data_source_spec$count_clean_names %||% clean_names
   query <- data_source_spec$query %||% list()
-  count_query <- data_source_spec$count_query %||% query
 
   if (!is.function(display_fn)) {
     stop("data_source_spec$display_fn must be a function")
@@ -505,42 +501,16 @@ build_remote_ajax_config <- function(session,
 
     details <- page$details
     reported_total <- extract_reported_total(details)
-
-    total_records <- reported_total
-    if (is.null(total_records) || !length(total_records) || is.na(total_records)) {
-      total_records <- fetch_remote_count(
-        endpoint = count_endpoint,
-        search = NULL,
-        detail = count_detail,
-        parquet = count_parquet,
-        clean_names = count_clean_names,
-        query = count_query
-      )
-    }
-    if (is.null(total_records) || !length(total_records) || is.na(total_records)) {
-      total_records <- nrow(normalized)
-    }
-    total_records <- as.integer(round(total_records))
-
     filtered_records <- reported_total
-    if (is.null(filtered_records) || !length(filtered_records) || is.na(filtered_records)) {
-      if (is.null(search_term)) {
-        filtered_records <- total_records
-      } else {
-        filtered_records <- fetch_remote_count(
-          endpoint = count_endpoint,
-          search = search_term,
-          detail = count_detail,
-          parquet = count_parquet,
-          clean_names = count_clean_names,
-          query = count_query
-        )
-        if (is.null(filtered_records) || !length(filtered_records) || is.na(filtered_records)) {
-          filtered_records <- nrow(normalized)
-        }
-      }
-    }
-    filtered_records <- as.integer(round(filtered_records))
+
+    # TODO: Replace this with vegbankr::get_resource_count() when available
+    total_records <- fetch_remote_count(
+      endpoint = endpoint,
+      search = NULL,
+      detail = detail,
+      parquet = parquet,
+      clean_names = clean_names,
+    )
 
     list(
       draw = draw,
