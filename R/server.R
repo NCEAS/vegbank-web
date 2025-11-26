@@ -161,24 +161,17 @@ server <- function(input, output, session) {
 
     tab_for_key <- table_registry[[key]]$tab
     pending_sync <- shiny::isolate(isTRUE(state$table_sync_pending[[key]]))
-    stored_state <- shiny::isolate(state$table_states[[key]])
+    current <- shiny::isolate(state$table_states[[key]])
 
     if (pending_sync) {
-      if (!is.null(stored_state) && identical(stored_state, sanitized)) {
-        state$table_sync_pending[[key]] <- FALSE
-        return()
-      }
-
-      if (url_manager$is_default_table_state(key, sanitized)) {
-        return()
-      }
-
       state$table_sync_pending[[key]] <- FALSE
+      if (!is.null(current) && identical(current, sanitized)) {
+        return()
+      }
     }
 
-    # If state has returned to defaults, remove from state and URL
     if (url_manager$is_default_table_state(key, sanitized)) {
-      if (!is.null(state$table_states[[key]])) {
+      if (!is.null(current)) {
         state$table_states[[key]] <- NULL
 
         if (can_mutate_history() && identical(tab_for_key, state$current_tab())) {
@@ -188,20 +181,13 @@ server <- function(input, output, session) {
       return()
     }
 
-    # Only update if state has actually changed
-    current <- state$table_states[[key]]
     if (!is.null(current) && identical(current, sanitized)) {
       return()
     }
 
     state$table_states[[key]] <- sanitized
 
-    if (!can_mutate_history()) {
-      return()
-    }
-
-    # Update URL if we're on the table's tab and not in the middle of a URL sync operation
-    if (identical(tab_for_key, state$current_tab())) {
+    if (can_mutate_history() && identical(tab_for_key, state$current_tab())) {
       update_app_query(mode = "replace")
     }
   }
