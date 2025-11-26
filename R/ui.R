@@ -74,7 +74,6 @@ ui <- function(req) {
     var tableStateLoadComplete = {};
     var dataTableIdToWidgetId = {};
     var widgetIdToDataTableId = {};
-    
 
     Object.keys(tableIdToKey).forEach(function(id) {
       tableStateLoadComplete[id] = true;
@@ -317,7 +316,6 @@ ui <- function(req) {
       return hasOverride ? state : null;
     };
 
-
     function sanitizeStatePayload(settings, data) {
       if (!data) {
         return null;
@@ -343,9 +341,9 @@ ui <- function(req) {
         return;
       }
 
-       if (tableStateLoadComplete[tableId] === false) {
-         return;
-       }
+      if (tableStateLoadComplete[tableId] === false) {
+        return;
+      }
 
       var payload = sanitizeStatePayload(settings, data);
       if (!payload) {
@@ -580,18 +578,18 @@ ui <- function(req) {
     $(document).on('draw.dt', function(e, settings) {
       var widgetId = resolveWidgetId(settings.sTableId);
       console.log('DataTable draw event for:', widgetId || settings.sTableId);
-      
+
       // Restore current selection after table redraw
       if (currentSelection) {
         console.log('Restoring current selection after table redraw:', currentSelection);
         attemptRowSelection(currentSelection, false); // false = don't clear current selection
       }
-      
+
       // Check for any pending selections for this table or any table
       for (var i = pendingSelections.length - 1; i >= 0; i--) {
         var pendingSelection = pendingSelections[i];
         console.log('Processing pending selection:', pendingSelection.vbCode);
-        
+
         // Try to select the row now that table is ready
         if (attemptRowSelection(pendingSelection.vbCode)) {
           console.log('Successfully processed pending selection for:', pendingSelection.vbCode);
@@ -610,7 +608,7 @@ ui <- function(req) {
         }
       }
     });
-    
+
     // Function to attempt row selection
     function attemptRowSelection(vbCode, clearCurrent) {
       if (clearCurrent !== false) { // Default to true unless explicitly set to false
@@ -772,7 +770,7 @@ custom_theme <- bslib::bs_add_rules(
     font-family: Inter, sans-serif !important;
     font-feature-settings: 'liga' 1, 'calt' 1;
     --bs-font-sans-serif: Inter, sans-serif !important;
-    
+
     /* Status badge colors */
     --no-status-bg: hsl(204, 6%, 90%);
     --no-status-text: hsl(0, 0%, 20%);
@@ -782,7 +780,7 @@ custom_theme <- bslib::bs_add_rules(
     --not-current-text: hsl(45, 94%, 21%);
   }
   @supports (font-variation-settings: normal) {
-    :root { 
+    :root {
       font-family: InterVariable, sans-serif !important;
       --bs-font-sans-serif: InterVariable, sans-serif !important;
     }
@@ -918,8 +916,9 @@ build_navbar <- function() {
         DT::dataTableOutput("plot_table"),
       )
     ),
-    bslib::nav_panel(title = "Plants"
-      , shiny::fluidPage(
+    bslib::nav_panel(
+      title = "Plants",
+      shiny::fluidPage(
         DT::dataTableOutput("plant_table"),
       )
     ),
