@@ -160,3 +160,45 @@ test_that("clean_column_data handles all cases correctly", {
   expect_equal(clean_column_data(single_row, "y"), "Value")
   expect_equal(clean_column_data(single_row, "z"), "Not provided")
 })
+
+load_table_module_env <- function() {
+  table_file <- testthat::test_path("..", "..", "R", "table.R")
+  stopifnot(file.exists(table_file))
+  table_env <- new.env(parent = baseenv())
+  sys.source(table_file, envir = table_env)
+  table_env
+}
+
+test_that("create_table wires DataTables state load from URL", {
+  skip_if_not_installed("DT")
+  table_env <- load_table_module_env()
+
+  data_sources <- list(test = data.frame(a = 1))
+  process_fn <- function(sources) sources$test
+
+  widget <- table_env$create_table(data_sources, required_sources = NULL, process_function = process_fn)
+  expect_s3_class(widget, "datatables")
+
+  options <- widget$x$options
+  expect_true(isTRUE(options$stateSave))
+  expect_identical(options$stateDuration, 0)
+
+  load_cb <- options$stateLoadCallback
+  expect_s3_class(load_cb, "JS_EVAL")
+  expect_match(as.character(load_cb), "window\\.vegbankLoadTableState")
+})
+
+test_that("create_table registers DT state save callback for handshake", {
+  skip_if_not_installed("DT")
+  table_env <- load_table_module_env()
+
+  data_sources <- list(test = data.frame(a = 1))
+  process_fn <- function(sources) sources$test
+
+  widget <- table_env$create_table(data_sources, required_sources = NULL, process_function = process_fn)
+  options <- widget$x$options
+
+  save_cb <- options$stateSaveCallback
+  expect_s3_class(save_cb, "JS_EVAL")
+  expect_match(as.character(save_cb), "window\\.vegbankSaveTableState")
+})
