@@ -1,3 +1,17 @@
+#' @noRd 
+MAX_TAXA_RETURNED <- 100000
+
+# Shim to support temporary plot fetching until vegbankr is updated
+# TODO: Replace when vegbankr:::get_resource_by_code is updated
+get_plot_observation <- function(ob_code) {
+  vegbankr:::get_all_resources(
+    resource = paste("plot-observations", ob_code, sep = "/"),
+    detail = "full",
+    with_nested = TRUE,
+    num_taxa = MAX_TAXA_RETURNED
+  )
+}
+
 #' Detail View Router
 #'
 #' Coordinates fetching detail payloads and dispatching to entity-specific
@@ -22,7 +36,7 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
         "community-classification" = vegbankr::get_community_classification(vb_code),
         "community-concept" = vegbankr::get_community_concept(vb_code),
         "taxon-observation" = vegbankr::get_taxon_observation(vb_code),
-        "plot-observation" = vegbankr::get_plot_observation_details(vb_code),
+        "plot-observation" = get_plot_observation(vb_code),
         "project" = vegbankr::get_project(vb_code),
         "party" = vegbankr::get_party(vb_code),
         "plant-concept" = vegbankr::get_plant_concept(vb_code),

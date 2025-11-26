@@ -136,15 +136,42 @@ create_detail_table <- function(details, col_names) {
 #'
 #' @param headers Character vector of header labels for table columns
 #' @param rows List of htmltools tr tags representing the table rows
+#' @param table_class CSS class(es) to apply to the table
+#' @param table_style CSS style string to apply to the table
+#' @param header_styles Character vector of CSS style strings to apply to each header,
+#'   or NULL for no custom styles. Length should match headers if provided.
 #' @return An htmltools table tag with thead and tbody
 #' @noRd
-create_detail_table_with_headers <- function(headers, rows) {
+create_detail_table_with_headers <- function(headers, rows,
+                                             table_class = "table table-sm table-striped table-hover",
+                                             table_style = NULL,
+                                             header_styles = NULL) {
+  # Validate header_styles length if provided
+  if (!is.null(header_styles) && length(header_styles) != length(headers)) {
+    warning(
+      "header_styles length (", length(header_styles),
+      ") does not match headers length (", length(headers), ")"
+    )
+  }
+
+  # Build header cells with optional styles
+  header_cells <- if (is.null(header_styles)) {
+    lapply(headers, htmltools::tags$th)
+  } else {
+    mapply(function(header, style) {
+      if (is.null(style) || style == "") {
+        htmltools::tags$th(header)
+      } else {
+        htmltools::tags$th(style = style, header)
+      }
+    }, headers, header_styles, SIMPLIFY = FALSE, USE.NAMES = FALSE)
+  }
+
   htmltools::tags$table(
-    class = "table table-sm table-striped table-hover",
+    class = table_class,
+    style = table_style,
     htmltools::tags$thead(
-      htmltools::tags$tr(
-        lapply(headers, htmltools::tags$th)
-      )
+      htmltools::tags$tr(header_cells)
     ),
     htmltools::tags$tbody(rows)
   )
@@ -260,4 +287,63 @@ format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d")
   } else {
     "Date not recorded"
   }
+}
+
+#' Bind Nested Rows into a Single Data Frame
+#'
+#' Attempts to combine nested list or data frame elements into a single data frame.
+#' Handles various input formats gracefully and returns an empty data frame on failure.
+#'
+#' @param nested A nested structure that may be NULL, a data frame, or a list of
+#'   data frames to combine.
+#' @return A data frame containing the combined rows, or an empty data frame if
+#'   the input cannot be processed.
+#' @noRd
+bind_nested_rows <- function(nested) {
+  if (is.null(nested)) {
+    return(data.frame())
+  }
+
+  if (is.data.frame(nested)) {
+    return(nested)
+  }
+
+  if (is.list(nested) && length(nested) > 0) {
+    return(tryCatch(dplyr::bind_rows(nested), error = function(e) data.frame()))
+  }
+
+  data.frame()
+}
+
+#' Extract Nested Table from Data Frame Column
+#'
+#' Extracts a nested table (stored as a list-column) from a single-row data frame
+#' and returns it as a standard data frame. Handles various nesting formats and
+#' returns an empty data frame if the column is missing or invalid.
+#'
+#' @param row_df A single-row data frame containing the nested column.
+#' @param column_name Character string naming the column to extract.
+#' @return A data frame containing the extracted nested table, or an empty data
+#'   frame if extraction fails.
+#' @noRd
+extract_nested_table <- function(row_df, column_name) {
+  if (is.null(row_df) || nrow(row_df) == 0 || !column_name %in% names(row_df)) {
+    return(data.frame())
+  }
+
+  column <- row_df[[column_name]]
+
+  if (is.null(column)) {
+    return(data.frame())
+  }
+
+  if (is.data.frame(column)) {
+    return(column)
+  }
+
+  if (!is.list(column) || length(column) == 0) {
+    return(data.frame())
+  }
+
+  bind_nested_rows(column[[1]])
 }
