@@ -16,31 +16,44 @@ mock_session <- list(
 )
 
 # Mock plot observation data
-mock_plot_data <- list(
-  plot_observation = list(
-    author_obs_code = "TEST123",
-    author_plot_code = "Plot 123",
-    latitude = 40.7128,
-    longitude = -74.0060,
-    location_narrative = "Test location",
-    state_province = "Test State",
-    country = "Test Country",
-    area = "10x10m",
-    permanence = "Permanent",
-    elevation = "100m",
-    slope_aspect = "North",
-    slope_gradient = "10%",
-    confidentiality_text = "Not confidential",
-    obs_start_date = "2023-01-01",
-    project_name = "Test Project",
-    cover_type = "Test Cover",
-    stratum_method_name = "Test Stratum Method",
-    stratum_method_description = "Test description",
-    taxon_observation_area = "100 sq m",
-    auto_taxon_cover = FALSE,
-    plot_validation_level_descr = "High quality"
-  )
+mock_plot_data <- data.frame(
+  author_obs_code = "TEST123",
+  author_plot_code = "Plot 123",
+  latitude = 40.7128,
+  longitude = -74.0060,
+  location_narrative = "Test location",
+  state_province = "Test State",
+  country = "Test Country",
+  area = "10x10m",
+  permanence = "Permanent",
+  elevation = "100m",
+  slope_aspect = "North",
+  slope_gradient = "10%",
+  confidentiality_text = "Not confidential",
+  obs_start_date = "2023-01-01",
+  project_name = "Test Project",
+  cover_type = "Test Cover",
+  stratum_method_name = "Test Stratum Method",
+  stratum_method_description = "Test description",
+  taxon_observation_area = "100 sq m",
+  auto_taxon_cover = FALSE,
+  plot_validation_level_descr = "High quality",
+  stringsAsFactors = FALSE
 )
+
+mock_plot_data$top_taxon_observations <- I(list(data.frame(
+  plant_name = c("Mock Plant A", "Mock Plant B"),
+  pc_code = c("pc.100", "pc.101"),
+  stratum_name = c("Canopy", NA),
+  cover = c(65.5, 25.25),
+  stringsAsFactors = FALSE
+)))
+
+mock_plot_data$top_classifications <- I(list(data.frame(
+  cl_code = "cl.1553",
+  comm_name = "Test Community",
+  stringsAsFactors = FALSE
+)))
 
 # Mock community concept data
 mock_comm_concept_data <- data.frame(

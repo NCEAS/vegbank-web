@@ -354,22 +354,10 @@ server <- function(input, output, session) {
       list(detail = "minimal")
     )
 
-    comm_concept_data <- load_data_type(
-      "community concepts",
-      "inst/cached_data/cc_20251015.RDS",
-      vegbankr::get_all_community_concepts
-    )
-
     taxa_data <- load_data_type(
       "taxon observations",
       "inst/cached_data/to_20251015.RDS",
       vegbankr::get_all_taxon_observations
-    )
-
-    plant_data <- load_data_type(
-      "plant concepts",
-      "inst/cached_data/pc_20251017.RDS",
-      vegbankr::get_all_plant_concepts
     )
 
     project_data <- load_data_type(
@@ -573,8 +561,8 @@ server <- function(input, output, session) {
     build_plot_table(plot_data, taxa_data, comm_class_data)
   })
 
-  output$comm_table <- DT::renderDataTable(server = FALSE, {
-    build_community_table(comm_concept_data)
+  output$comm_table <- DT::renderDataTable({
+    build_community_table()
   })
 
   output$proj_table <- DT::renderDataTable(server = FALSE, {
@@ -585,8 +573,8 @@ server <- function(input, output, session) {
     build_party_table(party_data)
   })
 
-  output$plant_table <- DT::renderDataTable(server = FALSE, {
-    build_plant_table(plant_data)
+  output$plant_table <- DT::renderDataTable({
+    build_plant_table()
   })
 
   output$map <- leaflet::renderLeaflet({
