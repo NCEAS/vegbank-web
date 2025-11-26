@@ -503,7 +503,8 @@ build_remote_ajax_config <- function(session,
     reported_total <- extract_reported_total(details)
     filtered_records <- reported_total
 
-    # TODO: Replace this with vegbankr::get_resource_count() when available
+    # TODO: Replace this with vegbankr::get_resource_count() when available and add caching to 
+    # fetch total count each time the page is refreshed
     total_records <- fetch_remote_count(
       endpoint = endpoint,
       search = NULL,
