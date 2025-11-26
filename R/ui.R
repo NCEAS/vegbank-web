@@ -115,6 +115,49 @@ ui <- function(req) {
       return widgetId;
     }
 
+    function getResolvedTableIdentifiers(settings) {
+      if (!settings || !settings.sTableId) {
+        return null;
+      }
+
+      var widgetId = resolveWidgetId(settings.sTableId);
+
+      return {
+        widgetId: widgetId,
+        dataTableId: settings.sTableId,
+        effectiveId: widgetId || settings.sTableId
+      };
+    }
+
+    function clearPendingTableStates(tableId) {
+      if (!tableId) {
+        return;
+      }
+
+      var widgetId = resolveWidgetId(tableId) || tableId;
+      for (var i = pendingTableStates.length - 1; i >= 0; i--) {
+        if (pendingTableStates[i].tableId === widgetId) {
+          pendingTableStates.splice(i, 1);
+        }
+      }
+    }
+
+    function enqueuePendingTableState(tableId, state) {
+      if (!tableId || !state) {
+        return;
+      }
+
+      var widgetId = resolveWidgetId(tableId) || tableId;
+
+      for (var i = pendingTableStates.length - 1; i >= 0; i--) {
+        if (pendingTableStates[i].tableId === widgetId) {
+          pendingTableStates.splice(i, 1);
+        }
+      }
+
+      pendingTableStates.push({ tableId: widgetId, state: state });
+    }
+
     function getDataTableNode(tableId) {
       if (!tableId) {
         return $();
@@ -336,12 +379,12 @@ ui <- function(req) {
         return;
       }
 
-      var tableId = settings && settings.sTableId;
-      if (!tableId) {
+      var tableInfo = getResolvedTableIdentifiers(settings);
+      if (!tableInfo) {
         return;
       }
 
-      if (tableStateLoadComplete[tableId] === false) {
+      if (tableStateLoadComplete[tableInfo.effectiveId] === false) {
         return;
       }
 
@@ -350,9 +393,11 @@ ui <- function(req) {
         return;
       }
 
-      var widgetId = resolveWidgetId(tableId);
-      if (widgetId) {
-        Shiny.setInputValue(widgetId + '_state', payload, {priority: 'event'});
+      clearPendingTableStates(tableInfo.effectiveId);
+
+      var targetInputId = tableInfo.widgetId || tableInfo.dataTableId;
+      if (targetInputId) {
+        Shiny.setInputValue(targetInputId + '_state', payload, {priority: 'event'});
       }
     };
 
@@ -534,7 +579,7 @@ ui <- function(req) {
 
       var widgetId = resolveWidgetId(message.tableId);
       if (!applyTableState(widgetId, message.state)) {
-        pendingTableStates.push({ tableId: widgetId, state: message.state });
+        enqueuePendingTableState(widgetId, message.state);
       }
     });
 
@@ -543,15 +588,15 @@ ui <- function(req) {
         return;
       }
 
-      var widgetId = registerDataTableMapping(settings) || resolveWidgetId(settings.sTableId);
-      var tableId = widgetId || settings.sTableId;
-      if (!tableId) {
+      registerDataTableMapping(settings);
+      var tableInfo = getResolvedTableIdentifiers(settings);
+      if (!tableInfo) {
         return;
       }
 
-      var urlState = getInitialUrlState(tableId);
-      if (!urlState && !Object.prototype.hasOwnProperty.call(tableStateLoadComplete, tableId)) {
-        tableStateLoadComplete[tableId] = true;
+      var urlState = getInitialUrlState(tableInfo.effectiveId);
+      if (!urlState && !Object.prototype.hasOwnProperty.call(tableStateLoadComplete, tableInfo.effectiveId)) {
+        tableStateLoadComplete[tableInfo.effectiveId] = true;
       }
     });
 
@@ -650,12 +695,13 @@ ui <- function(req) {
      });
 
     $(document).on('stateLoaded.dt', function(e, settings, data) {
-      if (!settings || !settings.sTableId) {
+      var tableInfo = getResolvedTableIdentifiers(settings);
+      if (!tableInfo) {
         return;
       }
 
-      var tableId = settings.sTableId;
-      tableStateLoadComplete[tableId] = true;
+      tableStateLoadComplete[tableInfo.effectiveId] = true;
+      clearPendingTableStates(tableInfo.effectiveId);
 
       if (!window.Shiny || typeof Shiny.setInputValue !== 'function') {
         return;
@@ -666,7 +712,10 @@ ui <- function(req) {
         return;
       }
 
-      Shiny.setInputValue(tableId + '_state', payload, {priority: 'event'});
+      var targetInputId = tableInfo.widgetId || tableInfo.dataTableId;
+      if (targetInputId) {
+        Shiny.setInputValue(targetInputId + '_state', payload, {priority: 'event'});
+      }
     });
     Shiny.addCustomMessageHandler('updateDetailType', function(message) {
       const type = message.type;
