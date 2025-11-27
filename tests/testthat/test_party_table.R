@@ -33,13 +33,13 @@ test_that("process_party_data formats normalized rows", {
 
   result <- process_party_data(test_data)
 
-  expect_equal(colnames(result), c("Actions", "Given Name", "Surname", "Organization", "Contact", "Observations"))
+  expect_equal(colnames(result), c("Actions", "Given Name", "Surname", "Organization", "Observations", "Contact"))
   expect_equal(result$Actions, c("py.1", "py.2"))
   expect_equal(result$`Given Name`, c("Norm", "Not provided"))
   expect_equal(result$Surname, c("Aaseng", "Not provided"))
   expect_equal(result$Organization, c("MN DNR", "Not provided"))
-  expect_equal(result$Contact, c("Email@example.com", "Not provided"))
   expect_equal(result$Observations, c(191L, 0L))
+  expect_equal(result$Contact, c("Email@example.com", "Not provided"))
 })
 
 test_that("normalize_party_data enforces schema", {
