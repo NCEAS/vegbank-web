@@ -8,8 +8,8 @@ PARTY_TABLE_FIELDS <- c(
   "given_name",
   "surname",
   "organization_name",
-  "contact_instructions",
-  "obs_count"
+  "obs_count",
+  "contact_instructions"
 )
 
 #' Build Party Table
@@ -40,11 +40,11 @@ create_party_table_config <- function() {
       width = "10%",
       render = create_action_button_renderer("party_link_click", "Details")
     ), # Actions
-    list(targets = 1, width = "20%"), # Given Name
-    list(targets = 2, width = "20%"), # Surname
+    list(targets = 1, width = "15%"), # Given Name
+    list(targets = 2, width = "15%"), # Surname
     list(targets = 3, width = "30%"), # Organization
-    list(targets = 4, width = "20%"), # Contact
-    list(targets = 5, width = "10%", className = "dt-right", type = "num") # Observations
+    list(targets = 4, width = "10%", className = "dt-right", type = "num"), # Observations
+    list(targets = 5, width = "30%") # Contact
   )
 
   empty_source <- create_empty_party_df()
@@ -88,8 +88,8 @@ process_party_data <- function(party_data) {
       "Given Name" = character(0),
       "Surname" = character(0),
       "Organization" = character(0),
-      "Contact" = character(0),
       "Observations" = integer(0),
+      "Contact" = character(0),
       stringsAsFactors = FALSE,
       check.names = FALSE
     ))
@@ -112,8 +112,8 @@ process_party_data <- function(party_data) {
     "Given Name" = given_names,
     "Surname" = surnames,
     "Organization" = organizations,
-    "Contact" = contact_info,
     "Observations" = obs_counts,
+    "Contact" = contact_info,
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
@@ -135,7 +135,11 @@ normalize_party_data <- function(df) {
 
   missing_fields <- setdiff(PARTY_TABLE_FIELDS, names(df))
   for (field in missing_fields) {
-    df[[field]] <- NA
+    if (field == "obs_count") {
+      df[[field]] <- rep(NA_integer_, nrow(df))
+    } else {
+      df[[field]] <- rep(NA_character_, nrow(df))
+    }
   }
 
   df <- df[, PARTY_TABLE_FIELDS, drop = FALSE]
