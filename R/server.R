@@ -45,7 +45,8 @@ server <- function(input, output, session) {
     map_zoom = map_state$map_zoom,
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
-    table_states = shiny::reactiveValues()
+    table_states = shiny::reactiveValues(),
+    table_sync_pending = shiny::reactiveValues()
   )
 
   # Table registry: maps tab names to table IDs and default page lengths
@@ -57,6 +58,10 @@ server <- function(input, output, session) {
     people = list(tab = "People", table_id = "party_table", default_length = 100L),
     projects = list(tab = "Projects", table_id = "proj_table", default_length = 100L)
   )
+
+  for (key in names(table_registry)) {
+    state$table_sync_pending[[key]] <- FALSE
+  }
 
   # Initialize URL State Manager with defaults and table registry
   url_manager <- URLStateManager$new(
@@ -128,19 +133,29 @@ server <- function(input, output, session) {
     )
   }
 
-  # Send table state to client-side JavaScript to restore DataTable view
-  # Used when navigating via browser history or direct URL to restore pagination,
-  # sorting, filtering, and search state
+  # Send table state to client-side JavaScript to restore DataTable view.
+  # During a deep-link/URL restoration this function is a no-op until the
+  # browser history is fully initialized; afterwards it is used whenever the
+  # server needs to push a previously saved state back down (e.g., browser
+  # back/forward). The payload matches the structure expected by the
+  # client-side `applyTableState` handler in `R/ui.R`.
   send_table_state_to_client <- function(key, state) {
+    if (!url_manager$is_history_initialized()) {
+      return()
+    }
+
     message <- table_state_message(key, state)
     if (!is.null(message)) {
       session$sendCustomMessage("applyTableState", message)
     }
   }
 
-  # Store table state from DataTables and conditionally update URL query string
-  # Called when user interacts with table (pagination, sorting, filtering, search)
-  # Only updates URL if state differs from default and user is on the corresponding tab
+  # Store table state received from the JS `stateSaveCallback` and decide whether
+  # to update the encoded URL. Each DataTable widget sends its state through a
+  # Shiny input (`<table_id>_state`); we sanitize the payload, de-dupe against the
+  # current snapshot, and only mutate browser history when the active tab matches
+  # the table emitting the event. This keeps the URL and Shiny’s authoritative
+  # state in sync without double-applying DT settings.
   # Parameters:
   #   key - Table registry key
   #   raw_state - Raw state object from DataTables (needs sanitization)
@@ -151,10 +166,18 @@ server <- function(input, output, session) {
     }
 
     tab_for_key <- table_registry[[key]]$tab
+    pending_sync <- shiny::isolate(isTRUE(state$table_sync_pending[[key]]))
+    current <- shiny::isolate(state$table_states[[key]])
 
-    # If state has returned to defaults, remove from state and URL
+    if (pending_sync) {
+      state$table_sync_pending[[key]] <- FALSE
+      if (!is.null(current) && identical(current, sanitized)) {
+        return()
+      }
+    }
+
     if (url_manager$is_default_table_state(key, sanitized)) {
-      if (!is.null(state$table_states[[key]])) {
+      if (!is.null(current)) {
         state$table_states[[key]] <- NULL
 
         if (can_mutate_history() && identical(tab_for_key, state$current_tab())) {
@@ -164,20 +187,13 @@ server <- function(input, output, session) {
       return()
     }
 
-    # Only update if state has actually changed
-    current <- state$table_states[[key]]
     if (!is.null(current) && identical(current, sanitized)) {
       return()
     }
 
     state$table_states[[key]] <- sanitized
 
-    if (!can_mutate_history()) {
-      return()
-    }
-
-    # Update URL if we're on the table's tab and not in the middle of a URL sync operation
-    if (identical(tab_for_key, state$current_tab())) {
+    if (can_mutate_history() && identical(tab_for_key, state$current_tab())) {
       update_app_query(mode = "replace")
     }
   }
@@ -408,12 +424,14 @@ server <- function(input, output, session) {
       } else if (isTRUE(state$details_open())) {
         close_detail(push_history = FALSE, hide_overlay = TRUE)
       } else if (!is.null(params$detail) || !is.null(params$code)) {
-        update_app_query(
-          mode = "replace",
-          tab = requested_tab,
-          detail_type = NULL,
-          detail_code = NULL
-        )
+        if (url_manager$is_history_initialized()) {
+          update_app_query(
+            mode = "replace",
+            tab = requested_tab,
+            detail_type = NULL,
+            detail_code = NULL
+          )
+        }
       }
 
       # Parse and apply map view state
@@ -451,12 +469,14 @@ server <- function(input, output, session) {
         state$map_zoom(DEFAULT_MAP_ZOOM)
         update_map_custom_flag(DEFAULT_MAP_LAT, DEFAULT_MAP_LNG, DEFAULT_MAP_ZOOM)
 
-        update_app_query(
-          mode = "replace",
-          tab = requested_tab,
-          detail_type = if (detail_valid) target_type else NULL,
-          detail_code = if (detail_valid) target_code else NULL
-        )
+        if (url_manager$is_history_initialized()) {
+          update_app_query(
+            mode = "replace",
+            tab = requested_tab,
+            detail_type = if (detail_valid) target_type else NULL,
+            detail_code = if (detail_valid) target_code else NULL
+          )
+        }
       } else if (identical(requested_tab, "Map")) {
         if (!map_params_present && !url_manager$is_map_default(state$map_center_lat(), state$map_center_lng(), state$map_zoom())) {
           state$map_center_lat(DEFAULT_MAP_LAT)
@@ -489,28 +509,34 @@ server <- function(input, output, session) {
 
         if (is.null(table_state_from_query) || url_manager$is_default_table_state(table_key, table_state_from_query)) {
           state$table_states[[table_key]] <- NULL
+          state$table_sync_pending[[table_key]] <- FALSE
           if (table_params_present) {
-            update_app_query(
-              mode = "replace",
-              tab = requested_tab,
-              detail_type = if (detail_valid) target_type else NULL,
-              detail_code = if (detail_valid) target_code else NULL
-            )
+            if (url_manager$is_history_initialized()) {
+              update_app_query(
+                mode = "replace",
+                tab = requested_tab,
+                detail_type = if (detail_valid) target_type else NULL,
+                detail_code = if (detail_valid) target_code else NULL
+              )
+            }
           }
         } else {
           state$table_states[[table_key]] <- table_state_from_query
+          state$table_sync_pending[[table_key]] <- TRUE
           send_table_state_to_client(table_key, table_state_from_query)
         }
       }
 
       # Ensure tab parameter is present in URL
       if (!url_manager$is_valid_param(params$tab)) {
-        update_app_query(
-          mode = "replace",
-          tab = requested_tab,
-          detail_type = if (detail_valid) target_type else NULL,
-          detail_code = if (detail_valid) target_code else NULL
-        )
+        if (url_manager$is_history_initialized()) {
+          update_app_query(
+            mode = "replace",
+            tab = requested_tab,
+            detail_type = if (detail_valid) target_type else NULL,
+            detail_code = if (detail_valid) target_code else NULL
+          )
+        }
       }
     },
     ignoreNULL = FALSE
