@@ -1,156 +1,54 @@
-test_that("build_party_table creates a datatable object", {
-  test_data <- data.frame(
-    given_name = c("John", "Jane"),
-    surname = c("Doe", "Smith"),
-    organization_name = c("Organization 1", "Organization 2"),
-    contact_instructions = c("Email: john@example.com", "Phone: 555-1234"),
-    py_code = c("py.191377", "py.191378"),
-    stringsAsFactors = FALSE
-  )
-
+test_that("build_party_table configures remote datatable", {
   pkg_env <- asNamespace("vegbankweb")
-  # Mock is_any_data_missing in the correct environment
+
   with_mocked_bindings(
-    is_any_data_missing = function(data_sources, required_sources) FALSE,
+    create_table = function(data_sources, required_sources, process_function, table_config) {
+      expect_equal(length(data_sources), 0)
+      expect_equal(length(required_sources), 0)
+      expect_null(process_function)
+
+      expect_equal(length(table_config$column_defs), 6)
+      expect_true(is.function(table_config$ajax))
+      expect_s3_class(table_config$initial_data, "data.frame")
+
+      structure(list(options = list()), class = "datatables")
+    },
     .env = pkg_env,
     {
-      with_mocked_bindings(
-        withProgress = function(expr, ...) force(expr),
-        incProgress = function(...) NULL,
-        .package = "shiny",
-        {
-          with_mocked_bindings(
-            create_table = function(data_sources, required_sources, process_function, table_config) {
-              expect_equal(names(data_sources), "party_data")
-              expect_equal(data_sources$party_data, test_data)
-              expect_equal(required_sources, "party_data")
-              expect_equal(table_config$column_defs[[1]]$targets, 0)
-              expect_equal(table_config$column_defs[[1]]$orderable, FALSE)
-              structure(list(options = list()), class = "datatables")
-            },
-            .env = pkg_env,
-            {
-              result <- build_party_table(test_data)
-              expect_s3_class(result, "datatables")
-            }
-          )
-        }
-      )
-    }
-  )
-})
-
-test_that("process_party_data correctly formats party data", {
-  test_data <- data.frame(
-    given_name = c("John", "Jane"),
-    surname = c("Doe", "Smith"),
-    organization_name = c("Organization 1", "Organization 2"),
-    contact_instructions = c("Email: john@example.com", "Phone: 555-1234"),
-    py_code = c("py.191377", "py.191378"),
-    stringsAsFactors = FALSE
-  )
-
-  # Create expected output format
-  with_mocked_bindings(
-    clean_column_data = function(data, column) {
-      if (column == "given_name") return(c("John", "Jane"))
-      if (column == "surname") return(c("Doe", "Smith"))
-      if (column == "organization_name") return(c("Organization 1", "Organization 2"))
-      if (column == "contact_instructions") return(c("Email: john@example.com", "Phone: 555-1234"))
-      c(NA, NA)
-    },
-    create_action_buttons = function(data, actions) {
-      c("Action 1", "Action 2")
-    },
-    {
-      with_mocked_bindings(
-        incProgress = function(...) NULL,
-        .package = "shiny",
-        {
-          result <- process_party_data(list(party_data = test_data))
-          
-          expect_s3_class(result, "data.frame")
-          expect_equal(nrow(result), 2)
-          expect_equal(colnames(result), c("Actions", "Given Name", "Surname", "Organization", "Contact"))
-          expect_equal(result$`Given Name`, c("John", "Jane"))
-          expect_equal(result$Surname, c("Doe", "Smith"))
-          expect_equal(result$Organization, c("Organization 1", "Organization 2"))
-          expect_equal(result$Contact, c("Email: john@example.com", "Phone: 555-1234"))
-        }
-      )
-    }
-  )
-})
-
-test_that("party_table handles empty data", {
-  # Test with empty data frame
-  test_data <- data.frame()
-  
-  # Create a mock result for testing the "No data" scenario
-  mock_empty_table <- structure(
-    list(x = list(data = data.frame(`No.Data.Available` = "No party data available", check.names = FALSE))),
-    class = "datatables"
-  )
-  
-  # Use local_mocked_bindings to avoid namespace issues
-  local_mocked_bindings(
-    is_any_data_missing = function(...) TRUE,
-    create_empty_table = function(...) mock_empty_table,
-    create_table = function(...) mock_empty_table
-  )
-  
-  # Use nested with_mocked_bindings for shiny functions
-  with_mocked_bindings(
-    withProgress = function(expr, ...) force(expr),
-    incProgress = function(...) NULL,
-    .package = "shiny",
-    {
-      result <- build_party_table(test_data)
+      result <- build_party_table()
       expect_s3_class(result, "datatables")
-      expect_equal(result$x$data$`No.Data.Available`, "No party data available")
     }
   )
 })
 
-test_that("is_any_data_missing is called with correct parameters", {
+test_that("process_party_data formats normalized rows", {
   test_data <- data.frame(
-    given_name = c("John"),
-    surname = c("Doe"),
-    stringsAsFactors = FALSE
+    py_code = c("py.1", "py.2"),
+    given_name = c("Norm", NA),
+    surname = c("Aaseng", ""),
+    organization_name = c("MN DNR", NA),
+    contact_instructions = c("email@example.com", NA),
+    obs_count = c(191, NA_integer_)
   )
-  
-  pkg_env <- asNamespace("vegbankweb")
-  
-  # Mock the is_any_data_missing function to verify its parameters
-  with_mocked_bindings(
-    is_any_data_missing = function(data_sources, required_sources) {
-      # Verify that the parameters are as expected
-      expect_equal(names(data_sources), "party_data")
-      expect_equal(data_sources$party_data, test_data)
-      expect_equal(required_sources, "party_data")
-      
-      # Return FALSE to indicate data is present
-      FALSE
-    },
-    .env = pkg_env,
-    {
-      with_mocked_bindings(
-        withProgress = function(expr, ...) force(expr),
-        incProgress = function(...) NULL,
-        .package = "shiny",
-        {
-          with_mocked_bindings(
-            create_table = function(...) {
-              structure(list(options = list()), class = "datatables")
-            },
-            .env = pkg_env,
-            {
-              result <- build_party_table(test_data)
-              expect_s3_class(result, "datatables")
-            }
-          )
-        }
-      )
-    }
-  )
+
+  result <- process_party_data(test_data)
+
+  expect_equal(colnames(result), c("Actions", "Given Name", "Surname", "Organization", "Contact", "Observations"))
+  expect_equal(result$Actions, c("py.1", "py.2"))
+  expect_equal(result$`Given Name`, c("Norm", "Not provided"))
+  expect_equal(result$Surname, c("Aaseng", "Not provided"))
+  expect_equal(result$Organization, c("MN DNR", "Not provided"))
+  expect_equal(result$Contact, c("Email@example.com", "Not provided"))
+  expect_equal(result$Observations, c(191L, 0L))
+})
+
+test_that("normalize_party_data enforces schema", {
+  raw <- list(py_code = "py.9")
+
+  normalized <- normalize_party_data(raw)
+
+  expect_equal(colnames(normalized), vegbankweb:::PARTY_TABLE_FIELDS)
+  expect_equal(normalized$py_code, "py.9")
+  expect_equal(normalized$obs_count, 0L)
+  expect_type(normalized$given_name, "character")
 })
