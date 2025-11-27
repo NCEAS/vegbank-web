@@ -3,7 +3,7 @@
 build_party_details_view <- function(result) {
   if (is.null(result) || nrow(result) == 0) {
     return(create_empty_detail_view(
-      c("party_name", "party_organization", "party_contact", "party_projects"),
+      c("party_name", "party_organization", "party_contact", "party_contributions"),
       "Party details"
     ))
   }
@@ -35,8 +35,6 @@ build_party_details_view <- function(result) {
       }
     }),
     party_contact = render_detail_table(c("contact_instructions"), result),
-    party_projects = shiny::renderUI({
-      htmltools::tags$p("Associated projects would be displayed here")
-    })
+    party_contributions = render_detail_table(c("obs_count"), result)
   )
 }
