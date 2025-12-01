@@ -155,20 +155,17 @@ clean_column_data <- function(data, column_name, default_value = "Not provided")
 #' @param data Data frame
 #' @param column_name Name of the column to clean
 #' @param default_value Value to use for NA/empty values
+#' @param date_format Format string for output dates
 #' @returns A character vector with cleaned data
 #' @noRd
 clean_column_dates <- function(data, column_name, default_value = "Not provided", date_format = "%Y-%m-%d") {
-  if (column_name %in% colnames(data)) {
-    date_values <- as.POSIXct(data[[column_name]], format = "%a, %d %b %Y %H:%M:%S", tz = "GMT")
-    cleaned <- ifelse(
-      is.na(date_values),
-      default_value,
-      format(date_values, format = date_format)
-    )
-    cleaned
-  } else {
-    rep(default_value, nrow(data))
+  if (!(column_name %in% colnames(data))) {
+    return(rep(default_value, nrow(data)))
   }
+
+  column <- data[[column_name]]
+  vapply(column, format_date, character(1), default_value = default_value,
+         format_string = date_format, USE.NAMES = FALSE)
 }
 
 # TODO: Soon to be deprecated by JS renderer

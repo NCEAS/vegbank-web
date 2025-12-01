@@ -11,7 +11,6 @@ PROJECT_TABLE_FIELDS <- c(
   "start_date",
   "stop_date",
   "last_plot_added_date"
-  # TODO: Add Contributors and Locations (states/provinces)?
 )
 
 #' Build Project Table
