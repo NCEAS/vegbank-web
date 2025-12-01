@@ -35,6 +35,8 @@ build_party_details_view <- function(result) {
       }
     }),
     party_contact = render_detail_table(c("contact_instructions"), result),
-    party_contributions = render_detail_table(c("obs_count"), result)
+    party_contributions = shiny::renderUI({
+      htmltools::tags$p("Number of observations: ", htmltools::tags$strong(result$obs_count %|||% 0))
+    })
   )
 }
