@@ -43,6 +43,25 @@ safe_parse_date <- function(date_string) {
   )
 }
 
+#' Format a date string for detail displays
+#'
+#' Wraps `safe_parse_date()` and returns a formatted string or a default placeholder
+#' when parsing fails.
+#'
+#' @param date_string Raw date value pulled from VegBank results
+#' @param default_value Placeholder to use when the date cannot be parsed
+#' @param format_string Format passed to `format()` for parsed dates
+#' @return A character string suitable for UI display
+#' @noRd
+format_date <- function(date_string, default_value = "Not provided", format_string = "%Y-%m-%d") {
+  parsed <- safe_parse_date(date_string)
+  if (is.na(parsed)) {
+    return(default_value)
+  }
+
+  format(parsed, format_string)
+}
+
 #' Read Display Names from Lookup Table
 #'
 #' Reads display names from the display_name_lookup.txt file.

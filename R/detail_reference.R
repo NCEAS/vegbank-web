@@ -15,14 +15,7 @@ build_reference_details_view <- function(result) {
   }
 
   ref <- result[1, , drop = FALSE]
-  ref$publication_date <- {
-    parsed <- safe_parse_date(ref$publication_date)
-    if (is.na(parsed)) {
-      ref$publication_date
-    } else {
-      format(parsed, "%Y-%m-%d")
-    }
-  }
+  ref$publication_date <- format_date(ref$publication_date)
 
   summary_ui <- shiny::renderUI({
     short_name <- ref$short_name %|||% "Reference not recorded"

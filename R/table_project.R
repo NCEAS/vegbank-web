@@ -11,6 +11,7 @@ PROJECT_TABLE_FIELDS <- c(
   "start_date",
   "stop_date",
   "last_plot_added_date"
+  # TODO: Add Contributors and Locations (states/provinces)?
 )
 
 #' Build Project Table
@@ -98,18 +99,21 @@ process_project_data <- function(project_data) {
     ))
   }
 
-  names <- clean_column_data(project_data, "project_name")
-  descriptions <- clean_column_data(project_data, "project_description")
-  starts <- clean_column_data(project_data, "start_date")
-  stops <- clean_column_data(project_data, "stop_date")
-  last_added <- clean_column_data(project_data, "last_plot_added_date")
-
   action_codes <- project_data$pj_code
   action_codes <- if (is.null(action_codes)) rep("", row_count) else as.character(action_codes)
   action_codes[is.na(action_codes)] <- ""
 
+  names <- clean_column_data(project_data, "project_name")
+
   obs_counts <- suppressWarnings(as.integer(project_data$obs_count))
   obs_counts[is.na(obs_counts)] <- 0L
+
+  starts <- clean_column_dates(project_data, "start_date")
+  stops <- clean_column_dates(project_data, "stop_date")
+  last_added <- clean_column_dates(project_data, "last_plot_added_date")
+
+  descriptions <- clean_column_data(project_data, "project_description")
+  descriptions <- truncate_text_with_ellipsis(descriptions, max_chars = 680L)
 
   data.frame(
     "Actions" = action_codes,
