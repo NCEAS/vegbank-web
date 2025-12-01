@@ -344,12 +344,6 @@ server <- function(input, output, session) {
       vegbankr::get_all_taxon_observations
     )
 
-    project_data <- load_data_type(
-      "projects",
-      "inst/cached_data/pj_20251014.rds",
-      vegbankr::get_all_projects
-    )
-
     party_data <- load_data_type(
       "parties",
       "inst/cached_data/py_20251014.rds",
@@ -540,7 +534,7 @@ server <- function(input, output, session) {
   })
 
   output$proj_table <- DT::renderDataTable({
-    build_project_table(project_data)
+    build_project_table()
   })
 
   output$party_table <- DT::renderDataTable({
