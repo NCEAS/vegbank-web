@@ -21,6 +21,9 @@
 #' @noRd
 # ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
+  vegbankr::vb_debug()
+  vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
+
   # CONSTANTS --------------------------------------------------------------------------------------
 
   # Get default map settings from constants module
@@ -332,34 +335,6 @@ server <- function(input, output, session) {
 
     invisible(TRUE)
   }
-
-
-  # DATA LOADING -----------------------------------------------------------------------------------
-
-  vegbankr::vb_debug()
-  vegbankr::set_vb_base_url("https://api-dev.vegbank.org")
-
-  shiny::withProgress(message = "Fetching data:", value = 0, {
-    plot_data <- load_data_type(
-      "plot observations",
-      "inst/cached_data/ob_20251015.RDS",
-      vegbankr::get_all_plot_observations,
-      list(detail = "minimal")
-    )
-
-    comm_class_data <- load_data_type(
-      "community classifications",
-      "inst/cached_data/cl_20251015.RDS",
-      vegbankr::get_all_community_classifications,
-      list(detail = "minimal")
-    )
-
-    taxa_data <- load_data_type(
-      "taxon observations",
-      "inst/cached_data/to_20251015.RDS",
-      vegbankr::get_all_taxon_observations
-    )
-  })
 
   # URL/HISTORY SYNCHRONIZATION OBSERVER -----------------------------------------------------------
   # This observer runs whenever the browser URL changes (back/forward, refresh, direct link).
@@ -894,77 +869,4 @@ find_row_selection_code <- function(detail_type, vb_code, comm_class_data, taxa_
     },
     NULL # Unknown detail type
   )
-}
-
-#' Helper function to load data types with API fallback
-#' This function will try to load data from the API first, and if it fails, it
-#' will fall back to reading from a cached RDS file.
-#' If the API is not used, it will only read from the cached file.
-# Returns a data frame with the loaded data or an empty data frame if loading fails.
-#'
-#' @param data_type Name of the data type being loaded (for progress messages)
-#' @param file_path Path to the cached RDS file
-#' @param api_function The vegbankr API function to call
-#' @param api_params Additional parameters to pass to the API function
-#' @return A data frame with the loaded data or an empty data frame if loading fails.
-#'
-#' @importFrom utils modifyList
-#' @noRd
-load_data_type <- function(data_type, file_path, api_function, api_params = list(), use_api = FALSE) {
-  shiny::incProgress(0.2, detail = paste0("Loading ", data_type, "..."))
-  # Special case for taxon observations (count was too slow so cannot fetch all and have to read from cache)
-  if (use_api && data_type == "taxon observations") {
-    shiny::showNotification(
-      "Taxa API requests don't return a count - using cached data instead",
-      type = "warning", duration = NULL
-    )
-    return(read_from_cache(data_type, file_path))
-  }
-
-  # For other data types, use API if requested
-  if (use_api) {
-    tryCatch(
-      {
-        # Call the API function with parameters
-        params <- list(limit = 0)
-        params <- modifyList(params, api_params)
-
-        # Get total count first
-        count_call <- do.call(api_function, params)
-        num_items <- vegbankr::get_page_details(count_call)[["count_reported"]]
-
-        # Now get all data
-        params$limit <- num_items
-        do.call(api_function, params)
-      },
-      error = function(e) {
-        shiny::showNotification(
-          paste0("Error fetching ", data_type, " from API: ", e$message),
-          type = "error", duration = NULL
-        )
-        read_from_cache(data_type, file_path)
-      }
-    )
-  } else {
-    read_from_cache(data_type, file_path)
-  }
-}
-
-#' Checks if the specified file exists and reads it as an RDS file.
-#' If the file does not exist, it shows an error notification and returns an empty data frame.
-#'
-#' @param data_type Name of the data type being loaded (for error messages)
-#' @param file_path Path to the cached RDS file
-#' @return A data frame with the loaded data or an empty data frame if loading fails.
-#' @noRd
-read_from_cache <- function(data_type, file_path) {
-  if (file.exists(file_path)) {
-    readRDS(file_path)
-  } else {
-    shiny::showNotification(
-      paste0(data_type, " cache not found: ", file_path),
-      type = "error", duration = NULL
-    )
-    data.frame()
-  }
 }
