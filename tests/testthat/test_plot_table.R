@@ -122,19 +122,22 @@ test_that("serialize_nested_column handles NULL and non-list inputs", {
   expect_equal(result_non_list, c("[]", "[]"))
 })
 
-test_that("format_location_column combines state and country", {
+test_that("format_location_column combines location, coordinates, and elevation", {
   data <- data.frame(
     state_province = c("Virginia", "Maryland", NA, "Texas"),
     country = c("USA", "USA", "Canada", NA),
     stringsAsFactors = FALSE
   )
-  
-  result <- format_location_column(data)
-  
-  expect_equal(result[1], "Virginia, USA")
-  expect_equal(result[2], "Maryland, USA")
-  expect_equal(result[3], "Canada")
-  expect_equal(result[4], "Texas")
+  lats <- c(38.5, 39.2, 45.0, NA)
+  lngs <- c(-78.2, -77.0, -75.0, NA)
+  elevs <- c(500, 250, NA, 120)
+
+  result <- format_location_column(data, lats, lngs, elevs)
+
+  expect_equal(result[1], "Virginia<br>USA<br>38.5000, -78.2000 &bull; 500m")
+  expect_equal(result[2], "Maryland<br>USA<br>39.2000, -77.0000 &bull; 250m")
+  expect_equal(result[3], "Canada<br>45.0000, -75.0000")
+  expect_equal(result[4], "Texas<br>120m")
 })
 
 test_that("format_location_column handles missing data", {
@@ -143,8 +146,11 @@ test_that("format_location_column handles missing data", {
     country = c(NA, ""),
     stringsAsFactors = FALSE
   )
+  lats <- c(NA, NA)
+  lngs <- c(NA, NA)
+  elevs <- c(NA, NA)
   
-  result <- format_location_column(data)
+  result <- format_location_column(data, lats, lngs, elevs)
   
   expect_equal(result[1], "Not provided")
   expect_equal(result[2], "Not provided")
@@ -205,10 +211,9 @@ test_that("process_plot_data returns correctly formatted display data", {
   
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 2)
-  expect_equal(ncol(result), 9)
+  expect_equal(ncol(result), 6)
   
-  expected_cols <- c("Actions", "Author Plot Code", "Location", "Latitude", "Longitude", 
-                     "Elevation (m)", "Year", "Top Taxa", "Communities")
+  expected_cols <- c("Actions", "Author Plot Code", "Location", "Year", "Top Taxa", "Communities")
   expect_equal(names(result), expected_cols)
   
   # Check action payloads encode detail code plus map metadata
@@ -224,10 +229,9 @@ test_that("process_plot_data returns correctly formatted display data", {
 
   # Check other data values
   expect_equal(result$`Author Plot Code`, c("PLOT001", "PLOT002"))
-  expect_equal(result$Location, c("Virginia, USA", "Maryland, USA"))
-  expect_equal(result$Latitude, c(38.5, 39.2))
-  expect_equal(result$Longitude, c(-78.2, -77.0))
-  expect_equal(result$`Elevation (m)`, c("500", "750"))
+  expect_equal(result$Location,
+               c("Virginia<br>USA<br>38.5000, -78.2000 &bull; 500m",
+                 "Maryland<br>USA<br>39.2000, -77.0000 &bull; 750m"))
   expect_equal(result$Year, c("2020", "2021"))
   
   # Check JSON columns are strings
@@ -242,7 +246,7 @@ test_that("process_plot_data handles empty data correctly", {
   
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
-  expect_equal(ncol(result), 9)
+  expect_equal(ncol(result), 6)
   
   result_empty <- process_plot_data(create_empty_plot_df())
   expect_equal(nrow(result_empty), 0)
@@ -277,7 +281,7 @@ test_that("create_plot_table_config returns valid config", {
   expect_true("initial_data" %in% names(config))
   expect_true("ajax" %in% names(config))
   
-  expect_equal(length(config$column_defs), 9)
+  expect_equal(length(config$column_defs), 6)
   
   # Check actions column (index 0)
   expect_equal(config$column_defs[[1]]$targets, 0)
@@ -285,15 +289,18 @@ test_that("create_plot_table_config returns valid config", {
   expect_false(config$column_defs[[1]]$searchable)
   expect_true(inherits(config$column_defs[[1]]$render, "JS_EVAL"))
   
-  # Check taxon list column (index 7)
-  expect_equal(config$column_defs[[8]]$targets, 7)
-  expect_false(config$column_defs[[8]]$orderable)
-  expect_true(inherits(config$column_defs[[8]]$render, "JS_EVAL"))
+  # Check year column (index 3)
+  expect_equal(config$column_defs[[4]]$targets, 3)
   
-  # Check community list column (index 8)
-  expect_equal(config$column_defs[[9]]$targets, 8)
-  expect_false(config$column_defs[[9]]$orderable)
-  expect_true(inherits(config$column_defs[[9]]$render, "JS_EVAL"))
+  # Check taxon list column (index 4)
+  expect_equal(config$column_defs[[5]]$targets, 4)
+  expect_false(config$column_defs[[5]]$orderable)
+  expect_true(inherits(config$column_defs[[5]]$render, "JS_EVAL"))
+  
+  # Check community list column (index 5)
+  expect_equal(config$column_defs[[6]]$targets, 5)
+  expect_false(config$column_defs[[6]]$orderable)
+  expect_true(inherits(config$column_defs[[6]]$render, "JS_EVAL"))
   
   # Check initial data
   expect_s3_class(config$initial_data, "data.frame")
@@ -326,6 +333,7 @@ test_that("create_taxon_list_renderer returns JS function", {
   expect_true(grepl("function\\(data, type, row, meta\\)", renderer))
   expect_true(grepl("plant_link_click", renderer))
   expect_true(grepl("pc_code", renderer))
+  expect_true(grepl("<div>", renderer, fixed = TRUE))
 })
 
 test_that("create_community_list_renderer returns JS function", {
@@ -336,4 +344,6 @@ test_that("create_community_list_renderer returns JS function", {
   expect_true(grepl("function\\(data, type, row, meta\\)", renderer))
   expect_true(grepl("comm_class_link_click", renderer))
   expect_true(grepl("comm_name", renderer))
+  expect_true(grepl("comm_code", renderer))
+  expect_true(grepl("CEGL", renderer))
 })

@@ -50,20 +50,17 @@ create_plot_table_config <- function() {
       render = create_plot_action_renderer()
     ),
     list(targets = 1, width = "15%"),  # Author Plot Code
-    list(targets = 2, width = "12%"),  # Location
-    list(targets = 3, width = "8%"),   # Latitude
-    list(targets = 4, width = "8%"),   # Longitude
-    list(targets = 5, width = "8%"),   # Elevation
-    list(targets = 6, width = "8%"),   # Year
+    list(targets = 2, width = "15%"),  # Location
+    list(targets = 5, width = "10%"),   # Year
     list(
-      targets = 7,
-      width = "15%",
+      targets = 3,
+      width = "25%",
       orderable = FALSE,
       render = create_taxon_list_renderer()
     ),
     list(
-      targets = 8,
-      width = "16%",
+      targets = 4,
+      width = "25%",
       orderable = FALSE,
       render = create_community_list_renderer()
     )
@@ -110,12 +107,9 @@ process_plot_data <- function(plot_data) {
       "Actions" = character(0),
       "Author Plot Code" = character(0),
       "Location" = character(0),
-      "Latitude" = numeric(0),
-      "Longitude" = numeric(0),
-      "Elevation (m)" = character(0),
-      "Year" = character(0),
       "Top Taxa" = character(0),
       "Communities" = character(0),
+      "Year" = character(0),
       stringsAsFactors = FALSE,
       check.names = FALSE
     ))
@@ -137,12 +131,12 @@ process_plot_data <- function(plot_data) {
 
   # Clean text columns
   author_codes <- clean_column_data(plot_data, "author_plot_code")
-  locations <- format_location_column(plot_data)
   
   # Format numeric columns
   latitudes <- format_coordinate(plot_data$latitude)
   longitudes <- format_coordinate(plot_data$longitude)
-  elevations <- format_elevation(plot_data$elevation)
+  elevations <- suppressWarnings(as.numeric(plot_data$elevation))
+  locations <- format_location_column(plot_data, latitudes, longitudes, elevations)
   years <- clean_column_data(plot_data, "year")
 
   # Serialize nested list columns as JSON strings for the renderer
@@ -167,31 +161,79 @@ process_plot_data <- function(plot_data) {
     "Actions" = action_payloads,
     "Author Plot Code" = author_codes,
     "Location" = locations,
-    "Latitude" = latitudes,
-    "Longitude" = longitudes,
-    "Elevation (m)" = elevations,
-    "Year" = years,
     "Top Taxa" = top_taxa_json,
     "Communities" = communities_json,
+    "Year" = years,
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
 }
 
-#' Format location as "State/Province, Country"
+#' Build multi-line location display with coordinates and elevation.
+#'
+#' @param data Data frame containing state/country columns
+#' @param latitudes Numeric vector of latitude values
+#' @param longitudes Numeric vector of longitude values
+#' @param elevations Numeric vector of elevation values (meters)
+#' @return Character vector with HTML-safe multi-line location strings
 #' @noRd
-format_location_column <- function(data) {
+format_location_column <- function(data, latitudes = NULL, longitudes = NULL, elevations = NULL) {
+  row_total <- nrow(data)
+  if (!row_total) {
+    return(character(0))
+  }
+
   state <- clean_column_data(data, "state_province", default_value = "")
   country <- clean_column_data(data, "country", default_value = "")
-  
-  location <- ifelse(
-    nzchar(state) & nzchar(country),
-    paste(state, country, sep = ", "),
-    ifelse(nzchar(state), state, 
-           ifelse(nzchar(country), country, "Not provided"))
-  )
-  
-  location
+  latitudes <- latitudes %||% rep(NA_real_, row_total)
+  longitudes <- longitudes %||% rep(NA_real_, row_total)
+  elevations <- elevations %||% rep(NA_real_, row_total)
+
+  build_coord_line <- function(lat, lng) {
+    if (is.na(lat) || is.na(lng)) {
+      return(NULL)
+    }
+    sprintf("%.4f, %.4f", lat, lng)
+  }
+
+  build_elev_line <- function(elev) {
+    if (is.na(elev)) {
+      return(NULL)
+    }
+    paste0(round(elev), "m")
+  }
+
+  vapply(seq_len(row_total), function(idx) {
+    lines <- character(0)
+
+    if (nzchar(state[[idx]])) {
+      lines <- c(lines, as.character(htmltools::htmlEscape(state[[idx]])))
+    }
+    if (nzchar(country[[idx]])) {
+      lines <- c(lines, as.character(htmltools::htmlEscape(country[[idx]])))
+    }
+    if (!length(lines)) {
+      lines <- "Not provided"
+    }
+
+    coord_line <- build_coord_line(latitudes[[idx]], longitudes[[idx]])
+    elev_line <- build_elev_line(elevations[[idx]])
+
+    detail_parts <- c()
+    if (!is.null(coord_line)) {
+      detail_parts <- c(detail_parts, coord_line)
+    }
+    if (!is.null(elev_line)) {
+      detail_parts <- c(detail_parts, elev_line)
+    }
+
+    if (length(detail_parts)) {
+      detail_line <- paste(detail_parts, collapse = " &bull; ")
+      lines <- c(lines, detail_line)
+    }
+
+    paste(lines, collapse = "<br>")
+  }, character(1), USE.NAMES = FALSE)
 }
 
 #' Format coordinate values
@@ -436,19 +478,24 @@ create_taxon_list_renderer <- function() {
           var pcCode = taxon.pc_code || '';
           var maxCover = taxon.max_cover;
           
-          var coverText = '';
-          if (maxCover !== null && maxCover !== undefined) {
-            coverText = ' (' + Number(maxCover).toFixed(1) + '%)';
+          var nameLink;
+          if (pcCode) {
+            nameLink = '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"plant_link_click\" data-value=\"' + 
+                   pcCode.replace(/\"/g, '&quot;') + '\">' + name + '</a>';
+          } else {
+            nameLink = name;
           }
           
-          if (pcCode) {
-            return '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"plant_link_click\" data-value=\"' + 
-                   pcCode.replace(/\"/g, '&quot;') + '\">' + name + '</a>' + coverText;
+          if (maxCover !== null && maxCover !== undefined) {
+            var coverText = '(' + Number(maxCover).toFixed(1) + '%)';
+            return '<div style=\"display: flex; justify-content: space-between;\"><span>' + 
+                   nameLink + '</span><span style=\"margin-left: 8px;\">' + coverText + '</span></div>';
           }
-          return name + coverText;
+          
+          return '<div>' + nameLink + '</div>';
         });
         
-        return links.join('<br>');
+        return links.join('');
       } catch(e) {
         console.error('Error parsing taxon data:', e);
         return '<span class=\"text-muted\">Error</span>';
@@ -474,16 +521,33 @@ create_community_list_renderer <- function() {
         if (!Array.isArray(communities) || communities.length === 0) {
           return '<span class=\"text-muted\">None</span>';
         }
+
+        var escapeHtml = function(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;');
+        };
         
         var links = communities.map(function(comm) {
           var commName = comm.comm_name || 'Unknown';
           var clCode = comm.cl_code || '';
-          
+          var commCode = comm.comm_code || '';
+          var entry;
+
           if (clCode) {
-            return '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"comm_class_link_click\" data-value=\"' + 
+            entry = '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"comm_class_link_click\" data-value=\"' + 
                    clCode.replace(/\"/g, '&quot;') + '\">' + commName + '</a>';
+          } else {
+            entry = commName;
           }
-          return commName;
+
+          if (commCode && commCode.toUpperCase().indexOf('CEGL') === 0) {
+            entry += '<br><span class=\"text-muted\">' + escapeHtml(commCode) + '</span>';
+          }
+
+          return entry;
         });
         
         return links.join('<br>');

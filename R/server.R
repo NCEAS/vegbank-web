@@ -549,6 +549,7 @@ server <- function(input, output, session) {
     build_plant_table()
   })
 
+  # TODO: This data should be fetched now that we don't cache all plots
   output$map <- leaflet::renderLeaflet({
     process_map_data(
       map_data = plot_data,
