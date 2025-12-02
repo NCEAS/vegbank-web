@@ -324,15 +324,15 @@ get_concept_config <- function(concept_type) {
 #' @noRd
 create_action_button_renderer <- function(input_id = "link_click", button_label = "Details") {
   # Create the JavaScript function with sprintf
+  # Use JSON.stringify to safely encode the data value
   js_code <- sprintf(
     "function(data, type, row, meta) {
       if (type === 'display') {
-        // data should be the code value
         if (!data || data === '') return '<span>No Data</span>';
-
+        
         return '<div class=\"btn-group btn-group-sm\">' +
-               '<button class=\"btn btn-sm btn-outline-primary\"' +
-               ' onclick=\"Shiny.setInputValue(\\'%s\\', \\'' + data + '\\', {priority: \\'event\\'})\">' +
+               '<button class=\"btn btn-sm btn-outline-primary\" ' +
+               \"onclick='Shiny.setInputValue(\" + JSON.stringify('%s') + ', ' + JSON.stringify(data) + \", {priority: \\\"event\\\"}); return false;'>\" +
                '%s' +
                '</button>' +
                '</div>';
