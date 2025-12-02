@@ -66,6 +66,14 @@ server <- function(input, output, session) {
     state$table_sync_pending[[key]] <- FALSE
   }
 
+  # Placeholder values used for row-selection helpers when cached data are
+  # unavailable (remote tables fetch rows on demand). These ensure that detail
+  # navigation observers can safely reference the objects without triggering
+  # "object not found" errors.
+  comm_class_data <- NULL
+  taxa_data <- NULL
+  plot_data <- NULL
+
   # Initialize URL State Manager with defaults and table registry
   url_manager <- URLStateManager$new(
     session = session,
@@ -277,6 +285,7 @@ server <- function(input, output, session) {
       detail_type = detail_type
     )
 
+    # TODO: This will have to be reworked now that we don't have all data cached and only one page is available at a time
     # Some detail types require additional data for row selection
     if (detail_type %in% c("community-classification", "taxon-observation")) {
       args$comm_class_data <- comm_class_data
@@ -521,7 +530,7 @@ server <- function(input, output, session) {
   })
 
   output$plot_table <- DT::renderDataTable({
-    build_plot_table(plot_data, taxa_data, comm_class_data)
+    build_plot_table()
   })
 
   output$comm_table <- DT::renderDataTable({
@@ -720,11 +729,6 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$comm_link_click, {
     vb_code <- input$comm_link_click
     open_detail("community-concept", vb_code)
-  })
-
-  shiny::observeEvent(input$taxa_link_click, {
-    vb_code <- input$taxa_link_click
-    open_detail("taxon-observation", vb_code)
   })
 
   shiny::observeEvent(input$proj_link_click, {

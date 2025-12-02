@@ -443,6 +443,41 @@ ui <- function(req) {
 
     document.addEventListener('DOMContentLoaded', function() {
       setNavbarDisabled(true);
+      
+      // Delegated event handlers for DataTable action buttons
+      $(document).on('click', '.dt-shiny-action', function(e) {
+        e.preventDefault();
+        var btn = $(this);
+        var inputId = btn.data('input-id');
+        var value = btn.data('value');
+        
+        if (inputId && value) {
+          Shiny.setInputValue(inputId, value, {priority: 'event'});
+        }
+      });
+
+      $(document).on('click', '.dt-map-action', function(e) {
+        e.preventDefault();
+        var btn = $(this);
+        var lat = parseFloat(btn.data('lat'));
+        var lng = parseFloat(btn.data('lng'));
+
+        if (!isFinite(lat) || !isFinite(lng)) {
+          return;
+        }
+
+        var code = btn.data('code');
+        var payload = {
+          lat: lat,
+          lng: lng
+        };
+
+        if (code) {
+          payload.code = code;
+        }
+
+        Shiny.setInputValue('show_on_map', payload, {priority: 'event'});
+      });
     });
 
     Shiny.addCustomMessageHandler('setNavInteractivity', function(message) {
