@@ -366,11 +366,6 @@ server <- function(input, output, session) {
       vegbankr::get_all_projects
     )
 
-    party_data <- load_data_type(
-      "parties",
-      "inst/cached_data/py_20251014.rds",
-      vegbankr::get_all_parties
-    )
   })
 
   # URL/HISTORY SYNCHRONIZATION OBSERVER -----------------------------------------------------------
@@ -570,7 +565,7 @@ server <- function(input, output, session) {
   })
 
   output$party_table <- DT::renderDataTable({
-    build_party_table(party_data)
+    build_party_table()
   })
 
   output$plant_table <- DT::renderDataTable({

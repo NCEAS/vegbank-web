@@ -1060,7 +1060,7 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Name"), shiny::uiOutput("party_name")),
           bslib::card(bslib::card_header("Organization"), shiny::uiOutput("party_organization")),
           bslib::card(bslib::card_header("Contact Information"), shiny::uiOutput("party_contact")),
-          bslib::card(bslib::card_header("Projects"), shiny::uiOutput("party_projects"))
+          bslib::card(bslib::card_header("Contributions"), shiny::uiOutput("party_contributions"))
         ),
 
         # Plant Concept Details Cards - wrapped in a div with class for toggling visibility
