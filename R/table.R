@@ -150,7 +150,7 @@ clean_column_data <- function(data, column_name, default_value = "Not provided")
 }
 
 #' Clean a GMT date column in data, replacing NA/empty with a default value
-#' and formatting dates yyyy-mm-dd by default like safe_parse_date does for detail views
+#' and formatting dates yyyy-mm-dd as format_date does for detail views
 #'
 #' @param data Data frame
 #' @param column_name Name of the column to clean
