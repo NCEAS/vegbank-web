@@ -2,10 +2,7 @@ test_that("build_project_table configures a remote datatable", {
   pkg_env <- asNamespace("vegbankweb")
 
   with_mocked_bindings(
-    create_table = function(data_sources, required_sources, process_function, table_config) {
-      expect_length(data_sources, 0)
-      expect_length(required_sources, 0)
-      expect_null(process_function)
+    create_table = function(table_config) {
       expect_true(is.list(table_config))
       structure(list(options = list()), class = "datatables")
     },

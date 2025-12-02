@@ -22,12 +22,7 @@ PROJECT_TABLE_FIELDS <- c(
 build_project_table <- function() {
   project_table_config <- create_project_table_config()
 
-  create_table(
-    data_sources = list(),
-    required_sources = character(0),
-    process_function = NULL,
-    table_config = project_table_config
-  )
+  create_table(table_config = project_table_config)
 }
 
 #' Project table configuration (columns, AJAX, and options)

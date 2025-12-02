@@ -66,12 +66,7 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
 
   table_config <- create_concept_table_config(config)
 
-  create_table(
-    data_sources = list(),
-    required_sources = character(0),
-    process_function = NULL,
-    table_config = table_config
-  )
+  create_table(table_config = table_config)
 }
 
 #' Process concept data into display format

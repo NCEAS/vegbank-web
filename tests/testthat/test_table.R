@@ -16,25 +16,7 @@ load_table_module_env <- function() {
   table_env
 }
 
-test_that("create_table returns empty widget when required data missing", {
-  skip_if_not_installed("DT")
-
-  table_env <- load_table_module_env()
-  create_table_fn <- table_env$create_table
-
-  result <- with_mock_shiny_notifications({
-    create_table_fn(
-      data_sources = list(existing = data.frame()),
-      required_sources = c("existing", "missing"),
-      process_function = function(x) x
-    )
-  })
-
-  expect_s3_class(result, "datatables")
-  expect_match(result$x$data[[1]], "Please try again")
-})
-
-test_that("create_table processes data correctly when all sources available", {
+test_that("create_table uses provided initial data", {
   skip_if_not_installed("DT")
 
   table_env <- load_table_module_env()
@@ -42,14 +24,22 @@ test_that("create_table processes data correctly when all sources available", {
 
   test_df <- data.frame(a = 1:3, b = letters[1:3], stringsAsFactors = FALSE)
 
-  widget <- create_table_fn(
-    data_sources = list(test_data = test_df),
-    required_sources = "test_data",
-    process_function = function(sources) sources$test_data
-  )
+  widget <- create_table_fn(table_config = list(initial_data = test_df))
 
   expect_s3_class(widget, "datatables")
   expect_equal(widget$x$data, test_df)
+})
+
+test_that("create_table falls back to empty data when initial_data missing", {
+  skip_if_not_installed("DT")
+
+  table_env <- load_table_module_env()
+  create_table_fn <- table_env$create_table
+
+  widget <- create_table_fn(table_config = list())
+
+  expect_s3_class(widget, "datatables")
+  expect_equal(nrow(widget$x$data), 0)
 })
 
 test_that("create_action_buttons generates HTML buttons correctly", {
@@ -153,10 +143,7 @@ test_that("create_table wires DataTables state load from URL", {
   table_env <- load_table_module_env()
   create_table_fn <- table_env$create_table
 
-  data_sources <- list(test = data.frame(a = 1))
-  process_fn <- function(sources) sources$test
-
-  widget <- create_table_fn(data_sources, required_sources = NULL, process_function = process_fn)
+  widget <- create_table_fn(table_config = list(initial_data = data.frame(a = 1)))
   expect_s3_class(widget, "datatables")
 
   options <- widget$x$options
@@ -173,10 +160,7 @@ test_that("create_table registers DT state save callback for handshake", {
   table_env <- load_table_module_env()
   create_table_fn <- table_env$create_table
 
-  data_sources <- list(test = data.frame(a = 1))
-  process_fn <- function(sources) sources$test
-
-  widget <- create_table_fn(data_sources, required_sources = NULL, process_function = process_fn)
+  widget <- create_table_fn(table_config = list(initial_data = data.frame(a = 1)))
   options <- widget$x$options
 
   save_cb <- options$stateSaveCallback

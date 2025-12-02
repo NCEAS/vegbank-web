@@ -1,11 +1,11 @@
 test_that("create_empty_plot_df returns correct schema", {
   result <- create_empty_plot_df()
-  
+
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
   expect_equal(ncol(result), length(PLOT_TABLE_FIELDS))
   expect_equal(names(result), PLOT_TABLE_FIELDS)
-  
+
   # Check nested list columns
   expect_type(result$top_taxon_observations, "list")
   expect_type(result$top_classifications, "list")
@@ -16,7 +16,7 @@ test_that("normalize_plot_data handles NULL and empty inputs", {
   expect_s3_class(result_null, "data.frame")
   expect_equal(nrow(result_null), 0)
   expect_equal(names(result_null), PLOT_TABLE_FIELDS)
-  
+
   result_empty <- normalize_plot_data(data.frame())
   expect_s3_class(result_empty, "data.frame")
   expect_equal(nrow(result_empty), 0)
@@ -28,9 +28,9 @@ test_that("normalize_plot_data ensures all required fields exist", {
     pl_code = "pl.456",
     stringsAsFactors = FALSE
   )
-  
+
   result <- normalize_plot_data(partial_data)
-  
+
   expect_equal(names(result), PLOT_TABLE_FIELDS)
   expect_equal(result$ob_code, "ob.123")
   expect_equal(result$pl_code, "pl.456")
@@ -57,9 +57,9 @@ test_that("normalize_plot_data performs type coercion correctly", {
   )
   raw_data$top_taxon_observations <- list(data.frame(to_code = "to.1", scientific_name = "Species A"))
   raw_data$top_classifications <- list(data.frame(cl_code = "cl.1", class_name = "Class A"))
-  
+
   result <- normalize_plot_data(raw_data)
-  
+
   expect_type(result$ob_code, "character")
   expect_type(result$latitude, "double")
   expect_type(result$longitude, "double")
@@ -75,11 +75,11 @@ test_that("coerce_plot_page handles various input types", {
   result_null <- coerce_plot_page(NULL)
   expect_s3_class(result_null, "data.frame")
   expect_equal(nrow(result_null), 0)
-  
+
   df <- data.frame(ob_code = "ob.1", stringsAsFactors = FALSE)
   result_df <- coerce_plot_page(df)
   expect_identical(result_df, df)
-  
+
   list_with_data <- list(data = df)
   result_list <- coerce_plot_page(list_with_data)
   expect_identical(result_list, df)
@@ -92,16 +92,16 @@ test_that("serialize_nested_column converts data frames to JSON strings", {
     NULL,
     data.frame()
   )
-  
+
   result <- serialize_nested_column(nested_data)
-  
+
   expect_type(result, "character")
   expect_equal(length(result), 4)
   expect_false(result[1] == "[]")
   expect_false(result[2] == "[]")
   expect_equal(result[3], "[]")
   expect_equal(result[4], "[]")
-  
+
   # Verify JSON can be parsed back
   parsed1 <- jsonlite::fromJSON(result[1])
   expect_equal(parsed1$to_code, "to.1")
@@ -112,7 +112,7 @@ test_that("serialize_nested_column handles NULL and non-list inputs", {
   result_null <- serialize_nested_column(NULL)
   expect_type(result_null, "character")
   expect_equal(length(result_null), 0)
-  
+
   # Non-list input should generate a warning and return empty arrays
   expect_warning(
     result_non_list <- serialize_nested_column(c("a", "b")),
@@ -149,18 +149,18 @@ test_that("format_location_column handles missing data", {
   lats <- c(NA, NA)
   lngs <- c(NA, NA)
   elevs <- c(NA, NA)
-  
+
   result <- format_location_column(data, lats, lngs, elevs)
-  
+
   expect_equal(result[1], "Not provided")
   expect_equal(result[2], "Not provided")
 })
 
 test_that("format_coordinate handles numeric conversion", {
   values <- c("38.5", "-78.2", "invalid", NA, "")
-  
+
   result <- format_coordinates(values)
-  
+
   expect_type(result, "double")
   expect_equal(result[1], 38.5)
   expect_equal(result[2], -78.2)
@@ -171,14 +171,14 @@ test_that("format_coordinate handles numeric conversion", {
 
 test_that("format_elevation formats values correctly", {
   values <- c("500", "1234.56", "invalid", NA, "")
-  
+
   result <- format_elevations(values)
-  
-  expect_equal(result[1], "500")
-  expect_equal(result[2], "1235")
-  expect_equal(result[3], "Not provided")
-  expect_equal(result[4], "Not provided")
-  expect_equal(result[5], "Not provided")
+
+  expect_equal(result[1], 500)
+  expect_equal(result[2], 1234.56)
+  expect_true(is.na(result[3]))
+  expect_true(is.na(result[4]))
+  expect_true(is.na(result[5]))
 })
 
 test_that("process_plot_data returns correctly formatted display data", {
@@ -206,34 +206,46 @@ test_that("process_plot_data returns correctly formatted display data", {
     data.frame(cl_code = "cl.1", class_name = "Class A", stringsAsFactors = FALSE),
     data.frame(cl_code = "cl.2", class_name = "Class B", stringsAsFactors = FALSE)
   )
-  
+
   result <- process_plot_data(plot_data)
-  
+
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 2)
   expect_equal(ncol(result), 6)
-  
-  expected_cols <- c("Actions", "Author Plot Code", "Location", "Year", "Top Taxa", "Communities")
+
+  expected_cols <- c("Actions", "Author Plot Code", "Location", "Top Taxa", "Communities", "Year")
   expect_equal(names(result), expected_cols)
-  
+
   # Check action payloads encode detail code plus map metadata
   action_payloads <- lapply(result$Actions, jsonlite::fromJSON)
-  expect_equal(vapply(action_payloads, function(payload) payload$detail_code, character(1)),
-               c("ob.123", "ob.456"))
-  expect_equal(vapply(action_payloads, function(payload) payload$map$code, character(1)),
-               c("OBS001", "OBS002"))
-  expect_equal(vapply(action_payloads, function(payload) payload$map$lat, numeric(1)),
-               c(38.5, 39.2))
-  expect_equal(vapply(action_payloads, function(payload) payload$map$lng, numeric(1)),
-               c(-78.2, -77.0))
+  expect_equal(
+    vapply(action_payloads, function(payload) payload$detail_code, character(1)),
+    c("ob.123", "ob.456")
+  )
+  expect_equal(
+    vapply(action_payloads, function(payload) payload$map$code, character(1)),
+    c("OBS001", "OBS002")
+  )
+  expect_equal(
+    vapply(action_payloads, function(payload) payload$map$lat, numeric(1)),
+    c(38.5, 39.2)
+  )
+  expect_equal(
+    vapply(action_payloads, function(payload) payload$map$lng, numeric(1)),
+    c(-78.2, -77.0)
+  )
 
   # Check other data values
-  expect_equal(result$`Author Plot Code`, c("PLOT001", "PLOT002"))
-  expect_equal(result$Location,
-               c("Virginia<br>USA<br>38.5000, -78.2000 &bull; 500m",
-                 "Maryland<br>USA<br>39.2000, -77.0000 &bull; 750m"))
+  expect_equal(result$`Author Plot Code`, c("OBS001", "OBS002"))
+  expect_equal(
+    result$Location,
+    c(
+      "Virginia<br>USA<br>38.5000, -78.2000 &bull; 500m",
+      "Maryland<br>USA<br>39.2000, -77.0000 &bull; 750m"
+    )
+  )
   expect_equal(result$Year, c("2020", "2021"))
-  
+
   # Check JSON columns are strings
   expect_type(result$`Top Taxa`, "character")
   expect_type(result$Communities, "character")
@@ -243,25 +255,22 @@ test_that("process_plot_data returns correctly formatted display data", {
 
 test_that("process_plot_data handles empty data correctly", {
   result <- process_plot_data(NULL)
-  
+
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
   expect_equal(ncol(result), 6)
-  
+
   result_empty <- process_plot_data(create_empty_plot_df())
   expect_equal(nrow(result_empty), 0)
 })
 
 test_that("build_plot_table returns DataTable object", {
   pkg_env <- asNamespace("vegbankweb")
-  
+
   with_mocked_bindings(
-    create_table = function(data_sources, required_sources, process_function, table_config) {
-      expect_equal(data_sources, list())
-      expect_equal(required_sources, character(0))
-      expect_null(process_function)
+    create_table = function(table_config) {
       expect_type(table_config, "list")
-      
+
       # Return mock DataTable
       structure(list(x = list(data = data.frame())), class = "datatables")
     },
@@ -275,42 +284,39 @@ test_that("build_plot_table returns DataTable object", {
 
 test_that("create_plot_table_config returns valid config", {
   config <- create_plot_table_config()
-  
+
   expect_type(config, "list")
   expect_true("column_defs" %in% names(config))
   expect_true("initial_data" %in% names(config))
   expect_true("ajax" %in% names(config))
-  
+
   expect_equal(length(config$column_defs), 6)
-  
+
   # Check actions column (index 0)
   expect_equal(config$column_defs[[1]]$targets, 0)
   expect_false(config$column_defs[[1]]$orderable)
   expect_false(config$column_defs[[1]]$searchable)
   expect_true(inherits(config$column_defs[[1]]$render, "JS_EVAL"))
-  
-  # Check year column (index 3)
+
+  # Check taxon list column (index 3)
   expect_equal(config$column_defs[[4]]$targets, 3)
-  
-  # Check taxon list column (index 4)
+  expect_false(config$column_defs[[4]]$orderable)
+  expect_true(inherits(config$column_defs[[4]]$render, "JS_EVAL"))
+
+  # Check community list column (index 4)
   expect_equal(config$column_defs[[5]]$targets, 4)
   expect_false(config$column_defs[[5]]$orderable)
   expect_true(inherits(config$column_defs[[5]]$render, "JS_EVAL"))
-  
-  # Check community list column (index 5)
-  expect_equal(config$column_defs[[6]]$targets, 5)
-  expect_false(config$column_defs[[6]]$orderable)
-  expect_true(inherits(config$column_defs[[6]]$render, "JS_EVAL"))
-  
+
   # Check initial data
   expect_s3_class(config$initial_data, "data.frame")
   expect_equal(nrow(config$initial_data), 0)
-  
+
   # Check AJAX function and data source spec
   expect_true(is.function(config$ajax))
   ajax_env <- environment(config$ajax)
   spec <- ajax_env$data_source_spec
-  
+
   expect_equal(spec$table_id, "plot_table")
   expect_equal(spec$endpoint, "plot-observations")
   expect_equal(spec$detail, "minimal")
@@ -327,7 +333,7 @@ test_that("create_plot_action_renderer returns JS function", {
 
 test_that("create_taxon_list_renderer returns JS function", {
   renderer <- create_taxon_list_renderer()
-  
+
   expect_s3_class(renderer, "JS_EVAL")
   expect_type(renderer, "character")
   expect_true(grepl("function\\(data, type, row, meta\\)", renderer))
@@ -338,7 +344,7 @@ test_that("create_taxon_list_renderer returns JS function", {
 
 test_that("create_community_list_renderer returns JS function", {
   renderer <- create_community_list_renderer()
-  
+
   expect_s3_class(renderer, "JS_EVAL")
   expect_type(renderer, "character")
   expect_true(grepl("function\\(data, type, row, meta\\)", renderer))

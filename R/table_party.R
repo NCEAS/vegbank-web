@@ -21,12 +21,7 @@ PARTY_TABLE_FIELDS <- c(
 build_party_table <- function() {
   party_table_config <- create_party_table_config()
 
-  create_table(
-    data_sources = list(),
-    required_sources = character(0),
-    process_function = NULL,
-    table_config = party_table_config
-  )
+  create_table(table_config = party_table_config)
 }
 
 #' Party table configuration (columns, AJAX, and options)

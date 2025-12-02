@@ -2,11 +2,7 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
   pkg_env <- asNamespace("vegbankweb")
 
   with_mocked_bindings(
-    create_table = function(data_sources, required_sources, process_function, table_config) {
-      expect_equal(length(data_sources), 0)
-      expect_length(required_sources, 0)
-      expect_null(process_function)
-
+    create_table = function(table_config) {
       expect_equal(length(table_config$column_defs), 9)
 
       status_col <- table_config$column_defs[[3]]

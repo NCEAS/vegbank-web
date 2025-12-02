@@ -2,11 +2,7 @@ test_that("build_party_table configures remote datatable", {
   pkg_env <- asNamespace("vegbankweb")
 
   with_mocked_bindings(
-    create_table = function(data_sources, required_sources, process_function, table_config) {
-      expect_equal(length(data_sources), 0)
-      expect_equal(length(required_sources), 0)
-      expect_null(process_function)
-
+    create_table = function(table_config) {
       expect_equal(length(table_config$column_defs), 6)
       expect_true(is.function(table_config$ajax))
       expect_s3_class(table_config$initial_data, "data.frame")

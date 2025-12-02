@@ -30,12 +30,7 @@ PLOT_TABLE_FIELDS <- c(
 build_plot_table <- function() {
   plot_table_config <- create_plot_table_config()
 
-  create_table(
-    data_sources = list(),
-    required_sources = character(0),
-    process_function = NULL,
-    table_config = plot_table_config
-  )
+  create_table(table_config = plot_table_config)
 }
 
 #' Plot table configuration (columns, AJAX, and options)
@@ -118,7 +113,7 @@ process_plot_data <- function(plot_data) {
   ob_codes <- plot_data$ob_code
 
   # Clean text columns
-  author_codes <- clean_column_data(plot_data, "author_plot_code")
+  author_codes <- clean_column_data(plot_data, "author_obs_code")
   years <- clean_column_data(plot_data, "year")
 
   # Format numeric columns
