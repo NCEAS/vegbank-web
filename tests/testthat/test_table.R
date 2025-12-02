@@ -1,68 +1,55 @@
-test_that("create_table handles missing data", {
-  # Set the environment to the vegbankweb package for internal functions
-  pkg_env <- asNamespace("vegbankweb")
-
-  # Mock internal package functions - customize for this specific test
-  with_mocked_bindings(
-    is_any_data_missing = function(...) TRUE,
-    create_empty_table = function(...) NULL,
-    .env = pkg_env,
-    {
-      # Mock shiny functions separately
-      with_mocked_bindings(
-        withProgress = function(expr, message, value, ...) {
-          force(expr)
-        },
-        incProgress = function(...) NULL,
-        .package = "shiny",
-        {
-          data_sources <- list(data1 = NULL, data2 = data.frame())
-          required_sources <- c("data1", "data2")
-          process_fn <- function(x) x
-          table_config <- list(progress_message = "Test message")
-
-          # Override create_table in pkg_env specifically for this test with a simple version
-          local_mocked_bindings(
-            create_table = function(ds, rs, pf, tc) NULL,
-            .env = pkg_env
-          )
-
-          result <- create_table(data_sources, required_sources, process_fn, table_config)
-          expect_null(result)
-        }
-      )
-    }
+load_table_module_env <- function() {
+  candidates <- c(
+    testthat::test_path("..", "..", "R", "table.R"),
+    file.path(system.file("tests", package = "vegbankweb"), "..", "vegbankweb", "R", "table.R"),
+    file.path(system.file(package = "vegbankweb"), "R", "table.R")
   )
+
+  candidates <- unique(normalizePath(candidates[file.exists(candidates)], mustWork = FALSE))
+
+  if (!length(candidates)) {
+    testthat::skip("table.R source not available for create_table tests")
+  }
+
+  table_env <- new.env(parent = baseenv())
+  sys.source(candidates[[1]], envir = table_env)
+  table_env
+}
+
+test_that("create_table returns empty widget when required data missing", {
+  skip_if_not_installed("DT")
+
+  table_env <- load_table_module_env()
+  create_table_fn <- table_env$create_table
+
+  result <- with_mock_shiny_notifications({
+    create_table_fn(
+      data_sources = list(existing = data.frame()),
+      required_sources = c("existing", "missing"),
+      process_function = function(x) x
+    )
+  })
+
+  expect_s3_class(result, "datatables")
+  expect_match(result$x$data[[1]], "Please try again")
 })
 
 test_that("create_table processes data correctly when all sources available", {
-  # Create a test data frame that we'll use throughout this test
+  skip_if_not_installed("DT")
+
+  table_env <- load_table_module_env()
+  create_table_fn <- table_env$create_table
+
   test_df <- data.frame(a = 1:3, b = letters[1:3], stringsAsFactors = FALSE)
-  pkg_env <- asNamespace("vegbankweb")
 
-  # Mock internal package functions with a simpler approach
-  with_mocked_bindings(
-    create_table = function(data_sources, required_sources, process_function, table_config) {
-      # Process the data using the provided function
-      display_data <- process_function(data_sources)
-      # Return a simple structure with the data for testing
-      list(data = display_data)
-    },
-    .env = pkg_env,
-    {
-      # Create test data
-      data_sources <- list(test_data = test_df)
-      required_sources <- c("test_data")
-      process_fn <- function(x) x$test_data
-      table_config <- list(progress_message = "Test message")
-
-      # Call the function
-      result <- create_table(data_sources, required_sources, process_fn, table_config)
-
-      # Test assertions
-      expect_equal(result$data, test_df)
-    }
+  widget <- create_table_fn(
+    data_sources = list(test_data = test_df),
+    required_sources = "test_data",
+    process_function = function(sources) sources$test_data
   )
+
+  expect_s3_class(widget, "datatables")
+  expect_equal(widget$x$data, test_df)
 })
 
 test_that("create_action_buttons generates HTML buttons correctly", {
@@ -159,4 +146,40 @@ test_that("clean_column_data handles all cases correctly", {
   expect_equal(clean_column_data(single_row, "x"), "Not provided")
   expect_equal(clean_column_data(single_row, "y"), "Value")
   expect_equal(clean_column_data(single_row, "z"), "Not provided")
+})
+
+test_that("create_table wires DataTables state load from URL", {
+  skip_if_not_installed("DT")
+  table_env <- load_table_module_env()
+  create_table_fn <- table_env$create_table
+
+  data_sources <- list(test = data.frame(a = 1))
+  process_fn <- function(sources) sources$test
+
+  widget <- create_table_fn(data_sources, required_sources = NULL, process_function = process_fn)
+  expect_s3_class(widget, "datatables")
+
+  options <- widget$x$options
+  expect_true(isTRUE(options$stateSave))
+  expect_identical(options$stateDuration, 0)
+
+  load_cb <- options$stateLoadCallback
+  expect_s3_class(load_cb, "JS_EVAL")
+  expect_match(as.character(load_cb), "window\\.vegbankLoadTableState")
+})
+
+test_that("create_table registers DT state save callback for handshake", {
+  skip_if_not_installed("DT")
+  table_env <- load_table_module_env()
+  create_table_fn <- table_env$create_table
+
+  data_sources <- list(test = data.frame(a = 1))
+  process_fn <- function(sources) sources$test
+
+  widget <- create_table_fn(data_sources, required_sources = NULL, process_function = process_fn)
+  options <- widget$x$options
+
+  save_cb <- options$stateSaveCallback
+  expect_s3_class(save_cb, "JS_EVAL")
+  expect_match(as.character(save_cb), "window\\.vegbankSaveTableState")
 })

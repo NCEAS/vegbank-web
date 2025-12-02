@@ -37,7 +37,10 @@ create_table <- function(data_sources, required_sources, process_function = NULL
   column_defs <- table_config$column_defs %||% list()
 
   options <- list(
-    stateSave = table_config$state_save %||% TRUE,
+    stateSave = TRUE,
+    stateDuration = 0,
+    stateLoadCallback = DT::JS("function(settings) {\n  if (window.vegbankLoadTableState) {\n    return window.vegbankLoadTableState(settings);\n  }\n  return null;\n}"),
+    stateSaveCallback = DT::JS("function(settings, data) {\n  if (window.vegbankSaveTableState) {\n    window.vegbankSaveTableState(settings, data);\n  }\n}"),
     dom = table_config$dom %||% "frtip",
     pageLength = table_config$page_length %||% TABLE_PAGE_LENGTH,
     scrollY = table_config$scroll_y %||% "calc(100vh - 235px)",
@@ -522,7 +525,7 @@ build_remote_ajax_config <- function(session,
     reported_total <- extract_reported_total(details)
     filtered_records <- reported_total
 
-    # TODO: Replace this with vegbankr::get_resource_count() when available and add caching to 
+    # TODO: Replace this with vegbankr::get_resource_count() when available and add caching to
     # fetch total count each time the page is refreshed
     total_records <- fetch_remote_count(
       endpoint = endpoint,

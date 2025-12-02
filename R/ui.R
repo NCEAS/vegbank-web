@@ -46,10 +46,360 @@ ui <- function(req) {
       }
     });
 
+    // DataTables/Shiny state synchronization overview:
+    // 1. DataTables calls `stateLoadCallback` (vegbankLoadTableState) during init,
+    //    which pulls values from URL params so pagination/search/order are set
+    //    before the first draw.
+    // 2. Subsequent user interactions trigger `stateSaveCallback`
+    //    (vegbankSaveTableState) which emits `<tableId>_state` inputs back to
+    //    Shiny; the server may then update the encoded URL.
+    // 3. When the server needs to push state down later (e.g., browser history
+    //    navigation) it sends an `applyTableState` custom message, which uses the
+    //    same `applyTableState` helper below to drive the DataTables API.
+
     // Store pending row selections until tables are ready
     var pendingSelections = [];
     var pendingTableStates = [];
     var currentSelection = null; // Track the currently selected VegBank code
+
+    var tableIdToKey = {
+      'plot_table': 'plots',
+      'plant_table': 'plants',
+      'comm_table': 'communities',
+      'party_table': 'people',
+      'proj_table': 'projects'
+    };
+
+    var tableInitialUrlState = {};
+    var tableStateLoadComplete = {};
+    var dataTableIdToWidgetId = {};
+    var widgetIdToDataTableId = {};
+
+    Object.keys(tableIdToKey).forEach(function(id) {
+      tableStateLoadComplete[id] = true;
+    });
+
+    function resolveWidgetId(tableId) {
+      if (!tableId) {
+        return null;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(tableIdToKey, tableId)) {
+        return tableId;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(dataTableIdToWidgetId, tableId)) {
+        return dataTableIdToWidgetId[tableId];
+      }
+
+      return tableId;
+    }
+
+    function registerDataTableMapping(settings) {
+      if (!settings || !settings.nTable || !settings.sTableId) {
+        return null;
+      }
+
+      var widgetId = $(settings.nTable).closest('.datatables').attr('id');
+      if (!widgetId) {
+        return null;
+      }
+
+      dataTableIdToWidgetId[settings.sTableId] = widgetId;
+      widgetIdToDataTableId[widgetId] = settings.sTableId;
+
+      if (!Object.prototype.hasOwnProperty.call(tableStateLoadComplete, widgetId)) {
+        tableStateLoadComplete[widgetId] = true;
+      }
+
+      return widgetId;
+    }
+
+    function getResolvedTableIdentifiers(settings) {
+      if (!settings || !settings.sTableId) {
+        return null;
+      }
+
+      var widgetId = resolveWidgetId(settings.sTableId);
+
+      return {
+        widgetId: widgetId,
+        dataTableId: settings.sTableId,
+        effectiveId: widgetId || settings.sTableId
+      };
+    }
+
+    function clearPendingTableStates(tableId) {
+      if (!tableId) {
+        return;
+      }
+
+      var widgetId = resolveWidgetId(tableId) || tableId;
+      for (var i = pendingTableStates.length - 1; i >= 0; i--) {
+        if (pendingTableStates[i].tableId === widgetId) {
+          pendingTableStates.splice(i, 1);
+        }
+      }
+    }
+
+    function enqueuePendingTableState(tableId, state) {
+      if (!tableId || !state) {
+        return;
+      }
+
+      var widgetId = resolveWidgetId(tableId) || tableId;
+
+      for (var i = pendingTableStates.length - 1; i >= 0; i--) {
+        if (pendingTableStates[i].tableId === widgetId) {
+          pendingTableStates.splice(i, 1);
+        }
+      }
+
+      pendingTableStates.push({ tableId: widgetId, state: state });
+    }
+
+    function getDataTableNode(tableId) {
+      if (!tableId) {
+        return $();
+      }
+
+      var rawNode = $('#' + tableId);
+      if (rawNode.length && rawNode.is('table')) {
+        return rawNode;
+      }
+
+      var widgetId = resolveWidgetId(tableId);
+      var widgetNode = widgetId ? $('#' + widgetId) : $();
+      if (widgetNode.length) {
+        var nestedTable = widgetNode.find('table.dataTable').first();
+        if (nestedTable.length) {
+          return nestedTable;
+        }
+        nestedTable = widgetNode.find('table').first();
+        if (nestedTable.length) {
+          return nestedTable;
+        }
+      }
+
+      if (rawNode.length && !rawNode.is('table')) {
+        var fallback = rawNode.find('table.dataTable').first();
+        if (fallback.length) {
+          return fallback;
+        }
+        fallback = rawNode.find('table').first();
+        if (fallback.length) {
+          return fallback;
+        }
+      }
+
+      return rawNode;
+    }
+
+    function buildDefaultDtState(settings) {
+      var columns = Array.isArray(settings.aoColumns)
+        ? settings.aoColumns.map(function(col) {
+            return {
+              visible: col.bVisible !== undefined ? col.bVisible : true,
+              search: {
+                search: col.sSearch || '',
+                smart: true,
+                regex: false,
+                caseInsensitive: true
+              }
+            };
+          })
+        : [];
+
+      return {
+        time: Date.now(),
+        start: settings._iDisplayStart || 0,
+        length: settings._iDisplayLength || 10,
+        order: Array.isArray(settings.aaSorting) ? settings.aaSorting.slice() : [],
+        search: {
+          search: settings.oPreviousSearch ? settings.oPreviousSearch.sSearch || '' : '',
+          smart: true,
+          regex: false,
+          caseInsensitive: true
+        },
+        columns: columns
+      };
+    }
+
+    function parseOrderParam(orderParam) {
+      if (typeof orderParam !== 'string' || orderParam.length === 0) {
+        return [];
+      }
+
+      return orderParam.split(',').map(function(token) {
+        var parts = token.split(':');
+        if (parts.length !== 2) {
+          return null;
+        }
+        var column = parseInt(parts[0], 10);
+        var dir = parts[1];
+        if (isNaN(column) || !dir) {
+          return null;
+        }
+        dir = dir.toLowerCase() === 'desc' ? 'desc' : 'asc';
+        return [column, dir];
+      }).filter(Boolean);
+    }
+
+    function getTableKeyFromId(tableId) {
+      var widgetId = resolveWidgetId(tableId);
+      return tableIdToKey[widgetId] || null;
+    }
+
+    function getUrlTableState(tableId) {
+      if (!tableId) {
+        return null;
+      }
+
+      var widgetId = resolveWidgetId(tableId);
+      var tableKey = getTableKeyFromId(widgetId);
+      if (!tableKey) {
+        return null;
+      }
+
+      var params = new URLSearchParams(window.location.search);
+      var startParam = params.get(tableKey + '_start');
+      var lengthParam = params.get(tableKey + '_length');
+      var orderParam = params.get(tableKey + '_order');
+      var searchParam = params.get(tableKey + '_search');
+
+      if (!startParam && !lengthParam && !orderParam && !searchParam) {
+        return null;
+      }
+
+      var state = {};
+      var startValue = parseInt(startParam, 10);
+      if (!isNaN(startValue) && startValue >= 0) {
+        state.start = startValue;
+      }
+
+      var lengthValue = parseInt(lengthParam, 10);
+      if (!isNaN(lengthValue) && lengthValue > 0) {
+        state.length = lengthValue;
+      }
+
+      var orderValue = parseOrderParam(orderParam);
+      if (orderValue.length > 0) {
+        state.order = orderValue;
+      }
+
+      if (typeof searchParam === 'string') {
+        state.search = searchParam;
+      }
+
+      return state;
+    }
+
+    function getInitialUrlState(tableId) {
+      if (!tableId) {
+        return null;
+      }
+
+      var widgetId = resolveWidgetId(tableId);
+      if (!widgetId) {
+        return null;
+      }
+
+      if (!Object.prototype.hasOwnProperty.call(tableInitialUrlState, widgetId)) {
+        var parsed = getUrlTableState(widgetId);
+        tableInitialUrlState[widgetId] = parsed;
+
+        if (parsed) {
+          tableStateLoadComplete[widgetId] = false;
+        }
+      }
+
+      return tableInitialUrlState[widgetId];
+    }
+
+    window.vegbankLoadTableState = function(settings) {
+      registerDataTableMapping(settings);
+
+      var tableId = resolveWidgetId(settings && settings.sTableId);
+      console.log('vegbankLoadTableState called for table:', tableId);
+      if (!tableId) {
+        return null;
+      }
+
+      var urlState = getInitialUrlState(tableId);
+      if (!urlState) {
+        tableStateLoadComplete[tableId] = true;
+        return null;
+      }
+
+      tableStateLoadComplete[tableId] = false;
+
+      var state = buildDefaultDtState(settings);
+      var hasOverride = false;
+
+      if (typeof urlState.start === 'number') {
+        state.start = urlState.start;
+        hasOverride = true;
+      }
+
+      if (typeof urlState.length === 'number') {
+        state.length = urlState.length;
+        hasOverride = true;
+      }
+
+      if (Array.isArray(urlState.order) && urlState.order.length > 0) {
+        state.order = urlState.order;
+        hasOverride = true;
+      }
+
+      if (typeof urlState.search === 'string') {
+        state.search.search = urlState.search;
+        hasOverride = hasOverride || urlState.search.length > 0;
+      }
+
+      return hasOverride ? state : null;
+    };
+
+    function sanitizeStatePayload(settings, data) {
+      if (!data) {
+        return null;
+      }
+
+      var payload = {
+        start: typeof data.start === 'number' ? data.start : 0,
+        length: typeof data.length === 'number' ? data.length : (settings && settings._iDisplayLength) || 10,
+        order: Array.isArray(data.order) ? data.order : [],
+        search: data.search && typeof data.search.search === 'string' ? data.search.search : ''
+      };
+
+      return payload;
+    }
+
+    window.vegbankSaveTableState = function(settings, data) {
+      if (!window.Shiny || typeof Shiny.setInputValue !== 'function') {
+        return;
+      }
+
+      var tableInfo = getResolvedTableIdentifiers(settings);
+      if (!tableInfo) {
+        return;
+      }
+
+      if (tableStateLoadComplete[tableInfo.effectiveId] === false) {
+        return;
+      }
+
+      var payload = sanitizeStatePayload(settings, data);
+      if (!payload) {
+        return;
+      }
+
+      clearPendingTableStates(tableInfo.effectiveId);
+
+      var targetInputId = tableInfo.widgetId || tableInfo.dataTableId;
+      if (targetInputId) {
+        Shiny.setInputValue(targetInputId + '_state', payload, {priority: 'event'});
+      }
+    };
 
     function setNavbarDisabled(disabled) {
       var navbar = document.querySelector('.navbar');
@@ -100,14 +450,39 @@ ui <- function(req) {
       setNavbarDisabled(disabled);
     });
 
-    function applyTableState(tableId, state) {
-      var tableNode = $('#' + tableId);
+    function getDataTableApi(tableId, settings) {
+      if (settings && $.fn && $.fn.dataTable) {
+        try {
+          return new $.fn.dataTable.Api(settings);
+        } catch (error) {
+          console.warn('Failed to build DataTables API from settings for', tableId, error);
+        }
+      }
+
+      var tableNode = getDataTableNode(tableId);
       if (tableNode.length === 0 || !$.fn.dataTable || !$.fn.dataTable.isDataTable(tableNode)) {
+        return null;
+      }
+
+      return tableNode.DataTable();
+    }
+
+    function isDataTableReady(table) {
+      return Boolean(table && Array.isArray(table.context) && table.context.length > 0);
+    }
+
+    function applyTableState(tableId, state, settings) {
+      var widgetId = resolveWidgetId(tableId);
+      var targetId = widgetId || tableId;
+      console.log('Applying state to table:', targetId, state);
+
+      var table = getDataTableApi(targetId, settings);
+      if (!table) {
         return false;
       }
 
-      var table = tableNode.DataTable();
-      if (!table) {
+      if (!isDataTableReady(table)) {
+        console.warn('DataTable API not ready for table:', targetId, 'deferring state application');
         return false;
       }
 
@@ -129,6 +504,13 @@ ui <- function(req) {
         });
 
         var currentOrder = table.order();
+        if (!Array.isArray(currentOrder)) {
+          if (currentOrder && typeof currentOrder.toArray === 'function') {
+            currentOrder = currentOrder.toArray();
+          } else {
+            currentOrder = [];
+          }
+        }
         var orderDiffers = targetOrder.length !== currentOrder.length ||
           targetOrder.some(function(pair, index) {
             var currentPair = currentOrder[index];
@@ -141,10 +523,16 @@ ui <- function(req) {
         }
       }
 
+      var pageApiAvailable = table.page && typeof table.page === 'function';
       var targetLength = null;
       if (state.length !== undefined && state.length !== null) {
         targetLength = parseInt(state.length, 10);
-        if (!isNaN(targetLength) && table.page.len() !== targetLength) {
+        if (
+          pageApiAvailable &&
+          typeof table.page.len === 'function' &&
+          !isNaN(targetLength) &&
+          table.page.len() !== targetLength
+        ) {
           table.page.len(targetLength);
           hasChanges = true;
         }
@@ -157,9 +545,24 @@ ui <- function(req) {
         targetPage = Math.floor(parseInt(state.start, 10) / targetLength);
       }
 
-      if (targetPage !== null && !isNaN(targetPage) && table.page() !== targetPage) {
-        table.page(targetPage);
-        hasChanges = true;
+      if (pageApiAvailable && targetPage !== null && !isNaN(targetPage)) {
+        if (typeof table.page.info === 'function') {
+          var pageInfo = table.page.info();
+          if (pageInfo && typeof pageInfo.pages === 'number') {
+            var maxPageIndex = Math.max(0, pageInfo.pages - 1);
+            if (targetPage > maxPageIndex) {
+              targetPage = maxPageIndex;
+            }
+          }
+        }
+        if (targetPage < 0) {
+          targetPage = 0;
+        }
+
+        if (table.page() !== targetPage) {
+          table.page(targetPage);
+          hasChanges = true;
+        }
       }
 
       if (hasChanges) {
@@ -174,27 +577,44 @@ ui <- function(req) {
         return;
       }
 
-      if (!applyTableState(message.tableId, message.state)) {
-        pendingTableStates.push(message);
+      var widgetId = resolveWidgetId(message.tableId);
+      if (!applyTableState(widgetId, message.state)) {
+        enqueuePendingTableState(widgetId, message.state);
       }
     });
-    
-    // Listen for native DataTables draw events to restore selections
+
+    $(document).on('init.dt', function(e, settings) {
+      if (!settings || !settings.sTableId) {
+        return;
+      }
+
+      registerDataTableMapping(settings);
+      var tableInfo = getResolvedTableIdentifiers(settings);
+      if (!tableInfo) {
+        return;
+      }
+
+      var urlState = getInitialUrlState(tableInfo.effectiveId);
+      if (!urlState && !Object.prototype.hasOwnProperty.call(tableStateLoadComplete, tableInfo.effectiveId)) {
+        tableStateLoadComplete[tableInfo.effectiveId] = true;
+      }
+    });
+
     $(document).on('draw.dt', function(e, settings) {
-      var tableId = settings.sTableId;
-      console.log('DataTable draw event for:', tableId);
-      
+      var widgetId = resolveWidgetId(settings.sTableId);
+      console.log('DataTable draw event for:', widgetId || settings.sTableId);
+
       // Restore current selection after table redraw
       if (currentSelection) {
         console.log('Restoring current selection after table redraw:', currentSelection);
         attemptRowSelection(currentSelection, false); // false = don't clear current selection
       }
-      
+
       // Check for any pending selections for this table or any table
       for (var i = pendingSelections.length - 1; i >= 0; i--) {
         var pendingSelection = pendingSelections[i];
         console.log('Processing pending selection:', pendingSelection.vbCode);
-        
+
         // Try to select the row now that table is ready
         if (attemptRowSelection(pendingSelection.vbCode)) {
           console.log('Successfully processed pending selection for:', pendingSelection.vbCode);
@@ -206,14 +626,14 @@ ui <- function(req) {
 
       for (var j = pendingTableStates.length - 1; j >= 0; j--) {
         var pendingState = pendingTableStates[j];
-        if (pendingState.tableId === tableId) {
-          if (applyTableState(pendingState.tableId, pendingState.state)) {
+        if (pendingState.tableId === widgetId) {
+          if (applyTableState(pendingState.tableId, pendingState.state, settings)) {
             pendingTableStates.splice(j, 1);
           }
         }
       }
     });
-    
+
     // Function to attempt row selection
     function attemptRowSelection(vbCode, clearCurrent) {
       if (clearCurrent !== false) { // Default to true unless explicitly set to false
@@ -274,32 +694,29 @@ ui <- function(req) {
       }
      });
 
-    $(document).on('stateSaveParams.dt', function(e, settings, data) {
-      if (!settings || !settings.sTableId || !data) {
-        return;
-      }
-
-      Shiny.setInputValue(settings.sTableId + '_state', {
-        start: data.start,
-        length: data.length,
-        order: data.order || [],
-        search: data.search ? data.search.search : ''
-      }, {priority: 'event'});
-    });
-
     $(document).on('stateLoaded.dt', function(e, settings, data) {
-      if (!settings || !settings.sTableId || !data) {
+      var tableInfo = getResolvedTableIdentifiers(settings);
+      if (!tableInfo) {
         return;
       }
 
-      Shiny.setInputValue(settings.sTableId + '_state', {
-        start: data.start,
-        length: data.length,
-        order: data.order || [],
-        search: data.search ? data.search.search : ''
-      }, {priority: 'event'});
-    });
+      tableStateLoadComplete[tableInfo.effectiveId] = true;
+      clearPendingTableStates(tableInfo.effectiveId);
 
+      if (!window.Shiny || typeof Shiny.setInputValue !== 'function') {
+        return;
+      }
+
+      var payload = sanitizeStatePayload(settings, data);
+      if (!payload) {
+        return;
+      }
+
+      var targetInputId = tableInfo.widgetId || tableInfo.dataTableId;
+      if (targetInputId) {
+        Shiny.setInputValue(targetInputId + '_state', payload, {priority: 'event'});
+      }
+    });
     Shiny.addCustomMessageHandler('updateDetailType', function(message) {
       const type = message.type;
       const plotCards = document.getElementById('plot-details-cards');
@@ -382,7 +799,7 @@ custom_theme <- bslib::bs_add_rules(
     font-family: Inter, sans-serif !important;
     font-feature-settings: 'liga' 1, 'calt' 1;
     --bs-font-sans-serif: Inter, sans-serif !important;
-    
+
     /* Status badge colors */
     --no-status-bg: hsl(204, 6%, 90%);
     --no-status-text: hsl(0, 0%, 20%);
@@ -392,7 +809,7 @@ custom_theme <- bslib::bs_add_rules(
     --not-current-text: hsl(45, 94%, 21%);
   }
   @supports (font-variation-settings: normal) {
-    :root { 
+    :root {
       font-family: InterVariable, sans-serif !important;
       --bs-font-sans-serif: InterVariable, sans-serif !important;
     }
@@ -528,8 +945,9 @@ build_navbar <- function() {
         DT::dataTableOutput("plot_table"),
       )
     ),
-    bslib::nav_panel(title = "Plants"
-      , shiny::fluidPage(
+    bslib::nav_panel(
+      title = "Plants",
+      shiny::fluidPage(
         DT::dataTableOutput("plant_table"),
       )
     ),
@@ -642,7 +1060,7 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Name"), shiny::uiOutput("party_name")),
           bslib::card(bslib::card_header("Organization"), shiny::uiOutput("party_organization")),
           bslib::card(bslib::card_header("Contact Information"), shiny::uiOutput("party_contact")),
-          bslib::card(bslib::card_header("Projects"), shiny::uiOutput("party_projects"))
+          bslib::card(bslib::card_header("Contributions"), shiny::uiOutput("party_contributions"))
         ),
 
         # Plant Concept Details Cards - wrapped in a div with class for toggling visibility

@@ -80,7 +80,7 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
       output$party_name <- shiny::renderUI(NULL)
       output$party_organization <- shiny::renderUI(NULL)
       output$party_contact <- shiny::renderUI(NULL)
-      output$party_projects <- shiny::renderUI(NULL)
+      output$party_contributions <- shiny::renderUI(NULL)
       output$plant_concept_name <- shiny::renderUI(NULL)
       output$plant_concept_details <- shiny::renderUI(NULL)
       output$plant_party_perspective <- shiny::renderUI(NULL)
@@ -104,7 +104,7 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
           output$party_name <- details$party_name
           output$party_organization <- details$party_organization
           output$party_contact <- details$party_contact
-          output$party_projects <- details$party_projects
+          output$party_contributions <- details$party_contributions
         },
         "community-classification" = {
           details <- build_comm_class_details_view(result)
