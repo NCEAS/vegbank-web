@@ -125,7 +125,7 @@ create_empty_table <- function(message = NULL) {
   )
 }
 
-#' Clean a column in data, replacing NA/empty with a default value
+#' Clean a column in data, replacing NA/empty with a default value and capitalizing first letter of first word
 #'
 #' @param data Data frame
 #' @param column_name Name of the column to clean
@@ -150,6 +150,25 @@ clean_column_data <- function(data, column_name, default_value = "Not provided")
   } else {
     rep(default_value, nrow(data))
   }
+}
+
+#' Clean a GMT date column in data, replacing NA/empty with a default value
+#' and formatting dates yyyy-mm-dd as format_date does for detail views
+#'
+#' @param data Data frame
+#' @param column_name Name of the column to clean
+#' @param default_value Value to use for NA/empty values
+#' @param date_format Format string for output dates
+#' @returns A character vector with cleaned data
+#' @noRd
+clean_column_dates <- function(data, column_name, default_value = "Not provided", date_format = "%Y-%m-%d") {
+  if (!(column_name %in% colnames(data))) {
+    return(rep(default_value, nrow(data)))
+  }
+
+  column <- data[[column_name]]
+  vapply(column, format_date, character(1), default_value = default_value,
+         format_string = date_format, USE.NAMES = FALSE)
 }
 
 # TODO: Soon to be deprecated by JS renderer
@@ -673,6 +692,7 @@ parse_logical_vector <- function(x) {
   parsed
 }
 
+# TODO: Eventually should add a link to see details with full text at the end of truncated text
 #' Truncate long text values and append ellipses
 #'
 #' Limits string length for table display, appending "..." when values exceed

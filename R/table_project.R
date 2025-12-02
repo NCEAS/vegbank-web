@@ -1,96 +1,195 @@
-#' Project Table Functions Module
+#' Project Table Module
 #'
-#' Provides functions for creating and manipulating the project data table.
+#' Provides a remote (server-side) DataTable for VegBank projects.
 
-#' Main function to process and build the project table
-#'
-#' @param project_data Data frame of project data
-#' @returns A DT datatable object ready for display in a Shiny app
 #' @noRd
-build_project_table <- function(project_data) {
-  data_sources <- list(
-    project_data = project_data
-  )
+PROJECT_TABLE_FIELDS <- c(
+  "pj_code",
+  "project_name",
+  "project_description",
+  "obs_count",
+  "start_date",
+  "stop_date",
+  "last_plot_added_date"
+)
 
-  required_sources <- c("project_data")
-
-  table_config <- list(
-    # TODO: Target columns by name instead of index so they are more robust to order changes
-    column_defs = list(
-      list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"),
-      list(targets = 1, width = "30%"),
-      list(targets = 2, width = "8%", className = "dt-right"),
-      list(targets = 3, width = "10%"),
-      list(targets = 4, width = "10%"),
-      list(targets = 5, width = "10%"),
-      list(targets = 6, width = "20%")
-    ),
-    progress_message = "Processing project table data"
-  )
+#' Build Project Table
+#'
+#' Configures the projects table to fetch rows via AJAX, mirroring other remote tables.
+#'
+#' @return A DT::datatable object
+#' @noRd
+build_project_table <- function() {
+  project_table_config <- create_project_table_config()
 
   create_table(
-    data_sources = data_sources,
-    required_sources = required_sources,
-    process_function = process_project_data,
-    table_config = table_config
+    data_sources = list(),
+    required_sources = character(0),
+    process_function = NULL,
+    table_config = project_table_config
   )
 }
 
-#' Process project data into display format
-#'
-#' @param data_sources List containing project_data
-#' @returns A data frame ready for display
-#'
-#' @importFrom shiny incProgress
+#' Project table configuration (columns, AJAX, and options)
 #' @noRd
-process_project_data <- function(data_sources) {
-  project_data <- data_sources$project_data
-
-  shiny::incProgress(0.15, detail = "Cleaning project names")
-  proj_names <- clean_column_data(project_data, "project_name")
-
-  shiny::incProgress(0.15, detail = "Cleaning project descriptions")
-  proj_desc <- clean_column_data(project_data, "project_description")
-
-  shiny::incProgress(0.15, detail = "Cleaning observation counts")
-  obs_count <- clean_column_data(project_data, "obs_count")
-
-  shiny::incProgress(0.15, detail = "Cleaning start dates")
-  start_date <- clean_column_data(project_data, "start_date")
-
-  shiny::incProgress(0.15, detail = "Cleaning stop dates")
-  stop_date <- clean_column_data(project_data, "stop_date")
-
-  shiny::incProgress(0.15, detail = "Cleaning most recent dates")
-  last_added_date <- clean_column_data(project_data, "last_plot_added_date")
-
-  # TODO: Classified Plots & States / Provinces columns
-
-  shiny::incProgress(0.1, detail = "Creating action buttons")
-  action_buttons <- create_action_buttons(
-    project_data,
+create_project_table_config <- function() {
+  column_defs <- list(
     list(
-      list(
-        input_id = "proj_link_click",
-        input_value = "pj_code",
-        label = "Details",
-        class = "btn-outline-primary"
-      )
-    )
+      targets = 0,
+      orderable = FALSE,
+      searchable = FALSE,
+      width = "10%",
+      render = create_action_button_renderer("proj_link_click", "Details")
+    ),
+    list(targets = 1, width = "30%"),
+    list(targets = 2, width = "8%", className = "dt-right", type = "num"),
+    list(targets = 3, width = "12%"),
+    list(targets = 4, width = "12%"),
+    list(targets = 5, width = "13%"),
+    list(targets = 6, width = "25%")
   )
 
-  shiny::incProgress(0.2, detail = "Building table...")
+  empty_source <- create_empty_project_df()
+  initial_display <- process_project_data(empty_source)
+
+  data_source_spec <- build_data_source_spec(
+    table_id = "proj_table",
+    endpoint = "projects",
+    coerce_fn = coerce_project_page,
+    normalize_fn = normalize_project_data,
+    display_fn = process_project_data,
+    label = "project records",
+    schema_fields = PROJECT_TABLE_FIELDS,
+    detail = "full",
+    clean_names = FALSE,
+    clean_rows_fn = sanitize_dt_rows
+  )
+
+  build_remote_table_config(
+    column_defs = column_defs,
+    initial_data = initial_display,
+    data_source_spec = data_source_spec,
+    remote_label = "project records"
+  )
+}
+
+#' Transform normalized project data into display rows
+#'
+#' @param project_data Data frame with normalized project columns
+#' @return Data frame formatted for DataTables consumption
+#' @noRd
+process_project_data <- function(project_data) {
+  if (is.null(project_data)) {
+    project_data <- create_empty_project_df()
+  }
+
+  row_count <- nrow(project_data)
+  if (!row_count) {
+    return(data.frame(
+      "Actions" = character(0),
+      "Name" = character(0),
+      "Plots" = integer(0),
+      "Started" = character(0),
+      "Ended" = character(0),
+      "Last Plot Added" = character(0),
+      "Description" = character(0),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    ))
+  }
+
+  action_codes <- project_data$pj_code
+  action_codes <- if (is.null(action_codes)) rep("", row_count) else as.character(action_codes)
+  action_codes[is.na(action_codes)] <- ""
+
+  names <- clean_column_data(project_data, "project_name")
+
+  obs_counts <- suppressWarnings(as.integer(project_data$obs_count))
+  obs_counts[is.na(obs_counts)] <- 0L
+
+  starts <- clean_column_dates(project_data, "start_date")
+  stops <- clean_column_dates(project_data, "stop_date")
+  last_added <- clean_column_dates(project_data, "last_plot_added_date")
+
+  descriptions <- clean_column_data(project_data, "project_description")
+  descriptions <- truncate_text_with_ellipsis(descriptions, max_chars = 680L)
+
   data.frame(
-    "Actions" = action_buttons,
-    "Name" = proj_names,
-    "Plots" = obs_count,
-    "Started" = start_date,
-    "Ended" = stop_date,
-    "Last Plot Added" = last_added_date,
-    "Description" = proj_desc,
+    "Actions" = action_codes,
+    "Name" = names,
+    "Plots" = obs_counts,
+    "Started" = starts,
+    "Ended" = stops,
+    "Last Plot Added" = last_added,
+    "Description" = descriptions,
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
 }
 
-#' TODO: Make obs_count, states/provinces, and classified_plots links...
+#' Normalize project API responses into a consistent schema
+#'
+#' @param df Raw data frame or list from vegbankr
+#' @return Normalized data frame containing PROJECT_TABLE_FIELDS
+#' @noRd
+normalize_project_data <- function(df) {
+  if (is.null(df)) {
+    return(create_empty_project_df())
+  }
+
+  if (!is.data.frame(df)) {
+    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) create_empty_project_df())
+  }
+
+  missing_fields <- setdiff(PROJECT_TABLE_FIELDS, names(df))
+  for (field in missing_fields) {
+    if (field == "obs_count") {
+      df[[field]] <- rep(NA_integer_, nrow(df))
+    } else {
+      df[[field]] <- rep(NA_character_, nrow(df))
+    }
+  }
+
+  df <- df[, PROJECT_TABLE_FIELDS, drop = FALSE]
+
+  char_fields <- setdiff(PROJECT_TABLE_FIELDS, "obs_count")
+  for (field in char_fields) {
+    df[[field]] <- as.character(df[[field]])
+  }
+
+  suppressWarnings(df$obs_count <- as.integer(df$obs_count))
+  df$obs_count[is.na(df$obs_count)] <- 0L
+
+  rownames(df) <- NULL
+  df
+}
+
+#' Coerce VegBank project response to a data frame
+#' @noRd
+coerce_project_page <- function(parsed) {
+  if (is.null(parsed)) {
+    return(create_empty_project_df())
+  }
+  if (is.data.frame(parsed)) {
+    return(parsed)
+  }
+  if (is.list(parsed)) {
+    if (!is.null(parsed$data)) {
+      return(coerce_project_page(parsed$data))
+    }
+    if (length(parsed) == 1) {
+      return(coerce_project_page(parsed[[1]]))
+    }
+  }
+
+  tryCatch(
+    as.data.frame(parsed, stringsAsFactors = FALSE),
+    error = function(e) create_empty_project_df()
+  )
+}
+
+#' Create an empty project data frame following the canonical schema
+#' @noRd
+create_empty_project_df <- function() {
+  build_zero_row_df(PROJECT_TABLE_FIELDS)
+}
