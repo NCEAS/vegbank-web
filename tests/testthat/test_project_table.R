@@ -68,6 +68,7 @@ test_that("process_project_data formats normalized data", {
   expect_equal(result$Plots, c(0L, 12L, 149L))
   expect_equal(result$Started, c("Not provided", "1997-08-21", "2022-01-01"))
   expect_equal(result$Ended, c("2020-12-31", "Not provided", "1997-08-23"))
+  expect_equal(result$`Last Plot Added`, c("2021-05-01", "2022-02-02", "Not provided"))
 })
 
 test_that("process_project_data handles empty input", {
