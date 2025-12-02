@@ -159,7 +159,7 @@ test_that("format_location_column handles missing data", {
 test_that("format_coordinate handles numeric conversion", {
   values <- c("38.5", "-78.2", "invalid", NA, "")
   
-  result <- format_coordinate(values)
+  result <- format_coordinates(values)
   
   expect_type(result, "double")
   expect_equal(result[1], 38.5)
@@ -172,7 +172,7 @@ test_that("format_coordinate handles numeric conversion", {
 test_that("format_elevation formats values correctly", {
   values <- c("500", "1234.56", "invalid", NA, "")
   
-  result <- format_elevation(values)
+  result <- format_elevations(values)
   
   expect_equal(result[1], "500")
   expect_equal(result[2], "1235")
