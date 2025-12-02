@@ -1,5 +1,5 @@
-test_that("create_empty_plot_df returns correct schema", {
-  result <- create_empty_plot_df()
+test_that("plot schema template returns correct structure", {
+  result <- vegbankweb:::PLOT_TABLE_SCHEMA_TEMPLATE
 
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
@@ -260,7 +260,7 @@ test_that("process_plot_data handles empty data correctly", {
   expect_equal(nrow(result), 0)
   expect_equal(ncol(result), 6)
 
-  result_empty <- process_plot_data(create_empty_plot_df())
+  result_empty <- process_plot_data(vegbankweb:::PLOT_TABLE_SCHEMA_TEMPLATE)
   expect_equal(nrow(result_empty), 0)
 })
 
@@ -282,8 +282,8 @@ test_that("build_plot_table returns DataTable object", {
   )
 })
 
-test_that("create_plot_table_config returns valid config", {
-  config <- create_plot_table_config()
+test_that("plot table spec produces valid config", {
+  config <- build_table_config_from_spec(vegbankweb:::PLOT_TABLE_SPEC)
 
   expect_type(config, "list")
   expect_true("column_defs" %in% names(config))

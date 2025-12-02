@@ -12,6 +12,33 @@ PARTY_TABLE_FIELDS <- c(
   "contact_instructions"
 )
 
+PARTY_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
+  column_names = PARTY_TABLE_FIELDS,
+  integer_columns = "obs_count"
+)
+
+PARTY_TABLE_DISPLAY_TEMPLATE <- build_display_template(
+  column_names = c("Actions", "Given Name", "Surname", "Organization", "Observations", "Contact"),
+  column_types = list("Observations" = integer())
+)
+
+create_party_column_defs <- function() {
+  list(
+    list(
+      targets = 0,
+      orderable = FALSE,
+      searchable = FALSE,
+      width = "10%",
+      render = create_action_button_renderer("party_link_click", "Details")
+    ),
+    list(targets = 1, width = "15%"),
+    list(targets = 2, width = "15%"),
+    list(targets = 3, width = "30%"),
+    list(targets = 4, width = "10%", className = "dt-right", type = "num"),
+    list(targets = 5, width = "30%")
+  )
+}
+
 #' Build Party Table
 #'
 #' Configures the party table to fetch rows via AJAX, mirroring the concept tables.
@@ -19,51 +46,7 @@ PARTY_TABLE_FIELDS <- c(
 #' @return A DT::datatable object
 #' @noRd
 build_party_table <- function() {
-  party_table_config <- create_party_table_config()
-
-  create_table(table_config = party_table_config)
-}
-
-#' Party table configuration (columns, AJAX, and options)
-#' @noRd
-create_party_table_config <- function() {
-  column_defs <- list(
-    list(
-      targets = 0,
-      orderable = FALSE,
-      searchable = FALSE,
-      width = "10%",
-      render = create_action_button_renderer("party_link_click", "Details")
-    ), # Actions
-    list(targets = 1, width = "15%"), # Given Name
-    list(targets = 2, width = "15%"), # Surname
-    list(targets = 3, width = "30%"), # Organization
-    list(targets = 4, width = "10%", className = "dt-right", type = "num"), # Observations
-    list(targets = 5, width = "30%") # Contact
-  )
-
-  empty_source <- create_empty_party_df()
-  initial_display <- process_party_data(empty_source)
-
-  data_source_spec <- build_data_source_spec(
-    table_id = "party_table",
-    endpoint = "parties",
-    coerce_fn = coerce_party_page,
-    normalize_fn = normalize_party_data,
-    display_fn = process_party_data,
-    label = "party records",
-    schema_fields = PARTY_TABLE_FIELDS,
-    detail = "full",
-    clean_names = FALSE,
-    clean_rows_fn = sanitize_dt_rows
-  )
-
-  build_remote_table_config(
-    column_defs = column_defs,
-    initial_data = initial_display,
-    data_source_spec = data_source_spec,
-    remote_label = "party records"
-  )
+  build_table_from_spec(PARTY_TABLE_SPEC)
 }
 
 #' Transform normalized party data into display rows
@@ -73,21 +56,12 @@ create_party_table_config <- function() {
 #' @noRd
 process_party_data <- function(party_data) {
   if (is.null(party_data)) {
-    party_data <- create_empty_party_df()
+    party_data <- PARTY_TABLE_SCHEMA_TEMPLATE
   }
 
   row_count <- nrow(party_data)
   if (!row_count) {
-    return(data.frame(
-      "Actions" = character(0),
-      "Given Name" = character(0),
-      "Surname" = character(0),
-      "Organization" = character(0),
-      "Observations" = integer(0),
-      "Contact" = character(0),
-      stringsAsFactors = FALSE,
-      check.names = FALSE
-    ))
+    return(PARTY_TABLE_DISPLAY_TEMPLATE)
   }
 
   given_names <- clean_column_data(party_data, "given_name")
@@ -121,11 +95,11 @@ process_party_data <- function(party_data) {
 #' @noRd
 normalize_party_data <- function(df) {
   if (is.null(df)) {
-    return(create_empty_party_df())
+    return(PARTY_TABLE_SCHEMA_TEMPLATE)
   }
 
   if (!is.data.frame(df)) {
-    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) create_empty_party_df())
+    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) PARTY_TABLE_SCHEMA_TEMPLATE)
   }
 
   missing_fields <- setdiff(PARTY_TABLE_FIELDS, names(df))
@@ -155,7 +129,7 @@ normalize_party_data <- function(df) {
 #' @noRd
 coerce_party_page <- function(parsed) {
   if (is.null(parsed)) {
-    return(create_empty_party_df())
+    return(PARTY_TABLE_SCHEMA_TEMPLATE)
   }
   if (is.data.frame(parsed)) {
     return(parsed)
@@ -171,12 +145,27 @@ coerce_party_page <- function(parsed) {
 
   tryCatch(
     as.data.frame(parsed, stringsAsFactors = FALSE),
-    error = function(e) create_empty_party_df()
+    error = function(e) PARTY_TABLE_SCHEMA_TEMPLATE
   )
 }
 
-#' Create an empty party data frame following the canonical schema
-#' @noRd
-create_empty_party_df <- function() {
-  build_zero_row_df(PARTY_TABLE_FIELDS)
-}
+PARTY_TABLE_SPEC <- list(
+  table_id = "party_table",
+  endpoint = "parties",
+  remote_label = "party records",
+  column_defs = create_party_column_defs(),
+  schema_fields = PARTY_TABLE_FIELDS,
+  schema_template = PARTY_TABLE_SCHEMA_TEMPLATE,
+  coerce_fn = coerce_party_page,
+  normalize_fn = normalize_party_data,
+  display_fn = process_party_data,
+  data_source = list(
+    detail = "full",
+    clean_names = FALSE,
+    clean_rows_fn = sanitize_dt_rows
+  ),
+  page_length = NULL,
+  options = list(),
+  datatable_args = list(),
+  initial_display = PARTY_TABLE_DISPLAY_TEMPLATE
+)

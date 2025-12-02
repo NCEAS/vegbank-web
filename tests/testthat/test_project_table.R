@@ -14,8 +14,8 @@ test_that("build_project_table configures a remote datatable", {
   )
 })
 
-test_that("create_project_table_config wires AJAX data source", {
-  config <- create_project_table_config()
+test_that("project table spec wires AJAX data source", {
+  config <- build_table_config_from_spec(vegbankweb:::PROJECT_TABLE_SPEC)
 
   expect_true(is.list(config))
   expect_equal(length(config$column_defs), 7)
@@ -69,7 +69,7 @@ test_that("process_project_data formats normalized data", {
 })
 
 test_that("process_project_data handles empty input", {
-  result <- process_project_data(create_empty_project_df())
+  result <- process_project_data(vegbankweb:::PROJECT_TABLE_SCHEMA_TEMPLATE)
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
   expect_equal(colnames(result), c("Actions", "Name", "Plots", "Started", "Ended", "Last Plot Added", "Description"))

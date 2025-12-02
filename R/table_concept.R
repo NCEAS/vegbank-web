@@ -62,11 +62,12 @@ CONCEPT_CONFIG <- list(
 #' @noRd
 build_concept_table <- function(concept_type = c("plant", "community")) {
   concept_type <- match.arg(concept_type)
-  config <- get_concept_config(concept_type)
+  spec <- CONCEPT_TABLE_SPECS[[concept_type]]
+  if (is.null(spec)) {
+    stop("No concept table spec registered for type: ", concept_type)
+  }
 
-  table_config <- create_concept_table_config(config)
-
-  create_table(table_config = table_config)
+  build_table_from_spec(spec)
 }
 
 #' Process concept data into display format
@@ -78,9 +79,20 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
 process_concept_data <- function(data_sources, concept_type = "plant") {
   config <- get_concept_config(concept_type)
 
-  concept_data <- data_sources[[config$data_key]]
+  concept_data <- data_sources
+  if (is.list(data_sources) && !is.data.frame(data_sources)) {
+    concept_data <- data_sources[[config$data_key]]
+  }
+
   if (is.null(concept_data)) {
     concept_data <- create_empty_source_df(concept_type)
+  }
+
+  if (!is.data.frame(concept_data)) {
+    concept_data <- tryCatch(
+      as.data.frame(concept_data, stringsAsFactors = FALSE),
+      error = function(e) create_empty_source_df(concept_type)
+    )
   }
 
   display_names <- clean_column_data(concept_data, config$name_field)
@@ -118,49 +130,6 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   names(result)[names(result) == "Name"] <- config$name_label
 
   result
-}
-
-#' Build table configuration for remote concept data tables
-#'
-#' Creates the complete configuration object needed for server-side concept tables,
-#' including column definitions, AJAX setup, and remote data options.
-#'
-#' @param config A concept configuration list from CONCEPT_CONFIG
-#' @returns A list containing table_config elements for create_table()
-#' @noRd
-create_concept_table_config <- function(config) {
-  link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
-
-  column_defs <- create_concept_column_defs(link_input_id)
-  empty_source <- create_empty_source_df(config$concept_type)
-  empty_sources <- setNames(list(empty_source), config$data_key)
-  initial_display <- process_concept_data(empty_sources, concept_type = config$concept_type)
-
-  data_source_spec <- build_data_source_spec(
-    table_id = config$table_id,
-    endpoint = config$endpoint,
-    coerce_fn = function(parsed) coerce_api_page(parsed, config$concept_type),
-    normalize_fn = function(data) normalize_concepts(data, config$concept_type),
-    display_fn = function(normalized) {
-      data_sources <- setNames(list(normalized), config$data_key)
-      process_concept_data(data_sources, concept_type = config$concept_type)
-    },
-    label = config$remote_label,
-    schema_fields = config$fields,
-    empty_factory = function() create_empty_source_df(config$concept_type),
-    page_length = config$page_length %||% TABLE_PAGE_LENGTH,
-    clean_rows_fn = sanitize_dt_rows,
-    count_clean_names = FALSE
-  )
-
-  build_remote_table_config(
-    column_defs = column_defs,
-    initial_data = initial_display,
-    data_source_spec = data_source_spec,
-    remote_label = config$remote_label,
-    page_length = config$page_length,
-    options = list()
-  )
 }
 
 #' Create column definitions for concept DataTables
@@ -258,7 +227,7 @@ normalize_concepts <- function(df, concept_type) {
 #' @noRd
 create_empty_source_df <- function(concept_type) {
   config <- get_concept_config(concept_type)
-  build_zero_row_df(config$fields)
+  build_schema_template(config$fields)
 }
 
 #' Coerce API response into a data frame
@@ -402,3 +371,34 @@ create_reference_link_renderer <- function() {
 
   DT::JS(js_code)
 }
+
+CONCEPT_TABLE_SPECS <- local({
+  specs <- lapply(CONCEPT_CONFIG, function(config) {
+    schema_template <- create_empty_source_df(config$concept_type)
+    link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
+
+    list(
+      table_id = config$table_id,
+      endpoint = config$endpoint,
+      remote_label = config$remote_label,
+      column_defs = create_concept_column_defs(link_input_id),
+      schema_fields = config$fields,
+      schema_template = schema_template,
+      coerce_fn = function(parsed) coerce_api_page(parsed, config$concept_type),
+      normalize_fn = function(data) normalize_concepts(data, config$concept_type),
+      display_fn = function(normalized) process_concept_data(normalized, concept_type = config$concept_type),
+      data_source = list(
+        page_length = config$page_length %||% TABLE_PAGE_LENGTH,
+        clean_rows_fn = sanitize_dt_rows,
+        count_clean_names = FALSE
+      ),
+      page_length = config$page_length,
+      options = list(),
+      datatable_args = list(),
+      initial_display = process_concept_data(schema_template, concept_type = config$concept_type)
+    )
+  })
+
+  names(specs) <- names(CONCEPT_CONFIG)
+  specs
+})

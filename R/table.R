@@ -585,7 +585,7 @@ build_remote_table_config <- function(column_defs,
 #'   Columns without an explicit prototype default to character() columns.
 #' @returns A zero-row data frame suitable for use as an empty template
 #' @noRd
-build_zero_row_df <- function(column_names, column_types = NULL) {
+build_zero_row_df <- function(column_names, column_types = NULL, check_names = TRUE) {
   if (is.null(column_names) || !length(column_names)) {
     return(data.frame()[FALSE, , drop = FALSE])
   }
@@ -598,7 +598,124 @@ build_zero_row_df <- function(column_names, column_types = NULL) {
     template[[name]] <- prototype
   }
 
-  as.data.frame(template, stringsAsFactors = FALSE)[FALSE, , drop = FALSE]
+  as.data.frame(template, stringsAsFactors = FALSE, check.names = check_names)[FALSE, , drop = FALSE]
+}
+
+#' Build a typed zero-row schema template for table sources
+#'
+#' @param column_names Character vector of column names
+#' @param numeric_columns Columns coerced to numeric()
+#' @param integer_columns Columns coerced to integer()
+#' @param logical_columns Columns coerced to logical()
+#' @param list_columns Columns coerced to list()
+#' @param column_types Optional named list of prototype vectors overriding defaults
+#' @returns Zero-row data frame with requested structure
+#' @noRd
+build_schema_template <- function(column_names,
+                                  numeric_columns = NULL,
+                                  integer_columns = NULL,
+                                  logical_columns = NULL,
+                                  list_columns = NULL,
+                                  column_types = NULL) {
+  column_types <- column_types %||% list()
+  resolver <- function(name) {
+    if (!is.null(column_types[[name]])) {
+      return(column_types[[name]])
+    }
+    if (!is.null(numeric_columns) && name %in% numeric_columns) {
+      return(numeric())
+    }
+    if (!is.null(integer_columns) && name %in% integer_columns) {
+      return(integer())
+    }
+    if (!is.null(logical_columns) && name %in% logical_columns) {
+      return(logical())
+    }
+    character()
+  }
+
+  resolved <- lapply(column_names, resolver)
+  names(resolved) <- column_names
+
+  df <- build_zero_row_df(column_names, resolved)
+  if (!is.null(list_columns) && length(list_columns)) {
+    for (name in intersect(list_columns, column_names)) {
+      df[[name]] <- vector("list", 0)
+    }
+  }
+
+  df
+}
+
+#' Build a zero-row display template preserving column names
+#'
+#' @param column_names Character vector of display column names
+#' @param column_types Optional named list overriding default character() prototype
+#' @returns Zero-row data frame preserving exact column names
+#' @noRd
+build_display_template <- function(column_names, column_types = NULL) {
+  build_zero_row_df(column_names, column_types, check_names = FALSE)
+}
+
+#' Build a remote table configuration from a metadata specification
+#'
+#' @param spec List describing the table (id, endpoint, schema, handlers, etc.)
+#' @returns A table_config list suitable for `create_table()`
+#' @noRd
+build_table_config_from_spec <- function(spec) {
+  required_fields <- c("table_id", "endpoint", "remote_label", "column_defs",
+                       "schema_fields", "coerce_fn", "normalize_fn", "display_fn")
+  missing <- required_fields[vapply(required_fields, function(field) is.null(spec[[field]]), logical(1))]
+  if (length(missing)) {
+    stop("Table spec missing required field(s): ", paste(missing, collapse = ", "))
+  }
+
+  schema_template <- spec$schema_template %||% build_zero_row_df(spec$schema_fields)
+  initial_display <- spec$initial_display
+  if (is.null(initial_display)) {
+    initial_display <- spec$display_fn(schema_template)
+  }
+
+  data_source_args <- utils::modifyList(
+    list(
+      table_id = spec$table_id,
+      endpoint = spec$endpoint,
+      coerce_fn = spec$coerce_fn,
+      normalize_fn = spec$normalize_fn,
+      display_fn = spec$display_fn,
+      label = spec$remote_label,
+      schema_fields = spec$schema_fields,
+      empty_factory = function() schema_template
+    ),
+    spec$data_source %||% list()
+  )
+
+  data_source_spec <- do.call(build_data_source_spec, data_source_args)
+
+  table_config <- build_remote_table_config(
+    column_defs = spec$column_defs,
+    initial_data = initial_display,
+    data_source_spec = data_source_spec,
+    remote_label = spec$remote_label,
+    page_length = spec$page_length,
+    options = spec$options %||% list(),
+    datatable_args = spec$datatable_args
+  )
+
+  if (!is.null(spec$ajax_factory)) {
+    table_config$ajax <- spec$ajax_factory
+  }
+
+  table_config
+}
+
+#' Build and render a table directly from a metadata spec
+#'
+#' @param spec Table metadata list accepted by `build_table_config_from_spec()`
+#' @returns DT datatable widget
+#' @noRd
+build_table_from_spec <- function(spec) {
+  create_table(table_config = build_table_config_from_spec(spec))
 }
 
 #' Normalize and validate search term from DataTables request

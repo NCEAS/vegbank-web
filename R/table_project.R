@@ -13,22 +13,18 @@ PROJECT_TABLE_FIELDS <- c(
   "last_plot_added_date"
 )
 
-#' Build Project Table
-#'
-#' Configures the projects table to fetch rows via AJAX, mirroring other remote tables.
-#'
-#' @return A DT::datatable object
-#' @noRd
-build_project_table <- function() {
-  project_table_config <- create_project_table_config()
+PROJECT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
+  column_names = PROJECT_TABLE_FIELDS,
+  integer_columns = "obs_count"
+)
 
-  create_table(table_config = project_table_config)
-}
+PROJECT_TABLE_DISPLAY_TEMPLATE <- build_display_template(
+  column_names = c("Actions", "Name", "Plots", "Started", "Ended", "Last Plot Added", "Description"),
+  column_types = list("Plots" = integer())
+)
 
-#' Project table configuration (columns, AJAX, and options)
-#' @noRd
-create_project_table_config <- function() {
-  column_defs <- list(
+create_project_column_defs <- function() {
+  list(
     list(
       targets = 0,
       orderable = FALSE,
@@ -43,29 +39,16 @@ create_project_table_config <- function() {
     list(targets = 5, width = "13%"),
     list(targets = 6, width = "25%")
   )
+}
 
-  empty_source <- create_empty_project_df()
-  initial_display <- process_project_data(empty_source)
-
-  data_source_spec <- build_data_source_spec(
-    table_id = "proj_table",
-    endpoint = "projects",
-    coerce_fn = coerce_project_page,
-    normalize_fn = normalize_project_data,
-    display_fn = process_project_data,
-    label = "project records",
-    schema_fields = PROJECT_TABLE_FIELDS,
-    detail = "full",
-    clean_names = FALSE,
-    clean_rows_fn = sanitize_dt_rows
-  )
-
-  build_remote_table_config(
-    column_defs = column_defs,
-    initial_data = initial_display,
-    data_source_spec = data_source_spec,
-    remote_label = "project records"
-  )
+#' Build Project Table
+#'
+#' Configures the projects table to fetch rows via AJAX, mirroring other remote tables.
+#'
+#' @return A DT::datatable object
+#' @noRd
+build_project_table <- function() {
+  build_table_from_spec(PROJECT_TABLE_SPEC)
 }
 
 #' Transform normalized project data into display rows
@@ -75,22 +58,12 @@ create_project_table_config <- function() {
 #' @noRd
 process_project_data <- function(project_data) {
   if (is.null(project_data)) {
-    project_data <- create_empty_project_df()
+    project_data <- PROJECT_TABLE_SCHEMA_TEMPLATE
   }
 
   row_count <- nrow(project_data)
   if (!row_count) {
-    return(data.frame(
-      "Actions" = character(0),
-      "Name" = character(0),
-      "Plots" = integer(0),
-      "Started" = character(0),
-      "Ended" = character(0),
-      "Last Plot Added" = character(0),
-      "Description" = character(0),
-      stringsAsFactors = FALSE,
-      check.names = FALSE
-    ))
+    return(PROJECT_TABLE_DISPLAY_TEMPLATE)
   }
 
   action_codes <- project_data$pj_code
@@ -129,11 +102,11 @@ process_project_data <- function(project_data) {
 #' @noRd
 normalize_project_data <- function(df) {
   if (is.null(df)) {
-    return(create_empty_project_df())
+    return(PROJECT_TABLE_SCHEMA_TEMPLATE)
   }
 
   if (!is.data.frame(df)) {
-    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) create_empty_project_df())
+    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) PROJECT_TABLE_SCHEMA_TEMPLATE)
   }
 
   missing_fields <- setdiff(PROJECT_TABLE_FIELDS, names(df))
@@ -163,7 +136,7 @@ normalize_project_data <- function(df) {
 #' @noRd
 coerce_project_page <- function(parsed) {
   if (is.null(parsed)) {
-    return(create_empty_project_df())
+    return(PROJECT_TABLE_SCHEMA_TEMPLATE)
   }
   if (is.data.frame(parsed)) {
     return(parsed)
@@ -179,12 +152,27 @@ coerce_project_page <- function(parsed) {
 
   tryCatch(
     as.data.frame(parsed, stringsAsFactors = FALSE),
-    error = function(e) create_empty_project_df()
+    error = function(e) PROJECT_TABLE_SCHEMA_TEMPLATE
   )
 }
 
-#' Create an empty project data frame following the canonical schema
-#' @noRd
-create_empty_project_df <- function() {
-  build_zero_row_df(PROJECT_TABLE_FIELDS)
-}
+PROJECT_TABLE_SPEC <- list(
+  table_id = "proj_table",
+  endpoint = "projects",
+  remote_label = "project records",
+  column_defs = create_project_column_defs(),
+  schema_fields = PROJECT_TABLE_FIELDS,
+  schema_template = PROJECT_TABLE_SCHEMA_TEMPLATE,
+  coerce_fn = coerce_project_page,
+  normalize_fn = normalize_project_data,
+  display_fn = process_project_data,
+  data_source = list(
+    detail = "full",
+    clean_names = FALSE,
+    clean_rows_fn = sanitize_dt_rows
+  ),
+  page_length = NULL,
+  options = list(),
+  datatable_args = list(),
+  initial_display = PROJECT_TABLE_DISPLAY_TEMPLATE
+)

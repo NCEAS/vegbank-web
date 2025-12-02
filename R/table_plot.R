@@ -1,8 +1,8 @@
 #' Plot Table Module
 #'
 #' Provides a remote (server-side) DataTable for VegBank plot observations.
-
 #' @noRd
+
 PLOT_TABLE_FIELDS <- c(
   "ob_code",
   "pl_code",
@@ -21,22 +21,24 @@ PLOT_TABLE_FIELDS <- c(
   "top_classifications"
 )
 
-#' Build Plot Table
-#'
-#' Configures the plot table to fetch rows via AJAX with nested taxon and classification data.
-#'
-#' @return A DT::datatable object
-#' @noRd
-build_plot_table <- function() {
-  plot_table_config <- create_plot_table_config()
+PLOT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
+  column_names = PLOT_TABLE_FIELDS,
+  numeric_columns = c("latitude", "longitude", "elevation", "area"),
+  integer_columns = c("taxon_count", "taxon_count_returned"),
+  list_columns = c("top_taxon_observations", "top_classifications")
+)
 
-  create_table(table_config = plot_table_config)
-}
+PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
+  "Actions",
+  "Author Plot Code",
+  "Location",
+  "Top Taxa",
+  "Communities",
+  "Year"
+))
 
-#' Plot table configuration (columns, AJAX, and options)
-#' @noRd
-create_plot_table_config <- function() {
-  column_defs <- list(
+create_plot_column_defs <- function() {
+  list(
     list(
       targets = 0,
       orderable = FALSE,
@@ -60,30 +62,16 @@ create_plot_table_config <- function() {
     ),
     list(targets = 5, width = "10%") # Year
   )
+}
 
-  empty_source <- create_empty_plot_df()
-  initial_display <- process_plot_data(empty_source)
-
-  data_source_spec <- build_data_source_spec(
-    table_id = "plot_table",
-    endpoint = "plot-observations",
-    coerce_fn = coerce_plot_page,
-    normalize_fn = normalize_plot_data,
-    display_fn = process_plot_data,
-    label = "plot observations",
-    schema_fields = PLOT_TABLE_FIELDS,
-    detail = "minimal",
-    clean_names = FALSE,
-    clean_rows_fn = sanitize_dt_rows,
-    query = list(with_nested = "TRUE")
-  )
-
-  build_remote_table_config(
-    column_defs = column_defs,
-    initial_data = initial_display,
-    data_source_spec = data_source_spec,
-    remote_label = "plot observations"
-  )
+#' Build Plot Table
+#'
+#' Configures the plot table to fetch rows via AJAX with nested taxon and classification data.
+#'
+#' @return A DT::datatable object
+#' @noRd
+build_plot_table <- function() {
+  build_table_from_spec(PLOT_TABLE_SPEC)
 }
 
 #' Transform normalized plot data into display rows
@@ -93,21 +81,12 @@ create_plot_table_config <- function() {
 #' @noRd
 process_plot_data <- function(plot_data) {
   if (is.null(plot_data)) {
-    plot_data <- create_empty_plot_df()
+    plot_data <- PLOT_TABLE_SCHEMA_TEMPLATE
   }
 
   row_count <- nrow(plot_data)
   if (!row_count) {
-    return(data.frame(
-      "Actions" = character(0),
-      "Author Plot Code" = character(0),
-      "Location" = character(0),
-      "Top Taxa" = character(0),
-      "Communities" = character(0),
-      "Year" = character(0),
-      stringsAsFactors = FALSE,
-      check.names = FALSE
-    ))
+    return(PLOT_TABLE_DISPLAY_TEMPLATE)
   }
 
   ob_codes <- plot_data$ob_code
@@ -154,13 +133,40 @@ process_plot_data <- function(plot_data) {
   )
 }
 
-#' Build multi-line location display with coordinates and elevation.
+
+#' Format coordinate values safely
 #'
-#' @param data Data frame containing state/country columns
-#' @param latitudes Numeric vector of latitude values
-#' @param longitudes Numeric vector of longitude values
-#' @param elevations Numeric vector of elevation values (meters)
-#' @return Character vector with HTML-safe multi-line location strings
+#' @param values Vector of coordinate strings/numbers
+#' @returns Numeric vector with invalid entries as NA_real_
+#' @noRd
+format_coordinates <- function(values) {
+  if (is.null(values)) {
+    return(rep(NA_real_, length(values)))
+  }
+
+  suppressWarnings(as.numeric(values))
+}
+
+#' Format elevation values safely
+#'
+#' @param values Vector of elevation strings/numbers
+#' @returns Numeric vector with invalid entries as NA_real_
+#' @noRd
+format_elevations <- function(values) {
+  if (is.null(values)) {
+    return(rep(NA_real_, length(values)))
+  }
+
+  suppressWarnings(as.numeric(values))
+}
+
+#' Build HTML-friendly location string from components
+#'
+#' @param data Data frame containing location columns
+#' @param latitudes Numeric latitude vector
+#' @param longitudes Numeric longitude vector
+#' @param elevations Numeric elevation vector (meters)
+#' @returns Character vector combining locality + coordinates
 #' @noRd
 format_location_column <- function(data, latitudes = NULL, longitudes = NULL, elevations = NULL) {
   row_total <- nrow(data)
@@ -218,29 +224,10 @@ format_location_column <- function(data, latitudes = NULL, longitudes = NULL, el
   }, character(1), USE.NAMES = FALSE)
 }
 
-#' Format coordinate values
-#' @noRd
-format_coordinates <- function(values) {
-  if (is.null(values)) {
-    return(rep(NA_real_, length(values)))
-  }
-
-  coords <- suppressWarnings(as.numeric(values))
-  coords
-}
-
-#' Format elevation values
-#' @noRd
-format_elevations <- function(values) {
-  if (is.null(values)) {
-    return(rep(NA_real_, length(values)))
-  }
-
-  elev <- suppressWarnings(as.numeric(values))
-  elev
-}
-
-#' Serialize nested data frames to JSON strings for JS renderers
+#' Serialize nested list/data-frame columns into JSON strings
+#'
+#' @param list_col Column containing nested data frames/lists
+#' @returns Character vector of JSON strings expected by JS renderers
 #' @noRd
 serialize_nested_column <- function(list_col) {
   if (is.null(list_col)) {
@@ -257,7 +244,6 @@ serialize_nested_column <- function(list_col) {
       return("[]")
     }
     if (!is.data.frame(item)) {
-      # Item might already be a string or other type
       if (is.character(item) && length(item) == 1) {
         return(item)
       }
@@ -266,7 +252,6 @@ serialize_nested_column <- function(list_col) {
     if (nrow(item) == 0) {
       return("[]")
     }
-    # Serialize the data frame to JSON
     jsonlite::toJSON(item, auto_unbox = FALSE, dataframe = "rows", null = "null")
   }, character(1), USE.NAMES = FALSE)
 }
@@ -278,11 +263,11 @@ serialize_nested_column <- function(list_col) {
 #' @noRd
 normalize_plot_data <- function(df) {
   if (is.null(df)) {
-    return(create_empty_plot_df())
+    return(PLOT_TABLE_SCHEMA_TEMPLATE)
   }
 
   if (!is.data.frame(df)) {
-    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) create_empty_plot_df())
+    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) PLOT_TABLE_SCHEMA_TEMPLATE)
   }
 
   # Ensure all expected fields exist
@@ -335,7 +320,7 @@ normalize_plot_data <- function(df) {
 #' @noRd
 coerce_plot_page <- function(parsed) {
   if (is.null(parsed)) {
-    return(create_empty_plot_df())
+    return(PLOT_TABLE_SCHEMA_TEMPLATE)
   }
   if (is.data.frame(parsed)) {
     return(parsed)
@@ -362,7 +347,7 @@ coerce_plot_page <- function(parsed) {
         # Fall back to as.data.frame
         tryCatch(
           as.data.frame(parsed, stringsAsFactors = FALSE),
-          error = function(e2) create_empty_plot_df()
+          error = function(e2) PLOT_TABLE_SCHEMA_TEMPLATE
         )
       }
     )
@@ -370,20 +355,8 @@ coerce_plot_page <- function(parsed) {
 
   tryCatch(
     as.data.frame(parsed, stringsAsFactors = FALSE),
-    error = function(e) create_empty_plot_df()
+    error = function(e) PLOT_TABLE_SCHEMA_TEMPLATE
   )
-}
-
-#' Create an empty plot data frame following the canonical schema
-#' @noRd
-create_empty_plot_df <- function() {
-  df <- build_zero_row_df(PLOT_TABLE_FIELDS)
-
-  # Ensure list columns for nested data
-  df$top_taxon_observations <- list()
-  df$top_classifications <- list()
-
-  df
 }
 
 #' Create JS renderer for plot action buttons (Details + Map)
@@ -548,3 +521,24 @@ create_community_list_renderer <- function() {
 
   DT::JS(js_code)
 }
+PLOT_TABLE_SPEC <- list(
+  table_id = "plot_table",
+  endpoint = "plot-observations",
+  remote_label = "plot observations",
+  column_defs = create_plot_column_defs(),
+  schema_fields = PLOT_TABLE_FIELDS,
+  schema_template = PLOT_TABLE_SCHEMA_TEMPLATE,
+  coerce_fn = coerce_plot_page,
+  normalize_fn = normalize_plot_data,
+  display_fn = process_plot_data,
+  data_source = list(
+    detail = "minimal",
+    clean_names = FALSE,
+    clean_rows_fn = sanitize_dt_rows,
+    query = list(with_nested = "TRUE")
+  ),
+  page_length = NULL,
+  options = list(),
+  datatable_args = list(),
+  initial_display = PLOT_TABLE_DISPLAY_TEMPLATE
+)
