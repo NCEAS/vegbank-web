@@ -85,7 +85,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   }
 
   if (is.null(concept_data)) {
-    concept_data <- create_empty_source_df(concept_type)
+    concept_data <- build_schema_template(config$fields)
   }
 
   if (!is.data.frame(concept_data)) {
@@ -174,91 +174,41 @@ create_concept_column_defs <- function(detail_input_id) {
 #' Normalize and validate concept data from API response
 #'
 #' Ensures API response data contains all required fields with proper types.
-#' Fills missing fields with NA, coerces types, and ensures consistent structure
-#' for downstream processing. Returns an empty data frame if input is invalid.
+#' Uses shared normalization helper with special handling for logical and numeric fields.
 #'
 #' @param df A data frame (or coercible object) from the VegBank API
 #' @param concept_type Either "plant" or "community"
 #' @returns A validated and normalized data frame with all expected columns
 #' @noRd
 normalize_concepts <- function(df, concept_type) {
-  if (is.null(df)) {
-    return(create_empty_source_df(concept_type))
-  }
-  if (!is.data.frame(df)) {
-    df <- tryCatch(
-      as.data.frame(df, stringsAsFactors = FALSE),
-      error = function(e) create_empty_source_df(concept_type)
-    )
-  }
-  if (!nrow(df)) {
-    return(create_empty_source_df(concept_type))
-  }
-
   config <- get_concept_config(concept_type)
-  missing_fields <- setdiff(config$fields, names(df))
-  for (field in missing_fields) {
-    df[[field]] <- NA_character_
+  schema_template <- build_schema_template(config$fields)
+  
+  normalized <- normalize_table_data(df, schema_template)
+  
+  # Special handling for fields that need type coercion beyond API defaults
+  if ("current_accepted" %in% names(normalized)) {
+    normalized$current_accepted <- parse_logical_vector(normalized$current_accepted)
   }
-
-  df <- df[, config$fields, drop = FALSE]
-
-  df[[config$code_field]] <- as.character(df[[config$code_field]])
-  df[[config$name_field]] <- as.character(df[[config$name_field]])
-  df[[config$level_field]] <- as.character(df[[config$level_field]])
-  df[[config$description_field]] <- as.character(df[[config$description_field]])
-  df$concept_rf_code <- as.character(df$concept_rf_code)
-  df$concept_rf_name <- as.character(df$concept_rf_name)
-  df$current_accepted <- parse_logical_vector(df$current_accepted)
-  suppressWarnings(df$obs_count <- as.numeric(df$obs_count))
-  df$obs_count[is.na(df$obs_count)] <- 0
-
-  rownames(df) <- NULL
-  df
-}
-
-#' Create an empty data frame with concept-specific schema
-#'
-#' Generates a zero-row data frame with all required columns for a given concept type.
-#' Used as a template for empty tables and to ensure consistent structure.
-#'
-#' @param concept_type Either "plant" or "community"
-#' @returns A zero-row data frame with all expected concept columns
-#' @noRd
-create_empty_source_df <- function(concept_type) {
-  config <- get_concept_config(concept_type)
-  build_schema_template(config$fields)
+  if ("obs_count" %in% names(normalized)) {
+    normalized$obs_count[is.na(normalized$obs_count)] <- 0
+  }
+  
+  normalized
 }
 
 #' Coerce API response into a data frame
 #'
-#' Recursively extracts and converts various API response structures into a data frame.
-#' Handles nested lists, single-element wrappers, and already-formatted data frames.
-#' Returns an empty concept-specific data frame if coercion fails.
+#' Uses shared coercion helper with concept-specific empty template.
 #'
 #' @param parsed The parsed API response object
 #' @param concept_type Either "plant" or "community"
 #' @returns A data frame, or an empty concept-specific data frame on failure
 #' @noRd
 coerce_api_page <- function(parsed, concept_type) {
-  if (is.null(parsed)) {
-    return(create_empty_source_df(concept_type))
-  }
-  if (is.data.frame(parsed)) {
-    return(parsed)
-  }
-  if (is.list(parsed)) {
-    if (!is.null(parsed$data)) {
-      return(coerce_api_page(parsed$data, concept_type))
-    }
-    if (length(parsed) == 1) {
-      return(coerce_api_page(parsed[[1]], concept_type))
-    }
-  }
-  tryCatch(
-    as.data.frame(parsed, stringsAsFactors = FALSE),
-    error = function(e) create_empty_source_df(concept_type)
-  )
+  config <- get_concept_config(concept_type)
+  schema_template <- build_schema_template(config$fields)
+  coerce_api_response(parsed, schema_template)
 }
 
 #' Retrieve configuration for a given concept type
@@ -374,7 +324,7 @@ create_reference_link_renderer <- function() {
 
 CONCEPT_TABLE_SPECS <- local({
   specs <- lapply(CONCEPT_CONFIG, function(config) {
-    schema_template <- create_empty_source_df(config$concept_type)
+    schema_template <- build_schema_template(config$fields)
     link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
 
     list(

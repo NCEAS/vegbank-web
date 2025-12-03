@@ -94,59 +94,20 @@ process_party_data <- function(party_data) {
 #' @return Normalized data frame containing PARTY_TABLE_FIELDS
 #' @noRd
 normalize_party_data <- function(df) {
-  if (is.null(df)) {
-    return(PARTY_TABLE_SCHEMA_TEMPLATE)
+  normalized <- normalize_table_data(df, PARTY_TABLE_SCHEMA_TEMPLATE)
+  
+  # Special handling: ensure obs_count NA becomes 0
+  if ("obs_count" %in% names(normalized)) {
+    normalized$obs_count[is.na(normalized$obs_count)] <- 0L
   }
-
-  if (!is.data.frame(df)) {
-    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) PARTY_TABLE_SCHEMA_TEMPLATE)
-  }
-
-  missing_fields <- setdiff(PARTY_TABLE_FIELDS, names(df))
-  for (field in missing_fields) {
-    if (field == "obs_count") {
-      df[[field]] <- rep(NA_integer_, nrow(df))
-    } else {
-      df[[field]] <- rep(NA_character_, nrow(df))
-    }
-  }
-
-  df <- df[, PARTY_TABLE_FIELDS, drop = FALSE]
-
-  char_fields <- setdiff(PARTY_TABLE_FIELDS, "obs_count")
-  for (field in char_fields) {
-    df[[field]] <- as.character(df[[field]])
-  }
-
-  suppressWarnings(df$obs_count <- as.integer(df$obs_count))
-  df$obs_count[is.na(df$obs_count)] <- 0L
-
-  rownames(df) <- NULL
-  df
+  
+  normalized
 }
 
 #' Coerce VegBank party response to a data frame
 #' @noRd
 coerce_party_page <- function(parsed) {
-  if (is.null(parsed)) {
-    return(PARTY_TABLE_SCHEMA_TEMPLATE)
-  }
-  if (is.data.frame(parsed)) {
-    return(parsed)
-  }
-  if (is.list(parsed)) {
-    if (!is.null(parsed$data)) {
-      return(coerce_party_page(parsed$data))
-    }
-    if (length(parsed) == 1) {
-      return(coerce_party_page(parsed[[1]]))
-    }
-  }
-
-  tryCatch(
-    as.data.frame(parsed, stringsAsFactors = FALSE),
-    error = function(e) PARTY_TABLE_SCHEMA_TEMPLATE
-  )
+  coerce_api_response(parsed, PARTY_TABLE_SCHEMA_TEMPLATE)
 }
 
 PARTY_TABLE_SPEC <- list(

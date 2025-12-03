@@ -334,101 +334,23 @@ normalize_taxa_items <- function(items) {
 #' @return Normalized data frame containing PLOT_TABLE_FIELDS
 #' @noRd
 normalize_plot_data <- function(df) {
-  if (is.null(df)) {
-    return(PLOT_TABLE_SCHEMA_TEMPLATE)
-  }
-
-  if (!is.data.frame(df)) {
-    df <- tryCatch(as.data.frame(df, stringsAsFactors = FALSE), error = function(e) PLOT_TABLE_SCHEMA_TEMPLATE)
-  }
-
-  # Ensure all expected fields exist
-  missing_fields <- setdiff(PLOT_TABLE_FIELDS, names(df))
-  for (field in missing_fields) {
-    if (field %in% c("latitude", "longitude", "elevation")) {
-      df[[field]] <- rep(NA_real_, nrow(df))
-    } else if (field %in% c("taxon_count", "taxon_count_returned")) {
-      df[[field]] <- rep(NA_integer_, nrow(df))
-    } else if (field %in% c("top_taxon_observations", "top_classifications")) {
-      df[[field]] <- vector("list", nrow(df))
-    } else {
-      df[[field]] <- rep(NA_character_, nrow(df))
-    }
-  }
-
-  df <- df[, PLOT_TABLE_FIELDS, drop = FALSE]
-
-  # Type coercion
-  char_fields <- c(
-    "ob_code", "pl_code", "author_plot_code", "author_obs_code",
-    "state_province", "country", "year"
-  )
-  for (field in char_fields) {
-    if (field %in% names(df)) {
-      df[[field]] <- as.character(df[[field]])
-    }
-  }
-
-  numeric_fields <- c("latitude", "longitude", "elevation")
-  for (field in numeric_fields) {
-    if (field %in% names(df)) {
-      df[[field]] <- suppressWarnings(as.numeric(df[[field]]))
-    }
-  }
-
+  normalized <- normalize_table_data(df, PLOT_TABLE_SCHEMA_TEMPLATE)
+  
+  # Special handling: ensure integer fields with NA become 0
   int_fields <- c("taxon_count", "taxon_count_returned")
   for (field in int_fields) {
-    if (field %in% names(df)) {
-      df[[field]] <- suppressWarnings(as.integer(df[[field]]))
-      df[[field]][is.na(df[[field]])] <- 0L
+    if (field %in% names(normalized)) {
+      normalized[[field]][is.na(normalized[[field]])] <- 0L
     }
   }
-
-  rownames(df) <- NULL
-  df
+  
+  normalized
 }
 
 #' Coerce VegBank plot response to a data frame
 #' @noRd
 coerce_plot_page <- function(parsed) {
-  if (is.null(parsed)) {
-    return(PLOT_TABLE_SCHEMA_TEMPLATE)
-  }
-  if (is.data.frame(parsed)) {
-    return(parsed)
-  }
-
-  # Handle list of records (common vegbankr return format)
-  if (is.list(parsed)) {
-    if (!is.null(parsed$data)) {
-      return(coerce_plot_page(parsed$data))
-    }
-    if (length(parsed) == 1 && !is.null(names(parsed))) {
-      return(coerce_plot_page(parsed[[1]]))
-    }
-
-    # Try to convert list of records to data frame
-    # This handles the case where vegbankr returns a list where each element is a record
-    tryCatch(
-      {
-        # Use bind_rows to handle list columns properly
-        df <- dplyr::bind_rows(parsed)
-        return(df)
-      },
-      error = function(e) {
-        # Fall back to as.data.frame
-        tryCatch(
-          as.data.frame(parsed, stringsAsFactors = FALSE),
-          error = function(e2) PLOT_TABLE_SCHEMA_TEMPLATE
-        )
-      }
-    )
-  }
-
-  tryCatch(
-    as.data.frame(parsed, stringsAsFactors = FALSE),
-    error = function(e) PLOT_TABLE_SCHEMA_TEMPLATE
-  )
+  coerce_api_response(parsed, PLOT_TABLE_SCHEMA_TEMPLATE)
 }
 
 #' Create JS renderer for plot action buttons (Details + Map)

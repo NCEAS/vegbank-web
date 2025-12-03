@@ -113,8 +113,10 @@ clean_column_dates <- function(data, column_name, default_value = "Not provided"
   }
 
   column <- data[[column_name]]
-  vapply(column, format_date, character(1), default_value = default_value,
-         format_string = date_format, USE.NAMES = FALSE)
+  vapply(column, format_date, character(1),
+    default_value = default_value,
+    format_string = date_format, USE.NAMES = FALSE
+  )
 }
 
 # TODO: Soon to be deprecated by JS renderer
@@ -663,8 +665,10 @@ build_display_template <- function(column_names, column_types = NULL) {
 #' @returns A table_config list suitable for `create_table()`
 #' @noRd
 build_table_config_from_spec <- function(spec) {
-  required_fields <- c("table_id", "endpoint", "remote_label", "column_defs",
-                       "schema_fields", "coerce_fn", "normalize_fn", "display_fn")
+  required_fields <- c(
+    "table_id", "endpoint", "remote_label", "column_defs",
+    "schema_fields", "coerce_fn", "normalize_fn", "display_fn"
+  )
   missing <- required_fields[vapply(required_fields, function(field) is.null(spec[[field]]), logical(1))]
   if (length(missing)) {
     stop("Table spec missing required field(s): ", paste(missing, collapse = ", "))
@@ -779,6 +783,115 @@ truncate_text_with_ellipsis <- function(values, max_chars = 680L) {
   }
 
   values
+}
+
+#' Coerce API response to a data frame with standard unwrapping
+#'
+#' Handles common vegbankr response structures by recursively unwrapping nested
+#' lists and data keys. Provides consistent error handling across all table types.
+#'
+#' @param parsed Raw API response (data frame, list, or nested structure)
+#' @param schema_template Zero-row data frame with correct column types to return on coercion failure
+#' @return Data frame, or empty_template if coercion fails
+#' @noRd
+coerce_api_response <- function(parsed, schema_template) {
+  if (is.null(parsed)) {
+    return(schema_template)
+  }
+  if (is.data.frame(parsed)) {
+    return(parsed)
+  }
+  if (is.list(parsed)) {
+    # Unwrap common vegbankr envelope structures
+    if (!is.null(parsed$data)) {
+      return(coerce_api_response(parsed$data, schema_template))
+    }
+    # Handle single-element list wrappers (both named and unnamed)
+    if (length(parsed) == 1) {
+      return(coerce_api_response(parsed[[1]], schema_template))
+    }
+    # Try converting list of records to data frame
+    tryCatch(
+      {
+        df <- dplyr::bind_rows(parsed)
+        return(df)
+      },
+      error = function(e) {
+        # Fall back to as.data.frame
+        tryCatch(
+          as.data.frame(parsed, stringsAsFactors = FALSE),
+          error = function(e2) schema_template
+        )
+      }
+    )
+  }
+
+  tryCatch(
+    as.data.frame(parsed, stringsAsFactors = FALSE),
+    error = function(e) schema_template
+  )
+}
+
+#' Normalize API data to match schema template
+#'
+#' Ensures all expected fields exist and appear in the correct order. Coerces field
+#' types to match the schema template when they differ (e.g., character to numeric).
+#'
+#' @param df Raw data frame from API (after coercion)
+#' @param schema_template Zero-row data frame with correct column types
+#' @return Normalized data frame with all expected columns, or schema_template if empty
+#' @noRd
+normalize_table_data <- function(df, schema_template) {
+  if (is.null(df)) {
+    return(schema_template)
+  }
+
+  if (!is.data.frame(df)) {
+    df <- tryCatch(
+      as.data.frame(df, stringsAsFactors = FALSE),
+      error = function(e) schema_template
+    )
+  }
+
+  if (!nrow(df)) {
+    return(schema_template)
+  }
+
+  # Add any missing fields using prototypes from schema template
+  missing_fields <- setdiff(names(schema_template), names(df))
+  for (field in missing_fields) {
+    # Use the schema template's column as a prototype
+    prototype <- schema_template[[field]]
+    if (is.list(prototype)) {
+      df[[field]] <- vector("list", nrow(df))
+    } else {
+      df[[field]] <- rep(prototype[NA_integer_], nrow(df))
+    }
+  }
+
+  # Reorder columns to match schema
+  df <- df[, names(schema_template), drop = FALSE]
+
+  # Coerce types to match schema template where they differ
+  for (col_name in names(schema_template)) {
+    template_type <- class(schema_template[[col_name]])[1]
+    data_type <- class(df[[col_name]])[1]
+
+    # Only coerce if types don't match and template isn't just character
+    if (data_type != template_type && template_type != "character") {
+      if (template_type == "numeric") {
+        df[[col_name]] <- suppressWarnings(as.numeric(df[[col_name]]))
+      } else if (template_type == "integer") {
+        df[[col_name]] <- suppressWarnings(as.integer(df[[col_name]]))
+      } else if (template_type == "logical") {
+        df[[col_name]] <- as.logical(df[[col_name]])
+      }
+      # List columns already handled above, no coercion needed
+    }
+  }
+
+  rownames(df) <- NULL
+  df
 }
 
 #' Sanitize data frame rows for DataTables JSON responses
