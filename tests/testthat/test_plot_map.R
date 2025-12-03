@@ -82,6 +82,56 @@ test_that("process_map_data handles custom center and zoom", {
   })
 })
 
+test_that("fetch_plot_map_data returns data when API succeeds", {
+  fake_data <- data.frame(
+    latitude = 10,
+    longitude = 20,
+    author_obs_code = "CODE",
+    ob_code = "ob.1"
+  )
+
+  with_mock_shiny_notifications({
+    result <- testthat::with_mocked_bindings(
+      fetch_plot_map_data(),
+      get_all_plot_observations = function(...) fake_data,
+      .package = "vegbankr"
+    )
+
+    expect_equal(result, fake_data)
+    expect_length(get_mock_notifications(), 0)
+  })
+})
+
+test_that("fetch_plot_map_data surfaces API errors", {
+  with_mock_shiny_notifications({
+    result <- testthat::with_mocked_bindings(
+      fetch_plot_map_data(),
+      get_all_plot_observations = function(...) stop("API offline"),
+      .package = "vegbankr"
+    )
+
+    expect_null(result)
+    last_notification <- get_last_notification()
+    expect_match(last_notification$message, "Failed to load map data")
+    expect_equal(last_notification$type, "error")
+  })
+})
+
+test_that("fetch_plot_map_data warns when API returns no rows", {
+  with_mock_shiny_notifications({
+    result <- testthat::with_mocked_bindings(
+      fetch_plot_map_data(),
+      get_all_plot_observations = function(...) data.frame(),
+      .package = "vegbankr"
+    )
+
+    expect_null(result)
+    last_notification <- get_last_notification()
+    expect_match(last_notification$message, "Map data is currently unavailable")
+    expect_equal(last_notification$type, "warning")
+  })
+})
+
 test_that("add_zoom_control adds onRender function to map", {
   # Create a minimal leaflet map
   map <- leaflet::leaflet()

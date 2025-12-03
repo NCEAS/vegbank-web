@@ -4,6 +4,56 @@
 
 # ---- App-facing functions ----
 
+MAP_DATA_FETCH_LIMIT <- 1000000L
+
+#' Fetch plot observations for the map
+#'
+#' Downloads plot observation data for the leaflet map using the VegBank API.
+#'
+#' @param limit Maximum number of records to request (defaults to 1,000,000)
+#' @param detail VegBank detail level to request (defaults to "geo")
+#' @return Data frame of plot observations or NULL on failure
+#' @noRd
+fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
+  shiny::withProgress(message = "Loading map data…", value = 0, {
+    error_occurred <- FALSE
+    data <- tryCatch(
+      vegbankr::get_all_plot_observations(
+        limit = limit,
+        detail = detail,
+        with_nested = FALSE,
+        num_taxa = 5,
+        num_comms = 5,
+        create_parquet = TRUE
+      ),
+      error = function(err) {
+        error_occurred <<- TRUE
+        shiny::showNotification(
+          paste("Failed to load map data:", conditionMessage(err)),
+          type = "error"
+        )
+        NULL
+      }
+    )
+
+    shiny::incProgress(1)
+
+    if (isTRUE(error_occurred)) {
+      return(NULL)
+    }
+
+    if (is.null(data) || !nrow(data)) {
+      shiny::showNotification(
+        "Map data is currently unavailable. Please try again later.",
+        type = "warning"
+      )
+      return(NULL)
+    }
+
+    as.data.frame(data)
+  })
+}
+
 #' Process map data and return a leaflet map object
 #'
 #' Creates a leaflet map with clustered markers from plot observation data.

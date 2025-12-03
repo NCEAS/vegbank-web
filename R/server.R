@@ -72,7 +72,8 @@ server <- function(input, output, session) {
   # "object not found" errors.
   comm_class_data <- NULL
   taxa_data <- NULL
-  plot_data <- NULL
+  plot_data <- shiny::reactiveVal(NULL)
+  map_data_loading <- shiny::reactiveVal(FALSE)
 
   # Initialize URL State Manager with defaults and table registry
   url_manager <- URLStateManager$new(
@@ -110,6 +111,37 @@ server <- function(input, output, session) {
   can_mutate_history <- function() {
     url_manager$is_history_initialized() && !url_manager$is_updating()
   }
+
+  # --- Map Data Loading Helpers -----
+
+  MAP_DATA_FETCH_LIMIT <- 1000000L
+
+  load_map_data <- function(force = FALSE) {
+    if (!force && !is.null(plot_data())) {
+      return(invisible(TRUE))
+    }
+
+    if (isTRUE(map_data_loading())) {
+      return(invisible(FALSE))
+    }
+
+    map_data_loading(TRUE)
+    on.exit(map_data_loading(FALSE), add = TRUE)
+
+    data <- fetch_plot_map_data()
+    if (is.null(data)) {
+      return(invisible(FALSE))
+    }
+
+    plot_data(data)
+    invisible(TRUE)
+  }
+
+  shiny::observeEvent(state$current_tab(), {
+    if (identical(state$current_tab(), "Map")) {
+      load_map_data()
+    }
+  })
 
   # --- DataTable State Management -----
 
@@ -290,7 +322,7 @@ server <- function(input, output, session) {
     if (detail_type %in% c("community-classification", "taxon-observation")) {
       args$comm_class_data <- comm_class_data
       args$taxa_data <- taxa_data
-      args$plot_data <- plot_data
+      args$plot_data <- plot_data()
     }
 
     success <- do.call(open_code_details, args)
@@ -549,10 +581,9 @@ server <- function(input, output, session) {
     build_plant_table()
   })
 
-  # TODO: This data should be fetched now that we don't cache all plots
   output$map <- leaflet::renderLeaflet({
     process_map_data(
-      map_data = plot_data,
+      map_data = plot_data(),
       center_lng = DEFAULT_MAP_LNG,
       center_lat = DEFAULT_MAP_LAT,
       zoom = DEFAULT_MAP_ZOOM
