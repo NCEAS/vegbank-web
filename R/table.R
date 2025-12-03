@@ -784,7 +784,8 @@ truncate_text_with_ellipsis <- function(values, max_chars = 680L) {
 #' Sanitize data frame rows for DataTables JSON responses
 #'
 #' Mirrors the core behavior of DT's internal cleanDataFrame helper so we can
-#' keep our dependency on exported APIs only.
+#' keep our dependency on exported APIs only. Removes names and dimensions from
+#' columns to ensure clean JSON serialization.
 #'
 #' @param data Data frame (or other object) destined for DataTables AJAX
 #' @return Object with unnamed columns whose values have been stripped of dims

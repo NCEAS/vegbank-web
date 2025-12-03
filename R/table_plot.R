@@ -37,6 +37,12 @@ PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
   "Year"
 ))
 
+#' Create column definitions for plot table
+#'
+#' Defines column widths, ordering, and custom renderers for the plot DataTable.
+#'
+#' @return List of DataTables columnDefs configuration objects
+#' @noRd
 create_plot_column_defs <- function() {
   list(
     list(
@@ -167,11 +173,14 @@ format_elevations <- function(values) {
 
 #' Build HTML-friendly location string from components
 #'
-#' @param data Data frame containing location columns
+#' Creates multi-line HTML location strings with state, country, coordinates, and elevation.
+#' Country and coordinate/elevation details are styled with muted text for visual hierarchy.
+#'
+#' @param data Data frame containing location columns (state_province, country)
 #' @param latitudes Numeric latitude vector
 #' @param longitudes Numeric longitude vector
 #' @param elevations Numeric elevation vector (meters)
-#' @returns Character vector combining locality + coordinates
+#' @return Character vector of HTML-formatted location strings
 #' @noRd
 format_location_column <- function(data, latitudes = NULL, longitudes = NULL, elevations = NULL) {
   row_total <- nrow(data)
@@ -290,6 +299,14 @@ serialize_taxa_payload <- function(items, total_count) {
   )
 }
 
+#' Normalize taxa items to data frame format
+#'
+#' Converts various input formats (data frame, JSON string, list) into a consistent
+#' data frame structure for taxa serialization.
+#'
+#' @param items Taxa data as data frame, JSON string, or coercible object
+#' @return Data frame of taxa items, or empty data frame if input is invalid
+#' @noRd
 normalize_taxa_items <- function(items) {
   if (is.null(items)) {
     return(data.frame())
@@ -601,6 +618,7 @@ create_community_list_renderer <- function() {
 
   DT::JS(js_code)
 }
+
 PLOT_TABLE_SPEC <- list(
   table_id = "plot_table",
   endpoint = "plot-observations",

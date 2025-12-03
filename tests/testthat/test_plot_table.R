@@ -155,10 +155,22 @@ test_that("format_location_column combines location, coordinates, and elevation"
 
   result <- format_location_column(data, lats, lngs, elevs)
 
-  expect_equal(result[1], "Virginia<br>USA<br>38.5000, -78.2000 &bull; 500m")
-  expect_equal(result[2], "Maryland<br>USA<br>39.2000, -77.0000 &bull; 250m")
-  expect_equal(result[3], "Canada<br>45.0000, -75.0000")
-  expect_equal(result[4], "Texas<br>120m")
+  expect_equal(
+    result[1],
+    "Virginia<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">38.5000, -78.2000 &bull; 500m</span>"
+  )
+  expect_equal(
+    result[2],
+    "Maryland<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">39.2000, -77.0000 &bull; 250m</span>"
+  )
+  expect_equal(
+    result[3],
+    "<span class=\"text-muted small\">Canada</span><br><span class=\"text-muted small\">45.0000, -75.0000</span>"
+  )
+  expect_equal(
+    result[4],
+    "Texas<br><span class=\"text-muted small\">120m</span>"
+  )
 })
 
 test_that("format_location_column handles missing data", {
@@ -261,8 +273,8 @@ test_that("process_plot_data returns correctly formatted display data", {
   expect_equal(
     result$Location,
     c(
-      "Virginia<br>USA<br>38.5000, -78.2000 &bull; 500m",
-      "Maryland<br>USA<br>39.2000, -77.0000 &bull; 750m"
+      "Virginia<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">38.5000, -78.2000 &bull; 500m</span>",
+      "Maryland<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">39.2000, -77.0000 &bull; 750m</span>"
     )
   )
   expect_equal(result$Year, c("2020", "2021"))
