@@ -115,31 +115,6 @@ test_that("format_location_column handles missing data", {
   expect_equal(result[2], "Not provided")
 })
 
-test_that("format_coordinates handles numeric conversion", {
-  values <- c("38.5", "-78.2", "invalid", NA, "")
-
-  result <- format_coordinates(values)
-
-  expect_type(result, "double")
-  expect_equal(result[1], 38.5)
-  expect_equal(result[2], -78.2)
-  expect_true(is.na(result[3]))
-  expect_true(is.na(result[4]))
-  expect_true(is.na(result[5]))
-})
-
-test_that("format_elevation formats values correctly", {
-  values <- c("500", "1234.56", "invalid", NA, "")
-
-  result <- format_elevations(values)
-
-  expect_equal(result[1], 500)
-  expect_equal(result[2], 1234.56)
-  expect_true(is.na(result[3]))
-  expect_true(is.na(result[4]))
-  expect_true(is.na(result[5]))
-})
-
 test_that("process_plot_data returns correctly formatted display data", {
   plot_data <- data.frame(
     ob_code = c("ob.123", "ob.456"),

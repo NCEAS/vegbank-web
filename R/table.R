@@ -10,6 +10,7 @@ TABLE_PAGE_LENGTH <- 100L
 #'
 #' @param table_config List with table configuration options
 #' @returns A DT datatable object ready for display in a Shiny app
+#' @importFrom utils modifyList
 #' @noRd
 create_table <- function(table_config = list()) {
   if (is.null(table_config) || !is.list(table_config)) {
@@ -793,6 +794,7 @@ truncate_text_with_ellipsis <- function(values, max_chars = 680L) {
 #' @param parsed Raw API response (data frame, list, or nested structure)
 #' @param schema_template Zero-row data frame with correct column types to return on coercion failure
 #' @return Data frame, or empty_template if coercion fails
+#' @importFrom dplyr bind_rows
 #' @noRd
 coerce_api_response <- function(parsed, schema_template) {
   if (is.null(parsed)) {

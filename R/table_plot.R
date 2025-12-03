@@ -102,9 +102,9 @@ process_plot_data <- function(plot_data) {
   years <- clean_column_data(plot_data, "year")
 
   # Format numeric columns
-  latitudes <- format_coordinates(plot_data$latitude)
-  longitudes <- format_coordinates(plot_data$longitude)
-  elevations <- format_elevations(plot_data$elevation)
+  latitudes <-   suppressWarnings(as.numeric(plot_data$latitude))
+  longitudes <- suppressWarnings(as.numeric(plot_data$longitude))
+  elevations <- suppressWarnings(as.numeric(plot_data$elevation))
 
   locations <- format_location_column(plot_data, latitudes, longitudes, elevations)
 
@@ -142,33 +142,6 @@ process_plot_data <- function(plot_data) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
-}
-
-
-#' Format coordinate values safely
-#'
-#' @param values Vector of coordinate strings/numbers
-#' @returns Numeric vector with invalid entries as NA_real_
-#' @noRd
-format_coordinates <- function(values) {
-  if (is.null(values)) {
-    return(rep(NA_real_, length(values)))
-  }
-
-  suppressWarnings(as.numeric(values))
-}
-
-#' Format elevation values safely
-#'
-#' @param values Vector of elevation strings/numbers
-#' @returns Numeric vector with invalid entries as NA_real_
-#' @noRd
-format_elevations <- function(values) {
-  if (is.null(values)) {
-    return(rep(NA_real_, length(values)))
-  }
-
-  suppressWarnings(as.numeric(values))
 }
 
 #' Build HTML-friendly location string from components
