@@ -2,10 +2,7 @@ test_that("build_project_table configures a remote datatable", {
   pkg_env <- asNamespace("vegbankweb")
 
   with_mocked_bindings(
-    create_table = function(data_sources, required_sources, process_function, table_config) {
-      expect_length(data_sources, 0)
-      expect_length(required_sources, 0)
-      expect_null(process_function)
+    create_table = function(table_config) {
       expect_true(is.list(table_config))
       structure(list(options = list()), class = "datatables")
     },
@@ -17,8 +14,8 @@ test_that("build_project_table configures a remote datatable", {
   )
 })
 
-test_that("create_project_table_config wires AJAX data source", {
-  config <- create_project_table_config()
+test_that("project table spec wires AJAX data source", {
+  config <- build_table_config_from_spec(vegbankweb:::PROJECT_TABLE_SPEC)
 
   expect_true(is.list(config))
   expect_equal(length(config$column_defs), 7)
@@ -72,35 +69,8 @@ test_that("process_project_data formats normalized data", {
 })
 
 test_that("process_project_data handles empty input", {
-  result <- process_project_data(create_empty_project_df())
+  result <- process_project_data(vegbankweb:::PROJECT_TABLE_SCHEMA_TEMPLATE)
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
   expect_equal(colnames(result), c("Actions", "Name", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
-})
-
-test_that("normalize_project_data enforces schema", {
-  raw <- data.frame(
-    project_name = "Test",
-    obs_count = "5",
-    extra_col = "ignore",
-    stringsAsFactors = FALSE
-  )
-
-  normalized <- normalize_project_data(raw)
-
-  expect_equal(colnames(normalized), PROJECT_TABLE_FIELDS)
-  expect_equal(normalized$project_name, "Test")
-  expect_equal(normalized$obs_count, 5L)
-  expect_true(is.na(normalized$project_description))
-})
-
-test_that("coerce_project_page flattens nested responses", {
-  nested <- list(list(data = list(
-    pj_code = "PJ.1",
-    project_name = "Nested"
-  )))
-
-  result <- coerce_project_page(nested)
-  expect_s3_class(result, "data.frame")
-  expect_equal(result$project_name, "Nested")
 })

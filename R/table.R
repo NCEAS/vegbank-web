@@ -8,31 +8,18 @@ TABLE_PAGE_LENGTH <- 100L
 
 #' Create a table with the given configuration
 #'
-#' @param data_sources List of data frames required for the table
-#' @param required_sources Character vector of keys in data_sources that must be present
-#' @param process_function Function to process the data into display format
 #' @param table_config List with table configuration options
 #' @returns A DT datatable object ready for display in a Shiny app
+#' @importFrom utils modifyList
 #' @noRd
-create_table <- function(data_sources, required_sources, process_function = NULL, table_config = list()) {
+create_table <- function(table_config = list()) {
+  if (is.null(table_config) || !is.list(table_config)) {
+    stop("table_config must be a list")
+  }
+
   session <- shiny::getDefaultReactiveDomain()
-  required_sources <- required_sources %||% character(0)
 
-  if (length(required_sources) > 0) {
-    if (is_any_data_missing(data_sources, required_sources, table_config$empty_message)) {
-      return(create_empty_table(table_config$empty_message))
-    }
-  }
-
-  display_data <- table_config$initial_data
-
-  if (is.null(display_data) && !is.null(process_function)) {
-    display_data <- process_function(data_sources)
-  }
-
-  if (is.null(display_data)) {
-    display_data <- data.frame()
-  }
+  display_data <- table_config$initial_data %||% data.frame()
 
   column_defs <- table_config$column_defs %||% list()
 
@@ -75,54 +62,14 @@ create_table <- function(data_sources, required_sources, process_function = NULL
     datatable_args <- utils::modifyList(datatable_args, table_config$datatable_args)
   }
 
-  do.call(DT::datatable, datatable_args)
-}
+  widget <- do.call(DT::datatable, datatable_args)
 
-#' Check if any required data sources are missing
-#'
-#' @param data_sources List of data frames
-#' @param required_sources Character vector of keys in data_sources that must be present
-#' @param error_message Optional custom error message
-#' @returns TRUE if any required data is missing, FALSE otherwise
-#' @noRd
-is_any_data_missing <- function(data_sources, required_sources, error_message = NULL) {
-  is_missing <- FALSE
-
-  is_missing <- sapply(
-    required_sources,
-    function(source) {
-      is.null(data_sources[[source]]) || nrow(data_sources[[source]]) == 0
-    }
-  )
-
-  if (any(is_missing)) {
-    missing_list <- paste(required_sources[is_missing], collapse = ", ")
-    shiny::showNotification(
-      error_message %||% paste(
-        "Missing required data sources:",
-        missing_list, "- Please try again or check your connection."
-      ),
-      type = "error"
-    )
-    return(TRUE)
+  if (is.null(table_config$initial_data) && is.null(widget$x$data)) {
+    # Ensure widget always carries a data frame, even when AJAX supplies rows later
+    widget$x$data <- data.frame()
   }
-  FALSE
-}
 
-#' Create an empty DT table for missing data
-#'
-#' @param message Optional custom message to display
-#' @returns A DT datatable with a message indicating no data is available
-#' @noRd
-create_empty_table <- function(message = NULL) {
-  DT::datatable(
-    data.frame(
-      "No.Data.Available" = message %||% "Please try again or check your connection",
-      check.names = FALSE, stringsAsFactors = FALSE
-    ),
-    options = list(dom = "t"),
-    rownames = FALSE
-  )
+  widget
 }
 
 #' Clean a column in data, replacing NA/empty with a default value and capitalizing first letter of first word
@@ -167,8 +114,10 @@ clean_column_dates <- function(data, column_name, default_value = "Not provided"
   }
 
   column <- data[[column_name]]
-  vapply(column, format_date, character(1), default_value = default_value,
-         format_string = date_format, USE.NAMES = FALSE)
+  vapply(column, format_date, character(1),
+    default_value = default_value,
+    format_string = date_format, USE.NAMES = FALSE
+  )
 }
 
 # TODO: Soon to be deprecated by JS renderer
@@ -639,7 +588,7 @@ build_remote_table_config <- function(column_defs,
 #'   Columns without an explicit prototype default to character() columns.
 #' @returns A zero-row data frame suitable for use as an empty template
 #' @noRd
-build_zero_row_df <- function(column_names, column_types = NULL) {
+build_zero_row_df <- function(column_names, column_types = NULL, check_names = TRUE) {
   if (is.null(column_names) || !length(column_names)) {
     return(data.frame()[FALSE, , drop = FALSE])
   }
@@ -652,7 +601,126 @@ build_zero_row_df <- function(column_names, column_types = NULL) {
     template[[name]] <- prototype
   }
 
-  as.data.frame(template, stringsAsFactors = FALSE)[FALSE, , drop = FALSE]
+  as.data.frame(template, stringsAsFactors = FALSE, check.names = check_names)[FALSE, , drop = FALSE]
+}
+
+#' Build a typed zero-row schema template for table sources
+#'
+#' @param column_names Character vector of column names
+#' @param numeric_columns Columns coerced to numeric()
+#' @param integer_columns Columns coerced to integer()
+#' @param logical_columns Columns coerced to logical()
+#' @param list_columns Columns coerced to list()
+#' @param column_types Optional named list of prototype vectors overriding defaults
+#' @returns Zero-row data frame with requested structure
+#' @noRd
+build_schema_template <- function(column_names,
+                                  numeric_columns = NULL,
+                                  integer_columns = NULL,
+                                  logical_columns = NULL,
+                                  list_columns = NULL,
+                                  column_types = NULL) {
+  column_types <- column_types %||% list()
+  resolver <- function(name) {
+    if (!is.null(column_types[[name]])) {
+      return(column_types[[name]])
+    }
+    if (!is.null(numeric_columns) && name %in% numeric_columns) {
+      return(numeric())
+    }
+    if (!is.null(integer_columns) && name %in% integer_columns) {
+      return(integer())
+    }
+    if (!is.null(logical_columns) && name %in% logical_columns) {
+      return(logical())
+    }
+    character()
+  }
+
+  resolved <- lapply(column_names, resolver)
+  names(resolved) <- column_names
+
+  df <- build_zero_row_df(column_names, resolved)
+  if (!is.null(list_columns) && length(list_columns)) {
+    for (name in intersect(list_columns, column_names)) {
+      df[[name]] <- vector("list", 0)
+    }
+  }
+
+  df
+}
+
+#' Build a zero-row display template preserving column names
+#'
+#' @param column_names Character vector of display column names
+#' @param column_types Optional named list overriding default character() prototype
+#' @returns Zero-row data frame preserving exact column names
+#' @noRd
+build_display_template <- function(column_names, column_types = NULL) {
+  build_zero_row_df(column_names, column_types, check_names = FALSE)
+}
+
+#' Build a remote table configuration from a metadata specification
+#'
+#' @param spec List describing the table (id, endpoint, schema, handlers, etc.)
+#' @returns A table_config list suitable for `create_table()`
+#' @noRd
+build_table_config_from_spec <- function(spec) {
+  required_fields <- c(
+    "table_id", "endpoint", "remote_label", "column_defs",
+    "schema_fields", "coerce_fn", "normalize_fn", "display_fn"
+  )
+  missing <- required_fields[vapply(required_fields, function(field) is.null(spec[[field]]), logical(1))]
+  if (length(missing)) {
+    stop("Table spec missing required field(s): ", paste(missing, collapse = ", "))
+  }
+
+  schema_template <- spec$schema_template %||% build_zero_row_df(spec$schema_fields)
+  initial_display <- spec$initial_display
+  if (is.null(initial_display)) {
+    initial_display <- spec$display_fn(schema_template)
+  }
+
+  data_source_args <- utils::modifyList(
+    list(
+      table_id = spec$table_id,
+      endpoint = spec$endpoint,
+      coerce_fn = spec$coerce_fn,
+      normalize_fn = spec$normalize_fn,
+      display_fn = spec$display_fn,
+      label = spec$remote_label,
+      schema_fields = spec$schema_fields,
+      empty_factory = function() schema_template
+    ),
+    spec$data_source %||% list()
+  )
+
+  data_source_spec <- do.call(build_data_source_spec, data_source_args)
+
+  table_config <- build_remote_table_config(
+    column_defs = spec$column_defs,
+    initial_data = initial_display,
+    data_source_spec = data_source_spec,
+    remote_label = spec$remote_label,
+    page_length = spec$page_length,
+    options = spec$options %||% list(),
+    datatable_args = spec$datatable_args
+  )
+
+  if (!is.null(spec$ajax_factory)) {
+    table_config$ajax <- spec$ajax_factory
+  }
+
+  table_config
+}
+
+#' Build and render a table directly from a metadata spec
+#'
+#' @param spec Table metadata list accepted by `build_table_config_from_spec()`
+#' @returns DT datatable widget
+#' @noRd
+build_table_from_spec <- function(spec) {
+  create_table(table_config = build_table_config_from_spec(spec))
 }
 
 #' Normalize and validate search term from DataTables request
@@ -718,10 +786,174 @@ truncate_text_with_ellipsis <- function(values, max_chars = 680L) {
   values
 }
 
+#' Coerce API response to a data frame with standard unwrapping
+#'
+#' Handles common vegbankr response structures by recursively unwrapping nested
+#' lists and data keys. Provides consistent error handling across all table types.
+#'
+#' @param parsed Raw API response (data frame, list, or nested structure)
+#' @param schema_template Zero-row data frame with correct column types to return on coercion failure
+#' @return Data frame, or empty_template if coercion fails
+#' @importFrom dplyr bind_rows
+#' @noRd
+coerce_api_response <- function(parsed, schema_template) {
+  if (is.null(parsed)) {
+    return(schema_template)
+  }
+  if (is.data.frame(parsed)) {
+    return(parsed)
+  }
+  if (is.list(parsed)) {
+    # Unwrap common vegbankr envelope structures
+    if (!is.null(parsed$data)) {
+      return(coerce_api_response(parsed$data, schema_template))
+    }
+    # Handle single-element list wrappers (both named and unnamed)
+    if (length(parsed) == 1) {
+      return(coerce_api_response(parsed[[1]], schema_template))
+    }
+    # Try converting list of records to data frame
+    tryCatch(
+      {
+        df <- dplyr::bind_rows(parsed)
+        return(df)
+      },
+      error = function(e) {
+        # Fall back to as.data.frame
+        tryCatch(
+          as.data.frame(parsed, stringsAsFactors = FALSE),
+          error = function(e2) schema_template
+        )
+      }
+    )
+  }
+
+  tryCatch(
+    as.data.frame(parsed, stringsAsFactors = FALSE),
+    error = function(e) schema_template
+  )
+}
+
+#' Normalize API data to match schema template
+#'
+#' Ensures all expected fields exist and appear in the correct order. Coerces field
+#' types to match the schema template when they differ (e.g., character to numeric).
+#'
+#' @param df Raw data frame from API (after coercion)
+#' @param schema_template Zero-row data frame with correct column types
+#' @return Normalized data frame with all expected columns, or schema_template if empty
+#' @noRd
+normalize_table_data <- function(df, schema_template) {
+  if (is.null(df)) {
+    return(schema_template)
+  }
+
+  if (!is.data.frame(df)) {
+    df <- tryCatch(
+      as.data.frame(df, stringsAsFactors = FALSE),
+      error = function(e) schema_template
+    )
+  }
+
+  if (!nrow(df)) {
+    return(schema_template)
+  }
+
+  # Add any missing fields using prototypes from schema template
+  missing_fields <- setdiff(names(schema_template), names(df))
+  for (field in missing_fields) {
+    # Use the schema template's column as a prototype
+    prototype <- schema_template[[field]]
+    if (is.list(prototype)) {
+      df[[field]] <- vector("list", nrow(df))
+    } else {
+      df[[field]] <- rep(prototype[NA_integer_], nrow(df))
+    }
+  }
+
+  # Reorder columns to match schema
+  df <- df[, names(schema_template), drop = FALSE]
+
+  # Coerce types to match schema template where they differ
+  for (col_name in names(schema_template)) {
+    template_type <- class(schema_template[[col_name]])[1]
+    data_type <- class(df[[col_name]])[1]
+
+    # Only coerce if types don't match and template isn't just character
+    if (data_type != template_type && template_type != "character") {
+      if (template_type == "numeric") {
+        df[[col_name]] <- suppressWarnings(as.numeric(df[[col_name]]))
+      } else if (template_type == "integer") {
+        df[[col_name]] <- suppressWarnings(as.integer(df[[col_name]]))
+      } else if (template_type == "logical") {
+        df[[col_name]] <- as.logical(df[[col_name]])
+      }
+      # List columns already handled above, no coercion needed
+    }
+  }
+
+  rownames(df) <- NULL
+  df
+}
+
+#' Create a coercion function for table specs
+#'
+#' Factory that produces a coercion function bound to a specific schema template.
+#' Eliminates the need for per-table coercion wrapper functions.
+#'
+#' @param schema_template Zero-row data frame with correct column types
+#' @return Function that coerces API responses to data frames
+#' @noRd
+create_coercer <- function(schema_template) {
+  function(parsed) {
+    coerce_api_response(parsed, schema_template)
+  }
+}
+
+#' Create a normalization function for table specs
+#'
+#' Factory that produces a normalization function with optional post-processing.
+#' Handles common patterns like NA-to-zero conversion and custom transformations.
+#'
+#' @param schema_template Zero-row data frame with correct column types
+#' @param na_to_zero_fields Character vector of fields where NA should become 0
+#' @param custom_transforms List of functions to apply after normalization
+#' @return Function that normalizes data frames to match schema
+#' @noRd
+create_normalizer <- function(schema_template, na_to_zero_fields = NULL, custom_transforms = NULL) {
+  function(df) {
+    normalized <- normalize_table_data(df, schema_template)
+
+    # Handle NA → 0 for specified integer/numeric fields
+    if (!is.null(na_to_zero_fields)) {
+      for (field in na_to_zero_fields) {
+        if (field %in% names(normalized)) {
+          col_type <- class(normalized[[field]])[1]
+          if (col_type == "integer") {
+            normalized[[field]][is.na(normalized[[field]])] <- 0L
+          } else if (col_type == "numeric") {
+            normalized[[field]][is.na(normalized[[field]])] <- 0
+          }
+        }
+      }
+    }
+
+    # Apply custom transformations if provided
+    if (!is.null(custom_transforms)) {
+      for (transform_fn in custom_transforms) {
+        normalized <- transform_fn(normalized)
+      }
+    }
+
+    normalized
+  }
+}
+
 #' Sanitize data frame rows for DataTables JSON responses
 #'
 #' Mirrors the core behavior of DT's internal cleanDataFrame helper so we can
-#' keep our dependency on exported APIs only.
+#' keep our dependency on exported APIs only. Removes names and dimensions from
+#' columns to ensure clean JSON serialization.
 #'
 #' @param data Data frame (or other object) destined for DataTables AJAX
 #' @return Object with unnamed columns whose values have been stripped of dims

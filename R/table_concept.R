@@ -62,16 +62,12 @@ CONCEPT_CONFIG <- list(
 #' @noRd
 build_concept_table <- function(concept_type = c("plant", "community")) {
   concept_type <- match.arg(concept_type)
-  config <- get_concept_config(concept_type)
+  spec <- CONCEPT_TABLE_SPECS[[concept_type]]
+  if (is.null(spec)) {
+    stop("No concept table spec registered for type: ", concept_type)
+  }
 
-  table_config <- create_concept_table_config(config)
-
-  create_table(
-    data_sources = list(),
-    required_sources = character(0),
-    process_function = NULL,
-    table_config = table_config
-  )
+  build_table_from_spec(spec)
 }
 
 #' Process concept data into display format
@@ -83,9 +79,20 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
 process_concept_data <- function(data_sources, concept_type = "plant") {
   config <- get_concept_config(concept_type)
 
-  concept_data <- data_sources[[config$data_key]]
+  concept_data <- data_sources
+  if (is.list(data_sources) && !is.data.frame(data_sources)) {
+    concept_data <- data_sources[[config$data_key]]
+  }
+
   if (is.null(concept_data)) {
-    concept_data <- create_empty_source_df(concept_type)
+    concept_data <- build_schema_template(config$fields)
+  }
+
+  if (!is.data.frame(concept_data)) {
+    concept_data <- tryCatch(
+      as.data.frame(concept_data, stringsAsFactors = FALSE),
+      error = function(e) create_empty_source_df(concept_type)
+    )
   }
 
   display_names <- clean_column_data(concept_data, config$name_field)
@@ -123,49 +130,6 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   names(result)[names(result) == "Name"] <- config$name_label
 
   result
-}
-
-#' Build table configuration for remote concept data tables
-#'
-#' Creates the complete configuration object needed for server-side concept tables,
-#' including column definitions, AJAX setup, and remote data options.
-#'
-#' @param config A concept configuration list from CONCEPT_CONFIG
-#' @returns A list containing table_config elements for create_table()
-#' @noRd
-create_concept_table_config <- function(config) {
-  link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
-
-  column_defs <- create_concept_column_defs(link_input_id)
-  empty_source <- create_empty_source_df(config$concept_type)
-  empty_sources <- setNames(list(empty_source), config$data_key)
-  initial_display <- process_concept_data(empty_sources, concept_type = config$concept_type)
-
-  data_source_spec <- build_data_source_spec(
-    table_id = config$table_id,
-    endpoint = config$endpoint,
-    coerce_fn = function(parsed) coerce_api_page(parsed, config$concept_type),
-    normalize_fn = function(data) normalize_concepts(data, config$concept_type),
-    display_fn = function(normalized) {
-      data_sources <- setNames(list(normalized), config$data_key)
-      process_concept_data(data_sources, concept_type = config$concept_type)
-    },
-    label = config$remote_label,
-    schema_fields = config$fields,
-    empty_factory = function() create_empty_source_df(config$concept_type),
-    page_length = config$page_length %||% TABLE_PAGE_LENGTH,
-    clean_rows_fn = sanitize_dt_rows,
-    count_clean_names = FALSE
-  )
-
-  build_remote_table_config(
-    column_defs = column_defs,
-    initial_data = initial_display,
-    data_source_spec = data_source_spec,
-    remote_label = config$remote_label,
-    page_length = config$page_length,
-    options = list()
-  )
 }
 
 #' Create column definitions for concept DataTables
@@ -210,91 +174,43 @@ create_concept_column_defs <- function(detail_input_id) {
 #' Normalize and validate concept data from API response
 #'
 #' Ensures API response data contains all required fields with proper types.
-#' Fills missing fields with NA, coerces types, and ensures consistent structure
-#' for downstream processing. Returns an empty data frame if input is invalid.
+#' Uses shared normalization helper with special handling for logical and numeric fields.
 #'
 #' @param df A data frame (or coercible object) from the VegBank API
 #' @param concept_type Either "plant" or "community"
 #' @returns A validated and normalized data frame with all expected columns
 #' @noRd
 normalize_concepts <- function(df, concept_type) {
-  if (is.null(df)) {
-    return(create_empty_source_df(concept_type))
-  }
-  if (!is.data.frame(df)) {
-    df <- tryCatch(
-      as.data.frame(df, stringsAsFactors = FALSE),
-      error = function(e) create_empty_source_df(concept_type)
-    )
-  }
-  if (!nrow(df)) {
-    return(create_empty_source_df(concept_type))
-  }
-
   config <- get_concept_config(concept_type)
-  missing_fields <- setdiff(config$fields, names(df))
-  for (field in missing_fields) {
-    df[[field]] <- NA_character_
+  schema_template <- build_schema_template(config$fields)
+  
+  # Custom transform for concept-specific type handling
+  parse_current_accepted <- function(normalized) {
+    if ("current_accepted" %in% names(normalized)) {
+      normalized$current_accepted <- parse_logical_vector(normalized$current_accepted)
+    }
+    normalized
   }
-
-  df <- df[, config$fields, drop = FALSE]
-
-  df[[config$code_field]] <- as.character(df[[config$code_field]])
-  df[[config$name_field]] <- as.character(df[[config$name_field]])
-  df[[config$level_field]] <- as.character(df[[config$level_field]])
-  df[[config$description_field]] <- as.character(df[[config$description_field]])
-  df$concept_rf_code <- as.character(df$concept_rf_code)
-  df$concept_rf_name <- as.character(df$concept_rf_name)
-  df$current_accepted <- parse_logical_vector(df$current_accepted)
-  suppressWarnings(df$obs_count <- as.numeric(df$obs_count))
-  df$obs_count[is.na(df$obs_count)] <- 0
-
-  rownames(df) <- NULL
-  df
-}
-
-#' Create an empty data frame with concept-specific schema
-#'
-#' Generates a zero-row data frame with all required columns for a given concept type.
-#' Used as a template for empty tables and to ensure consistent structure.
-#'
-#' @param concept_type Either "plant" or "community"
-#' @returns A zero-row data frame with all expected concept columns
-#' @noRd
-create_empty_source_df <- function(concept_type) {
-  config <- get_concept_config(concept_type)
-  build_zero_row_df(config$fields)
+  
+  create_normalizer(
+    schema_template,
+    na_to_zero_fields = "obs_count",
+    custom_transforms = list(parse_current_accepted)
+  )(df)
 }
 
 #' Coerce API response into a data frame
 #'
-#' Recursively extracts and converts various API response structures into a data frame.
-#' Handles nested lists, single-element wrappers, and already-formatted data frames.
-#' Returns an empty concept-specific data frame if coercion fails.
+#' Uses shared coercion helper with concept-specific empty template.
 #'
 #' @param parsed The parsed API response object
 #' @param concept_type Either "plant" or "community"
 #' @returns A data frame, or an empty concept-specific data frame on failure
 #' @noRd
 coerce_api_page <- function(parsed, concept_type) {
-  if (is.null(parsed)) {
-    return(create_empty_source_df(concept_type))
-  }
-  if (is.data.frame(parsed)) {
-    return(parsed)
-  }
-  if (is.list(parsed)) {
-    if (!is.null(parsed$data)) {
-      return(coerce_api_page(parsed$data, concept_type))
-    }
-    if (length(parsed) == 1) {
-      return(coerce_api_page(parsed[[1]], concept_type))
-    }
-  }
-  tryCatch(
-    as.data.frame(parsed, stringsAsFactors = FALSE),
-    error = function(e) create_empty_source_df(concept_type)
-  )
+  config <- get_concept_config(concept_type)
+  schema_template <- build_schema_template(config$fields)
+  create_coercer(schema_template)(parsed)
 }
 
 #' Retrieve configuration for a given concept type
@@ -328,19 +244,35 @@ create_action_button_renderer <- function(input_id = "link_click", button_label 
   js_code <- sprintf(
     "function(data, type, row, meta) {
       if (type === 'display') {
-        if (!data || data === '') return '<span>No Data</span>';
-        
-        return '<div class=\"btn-group btn-group-sm\">' +
-               '<button class=\"btn btn-sm btn-outline-primary\" ' +
-               \"onclick='Shiny.setInputValue(\" + JSON.stringify('%s') + ', ' + JSON.stringify(data) + \", {priority: \\\"event\\\"}); return false;'>\" +
-               '%s' +
-               '</button>' +
+        if (!data || data === '') {
+          return '<span class=\"text-muted\">No Data</span>';
+        }
+
+        var inputId = %s;
+        var label = %s;
+
+        var escapeAttr = function(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        };
+
+        var safeValue = escapeAttr(data);
+        var safeId = escapeAttr(inputId);
+        var safeLabel = escapeAttr(label);
+
+        return '<div class=\"btn-group btn-group-sm\" role=\"group\">' +
+               '<button type=\"button\" class=\"btn btn-sm btn-outline-primary dt-shiny-action\" ' +
+               'data-input-id=\"' + safeId + '\" data-value=\"' + safeValue + '\">' + safeLabel + '</button>' +
                '</div>';
       }
       return data;
     }",
-    input_id,
-    button_label
+    jsonlite::toJSON(input_id, auto_unbox = TRUE),
+    jsonlite::toJSON(button_label, auto_unbox = TRUE)
   )
 
   DT::JS(js_code)
@@ -379,27 +311,47 @@ create_status_badge_renderer <- function() {
 create_reference_link_renderer <- function() {
   js_code <- "function(data, type, row, meta) {
       if (type === 'display') {
+        var escapeHtml = function(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        };
+
+        var escapeAttr = function(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        };
+
         // data is the reference code; the display name is in the hidden sort column
-        var code = data;
-        var name = row && row.length > 6 ? row[6] : null;
+        var code = data === null || typeof data === 'undefined' ? '' : String(data);
+        var name = row && row.length > 6 ? row[6] : '';
 
         if (name === null || name === undefined) {
           name = '';
         }
+
         name = String(name);
         if (name.trim() === '') {
           name = 'Not provided';
         }
 
+        var safeName = escapeHtml(name);
+
         // If \"Not provided\" or no code, show as plain text
-        if (name === 'Not provided' || !code || code === '') {
-          return '<span>' + name + '</span>';
+        if (name === 'Not provided' || !code) {
+          return '<span>' + safeName + '</span>';
         }
 
-        // Create clickable link
-        return '<a href=\"#\" data-code=\"' + code +
-                  '\" onclick=\"Shiny.setInputValue(\\'ref_link_click\\', \\'' + code +
-                  '\\', {priority: \\'event\\'}); return false;\">' + name + '</a>';
+        var safeCodeAttr = escapeAttr(code);
+        return '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"ref_link_click\" data-value=\"' +
+               safeCodeAttr + '\">' + safeName + '</a>';
       }
       // For sort/filter/type, return the raw data (sorting handled by hidden column)
       return data;
@@ -407,3 +359,34 @@ create_reference_link_renderer <- function() {
 
   DT::JS(js_code)
 }
+
+CONCEPT_TABLE_SPECS <- local({
+  specs <- lapply(CONCEPT_CONFIG, function(config) {
+    schema_template <- build_schema_template(config$fields)
+    link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
+
+    list(
+      table_id = config$table_id,
+      endpoint = config$endpoint,
+      remote_label = config$remote_label,
+      column_defs = create_concept_column_defs(link_input_id),
+      schema_fields = config$fields,
+      schema_template = schema_template,
+      coerce_fn = function(parsed) coerce_api_page(parsed, config$concept_type),
+      normalize_fn = function(data) normalize_concepts(data, config$concept_type),
+      display_fn = function(normalized) process_concept_data(normalized, concept_type = config$concept_type),
+      data_source = list(
+        page_length = config$page_length %||% TABLE_PAGE_LENGTH,
+        clean_rows_fn = sanitize_dt_rows,
+        count_clean_names = FALSE
+      ),
+      page_length = config$page_length,
+      options = list(),
+      datatable_args = list(),
+      initial_display = process_concept_data(schema_template, concept_type = config$concept_type)
+    )
+  })
+
+  names(specs) <- names(CONCEPT_CONFIG)
+  specs
+})

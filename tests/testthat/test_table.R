@@ -16,25 +16,7 @@ load_table_module_env <- function() {
   table_env
 }
 
-test_that("create_table returns empty widget when required data missing", {
-  skip_if_not_installed("DT")
-
-  table_env <- load_table_module_env()
-  create_table_fn <- table_env$create_table
-
-  result <- with_mock_shiny_notifications({
-    create_table_fn(
-      data_sources = list(existing = data.frame()),
-      required_sources = c("existing", "missing"),
-      process_function = function(x) x
-    )
-  })
-
-  expect_s3_class(result, "datatables")
-  expect_match(result$x$data[[1]], "Please try again")
-})
-
-test_that("create_table processes data correctly when all sources available", {
+test_that("create_table uses provided initial data", {
   skip_if_not_installed("DT")
 
   table_env <- load_table_module_env()
@@ -42,14 +24,22 @@ test_that("create_table processes data correctly when all sources available", {
 
   test_df <- data.frame(a = 1:3, b = letters[1:3], stringsAsFactors = FALSE)
 
-  widget <- create_table_fn(
-    data_sources = list(test_data = test_df),
-    required_sources = "test_data",
-    process_function = function(sources) sources$test_data
-  )
+  widget <- create_table_fn(table_config = list(initial_data = test_df))
 
   expect_s3_class(widget, "datatables")
   expect_equal(widget$x$data, test_df)
+})
+
+test_that("create_table falls back to empty data when initial_data missing", {
+  skip_if_not_installed("DT")
+
+  table_env <- load_table_module_env()
+  create_table_fn <- table_env$create_table
+
+  widget <- create_table_fn(table_config = list())
+
+  expect_s3_class(widget, "datatables")
+  expect_equal(nrow(widget$x$data), 0)
 })
 
 test_that("create_action_buttons generates HTML buttons correctly", {
@@ -153,10 +143,7 @@ test_that("create_table wires DataTables state load from URL", {
   table_env <- load_table_module_env()
   create_table_fn <- table_env$create_table
 
-  data_sources <- list(test = data.frame(a = 1))
-  process_fn <- function(sources) sources$test
-
-  widget <- create_table_fn(data_sources, required_sources = NULL, process_function = process_fn)
+  widget <- create_table_fn(table_config = list(initial_data = data.frame(a = 1)))
   expect_s3_class(widget, "datatables")
 
   options <- widget$x$options
@@ -173,13 +160,111 @@ test_that("create_table registers DT state save callback for handshake", {
   table_env <- load_table_module_env()
   create_table_fn <- table_env$create_table
 
-  data_sources <- list(test = data.frame(a = 1))
-  process_fn <- function(sources) sources$test
-
-  widget <- create_table_fn(data_sources, required_sources = NULL, process_function = process_fn)
+  widget <- create_table_fn(table_config = list(initial_data = data.frame(a = 1)))
   options <- widget$x$options
 
   save_cb <- options$stateSaveCallback
   expect_s3_class(save_cb, "JS_EVAL")
   expect_match(as.character(save_cb), "window\\.vegbankSaveTableState")
+})
+
+# Factory function tests
+test_that("create_coercer produces working coercion functions", {
+  table_env <- load_table_module_env()
+  create_coercer <- table_env$create_coercer
+  coerce_api_response <- table_env$coerce_api_response
+  
+  schema <- data.frame(a = integer(), b = character(), stringsAsFactors = FALSE)
+  coercer <- create_coercer(schema)
+  
+  # Test NULL handling
+  expect_equal(coercer(NULL), schema)
+  
+  # Test data frame pass-through
+  df <- data.frame(a = 1:2, b = c("x", "y"), stringsAsFactors = FALSE)
+  expect_equal(coercer(df), df)
+  
+  # Test nested list unwrapping
+  nested <- list(data = df)
+  expect_equal(coercer(nested), df)
+  
+  # Test single-element list unwrapping
+  wrapped <- list(df)
+  expect_s3_class(coercer(wrapped), "data.frame")
+})
+
+test_that("create_normalizer produces working normalization functions", {
+  table_env <- load_table_module_env()
+  create_normalizer <- table_env$create_normalizer
+  
+  schema <- data.frame(
+    id = integer(),
+    name = character(),
+    count = integer(),
+    stringsAsFactors = FALSE
+  )
+  
+  # Test basic normalization
+  normalizer <- create_normalizer(schema)
+  raw <- data.frame(id = 1, name = "test", count = 5, stringsAsFactors = FALSE)
+  result <- normalizer(raw)
+  
+  expect_equal(names(result), c("id", "name", "count"))
+  expect_type(result$id, "integer")
+  expect_type(result$name, "character")
+  
+  # Test NA-to-zero conversion
+  normalizer_with_zero <- create_normalizer(schema, na_to_zero_fields = "count")
+  raw_with_na <- data.frame(id = 1, name = "test", count = NA_integer_, stringsAsFactors = FALSE)
+  result_zero <- normalizer_with_zero(raw_with_na)
+  
+  expect_equal(result_zero$count, 0L)
+  
+  # Test custom transforms
+  add_uppercase <- function(df) {
+    df$name <- toupper(df$name)
+    df
+  }
+  normalizer_custom <- create_normalizer(schema, custom_transforms = list(add_uppercase))
+  result_custom <- normalizer_custom(raw)
+  
+  expect_equal(result_custom$name, "TEST")
+})
+
+test_that("create_normalizer handles multiple NA-to-zero fields", {
+  table_env <- load_table_module_env()
+  create_normalizer <- table_env$create_normalizer
+  
+  schema <- data.frame(
+    field1 = integer(),
+    field2 = integer(),
+    field3 = character(),
+    stringsAsFactors = FALSE
+  )
+  
+  normalizer <- create_normalizer(schema, na_to_zero_fields = c("field1", "field2"))
+  raw <- data.frame(
+    field1 = NA_integer_,
+    field2 = NA_integer_,
+    field3 = "test",
+    stringsAsFactors = FALSE
+  )
+  
+  result <- normalizer(raw)
+  expect_equal(result$field1, 0L)
+  expect_equal(result$field2, 0L)
+  expect_equal(result$field3, "test")
+})
+
+test_that("create_normalizer preserves existing non-NA values", {
+  table_env <- load_table_module_env()
+  create_normalizer <- table_env$create_normalizer
+  
+  schema <- data.frame(count = integer(), stringsAsFactors = FALSE)
+  normalizer <- create_normalizer(schema, na_to_zero_fields = "count")
+  
+  raw <- data.frame(count = 42L, stringsAsFactors = FALSE)
+  result <- normalizer(raw)
+  
+  expect_equal(result$count, 42L)
 })

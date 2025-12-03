@@ -2,10 +2,7 @@ test_that("build_plant_table delegates to concept builder with plant config", {
   pkg_env <- asNamespace("vegbankweb")
 
   with_mocked_bindings(
-    create_table = function(data_sources, required_sources, process_function, table_config) {
-      expect_equal(length(data_sources), 0)
-      expect_length(required_sources, 0)
-      expect_null(process_function)
+    create_table = function(table_config) {
       expect_equal(length(table_config$column_defs), 9)
       expect_equal(table_config$column_defs[[2]]$targets, 1)
       expect_equal(table_config$column_defs[[2]]$width, "25%")
