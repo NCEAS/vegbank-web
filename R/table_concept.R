@@ -244,19 +244,35 @@ create_action_button_renderer <- function(input_id = "link_click", button_label 
   js_code <- sprintf(
     "function(data, type, row, meta) {
       if (type === 'display') {
-        if (!data || data === '') return '<span>No Data</span>';
-        
-        return '<div class=\"btn-group btn-group-sm\">' +
-               '<button class=\"btn btn-sm btn-outline-primary\" ' +
-               \"onclick='Shiny.setInputValue(\" + JSON.stringify('%s') + ', ' + JSON.stringify(data) + \", {priority: \\\"event\\\"}); return false;'>\" +
-               '%s' +
-               '</button>' +
+        if (!data || data === '') {
+          return '<span class=\"text-muted\">No Data</span>';
+        }
+
+        var inputId = %s;
+        var label = %s;
+
+        var escapeAttr = function(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        };
+
+        var safeValue = escapeAttr(data);
+        var safeId = escapeAttr(inputId);
+        var safeLabel = escapeAttr(label);
+
+        return '<div class=\"btn-group btn-group-sm\" role=\"group\">' +
+               '<button type=\"button\" class=\"btn btn-sm btn-outline-primary dt-shiny-action\" ' +
+               'data-input-id=\"' + safeId + '\" data-value=\"' + safeValue + '\">' + safeLabel + '</button>' +
                '</div>';
       }
       return data;
     }",
-    input_id,
-    button_label
+    jsonlite::toJSON(input_id, auto_unbox = TRUE),
+    jsonlite::toJSON(button_label, auto_unbox = TRUE)
   )
 
   DT::JS(js_code)
@@ -295,27 +311,47 @@ create_status_badge_renderer <- function() {
 create_reference_link_renderer <- function() {
   js_code <- "function(data, type, row, meta) {
       if (type === 'display') {
+        var escapeHtml = function(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        };
+
+        var escapeAttr = function(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        };
+
         // data is the reference code; the display name is in the hidden sort column
-        var code = data;
-        var name = row && row.length > 6 ? row[6] : null;
+        var code = data === null || typeof data === 'undefined' ? '' : String(data);
+        var name = row && row.length > 6 ? row[6] : '';
 
         if (name === null || name === undefined) {
           name = '';
         }
+
         name = String(name);
         if (name.trim() === '') {
           name = 'Not provided';
         }
 
+        var safeName = escapeHtml(name);
+
         // If \"Not provided\" or no code, show as plain text
-        if (name === 'Not provided' || !code || code === '') {
-          return '<span>' + name + '</span>';
+        if (name === 'Not provided' || !code) {
+          return '<span>' + safeName + '</span>';
         }
 
-        // Create clickable link
-        return '<a href=\"#\" data-code=\"' + code +
-                  '\" onclick=\"Shiny.setInputValue(\\'ref_link_click\\', \\'' + code +
-                  '\\', {priority: \\'event\\'}); return false;\">' + name + '</a>';
+        var safeCodeAttr = escapeAttr(code);
+        return '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"ref_link_click\" data-value=\"' +
+               safeCodeAttr + '\">' + safeName + '</a>';
       }
       // For sort/filter/type, return the raw data (sorting handled by hidden column)
       return data;

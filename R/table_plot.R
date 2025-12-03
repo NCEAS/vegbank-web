@@ -371,7 +371,8 @@ create_plot_action_renderer <- function() {
             .replace(/&/g, '&amp;')
             .replace(/\"/g, '&quot;')
             .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+            .replace(/>/g, '&gt;')
+            .replace(/'/g, '&#39;');
         };
 
         var detailButton;
@@ -415,6 +416,22 @@ create_taxon_list_renderer <- function() {
         var taxa = [];
         var total = null;
 
+        var escapeHtml = function(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        };
+
+        var escapeText = function(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        };
+
         if (Array.isArray(payload)) {
           taxa = payload;
         } else if (payload && typeof payload === 'object') {
@@ -437,19 +454,20 @@ create_taxon_list_renderer <- function() {
           var name = taxon.name || 'Unknown';
           var pcCode = taxon.pc_code || '';
           var maxCover = taxon.max_cover;
+          var safeName = escapeText(name);
 
           var nameLink;
           if (pcCode) {
             nameLink = '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"plant_link_click\" data-value=\"' +
-                   pcCode.replace(/\"/g, '&quot;') + '\">' + name + '</a>';
+                   escapeHtml(pcCode) + '\">' + safeName + '</a>';
           } else {
-            nameLink = name;
+            nameLink = '<span>' + safeName + '</span>';
           }
 
           if (maxCover !== null && maxCover !== undefined) {
             var coverText = '(' + Number(maxCover).toFixed(1) + '%)';
             return '<div style=\"display: flex; justify-content: space-between;\"><span>' +
-                   nameLink + '</span><span style=\"margin-left: 8px;\">' + coverText + '</span></div>';
+                   nameLink + '</span><span style=\"margin-left: 8px;\">' + escapeText(coverText) + '</span></div>';
           }
 
           return '<div>' + nameLink + '</div>';
@@ -495,7 +513,8 @@ create_community_list_renderer <- function() {
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(/\"/g, '&quot;');
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
         };
 
         var links = communities.map(function(comm) {
@@ -503,12 +522,13 @@ create_community_list_renderer <- function() {
           var clCode = comm.cl_code || '';
           var commCode = comm.comm_code || '';
           var entry;
+          var safeName = escapeHtml(commName);
 
           if (clCode) {
             entry = '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"comm_class_link_click\" data-value=\"' +
-                   clCode.replace(/\"/g, '&quot;') + '\">' + commName + '</a>';
+                   escapeHtml(clCode) + '\">' + safeName + '</a>';
           } else {
-            entry = commName;
+            entry = '<span>' + safeName + '</span>';
           }
 
           if (commCode && commCode.toUpperCase().indexOf('CEGL') === 0) {

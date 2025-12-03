@@ -115,7 +115,7 @@ test_that("format_location_column handles missing data", {
   expect_equal(result[2], "Not provided")
 })
 
-test_that("format_coordinate handles numeric conversion", {
+test_that("format_coordinates handles numeric conversion", {
   values <- c("38.5", "-78.2", "invalid", NA, "")
 
   result <- format_coordinates(values)
