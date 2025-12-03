@@ -122,6 +122,27 @@ test_that("serialize_nested_column handles NULL and non-list inputs", {
   expect_equal(result_non_list, c("[]", "[]"))
 })
 
+test_that("serialize_taxa_payload encodes totals and rows", {
+  payload <- vegbankweb:::serialize_taxa_payload(
+    data.frame(name = "Species A", pc_code = "pc.1", stringsAsFactors = FALSE),
+    total_count = 4
+  )
+
+  parsed <- jsonlite::fromJSON(payload)
+  expect_equal(parsed$total, 4)
+  expect_equal(parsed$items$name, "Species A")
+
+  payload_no_total <- vegbankweb:::serialize_taxa_payload(NULL, NA)
+  parsed_no_total <- jsonlite::fromJSON(payload_no_total)
+  expect_null(parsed_no_total$total)
+  empty_items <- parsed_no_total$items
+  expect_true(
+    is.null(empty_items) ||
+      (is.data.frame(empty_items) && nrow(empty_items) == 0) ||
+      (is.list(empty_items) && length(empty_items) == 0)
+  )
+})
+
 test_that("format_location_column combines location, coordinates, and elevation", {
   data <- data.frame(
     state_province = c("Virginia", "Maryland", NA, "Texas"),
@@ -251,6 +272,16 @@ test_that("process_plot_data returns correctly formatted display data", {
   expect_type(result$Communities, "character")
   expect_false(result$`Top Taxa`[1] == "[]")
   expect_false(result$Communities[1] == "[]")
+
+  taxa_payloads <- lapply(result$`Top Taxa`, jsonlite::fromJSON)
+  expect_equal(
+    vapply(taxa_payloads, function(payload) if (is.null(payload$total)) NA_real_ else payload$total, numeric(1)),
+    c(5, 3)
+  )
+  expect_equal(
+    vapply(taxa_payloads, function(payload) nrow(payload$items), integer(1)),
+    c(1L, 1L)
+  )
 })
 
 test_that("process_plot_data handles empty data correctly", {

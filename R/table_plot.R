@@ -104,7 +104,12 @@ process_plot_data <- function(plot_data) {
 
 
   # Serialize nested list columns as JSON strings for the renderer
-  top_taxa_json <- serialize_nested_column(plot_data$top_taxon_observations)
+  top_taxa_json <- vapply(seq_len(row_count), function(idx) {
+    serialize_taxa_payload(
+      plot_data$top_taxon_observations[[idx]],
+      plot_data$taxon_count[[idx]]
+    )
+  }, character(1))
   communities_json <- serialize_nested_column(plot_data$top_classifications)
 
   # Encode both button actions (details + map) as a JSON payload for the renderer
@@ -198,7 +203,11 @@ format_location_column <- function(data, latitudes = NULL, longitudes = NULL, el
       lines <- c(lines, as.character(htmltools::htmlEscape(state[[idx]])))
     }
     if (nzchar(country[[idx]])) {
-      lines <- c(lines, as.character(htmltools::htmlEscape(country[[idx]])))
+      country_line <- sprintf(
+        '<span class="text-muted small">%s</span>',
+        as.character(htmltools::htmlEscape(country[[idx]]))
+      )
+      lines <- c(lines, country_line)
     }
     if (!length(lines)) {
       lines <- "Not provided"
@@ -217,6 +226,7 @@ format_location_column <- function(data, latitudes = NULL, longitudes = NULL, el
 
     if (length(detail_parts)) {
       detail_line <- paste(detail_parts, collapse = " &bull; ")
+      detail_line <- sprintf('<span class="text-muted small">%s</span>', detail_line)
       lines <- c(lines, detail_line)
     }
 
@@ -254,6 +264,51 @@ serialize_nested_column <- function(list_col) {
     }
     jsonlite::toJSON(item, auto_unbox = FALSE, dataframe = "rows", null = "null")
   }, character(1), USE.NAMES = FALSE)
+}
+
+#' Serialize top taxa rows with total counts for JS renderers
+#'
+#' @param items Data frame (or coercible object) of top taxa rows
+#' @param total_count Total taxon count reported by the API
+#' @returns JSON string containing `items` array and `total` metadata
+#' @noRd
+serialize_taxa_payload <- function(items, total_count) {
+  normalized_items <- normalize_taxa_items(items)
+  total_value <- suppressWarnings(as.integer(total_count))
+  if (length(total_value) == 0 || is.na(total_value)) {
+    total_value <- NULL
+  }
+
+  jsonlite::toJSON(
+    list(
+      total = total_value,
+      items = normalized_items
+    ),
+    auto_unbox = TRUE,
+    dataframe = "rows",
+    null = "null"
+  )
+}
+
+normalize_taxa_items <- function(items) {
+  if (is.null(items)) {
+    return(data.frame())
+  }
+  if (is.data.frame(items)) {
+    return(items)
+  }
+
+  if (is.character(items) && length(items) == 1) {
+    parsed <- tryCatch(jsonlite::fromJSON(items), error = function(e) NULL)
+    if (is.data.frame(parsed)) {
+      return(parsed)
+    }
+  }
+
+  tryCatch(
+    as.data.frame(items, stringsAsFactors = FALSE),
+    error = function(e) data.frame()
+  )
 }
 
 #' Normalize plot API responses into a consistent schema
@@ -423,12 +478,29 @@ create_plot_action_renderer <- function() {
 create_taxon_list_renderer <- function() {
   js_code <- "function(data, type, row, meta) {
     if (type === 'display') {
-      if (!data || data === '[]' || data === '') {
+      if (!data || data === '') {
         return '<span class=\"text-muted\">Not provided</span>';
       }
 
       try {
-        var taxa = JSON.parse(data);
+        var payload = JSON.parse(data);
+        var taxa = [];
+        var total = null;
+
+        if (Array.isArray(payload)) {
+          taxa = payload;
+        } else if (payload && typeof payload === 'object') {
+          if (Array.isArray(payload.items)) {
+            taxa = payload.items;
+          }
+          if (payload.total !== null && payload.total !== undefined) {
+            var parsedTotal = Number(payload.total);
+            if (!Number.isNaN(parsedTotal)) {
+              total = parsedTotal;
+            }
+          }
+        }
+
         if (!Array.isArray(taxa) || taxa.length === 0) {
           return '<span class=\"text-muted\">Not provided</span>';
         }
@@ -455,7 +527,15 @@ create_taxon_list_renderer <- function() {
           return '<div>' + nameLink + '</div>';
         });
 
-        return links.join('');
+        var html = links.join('');
+        if (links.length && total !== null && !Number.isNaN(total)) {
+          var remainder = Math.floor(total) - links.length;
+          if (remainder > 0) {
+            html += '<div class=\"text-muted small\">+' + remainder + ' other taxa</div>';
+          }
+        }
+
+        return html;
       } catch(e) {
         console.error('Error parsing taxon data:', e);
         return '<span class=\"text-muted\">Error</span>';
@@ -504,7 +584,7 @@ create_community_list_renderer <- function() {
           }
 
           if (commCode && commCode.toUpperCase().indexOf('CEGL') === 0) {
-            entry += '<br><span>' + escapeHtml(commCode) + '</span>';
+            entry += '<br><span class=\"text-muted small\">' + escapeHtml(commCode) + '</span>';
           }
 
           return entry;
