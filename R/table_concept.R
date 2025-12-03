@@ -184,17 +184,19 @@ normalize_concepts <- function(df, concept_type) {
   config <- get_concept_config(concept_type)
   schema_template <- build_schema_template(config$fields)
   
-  normalized <- normalize_table_data(df, schema_template)
-  
-  # Special handling for fields that need type coercion beyond API defaults
-  if ("current_accepted" %in% names(normalized)) {
-    normalized$current_accepted <- parse_logical_vector(normalized$current_accepted)
-  }
-  if ("obs_count" %in% names(normalized)) {
-    normalized$obs_count[is.na(normalized$obs_count)] <- 0
+  # Custom transform for concept-specific type handling
+  parse_current_accepted <- function(normalized) {
+    if ("current_accepted" %in% names(normalized)) {
+      normalized$current_accepted <- parse_logical_vector(normalized$current_accepted)
+    }
+    normalized
   }
   
-  normalized
+  create_normalizer(
+    schema_template,
+    na_to_zero_fields = "obs_count",
+    custom_transforms = list(parse_current_accepted)
+  )(df)
 }
 
 #' Coerce API response into a data frame
@@ -208,7 +210,7 @@ normalize_concepts <- function(df, concept_type) {
 coerce_api_page <- function(parsed, concept_type) {
   config <- get_concept_config(concept_type)
   schema_template <- build_schema_template(config$fields)
-  coerce_api_response(parsed, schema_template)
+  create_coercer(schema_template)(parsed)
 }
 
 #' Retrieve configuration for a given concept type

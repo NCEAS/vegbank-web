@@ -37,14 +37,3 @@ test_that("process_party_data formats normalized rows", {
   expect_equal(result$Observations, c(191L, 0L))
   expect_equal(result$Contact, c("Email@example.com", "Not provided"))
 })
-
-test_that("normalize_party_data enforces schema", {
-  raw <- list(py_code = "py.9")
-
-  normalized <- normalize_party_data(raw)
-
-  expect_equal(colnames(normalized), vegbankweb:::PARTY_TABLE_FIELDS)
-  expect_equal(normalized$py_code, "py.9")
-  expect_equal(normalized$obs_count, 0L)
-  expect_type(normalized$given_name, "character")
-})

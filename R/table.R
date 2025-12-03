@@ -894,6 +894,59 @@ normalize_table_data <- function(df, schema_template) {
   df
 }
 
+#' Create a coercion function for table specs
+#'
+#' Factory that produces a coercion function bound to a specific schema template.
+#' Eliminates the need for per-table coercion wrapper functions.
+#'
+#' @param schema_template Zero-row data frame with correct column types
+#' @return Function that coerces API responses to data frames
+#' @noRd
+create_coercer <- function(schema_template) {
+  function(parsed) {
+    coerce_api_response(parsed, schema_template)
+  }
+}
+
+#' Create a normalization function for table specs
+#'
+#' Factory that produces a normalization function with optional post-processing.
+#' Handles common patterns like NA-to-zero conversion and custom transformations.
+#'
+#' @param schema_template Zero-row data frame with correct column types
+#' @param na_to_zero_fields Character vector of fields where NA should become 0
+#' @param custom_transforms List of functions to apply after normalization
+#' @return Function that normalizes data frames to match schema
+#' @noRd
+create_normalizer <- function(schema_template, na_to_zero_fields = NULL, custom_transforms = NULL) {
+  function(df) {
+    normalized <- normalize_table_data(df, schema_template)
+
+    # Handle NA → 0 for specified integer/numeric fields
+    if (!is.null(na_to_zero_fields)) {
+      for (field in na_to_zero_fields) {
+        if (field %in% names(normalized)) {
+          col_type <- class(normalized[[field]])[1]
+          if (col_type == "integer") {
+            normalized[[field]][is.na(normalized[[field]])] <- 0L
+          } else if (col_type == "numeric") {
+            normalized[[field]][is.na(normalized[[field]])] <- 0
+          }
+        }
+      }
+    }
+
+    # Apply custom transformations if provided
+    if (!is.null(custom_transforms)) {
+      for (transform_fn in custom_transforms) {
+        normalized <- transform_fn(normalized)
+      }
+    }
+
+    normalized
+  }
+}
+
 #' Sanitize data frame rows for DataTables JSON responses
 #'
 #' Mirrors the core behavior of DT's internal cleanDataFrame helper so we can

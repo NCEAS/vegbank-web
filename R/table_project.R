@@ -100,22 +100,11 @@ process_project_data <- function(project_data) {
 #' @param df Raw data frame or list from vegbankr
 #' @return Normalized data frame containing PROJECT_TABLE_FIELDS
 #' @noRd
-normalize_project_data <- function(df) {
-  normalized <- normalize_table_data(df, PROJECT_TABLE_SCHEMA_TEMPLATE)
-  
-  # Special handling: ensure obs_count NA becomes 0
-  if ("obs_count" %in% names(normalized)) {
-    normalized$obs_count[is.na(normalized$obs_count)] <- 0L
-  }
-  
-  normalized
-}
+normalize_project_data <- create_normalizer(PROJECT_TABLE_SCHEMA_TEMPLATE, na_to_zero_fields = "obs_count")
 
 #' Coerce VegBank project response to a data frame
 #' @noRd
-coerce_project_page <- function(parsed) {
-  coerce_api_response(parsed, PROJECT_TABLE_SCHEMA_TEMPLATE)
-}
+coerce_project_page <- create_coercer(PROJECT_TABLE_SCHEMA_TEMPLATE)
 
 PROJECT_TABLE_SPEC <- list(
   table_id = "proj_table",

@@ -333,25 +333,14 @@ normalize_taxa_items <- function(items) {
 #' @param df Raw data frame or list from vegbankr
 #' @return Normalized data frame containing PLOT_TABLE_FIELDS
 #' @noRd
-normalize_plot_data <- function(df) {
-  normalized <- normalize_table_data(df, PLOT_TABLE_SCHEMA_TEMPLATE)
-  
-  # Special handling: ensure integer fields with NA become 0
-  int_fields <- c("taxon_count", "taxon_count_returned")
-  for (field in int_fields) {
-    if (field %in% names(normalized)) {
-      normalized[[field]][is.na(normalized[[field]])] <- 0L
-    }
-  }
-  
-  normalized
-}
+normalize_plot_data <- create_normalizer(
+  PLOT_TABLE_SCHEMA_TEMPLATE,
+  na_to_zero_fields = c("taxon_count", "taxon_count_returned")
+)
 
 #' Coerce VegBank plot response to a data frame
 #' @noRd
-coerce_plot_page <- function(parsed) {
-  coerce_api_response(parsed, PLOT_TABLE_SCHEMA_TEMPLATE)
-}
+coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
 
 #' Create JS renderer for plot action buttons (Details + Map)
 #' @noRd

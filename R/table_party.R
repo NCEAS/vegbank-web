@@ -93,22 +93,11 @@ process_party_data <- function(party_data) {
 #' @param df Raw data frame or list from vegbankr
 #' @return Normalized data frame containing PARTY_TABLE_FIELDS
 #' @noRd
-normalize_party_data <- function(df) {
-  normalized <- normalize_table_data(df, PARTY_TABLE_SCHEMA_TEMPLATE)
-  
-  # Special handling: ensure obs_count NA becomes 0
-  if ("obs_count" %in% names(normalized)) {
-    normalized$obs_count[is.na(normalized$obs_count)] <- 0L
-  }
-  
-  normalized
-}
+normalize_party_data <- create_normalizer(PARTY_TABLE_SCHEMA_TEMPLATE, na_to_zero_fields = "obs_count")
 
 #' Coerce VegBank party response to a data frame
 #' @noRd
-coerce_party_page <- function(parsed) {
-  coerce_api_response(parsed, PARTY_TABLE_SCHEMA_TEMPLATE)
-}
+coerce_party_page <- create_coercer(PARTY_TABLE_SCHEMA_TEMPLATE)
 
 PARTY_TABLE_SPEC <- list(
   table_id = "party_table",

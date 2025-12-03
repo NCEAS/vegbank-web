@@ -167,3 +167,104 @@ test_that("create_table registers DT state save callback for handshake", {
   expect_s3_class(save_cb, "JS_EVAL")
   expect_match(as.character(save_cb), "window\\.vegbankSaveTableState")
 })
+
+# Factory function tests
+test_that("create_coercer produces working coercion functions", {
+  table_env <- load_table_module_env()
+  create_coercer <- table_env$create_coercer
+  coerce_api_response <- table_env$coerce_api_response
+  
+  schema <- data.frame(a = integer(), b = character(), stringsAsFactors = FALSE)
+  coercer <- create_coercer(schema)
+  
+  # Test NULL handling
+  expect_equal(coercer(NULL), schema)
+  
+  # Test data frame pass-through
+  df <- data.frame(a = 1:2, b = c("x", "y"), stringsAsFactors = FALSE)
+  expect_equal(coercer(df), df)
+  
+  # Test nested list unwrapping
+  nested <- list(data = df)
+  expect_equal(coercer(nested), df)
+  
+  # Test single-element list unwrapping
+  wrapped <- list(df)
+  expect_s3_class(coercer(wrapped), "data.frame")
+})
+
+test_that("create_normalizer produces working normalization functions", {
+  table_env <- load_table_module_env()
+  create_normalizer <- table_env$create_normalizer
+  
+  schema <- data.frame(
+    id = integer(),
+    name = character(),
+    count = integer(),
+    stringsAsFactors = FALSE
+  )
+  
+  # Test basic normalization
+  normalizer <- create_normalizer(schema)
+  raw <- data.frame(id = 1, name = "test", count = 5, stringsAsFactors = FALSE)
+  result <- normalizer(raw)
+  
+  expect_equal(names(result), c("id", "name", "count"))
+  expect_type(result$id, "integer")
+  expect_type(result$name, "character")
+  
+  # Test NA-to-zero conversion
+  normalizer_with_zero <- create_normalizer(schema, na_to_zero_fields = "count")
+  raw_with_na <- data.frame(id = 1, name = "test", count = NA_integer_, stringsAsFactors = FALSE)
+  result_zero <- normalizer_with_zero(raw_with_na)
+  
+  expect_equal(result_zero$count, 0L)
+  
+  # Test custom transforms
+  add_uppercase <- function(df) {
+    df$name <- toupper(df$name)
+    df
+  }
+  normalizer_custom <- create_normalizer(schema, custom_transforms = list(add_uppercase))
+  result_custom <- normalizer_custom(raw)
+  
+  expect_equal(result_custom$name, "TEST")
+})
+
+test_that("create_normalizer handles multiple NA-to-zero fields", {
+  table_env <- load_table_module_env()
+  create_normalizer <- table_env$create_normalizer
+  
+  schema <- data.frame(
+    field1 = integer(),
+    field2 = integer(),
+    field3 = character(),
+    stringsAsFactors = FALSE
+  )
+  
+  normalizer <- create_normalizer(schema, na_to_zero_fields = c("field1", "field2"))
+  raw <- data.frame(
+    field1 = NA_integer_,
+    field2 = NA_integer_,
+    field3 = "test",
+    stringsAsFactors = FALSE
+  )
+  
+  result <- normalizer(raw)
+  expect_equal(result$field1, 0L)
+  expect_equal(result$field2, 0L)
+  expect_equal(result$field3, "test")
+})
+
+test_that("create_normalizer preserves existing non-NA values", {
+  table_env <- load_table_module_env()
+  create_normalizer <- table_env$create_normalizer
+  
+  schema <- data.frame(count = integer(), stringsAsFactors = FALSE)
+  normalizer <- create_normalizer(schema, na_to_zero_fields = "count")
+  
+  raw <- data.frame(count = 42L, stringsAsFactors = FALSE)
+  result <- normalizer(raw)
+  
+  expect_equal(result$count, 42L)
+})

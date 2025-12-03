@@ -74,30 +74,3 @@ test_that("process_project_data handles empty input", {
   expect_equal(nrow(result), 0)
   expect_equal(colnames(result), c("Actions", "Name", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
 })
-
-test_that("normalize_project_data enforces schema", {
-  raw <- data.frame(
-    project_name = "Test",
-    obs_count = "5",
-    extra_col = "ignore",
-    stringsAsFactors = FALSE
-  )
-
-  normalized <- normalize_project_data(raw)
-
-  expect_equal(colnames(normalized), PROJECT_TABLE_FIELDS)
-  expect_equal(normalized$project_name, "Test")
-  expect_equal(normalized$obs_count, 5L)
-  expect_true(is.na(normalized$project_description))
-})
-
-test_that("coerce_project_page flattens nested responses", {
-  nested <- list(list(data = list(
-    pj_code = "PJ.1",
-    project_name = "Nested"
-  )))
-
-  result <- coerce_project_page(nested)
-  expect_s3_class(result, "data.frame")
-  expect_equal(result$project_name, "Nested")
-})
