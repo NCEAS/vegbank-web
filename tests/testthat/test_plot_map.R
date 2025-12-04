@@ -31,6 +31,66 @@ test_that("create_marker_popup creates correct HTML", {
   expect_true(grepl("<br>", multi_popup))
 })
 
+# ---- validate_map_data tests ----
+
+test_that("validate_map_data returns invalid for NULL data", {
+  result <- validate_map_data(NULL)
+  expect_false(result$valid)
+  expect_equal(result$reason, "missing_required")
+})
+
+test_that("validate_map_data returns invalid for empty data frame", {
+  result <- validate_map_data(data.frame())
+  expect_false(result$valid)
+  expect_equal(result$reason, "missing_required")
+})
+
+test_that("validate_map_data returns invalid for missing columns", {
+  incomplete_data <- data.frame(latitude = 40, longitude = -74)
+  result <- validate_map_data(incomplete_data)
+  expect_false(result$valid)
+  expect_equal(result$reason, "missing_required")
+})
+
+test_that("validate_map_data returns invalid when all coordinates are NA", {
+  bad_coords <- data.frame(
+    latitude = NA,
+    longitude = NA,
+    author_obs_code = "CODE",
+    ob_code = "ob.1"
+  )
+  result <- validate_map_data(bad_coords)
+  expect_false(result$valid)
+  expect_equal(result$reason, "no_valid_points")
+})
+
+test_that("validate_map_data returns valid with good data", {
+  good_data <- data.frame(
+    latitude = 40.7128,
+    longitude = -74.0060,
+    author_obs_code = "NYC",
+    ob_code = "ob.2948"
+  )
+  result <- validate_map_data(good_data)
+  expect_true(result$valid)
+  expect_equal(nrow(result$data), 1)
+})
+
+test_that("validate_map_data filters out NA coordinates", {
+  mixed_data <- data.frame(
+    latitude = c(40.7128, NA, 34.0522),
+    longitude = c(-74.0060, -100, NA),
+    author_obs_code = c("NYC", "BAD1", "BAD2"),
+    ob_code = c("ob.1", "ob.2", "ob.3")
+  )
+  result <- validate_map_data(mixed_data)
+  expect_true(result$valid)
+  expect_equal(nrow(result$data), 1)
+  expect_equal(result$data$author_obs_code, "NYC")
+})
+
+# ---- process_map_data tests ----
+
 test_that("process_map_data handles empty input", {
   with_mock_shiny_notifications({
     defaults <- get_map_defaults()
