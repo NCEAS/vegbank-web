@@ -26,9 +26,6 @@ fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
         limit = limit,
         detail = detail,
         with_nested = FALSE,
-        num_taxa = 5,
-        num_comms = 5,
-        create_parquet = TRUE
       ),
       error = function(err) {
         error_occurred <<- TRUE
