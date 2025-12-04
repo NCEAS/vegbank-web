@@ -3,7 +3,7 @@
 #' Provides functions for creating and manipulating leaflet maps.
 
 # ---- Constants ----
-
+#' @noRd
 MAP_DATA_FETCH_LIMIT <- 1000000L
 
 # ---- Data Fetching ----
@@ -18,7 +18,7 @@ MAP_DATA_FETCH_LIMIT <- 1000000L
 #' @return Data frame of plot observations or NULL on failure
 #' @noRd
 fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
-  shiny::withProgress(message = "Loading map data…", value = 0.2, {
+  shiny::withProgress(message = "Loading map data...", value = 0.2, {
     error_occurred <- FALSE
 
     data <- tryCatch(
@@ -178,7 +178,7 @@ process_map_data <- function(map_data, center_lng, center_lat, zoom, map_options
   }
 
   # Step 2: Build map with progress indicator
-  shiny::withProgress(message = "Building map…", value = 0, {
+  shiny::withProgress(message = "Building map...", value = 0, {
     shiny::incProgress(0.3, detail = "Grouping plots by location...")
     data_grouped <- group_map_points(validation$data)
 
