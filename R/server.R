@@ -142,7 +142,7 @@ server <- function(input, output, session) {
     if (!is.null(observations)) {
       map_observations(observations)
     }
-  })
+  }, ignoreInit = TRUE)
 
   # --- DataTable State Management -----
 

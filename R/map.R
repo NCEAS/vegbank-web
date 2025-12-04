@@ -25,7 +25,7 @@ fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
       vegbankr::get_all_plot_observations(
         limit = limit,
         detail = detail,
-        with_nested = FALSE,
+        with_nested = FALSE
       ),
       error = function(err) {
         error_occurred <<- TRUE
@@ -43,7 +43,7 @@ fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
       return(NULL)
     }
 
-    if (is.null(data) || !nrow(data)) {
+    if (is.null(data) || nrow(data) == 0) {
       shiny::showNotification(
         "Map data is currently unavailable. Please try again later.",
         type = "warning"
@@ -122,28 +122,6 @@ show_map_validation_error <- function(reason) {
 
 # ---- Map Building ----
 
-#' Build the leaflet map from validated data
-#'
-#' Takes already-validated points and builds the final map.
-#' This function assumes data has been validated and contains valid points.
-#'
-#' @param valid_points Data frame with valid map points
-#' @param center_lng Longitude for map center
-#' @param center_lat Latitude for map center
-#' @param zoom Initial zoom level
-#' @param map_options Optional list of map configuration options
-#' @return A leaflet map object
-#' @noRd
-build_map <- function(valid_points, center_lng, center_lat, zoom, map_options = NULL) {
-  map_defaults <- get_map_defaults()
-  if (!is.null(map_options)) {
-    map_defaults <- utils::modifyList(map_defaults, map_options)
-  }
-
-  data_grouped <- group_map_points(valid_points)
-  build_leaflet_map(data_grouped, map_defaults, center_lng, center_lat, zoom)
-}
-
 #' Process map data and return a leaflet map object
 #'
 #' Orchestrates validation and map building. Shows appropriate notifications
@@ -158,7 +136,7 @@ build_map <- function(valid_points, center_lng, center_lat, zoom, map_options = 
 #' @returns A leaflet map object containing clustered markers for each plot location
 #'
 #' @importFrom leaflet leaflet leafletOptions setMaxBounds addTiles addMarkers markerClusterOptions
-#' @importFrom dplyr arrange group_by summarize n
+#' @importFrom dplyr arrange group_by summarizeå n
 #' @importFrom htmltools HTML
 #' @importFrom shiny withProgress incProgress showNotification
 #' @importFrom htmlwidgets onRender
