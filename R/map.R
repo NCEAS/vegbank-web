@@ -2,106 +2,87 @@
 #'
 #' Provides functions for creating and manipulating leaflet maps.
 
-# ---- App-facing functions ----
-
-#' Process map data and return a leaflet map object
-#'
-#' Creates a leaflet map with clustered markers from plot observation data.
-#' This function handles the entire process from data validation to map rendering.
-#'
-#' @param map_data Data frame with map points. Must contain latitude, longitude,
-#'                author_obs_code and ob_code columns.
-#' @param center_lng Longitude for map center (numeric)
-#' @param center_lat Latitude for map center (numeric)
-#' @param zoom Initial zoom level (integer)
-#' @param map_options Optional list of map configuration options to override defaults
-#' @returns A leaflet map object containing clustered markers for each plot location with a list of
-#'          observations in their labels
-#'
-#' @importFrom leaflet leaflet leafletOptions setMaxBounds addTiles addMarkers markerClusterOptions
-#' @importFrom dplyr arrange group_by summarize n
-#' @importFrom htmltools HTML
-#' @importFrom shiny withProgress incProgress showNotification
-#' @importFrom htmlwidgets onRender
+# ---- Constants ----
 #' @noRd
-process_map_data <- function(map_data, center_lng, center_lat, zoom, map_options = NULL) {
-  # Get map defaults and possibly override with provided options
-  map_defaults <- get_map_defaults()
-  if (!is.null(map_options)) {
-    map_defaults <- utils::modifyList(map_defaults, map_options)
-  }
+MAP_DATA_FETCH_LIMIT <- 1000000L
 
-  shiny::withProgress(
-    expr = {
-      # Validate input data
-      if (is_invalid_map_data(map_data)) {
+# ---- Data Fetching ----
+
+#' Fetch plot observations for the map
+#'
+#' Downloads plot observation data for the leaflet map using the VegBank API.
+#' Handles its own progress indicator and error notifications.
+#'
+#' @param limit Maximum number of records to request (defaults to 1,000,000)
+#' @param detail VegBank detail level to request (defaults to "geo")
+#' @return Data frame of plot observations or NULL on failure
+#' @noRd
+fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
+  shiny::withProgress(message = "Loading map data...", value = 0.2, {
+    error_occurred <- FALSE
+
+    data <- tryCatch(
+      vegbankr::get_all_plot_observations(
+        limit = limit,
+        detail = detail,
+        with_nested = FALSE
+      ),
+      error = function(err) {
+        error_occurred <<- TRUE
         shiny::showNotification(
-          "Missing required data. Please try again or check your connection.",
+          paste("Failed to load map data:", conditionMessage(err)),
           type = "error"
         )
-        return(create_empty_map(map_defaults, center_lng, center_lat, zoom))
+        NULL
       }
-
-      # Process data for mapping
-      shiny::incProgress(0.2, detail = "Filtering valid points...")
-      valid_points <- filter_valid_map_points(map_data)
-
-      if (nrow(valid_points) == 0) {
-        shiny::incProgress(0.8, detail = "No valid points found")
-        return(create_empty_map(map_defaults, center_lng, center_lat, zoom))
-      }
-
-      # Group points by location
-      shiny::incProgress(0.3, detail = "Grouping plots by location...")
-      data_grouped <- group_map_points(valid_points)
-
-      # Build the map
-      shiny::incProgress(0.3, detail = "Building map...")
-      build_leaflet_map(data_grouped, map_defaults, center_lng, center_lat, zoom)
-    },
-    message = "Processing map data",
-    value = 0
-  )
-}
-
-#' Move the map and show a popup at a given location
-#'
-#' Updates a leaflet map proxy by changing the view and adding a popup at the
-#' specified location.
-#'
-#' @param map_proxy A leaflet proxy object
-#' @param lng Longitude (numeric)
-#' @param lat Latitude (numeric)
-#' @param label Popup content (HTML or text)
-#' @param zoom Zoom level (integer, optional). If NULL, uses detail_zoom from map defaults.
-#' @returns A leaflet map proxy with updated view and popup
-#'
-#' @importFrom leaflet setView clearPopups addPopups
-#' @noRd
-update_map_view <- function(map_proxy, lng, lat, label, zoom = NULL) {
-  # Input validation
-  if (!is.numeric(lng) || !is.numeric(lat)) {
-    warning("Invalid coordinates provided to update_map_view")
-    return(map_proxy)
-  }
-
-  if (is.null(zoom)) {
-    zoom <- get_map_defaults()$detail_zoom
-  }
-
-  map_proxy |>
-    leaflet::setView(lng = lng, lat = lat, zoom = zoom) |>
-    leaflet::clearPopups() |>
-    leaflet::addPopups(
-      lng = lng,
-      lat = lat,
-      popup = label
     )
+
+    shiny::incProgress(1)
+
+    if (isTRUE(error_occurred)) {
+      return(NULL)
+    }
+
+    if (is.null(data) || nrow(data) == 0) {
+      shiny::showNotification(
+        "Map data is currently unavailable. Please try again later.",
+        type = "warning"
+      )
+      return(NULL)
+    }
+
+    as.data.frame(data)
+  })
 }
 
-# ---- Data processing functions ----
+# ---- Data Validation ----
 
-#' Check if map data is invalid
+#' Validate map data for rendering
+#'
+#' Checks whether map data has the required structure and valid points.
+#' This is a pure function with no side effects, making it easy to test.
+#'
+#' @param map_data Data frame to validate
+#' @return List with `valid` (logical), `reason` (character if invalid),
+#'         and `data` (filtered data frame if valid)
+#' @noRd
+validate_map_data <- function(map_data) {
+  # Check for required structure
+  if (is_invalid_map_data(map_data)) {
+    return(list(valid = FALSE, reason = "missing_required"))
+  }
+
+  # Filter to valid coordinates
+  valid_points <- filter_valid_map_points(map_data)
+
+  if (nrow(valid_points) == 0) {
+    return(list(valid = FALSE, reason = "no_valid_points"))
+  }
+
+  list(valid = TRUE, data = valid_points)
+}
+
+#' Check if map data is invalid (missing or malformed)
 #'
 #' @param map_data Data frame to check
 #' @return TRUE if data is invalid, FALSE otherwise
@@ -124,6 +105,101 @@ filter_valid_map_points <- function(map_data) {
     is.numeric(map_data$longitude))
 }
 
+# ---- Error Notifications ----
+
+#' Show appropriate error notification for map validation failure
+#'
+#' @param reason Character string indicating the validation failure reason
+#' @noRd
+show_map_validation_error <- function(reason) {
+  message <- switch(reason,
+    "missing_required" = "Missing required data. Please try again or check your connection.",
+    "no_valid_points" = "No valid map points found in the data.",
+    "Unknown map data error."
+  )
+  shiny::showNotification(message, type = "error")
+}
+
+# ---- Map Building ----
+
+#' Process map data and return a leaflet map object
+#'
+#' Orchestrates validation and map building. Shows appropriate notifications
+#' on validation failure and returns an empty map as fallback.
+#'
+#' @param map_data Data frame with map points. Must contain latitude, longitude,
+#'                author_obs_code and ob_code columns.
+#' @param center_lng Longitude for map center (numeric)
+#' @param center_lat Latitude for map center (numeric)
+#' @param zoom Initial zoom level (integer)
+#' @param map_options Optional list of map configuration options to override defaults
+#' @returns A leaflet map object containing clustered markers for each plot location
+#'
+#' @importFrom leaflet leaflet leafletOptions setMaxBounds addTiles addMarkers markerClusterOptions
+#' @importFrom dplyr arrange group_by summarizeå n
+#' @importFrom htmltools HTML
+#' @importFrom shiny withProgress incProgress showNotification
+#' @importFrom htmlwidgets onRender
+#' @noRd
+process_map_data <- function(map_data, center_lng, center_lat, zoom, map_options = NULL) {
+  map_defaults <- get_map_defaults()
+  if (!is.null(map_options)) {
+    map_defaults <- utils::modifyList(map_defaults, map_options)
+  }
+
+  # Step 1: Validate
+  validation <- validate_map_data(map_data)
+
+  if (!validation$valid) {
+    show_map_validation_error(validation$reason)
+    return(create_empty_map(map_defaults, center_lng, center_lat, zoom))
+  }
+
+  # Step 2: Build map with progress indicator
+  shiny::withProgress(message = "Building map...", value = 0, {
+    shiny::incProgress(0.3, detail = "Grouping plots by location...")
+    data_grouped <- group_map_points(validation$data)
+
+    shiny::incProgress(0.5, detail = "Rendering map...")
+    result <- build_leaflet_map(data_grouped, map_defaults, center_lng, center_lat, zoom)
+
+    shiny::incProgress(0.2)
+    result
+  })
+}
+
+#' Move the map and show a popup at a given location
+#'
+#' Updates a leaflet map proxy by changing the view and adding a popup at the
+#' specified location.
+#'
+#' @param map_proxy A leaflet proxy object
+#' @param lng Longitude (numeric)
+#' @param lat Latitude (numeric)
+#' @param label Popup content (HTML or text)
+#' @param zoom Zoom level (integer, optional). If NULL, uses detail_zoom from map defaults.
+#' @returns A leaflet map proxy with updated view and popup
+#'
+#' @importFrom leaflet setView clearPopups addPopups
+#' @noRd
+update_map_view <- function(map_proxy, lng, lat, label, zoom = NULL) {
+  if (!is.numeric(lng) || !is.numeric(lat)) {
+    warning("Invalid coordinates provided to update_map_view")
+    return(map_proxy)
+  }
+
+  if (is.null(zoom)) {
+    zoom <- get_map_defaults()$detail_zoom
+  }
+
+  map_proxy |>
+    leaflet::setView(lng = lng, lat = lat, zoom = zoom) |>
+    leaflet::clearPopups() |>
+    leaflet::addPopups(lng = lng, lat = lat, popup = label)
+}
+
+# ---- Data Grouping ----
+
 #' Group map points by location and create marker content
 #'
 #' @param valid_points Data frame with valid map points
@@ -145,7 +221,7 @@ group_map_points <- function(valid_points) {
     )
 }
 
-# ---- Map building functions ----
+# ---- Leaflet Construction ----
 
 #' Build a leaflet map with the provided data
 #'
@@ -232,8 +308,10 @@ create_empty_map <- function(map_defaults = NULL, center_lng = NULL, center_lat 
     map <- map |> leaflet::setView(lng = center_lng, lat = center_lat, zoom = zoom)
   }
 
-  return(map)
+  map
 }
+
+# ---- Marker Content ----
 
 #' Create a marker popup HTML for a group of observations
 #'
@@ -243,10 +321,8 @@ create_empty_map <- function(map_defaults = NULL, center_lng = NULL, center_lat 
 #' @return A string containing HTML for the popup label
 #' @noRd
 create_marker_popup <- function(author_obs_codes, ob_codes, count) {
-  # Create header text
   header <- ifelse(count == 1, "1 Observation", paste(count, "Observations"))
 
-  # Create list of links
   links <- mapply(
     function(obs, acc) {
       sprintf(
@@ -257,7 +333,6 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
     author_obs_codes, ob_codes
   )
 
-  # Combine into a single HTML string
   paste0(
     "<strong>", header, "</strong>",
     "<div style='max-height: 15.5rem; overflow-y: auto;' onwheel='event.stopPropagation()'",
@@ -266,6 +341,8 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
     "</div>"
   )
 }
+
+# ---- Zoom Control ----
 
 #' Add a custom zoom control to a leaflet map
 #'

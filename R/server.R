@@ -72,7 +72,10 @@ server <- function(input, output, session) {
   # "object not found" errors.
   comm_class_data <- NULL
   taxa_data <- NULL
-  plot_data <- NULL
+
+  # Map data state: observations for the leaflet map and fetch status flag
+  map_observations <- shiny::reactiveVal(NULL)
+  map_fetch_in_progress <- shiny::reactiveVal(FALSE)
 
   # Initialize URL State Manager with defaults and table registry
   url_manager <- URLStateManager$new(
@@ -110,6 +113,36 @@ server <- function(input, output, session) {
   can_mutate_history <- function() {
     url_manager$is_history_initialized() && !url_manager$is_updating()
   }
+
+  # --- Map Data Loading -----
+
+  # Fetch map data when Map tab is first visited.
+  # Uses map_fetch_in_progress flag to prevent duplicate requests.
+  shiny::observeEvent(state$current_tab(), {
+    # Only fetch when switching to Map tab
+    if (!identical(state$current_tab(), "Map")) {
+      return()
+    }
+
+    # Already have data? Skip fetch.
+    if (!is.null(map_observations())) {
+      return()
+    }
+
+    # Already fetching? Skip.
+    if (isTRUE(map_fetch_in_progress())) {
+      return()
+    }
+
+    # Fetch data
+    map_fetch_in_progress(TRUE)
+    observations <- fetch_plot_map_data()
+    map_fetch_in_progress(FALSE)
+
+    if (!is.null(observations)) {
+      map_observations(observations)
+    }
+  }, ignoreInit = TRUE)
 
   # --- DataTable State Management -----
 
@@ -290,7 +323,7 @@ server <- function(input, output, session) {
     if (detail_type %in% c("community-classification", "taxon-observation")) {
       args$comm_class_data <- comm_class_data
       args$taxa_data <- taxa_data
-      args$plot_data <- plot_data
+      args$plot_data <- map_observations()
     }
 
     success <- do.call(open_code_details, args)
@@ -549,10 +582,12 @@ server <- function(input, output, session) {
     build_plant_table()
   })
 
-  # TODO: This data should be fetched now that we don't cache all plots
   output$map <- leaflet::renderLeaflet({
+    # Wait for map data to be available (fetched when Map tab is visited)
+    shiny::req(map_observations())
+
     process_map_data(
-      map_data = plot_data,
+      map_data = map_observations(),
       center_lng = DEFAULT_MAP_LNG,
       center_lat = DEFAULT_MAP_LAT,
       zoom = DEFAULT_MAP_ZOOM
