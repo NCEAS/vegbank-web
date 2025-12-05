@@ -136,7 +136,7 @@ show_map_validation_error <- function(reason) {
 #' @returns A leaflet map object containing clustered markers for each plot location
 #'
 #' @importFrom leaflet leaflet leafletOptions setMaxBounds addTiles addMarkers markerClusterOptions
-#' @importFrom dplyr arrange group_by summarizeå n
+#' @importFrom dplyr arrange group_by summarized
 #' @importFrom htmltools HTML
 #' @importFrom shiny withProgress incProgress showNotification
 #' @importFrom htmlwidgets onRender
