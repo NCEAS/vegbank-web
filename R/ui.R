@@ -1064,7 +1064,7 @@ build_detail_overlay <- function() {
           id = "community-classification-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Community Classification"), shiny::uiOutput("comm_class_header")),
-          bslib::card(bslib::card_header("Analysis Methods"), shiny::uiOutput("comm_class_methods")),
+          bslib::card(bslib::card_header("Classification Details"), shiny::uiOutput("comm_class_details")),
           bslib::card(bslib::card_header("Community Interpretations"), shiny::uiOutput("comm_class_interpretations")),
           bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("comm_class_contributors"))
         ),

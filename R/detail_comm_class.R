@@ -2,7 +2,7 @@
 #' @noRd
 comm_class_detail_output_names <- c(
   "comm_class_header",
-  "comm_class_methods",
+  "comm_class_details",
   "comm_class_interpretations",
   "comm_class_contributors"
 )
@@ -36,12 +36,11 @@ build_comm_class_details_view <- function(result) {
 
   list(
     comm_class_header = create_comm_class_header_ui(result),
-    comm_class_methods = create_comm_class_methods_ui(result),
+    comm_class_details = create_comm_class_details_ui(result),
     comm_class_interpretations = create_comm_class_interpretations_ui(result),
     comm_class_contributors = create_comm_class_contributors_ui(result)
   )
 }
-
 #' Create Community Classification Header UI
 #'
 #' Displays the community name, CEGL code, observation link, and date range.
@@ -51,36 +50,15 @@ build_comm_class_details_view <- function(result) {
 #' @noRd
 create_comm_class_header_ui <- function(result) {
   shiny::renderUI({
-    # TODO: This should match the name clicked in the plot table where it's clicked 
-    # not just the first interpretation, or the most accurate
-    # Extract first interpretation's comm_name and comm_code for header display
-    interpretations <- extract_nested_table(result, "interpretations")
-    comm_name <- "Unknown"
-    comm_code <- NULL
-    if (nrow(interpretations) > 0) {
-      comm_name <- interpretations$comm_name[1] %|||% "Unknown"
-      comm_code <- if ("comm_code" %in% names(interpretations)) interpretations$comm_code[1] else NULL
-    }
-
     htmltools::div(
-      # TODO: Ideally this would be the author_obs_code from the observation
-      if (has_valid_field_value(result, "ob_code")) {
-        htmltools::tags$i(
-          "Of ",
-          create_detail_link("plot_link_click", result$ob_code, result$ob_code)
-        )
-      },
       htmltools::tags$h5(
-        comm_name,
-        style = "font-weight: 600; margin-bottom: 5px;"
+        result$cl_code,
+        "of ",
+        create_detail_link("plot_link_click", result$ob_code, result$ob_code),
+        style = "font-weight: 600;"
       ),
-      if (!is.null(comm_code) && !is.na(comm_code)) {
-        htmltools::tags$p(
-          paste0("(", comm_code, ")")
-        )
-      },
       if (has_valid_field_value(result, "class_start_date") ||
-        has_valid_field_value(result, "class_stop_date")) {
+          has_valid_field_value(result, "class_stop_date")) {
         htmltools::tags$p(
           format_date_range(result$class_start_date, result$class_stop_date)
         )
@@ -97,7 +75,7 @@ create_comm_class_header_ui <- function(result) {
 #' @param result The classification data frame
 #' @return A shiny.render.function
 #' @noRd
-create_comm_class_methods_ui <- function(result) {
+create_comm_class_details_ui <- function(result) {
   shiny::renderUI({
     format_boolean <- function(val) {
       if (is.null(val) || is.na(val)) {
@@ -158,6 +136,7 @@ create_comm_class_methods_ui <- function(result) {
       style = "width: 100%; table-layout: fixed; word-break: break-word;",
       htmltools::tags$tbody(rows)
     )
+
   })
 }
 
@@ -211,7 +190,7 @@ create_comm_class_interpretations_ui <- function(result) {
           }
 
           htmltools::tags$div(
-            style = "margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;",
+            style = ifelse(nrow(interpretations) > 1, "margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;", ""),
             htmltools::tags$div(
               style = "font-weight: 600;",
               if (!is.null(cc_code) && !is.na(cc_code)) {

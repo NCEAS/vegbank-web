@@ -6,14 +6,14 @@ test_that("build_comm_class_details_view handles NULL data gracefully", {
   expect_type(result, "list")
   expect_named(result, c(
     "comm_class_header",
-    "comm_class_methods",
+    "comm_class_details",
     "comm_class_interpretations",
     "comm_class_contributors"
   ))
 
   # Each component should be a render function
   expect_true(inherits(result$comm_class_header, "shiny.render.function"))
-  expect_true(inherits(result$comm_class_methods, "shiny.render.function"))
+  expect_true(inherits(result$comm_class_details, "shiny.render.function"))
   expect_true(inherits(result$comm_class_interpretations, "shiny.render.function"))
   expect_true(inherits(result$comm_class_contributors, "shiny.render.function"))
 })
@@ -24,7 +24,7 @@ test_that("build_comm_class_details_view handles empty data gracefully", {
   expect_type(result, "list")
   expect_setequal(names(result), c(
     "comm_class_header",
-    "comm_class_methods",
+    "comm_class_details",
     "comm_class_interpretations",
     "comm_class_contributors"
   ))
@@ -36,14 +36,14 @@ test_that("build_comm_class_details_view formats classification data correctly",
   expect_type(result, "list")
   expect_setequal(names(result), c(
     "comm_class_header",
-    "comm_class_methods",
+    "comm_class_details",
     "comm_class_interpretations",
     "comm_class_contributors"
   ))
 
   # Each component should be a render function
   expect_true(inherits(result$comm_class_header, "shiny.render.function"))
-  expect_true(inherits(result$comm_class_methods, "shiny.render.function"))
+  expect_true(inherits(result$comm_class_details, "shiny.render.function"))
   expect_true(inherits(result$comm_class_interpretations, "shiny.render.function"))
   expect_true(inherits(result$comm_class_contributors, "shiny.render.function"))
 })
@@ -55,20 +55,18 @@ test_that("create_comm_class_header_ui renders header with comm_name and observa
     },
     {
       html <- session$getOutput("test")
-      # Should show first interpretation's comm_name
-      expect_true(grepl("Oak-Hickory Forest", html$html))
-      # Should show CEGL code
-      expect_true(grepl("COMM001", html$html))
-      # Should show "See observation" link text
-      expect_true(grepl("observation", html$html))
+      # Should show cl_code
+      expect_true(grepl("cl.1553", html$html))
+      # Should show ob_code
+      expect_true(grepl("ob.2001", html$html))
     }
   )
 })
 
-test_that("create_comm_class_methods_ui renders analysis methods with publication link", {
+test_that("create_comm_class_details_ui renders analysis methods with publication link", {
   shiny::testServer(
     function(input, output, session) {
-      output$test <- create_comm_class_methods_ui(mock_comm_class_data)
+      output$test <- create_comm_class_details_ui(mock_comm_class_data)
     },
     {
       html <- session$getOutput("test")
@@ -149,7 +147,7 @@ test_that("create_comm_class_contributors_ui handles empty contributors", {
 test_that("comm_class_detail_output_names contains all expected output names", {
   expect_equal(comm_class_detail_output_names, c(
     "comm_class_header",
-    "comm_class_methods",
+    "comm_class_details",
     "comm_class_interpretations",
     "comm_class_contributors"
   ))

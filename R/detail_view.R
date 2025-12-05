@@ -71,7 +71,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$taxon_identifiers <- shiny::renderUI(NULL)
       output$taxon_aliases <- shiny::renderUI(NULL)
       output$comm_class_header <- shiny::renderUI(NULL)
-      output$comm_class_methods <- shiny::renderUI(NULL)
+      output$comm_class_details <- shiny::renderUI(NULL)
       output$comm_class_interpretations <- shiny::renderUI(NULL)
       output$comm_class_contributors <- shiny::renderUI(NULL)
       output$project_name <- shiny::renderUI(NULL)
@@ -111,7 +111,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         "community-classification" = {
           details <- build_comm_class_details_view(result)
           output$comm_class_header <- details$comm_class_header
-          output$comm_class_methods <- details$comm_class_methods
+          output$comm_class_details <- details$comm_class_details
           output$comm_class_interpretations <- details$comm_class_interpretations
           output$comm_class_contributors <- details$comm_class_contributors
         },
