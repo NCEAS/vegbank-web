@@ -1063,8 +1063,10 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "community-classification-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Observation Details"), shiny::uiOutput("observation_details")),
-          bslib::card(bslib::card_header("Community Interpretation"), shiny::uiOutput("community_interpretation"))
+          bslib::card(bslib::card_header("Community Classification"), shiny::uiOutput("comm_class_header")),
+          bslib::card(bslib::card_header("Analysis Methods"), shiny::uiOutput("comm_class_methods")),
+          bslib::card(bslib::card_header("Community Interpretations"), shiny::uiOutput("comm_class_interpretations")),
+          bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("comm_class_contributors"))
         ),
 
         # Project Details Cards - wrapped in a div with class for toggling visibility

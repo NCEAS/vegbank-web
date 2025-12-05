@@ -17,7 +17,7 @@ get_plot_observation <- function(ob_code) {
 #' Coordinates fetching detail payloads and dispatching to entity-specific
 #' builders that populate the overlay outputs.
 #'
-#' @param detail_type Type of detail to show (e.g., "plot-observation",
+#' @param resource_type Type of detail to show (e.g., "plot-observation",
 #'   "community-concept", "community-classification", "project",
 #'   "taxon-observation", "plant-concept", "party")
 #' @param vb_code VegBank identifier used to fetch the detail payload
@@ -25,15 +25,15 @@ get_plot_observation <- function(ob_code) {
 #' @param session Shiny session object
 #' @return TRUE when the view is rendered successfully, FALSE otherwise
 #' @noRd
-show_detail_view <- function(detail_type, vb_code, output, session) {
+show_detail_view <- function(resource_type, vb_code, output, session) {
   shiny::withProgress(
-    message = paste0("Loading ", detail_type, " details..."),
+    message = paste0("Loading ", resource_type, " details..."),
     value = 0.2,
     expr = {
       shiny::incProgress(0.3, "Fetching details")
 
-      result <- switch(detail_type,
-        "community-classification" = vegbankr::get_community_classification(vb_code),
+      result <- switch(resource_type,
+        "community-classification" = vegbankr::get_community_classification(vb_code, detail = "full", with_nested = TRUE),
         "community-concept" = vegbankr::get_community_concept(vb_code),
         "taxon-observation" = vegbankr::get_taxon_observation(vb_code),
         "plot-observation" = get_plot_observation(vb_code),
@@ -46,7 +46,7 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
       if (length(result) == 0) {
         shiny::incProgress(0.4, "Error loading details")
         shiny::showNotification(
-          paste0("Failed to load ", detail_type, " details. Please try again."),
+          paste0("Failed to load ", resource_type, " details. Please try again."),
           type = "error"
         )
         return(FALSE)
@@ -70,8 +70,10 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
       output$taxon_coverage <- shiny::renderUI(NULL)
       output$taxon_identifiers <- shiny::renderUI(NULL)
       output$taxon_aliases <- shiny::renderUI(NULL)
-      output$observation_details <- shiny::renderUI(NULL)
-      output$community_interpretation <- shiny::renderUI(NULL)
+      output$comm_class_header <- shiny::renderUI(NULL)
+      output$comm_class_methods <- shiny::renderUI(NULL)
+      output$comm_class_interpretations <- shiny::renderUI(NULL)
+      output$comm_class_contributors <- shiny::renderUI(NULL)
       output$project_name <- shiny::renderUI(NULL)
       output$project_description <- shiny::renderUI(NULL)
       output$project_dates <- shiny::renderUI(NULL)
@@ -90,7 +92,7 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
 
       shiny::incProgress(0.5, "Processing details")
 
-      switch(detail_type,
+      switch(resource_type,
         "project" = {
           details <- build_project_details_view(result)
           output$project_name <- details$project_name
@@ -108,8 +110,10 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
         },
         "community-classification" = {
           details <- build_comm_class_details_view(result)
-          output$observation_details <- details$observation_details
-          output$community_interpretation <- details$community_interpretation
+          output$comm_class_header <- details$comm_class_header
+          output$comm_class_methods <- details$comm_class_methods
+          output$comm_class_interpretations <- details$comm_class_interpretations
+          output$comm_class_contributors <- details$comm_class_contributors
         },
         "community-concept" = {
           details <- build_comm_concept_details_view(result)
@@ -151,7 +155,7 @@ show_detail_view <- function(detail_type, vb_code, output, session) {
 
       shiny::incProgress(0.6, "Details ready")
       session$sendCustomMessage("openOverlay", list())
-      session$sendCustomMessage("updateDetailType", list(type = detail_type))
+      session$sendCustomMessage("updateDetailType", list(type = resource_type))
 
       TRUE
     }
