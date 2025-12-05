@@ -90,7 +90,7 @@ test_that("show_detail_view handles community classification data correctly", {
   fake_output <- new.env()
 
   with_mocked_bindings(
-    get_community_classification = function(cl_code) mock_comm_class_data,
+    get_community_classification = function(cl_code, detail = NULL, with_nested = NULL) mock_comm_class_data,
     .package = "vegbankr",
     {
       with_mock_shiny_notifications({
