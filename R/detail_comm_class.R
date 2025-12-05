@@ -77,16 +77,6 @@ create_comm_class_header_ui <- function(result) {
 #' @noRd
 create_comm_class_details_ui <- function(result) {
   shiny::renderUI({
-    format_boolean <- function(val) {
-      if (is.null(val) || is.na(val)) {
-        return("Not recorded")
-      }
-      if (is.logical(val)) {
-        return(if (val) "Yes" else "No")
-      }
-      as.character(val)
-    }
-
     rows <- list(
       htmltools::tags$tr(
         htmltools::tags$td("Inspection"),
@@ -155,16 +145,6 @@ create_comm_class_interpretations_ui <- function(result) {
 
         if (nrow(interpretations) == 0) {
           return(htmltools::tags$p("No community interpretations recorded"))
-        }
-
-        format_boolean <- function(val) {
-          if (is.null(val) || is.na(val)) {
-            return("Not recorded")
-          }
-          if (is.logical(val)) {
-            return(if (val) "Yes" else "No")
-          }
-          as.character(val)
         }
 
         rows <- lapply(seq_len(nrow(interpretations)), function(i) {

@@ -308,6 +308,24 @@ format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d")
   }
 }
 
+#' Format Boolean Value for Display
+#'
+#' Formats a boolean or logical value into a human-readable string.
+#' Handles NULL, NA, and non-logical values gracefully.
+#'
+#' @param val A boolean, logical, or other value to format
+#' @return A human-readable string representation of the boolean value
+#' @noRd
+format_boolean <- function(val) {
+  if (is.null(val) || is.na(val)) {
+    return("Not recorded")
+  }
+  if (is.logical(val)) {
+    return(if (val) "Yes" else "No")
+  }
+  as.character(val)
+}
+
 #' Bind Nested Rows into a Single Data Frame
 #'
 #' Attempts to combine nested list or data frame elements into a single data frame.
