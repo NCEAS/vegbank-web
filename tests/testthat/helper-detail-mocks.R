@@ -110,7 +110,7 @@ mock_comm_class_interpretations <- data.frame(
   comm_authority_rf_code = c("rf.100", NA),
   comm_code = c("COMM001", "COMM002"),
   comm_name = c("Oak-Hickory Forest", "Mixed Hardwood Forest"),
-  nomenclatural_type = c("Original", NA),
+  nomenclatural_type = c(FALSE, NA),
   notes = c("Primary interpretation", NA),
   type = c(TRUE, FALSE),
   stringsAsFactors = FALSE
@@ -128,7 +128,7 @@ mock_comm_class_data <- data.frame(
   ob_code = "ob.2001",
   class_start_date = "Mon, 01 Jan 2020 00:00:00 GMT",
   class_stop_date = "Fri, 31 Dec 2021 00:00:00 GMT",
-  inspection = "Visual inspection",
+  inspection = FALSE,
   table_analysis = TRUE,
   multivariate_analysis = FALSE,
   expert_system = TRUE,

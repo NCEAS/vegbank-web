@@ -70,7 +70,7 @@ test_that("create_comm_class_details_ui renders analysis methods with publicatio
     },
     {
       html <- session$getOutput("test")
-      expect_true(grepl("Visual inspection", html$html))
+      expect_true(grepl("No", html$html))
       expect_true(grepl("Table Analysis", html$html))
       expect_true(grepl("Multivariate Analysis", html$html))
       expect_true(grepl("Expert System", html$html))
