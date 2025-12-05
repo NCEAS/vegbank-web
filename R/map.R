@@ -313,6 +313,50 @@ create_empty_map <- function(map_defaults = NULL, center_lng = NULL, center_lat 
 
 # ---- Marker Content ----
 
+#' Escape a string for safe inclusion in HTML content
+#'
+#' Converts HTML special characters to their entity equivalents to prevent XSS.
+#'
+#' @param text Character string to escape
+#' @return HTML-escaped string safe for inclusion in HTML content
+#' @noRd
+escape_html <- function(text) {
+
+  if (is.null(text) || is.na(text)) {
+    return("")
+  }
+  text <- gsub("&", "&amp;", text, fixed = TRUE)
+  text <- gsub("<", "&lt;", text, fixed = TRUE)
+  text <- gsub(">", "&gt;", text, fixed = TRUE)
+  text <- gsub("\"", "&quot;", text, fixed = TRUE)
+  text <- gsub("'", "&#39;", text, fixed = TRUE)
+  text
+}
+
+#' Escape a string for safe inclusion in a JavaScript string literal
+#'
+#' Escapes characters that could break out of a JS string context.
+#'
+#' @param text Character string to escape
+#' @return String safe for inclusion inside JS single-quoted string literals
+#' @noRd
+escape_js_string <- function(text) {
+  if (is.null(text) || is.na(text)) {
+    return("")
+  }
+  # Escape backslashes first, then other special chars
+
+  text <- gsub("\\", "\\\\", text, fixed = TRUE)
+  text <- gsub("'", "\\'", text, fixed = TRUE)
+  text <- gsub("\"", "\\\"", text, fixed = TRUE)
+  text <- gsub("\n", "\\n", text, fixed = TRUE)
+  text <- gsub("\r", "\\r", text, fixed = TRUE)
+  # Prevent </script> injection
+
+  text <- gsub("/", "\\/", text, fixed = TRUE)
+  text
+}
+
 #' Create a marker popup HTML for a group of observations
 #'
 #' @param author_obs_codes Character vector of author observation codes
@@ -324,10 +368,13 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
   header <- ifelse(count == 1, "1 Observation", paste(count, "Observations"))
 
   links <- mapply(
-    function(obs, acc) {
+    function(author_obs_code, ob_code) {
+      # Escape for XSS prevention
+      safe_author <- escape_js_string(ob_code)
+      safe_ob <- escape_html(author_obs_code)
       sprintf(
-        "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click',\n '%s', {priority: 'event'})\">%s</a>",
-        acc, obs
+        "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click', '%s', {priority: 'event'}); return false;\">%s</a>",
+        safe_author, safe_ob
       )
     },
     author_obs_codes, ob_codes
