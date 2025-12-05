@@ -272,7 +272,7 @@ test_that("create_plot_action_renderer returns JS function", {
   expect_s3_class(renderer, "JS_EVAL")
   expect_type(renderer, "character")
   expect_true(grepl("dt-map-action", renderer))
-  expect_true(grepl('data-input-id="see_obs_details"', renderer, fixed = TRUE))
+  expect_true(grepl('data-input-id="plot_link_click"', renderer, fixed = TRUE))
 })
 
 test_that("create_taxon_list_renderer returns JS function", {

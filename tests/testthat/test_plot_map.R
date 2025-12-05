@@ -16,7 +16,7 @@ test_that("create_marker_popup creates correct HTML", {
   # Single observation
   single_popup <- create_marker_popup("Plot1", "ACC1", 1)
   expect_true(grepl("<strong>1 Observation</strong>", single_popup))
-  expect_true(grepl("onclick=\"Shiny.setInputValue\\('label_link_click',\\s*'ACC1'", single_popup))
+  expect_true(grepl("onclick=\"Shiny.setInputValue\\('plot_link_click',\\s*'ACC1'", single_popup))
   expect_true(grepl(">Plot1</a>", single_popup))
 
   # Multiple observations

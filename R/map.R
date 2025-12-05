@@ -326,7 +326,7 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
   links <- mapply(
     function(obs, acc) {
       sprintf(
-        "<a href=\"#\" onclick=\"Shiny.setInputValue('label_link_click',\n '%s', {priority: 'event'})\">%s</a>",
+        "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click',\n '%s', {priority: 'event'})\">%s</a>",
         acc, obs
       )
     },
