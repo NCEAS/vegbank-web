@@ -370,11 +370,11 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
   links <- mapply(
     function(author_obs_code, ob_code) {
       # Escape for XSS prevention
-      safe_author <- escape_js_string(ob_code)
-      safe_ob <- escape_html(author_obs_code)
+      safe_ob <- escape_js_string(ob_code)
+      safe_author <- escape_html(author_obs_code)
       sprintf(
         "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click', '%s', {priority: 'event'}); return false;\">%s</a>",
-        safe_author, safe_ob
+        safe_ob, safe_author
       )
     },
     author_obs_codes, ob_codes
