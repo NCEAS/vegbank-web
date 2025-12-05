@@ -181,7 +181,7 @@ create_comm_class_interpretations_ui <- function(result) {
             ),
             htmltools::tags$table(
               class = "table table-sm table-striped table-hover",
-              style = "margin-top: 5px; margin-bottom: 0;",
+              style = "margin-top: 5px; margin-bottom: 0; width: 100%; table-layout: fixed; word-break: break-word;",
               htmltools::tags$tbody(
                 htmltools::tags$tr(
                   htmltools::tags$td("Class Fit"),
