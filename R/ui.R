@@ -57,8 +57,9 @@ ui <- function(req) {
     //    navigation) it sends an `applyTableState` custom message, which uses the
     //    same `applyTableState` helper below to drive the DataTables API.
 
-    // Track pending table state application and current selection
+    // Track pending table state application and pending selection for initial loads
     var pendingTableStates = [];
+    var pendingSelection = null; // { vbCode, tableId }
     var currentSelection = null; // Track the currently selected VegBank code
     var currentSelectionTableId = null; // Track which table the selection belongs to
 
@@ -690,6 +691,37 @@ ui <- function(req) {
         attemptRowSelection(currentSelection, false, currentSelectionTableId || null); // false = don't clear current selection
       }
 
+      // If a pending selection exists for this table, try now
+      if (pendingSelection) {
+        var targetId = pendingSelection.tableId || widgetId;
+        if (!pendingSelection.tableId || pendingSelection.tableId === widgetId) {
+          var applied = attemptRowSelection(pendingSelection.vbCode, true, targetId);
+          if (applied) {
+            console.log('Applied pending selection after draw for', pendingSelection.vbCode);
+            currentSelection = pendingSelection.vbCode;
+            currentSelectionTableId = targetId || null;
+            pendingSelection = null;
+          } else {
+            // Retry once more shortly after draw in case data lands just after
+            setTimeout(function() {
+              if (!pendingSelection) {
+                return;
+              }
+              if (pendingSelection.tableId && pendingSelection.tableId !== targetId) {
+                return;
+              }
+              var retryApplied = attemptRowSelection(pendingSelection.vbCode, true, targetId);
+              if (retryApplied) {
+                console.log('Applied pending selection after delayed retry for', pendingSelection.vbCode);
+                currentSelection = pendingSelection.vbCode;
+                currentSelectionTableId = targetId || null;
+                pendingSelection = null;
+              }
+            }, 200);
+          }
+        }
+      }
+
       for (var j = pendingTableStates.length - 1; j >= 0; j--) {
         var pendingState = pendingTableStates[j];
         if (pendingState.tableId === widgetId) {
@@ -868,11 +900,13 @@ ui <- function(req) {
 
       // Try immediate selection first
       if (!attemptRowSelection(message.vbCode, shouldClear, message.tableId)) {
-        console.log('Immediate selection failed; row not found in current DOM');
+        console.log('Immediate selection failed; will retry after table draw');
+        pendingSelection = { vbCode: message.vbCode, tableId: message.tableId || null };
       } else {
         // Set as current selection if successful
         currentSelection = message.vbCode;
         currentSelectionTableId = message.tableId || null;
+        pendingSelection = null;
       }
     });
 
