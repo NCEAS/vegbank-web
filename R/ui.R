@@ -757,7 +757,6 @@ ui <- function(req) {
       const plotCards = document.getElementById('plot-details-cards');
       const communityConceptCards = document.getElementById('community-concept-details-cards');
       const communityClassificationCards = document.getElementById('community-classification-details-cards');
-      const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
       const projectCards = document.getElementById('project-details-cards');
       const partyCards = document.getElementById('party-details-cards');
       const plantConceptCards = document.getElementById('plant-concept-details-cards');
@@ -787,9 +786,6 @@ ui <- function(req) {
         } else if (type === 'community-classification') {
           console.log('Showing community classification details');
           communityClassificationCards.style.display = 'block';
-        } else if (type === 'taxon-observation') {
-          console.log('Showing taxon observation details');
-          taxonObservationCards.style.display = 'block';
         } else if (type === 'project') {
           console.log('Showing project details');
           projectCards.style.display = 'block';
@@ -1078,16 +1074,6 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Dates"), shiny::uiOutput("project_dates")),
           bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("project_contributors")),
           bslib::card(bslib::card_header("Plot Observation Count"), shiny::uiOutput("project_observations"))
-        ),
-
-        # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility
-        htmltools::tags$div(
-          id = "taxon-observation-details-cards",
-          class = "detail-section",
-          bslib::card(bslib::card_header("Taxon Name"), shiny::uiOutput("taxon_name")),
-          bslib::card(bslib::card_header("Coverage"), shiny::uiOutput("taxon_coverage")),
-          bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("taxon_aliases")),
-          bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("taxon_identifiers"))
         ),
 
         # Party Details Cards - wrapped in a div with class for toggling visibility

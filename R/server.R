@@ -301,7 +301,7 @@ server <- function(input, output, session) {
   #
   # Parameters:
   #   detail_type - Entity type: "plot-observation", "plant-concept", "community-concept",
-  #                 "taxon-observation", "community-classification", "project", "party", "reference"
+  #                 "community-classification", "project", "party", "reference"
   #   vb_code - VegBank entity code (e.g., "VB.123")
   #   push_history - If TRUE, updates URL and adds browser history entry
   #   history_mode - "push" creates new history entry, "replace" updates current entry
@@ -320,7 +320,7 @@ server <- function(input, output, session) {
 
     # TODO: This will have to be reworked now that we don't have all data cached and only one page is available at a time
     # Some detail types require additional data for row selection
-    if (detail_type %in% c("community-classification", "taxon-observation")) {
+    if (detail_type %in% c("community-classification")) {
       args$comm_class_data <- comm_class_data
       args$taxa_data <- taxa_data
       args$plot_data <- map_observations()
@@ -889,18 +889,6 @@ find_row_selection_code <- function(detail_type, vb_code, comm_class_data, taxa_
       comm_class_row <- which(comm_class_data$cl_code == vb_code)
       # TODO: Make sure an ob_code exists in comm_class_data
       if (length(comm_class_row) > 0) comm_class_data$ob_code[comm_class_row[1]] else NULL
-    },
-    "taxon-observation" = {
-      # Find the plot row that contains this taxon observation
-      taxa_row <- which(taxa_data$to_code == vb_code)
-      if (length(taxa_row) > 0) {
-        ob_code <- taxa_data$ob_code[taxa_row[1]]
-        plot_row_index <- which(plot_data$ob_code == ob_code)
-        # TODO: Make sure an ob_code exists in taxa_data and is linking entities appropriately here
-        if (length(plot_row_index) > 0) plot_data$ob_code[plot_row_index[1]] else NULL
-      } else {
-        NULL
-      }
     },
     NULL # Unknown detail type
   )
