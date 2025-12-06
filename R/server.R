@@ -318,14 +318,6 @@ server <- function(input, output, session) {
       detail_type = detail_type
     )
 
-    # TODO: This will have to be reworked now that we don't have all data cached and only one page is available at a time
-    # Some detail types require additional data for row selection
-    if (detail_type %in% c("community-classification")) {
-      args$comm_class_data <- comm_class_data
-      args$taxa_data <- taxa_data
-      args$plot_data <- map_observations()
-    }
-
     success <- do.call(open_code_details, args)
 
     # Update URL and browser history if successful and requested
@@ -797,8 +789,7 @@ server <- function(input, output, session) {
 #' @return TRUE if successful, FALSE if validation failed
 #' @noRd
 open_code_details <- function(
-    state, session, output, vb_code, detail_type, error_message = NULL,
-    comm_class_data = NULL, taxa_data = NULL, plot_data = NULL) {
+  state, session, output, vb_code, detail_type, error_message = NULL) {
   if (!is_valid_vb_code(vb_code)) {
     error_msg <- error_message %||% paste0("No VegBank code found for that ", gsub("-", " ", detail_type))
     shiny::showNotification(error_msg, type = "error")
@@ -809,18 +800,10 @@ open_code_details <- function(
   state$selected_code(vb_code)
   state$details_open(TRUE)
 
-  # Use a helper function to find the correct table selection code in case of indirect links
-  # Community classifications and taxon observations require looking up the related
-  # plot observation to select the correct row.
-  if (!is.null(comm_class_data) && !is.null(taxa_data) && !is.null(plot_data)) {
-    row_code <- find_row_selection_code(detail_type, vb_code, comm_class_data, taxa_data, plot_data)
-    if (!is.null(row_code)) {
-      select_table_row_by_code(session, row_code)
-    }
-  } else {
-    # Fallback to direct selection for simple cases
-    select_table_row_by_code(session, vb_code)
-  }
+  # Request client-side row selection in the relevant DataTable; tables are
+  # AJAX-backed so the client will perform a search/draw if the row is not
+  # currently present in the DOM.
+  select_table_row_by_code(session, detail_type, vb_code)
 
   show_detail_view(detail_type, vb_code, output, session)
 
@@ -854,42 +837,35 @@ move_map_to_obs <- function(session, lat, lng, message) {
 #' @param session The Shiny session object
 #' @param vb_code The VegBank code to select
 #' @noRd
-select_table_row_by_code <- function(session, vb_code) {
+resolve_table_id_for_detail <- function(detail_type) {
+  switch(detail_type,
+    "plot-observation" = "plot_table",
+    "community-concept" = "comm_table",
+    "community-classification" = "comm_table",
+    "project" = "proj_table",
+    "party" = "party_table",
+    "plant-concept" = "plant_table",
+    NULL
+  )
+}
+
+#' Select a table row by VegBank code using a custom Shiny message
+#'
+#' @param session The Shiny session object
+#' @param detail_type The type of detail view being opened (used to target the correct table)
+#' @param vb_code The VegBank code to select
+#' @noRd
+select_table_row_by_code <- function(session, detail_type, vb_code) {
   # Skip if invalid VegBank code
   if (!is_valid_vb_code(vb_code)) {
     return()
   }
 
+  table_id <- resolve_table_id_for_detail(detail_type)
+
   # Send selection message to JavaScript
   session$sendCustomMessage("selectTableRowByCode", list(
-    vbCode = vb_code
+    vbCode = vb_code,
+    tableId = table_id
   ))
-}
-
-#' Find the correct VegBank code for table row selection based on detail type
-#' Community classifications and taxon observations require looking up the related
-#' plot observation to select the correct row.
-#'
-#' @param detail_type The type of detail view
-#' @param vb_code The VegBank code from the detail view
-#' @param comm_class_data Community classification data frame
-#' @param taxa_data Taxon observation data frame
-#' @param plot_data Plot observation data frame
-#' @return The VegBank code to use for table row selection, or NULL if not found
-#' @noRd
-find_row_selection_code <- function(detail_type, vb_code, comm_class_data, taxa_data, plot_data) {
-  switch(detail_type,
-    "plot-observation" = vb_code,
-    "community-concept" = vb_code,
-    "project" = vb_code,
-    "party" = vb_code,
-    "plant-concept" = vb_code,
-    "community-classification" = {
-      # Find the plot row that contains this community classification
-      comm_class_row <- which(comm_class_data$cl_code == vb_code)
-      # TODO: Make sure an ob_code exists in comm_class_data
-      if (length(comm_class_row) > 0) comm_class_data$ob_code[comm_class_row[1]] else NULL
-    },
-    NULL # Unknown detail type
-  )
 }

@@ -57,10 +57,10 @@ ui <- function(req) {
     //    navigation) it sends an `applyTableState` custom message, which uses the
     //    same `applyTableState` helper below to drive the DataTables API.
 
-    // Store pending row selections until tables are ready
-    var pendingSelections = [];
+    // Track pending table state application and current selection
     var pendingTableStates = [];
     var currentSelection = null; // Track the currently selected VegBank code
+    var currentSelectionTableId = null; // Track which table the selection belongs to
 
     var tableIdToKey = {
       'plot_table': 'plots',
@@ -194,6 +194,7 @@ ui <- function(req) {
 
       return rawNode;
     }
+
 
     function buildDefaultDtState(settings) {
       var columns = Array.isArray(settings.aoColumns)
@@ -451,6 +452,14 @@ ui <- function(req) {
         var inputId = btn.data('input-id');
         var value = btn.data('value');
         
+        // Immediately highlight the clicked row
+        $('table tbody tr').removeClass('selected-entity');
+        btn.closest('tr').addClass('selected-entity');
+        currentSelection = value || null;
+        var containingTable = btn.closest('table');
+        var wrapperId = btn.closest('.datatables').attr('id');
+        currentSelectionTableId = (containingTable && containingTable.attr('id')) || wrapperId || null;
+
         if (inputId && value) {
           Shiny.setInputValue(inputId, value, {priority: 'event'});
         }
@@ -495,11 +504,47 @@ ui <- function(req) {
       }
 
       var tableNode = getDataTableNode(tableId);
-      if (tableNode.length === 0 || !$.fn.dataTable || !$.fn.dataTable.isDataTable(tableNode)) {
-        return null;
+      if (tableNode.length && $.fn.dataTable && $.fn.dataTable.isDataTable(tableNode)) {
+        return tableNode.DataTable();
       }
 
-      return tableNode.DataTable();
+      // Fallback: scan all DataTables and pick the one whose ID or wrapper matches
+      if ($.fn && $.fn.dataTable && typeof $.fn.dataTable.tables === 'function') {
+        var tables = $.fn.dataTable.tables(true);
+        var fallbackApi = null;
+        var fallbackId = null;
+
+        tables.forEach(function(tbl) {
+          try {
+            var api = $(tbl).DataTable();
+            var id = $(tbl).attr('id');
+            var wrapperId = $(tbl).closest('.datatables').attr('id');
+
+            if (tableId && id === tableId) {
+              fallbackApi = api;
+              fallbackId = id;
+              return;
+            }
+            if (tableId && wrapperId === tableId) {
+              fallbackApi = api;
+              fallbackId = id || wrapperId;
+            }
+            if (!tableId && !fallbackApi) {
+              fallbackApi = api;
+              fallbackId = id || wrapperId;
+            }
+          } catch (e) {
+            // ignore
+          }
+        });
+
+        if (fallbackApi) {
+          console.log('Resolved DataTable API via scan, id=', fallbackId, 'for requested tableId=', tableId);
+          return fallbackApi;
+        }
+      }
+
+      return null;
     }
 
     function isDataTableReady(table) {
@@ -642,21 +687,7 @@ ui <- function(req) {
       // Restore current selection after table redraw
       if (currentSelection) {
         console.log('Restoring current selection after table redraw:', currentSelection);
-        attemptRowSelection(currentSelection, false); // false = don't clear current selection
-      }
-
-      // Check for any pending selections for this table or any table
-      for (var i = pendingSelections.length - 1; i >= 0; i--) {
-        var pendingSelection = pendingSelections[i];
-        console.log('Processing pending selection:', pendingSelection.vbCode);
-
-        // Try to select the row now that table is ready
-        if (attemptRowSelection(pendingSelection.vbCode)) {
-          console.log('Successfully processed pending selection for:', pendingSelection.vbCode);
-          // Remove from pending list and set as current selection
-          currentSelection = pendingSelection.vbCode;
-          pendingSelections.splice(i, 1);
-        }
+        attemptRowSelection(currentSelection, false, currentSelectionTableId || null); // false = don't clear current selection
       }
 
       for (var j = pendingTableStates.length - 1; j >= 0; j--) {
@@ -669,54 +700,186 @@ ui <- function(req) {
       }
     });
 
-    // Function to attempt row selection
-    function attemptRowSelection(vbCode, clearCurrent) {
+    // Function to attempt row selection; if the row is not present in the DOM,
+    // optionally trigger a DataTables search on the target table to load it.
+    function attemptRowSelection(vbCode, clearCurrent, tableId) {
       if (clearCurrent !== false) { // Default to true unless explicitly set to false
         console.log('Attempting to select row with VegBank code:', vbCode);
         // Clear all selections from all tables first
         $('table tbody tr').removeClass('selected-entity');
       }
 
-      // Find the button with the specific VegBank code
-      var targetButton = $('button').filter(function() {
-        var onclick = $(this).attr('onclick');
-        return onclick && onclick.includes(\"'\" + vbCode + \"'\");
+      // Scope searches to a specific table if provided
+      var tableScope = null;
+      if (tableId) {
+        tableScope = getDataTableNode(tableId);
+        if (!tableScope || !tableScope.length) {
+          console.log('No table node found for tableId', tableId, 'falling back to document');
+          tableScope = null;
+        }
+      }
+
+      console.log('Selection context: tableId=', tableId, 'tableScope length=', tableScope ? tableScope.length : 0);
+
+      var searchRoot = tableScope ? tableScope : $('body');
+
+      // Try to find the button/row for this code inside the target table.
+      // Prefer DT action buttons with matching data attributes
+      var targetButton = searchRoot.find('button.dt-shiny-action[data-value]').filter(function() {
+        var dataVal = $(this).attr('data-value');
+        if (!dataVal) {
+          return false;
+        }
+        return String(dataVal).trim() === String(vbCode).trim();
       });
 
-      console.log('Found', targetButton.length, 'buttons with VegBank code');
+      console.log('Buttons in scope (dt-shiny-action):', searchRoot.find('button.dt-shiny-action[data-value]').length);
+
+      // If scoped lookup fails, try a global search (helps when tableId mapping is off)
+      if (targetButton.length === 0) {
+        var globalButton = $('button.dt-shiny-action[data-value]').filter(function() {
+          var dataVal = $(this).attr('data-value');
+          if (!dataVal) {
+            return false;
+          }
+          return String(dataVal).trim() === String(vbCode).trim();
+        });
+
+        if (globalButton.length > 0) {
+          console.log('Found matching button via global search');
+          targetButton = globalButton;
+        }
+      }
+
+      // Fallback: any button that encodes the code in data-value or inline onclick
+      if (targetButton.length === 0) {
+        targetButton = searchRoot.find('button').filter(function() {
+          var dataVal = $(this).attr('data-value');
+          if (dataVal && String(dataVal) === String(vbCode)) {
+            return true;
+          }
+          var onclick = $(this).attr('onclick');
+          return onclick && onclick.indexOf(\"'\" + vbCode + \"'\") !== -1;
+        });
+      }
+
+      console.log('Found', targetButton.length, 'buttons with VegBank code in scope', tableId || 'any');
 
       if (targetButton.length > 0) {
         // Get the row containing the button and select it
         var targetRow = targetButton.closest('tr');
         targetRow.addClass('selected-entity');
         console.log('SUCCESS: Selected row for VegBank code', vbCode);
+        currentSelection = vbCode;
+        currentSelectionTableId = tableId || null;
         return true;
-      } else {
-        console.log('No buttons found for VegBank code', vbCode);
-        return false;
       }
+
+      // If no button found, attempt a DataTables row scan by source data (first column holds the code)
+      var dtApi = getDataTableApi(tableId);
+
+      if (dtApi) {
+        try {
+          console.log('DataTable API rows count', dtApi.rows().count(), 'tableId', tableId || 'unknown');
+        } catch (e) {
+          // ignore
+        }
+
+        var rowIndexes = dtApi.rows(function(idx, data, node) {
+          if (!data) {
+            return false;
+          }
+
+          // DataTables may return an array or an object; handle both.
+          if (Array.isArray(data)) {
+            var firstCol = String(data[0] || '');
+            return firstCol.indexOf(String(vbCode)) !== -1;
+          }
+
+          if (typeof data === 'object') {
+            // Try common keys
+            var candidate = null;
+            if (Object.prototype.hasOwnProperty.call(data, 0)) {
+              candidate = data[0];
+            } else if (Object.prototype.hasOwnProperty.call(data, 'Actions')) {
+              candidate = data['Actions'];
+            }
+            if (candidate) {
+              return String(candidate).indexOf(String(vbCode)) !== -1;
+            }
+          }
+
+          return false;
+        }).indexes();
+
+        if (rowIndexes && rowIndexes.length > 0 && rowIndexes[0] !== undefined) {
+          var rowNode = dtApi.row(rowIndexes[0]).node();
+          $(rowNode).addClass('selected-entity');
+          console.log('SUCCESS: Selected row via DataTables data scan for VegBank code', vbCode);
+          currentSelection = vbCode;
+          currentSelectionTableId = tableId || null;
+          return true;
+        }
+
+        // Log some sample row data for debugging
+        try {
+          var sample = dtApi.row(0).data();
+          console.log('Sample row[0] data type:', typeof sample, 'value:', sample);
+        } catch (e) {
+          // ignore
+        }
+      } else {
+        console.log('No DataTable API available yet for', tableId || 'unknown table');
+      }
+
+      // Fallback: text scan for any cell containing the code (DOM-based)
+      var matchingCells = searchRoot.find('td').filter(function() {
+        return $(this).text().indexOf(String(vbCode)) !== -1;
+      });
+
+      if (matchingCells.length > 0) {
+        var targetRow = $(matchingCells[0]).closest('tr');
+        targetRow.addClass('selected-entity');
+        console.log('SUCCESS: Selected row via DOM text scan for VegBank code', vbCode);
+        currentSelection = vbCode;
+        currentSelectionTableId = tableId || null;
+        return true;
+      }
+
+      console.log('No buttons or data rows found for VegBank code', vbCode, 'in scope', tableId || 'any');
+
+      // If the requested code is already the current selection, keep it selected
+      if (currentSelection && String(currentSelection).trim() === String(vbCode).trim()) {
+        return true;
+      }
+
+      return false;
     }
 
     Shiny.addCustomMessageHandler('selectTableRowByCode', function(message) {
       console.log('Received selection request for:', message.vbCode);
 
+      var shouldClear = true;
+      if (currentSelection === message.vbCode) {
+        if (!message.tableId || currentSelectionTableId === (message.tableId || null)) {
+          shouldClear = false; // keep existing highlight when message refers to the same row
+        }
+      }
+
       // Try immediate selection first
-      if (!attemptRowSelection(message.vbCode)) {
-        console.log('Immediate selection failed, adding to pending queue');
-        // Add to pending selections if immediate attempt fails
-        pendingSelections.push({
-          vbCode: message.vbCode,
-          timestamp: Date.now()
-        });
+      if (!attemptRowSelection(message.vbCode, shouldClear, message.tableId)) {
+        console.log('Immediate selection failed; row not found in current DOM');
       } else {
         // Set as current selection if successful
         currentSelection = message.vbCode;
+        currentSelectionTableId = message.tableId || null;
       }
     });
 
     Shiny.addCustomMessageHandler('clearAllTableSelections', function(message) {
       $('table tbody tr').removeClass('selected-entity');
       currentSelection = null;
+      currentSelectionTableId = null;
       console.log('Cleared all table selections');
     });
 
@@ -765,12 +928,11 @@ ui <- function(req) {
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards &&
-      taxonObservationCards && projectCards && partyCards && plantConceptCards && referenceCards) {
+          projectCards && partyCards && plantConceptCards && referenceCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
         communityClassificationCards.style.display = 'none';
-        taxonObservationCards.style.display = 'none';
         projectCards.style.display = 'none';
         partyCards.style.display = 'none';
         plantConceptCards.style.display = 'none';

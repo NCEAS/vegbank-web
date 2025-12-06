@@ -101,7 +101,7 @@ Please select from the following questions, or browse through this file:
 >   
 > 2) [a more complex query](/vegbank/forms/plot-query.jsp) with many options for searching, allowing multiple plants, places, and communities to be specified. It also allows you to search by other fields, like elevation.  
 >   
-> Once you have found plots (or communities or plots) of interest, they may be added to the datacart by clicking on the "plus" datacart icon (![datacart plus icon](/vegbank/images/cart_add_one.gif)) next to the item of interest. You can perform [various functions on the datacart](#howdownload) by clicking on the "download" link next to the datacart at the top of the screen.
+> Once you have found plots (or communities or plots) of interest, they may be added to the datacart by clicking on the "plus" datacart icon (![datacart plus icon](data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==)) next to the item of interest. You can perform [various functions on the datacart](#howdownload) by clicking on the "download" link next to the datacart at the top of the screen.
 
 [back to top...](#topoffaq)
 
@@ -127,7 +127,7 @@ Please select from the following questions, or browse through this file:
 
 ##### What is a dataset? What is the datacart? {#dataset}
 
-> A dataset is a set of items (plots, communities, or plants) that you are interested in. The datacart is the current or active dataset to which you can add items when searching or viewing data. You add items to the datacart by clicking the "add to datacart" icon: ![add to datacart icon](/vegbank/images/cart_add_one.gif) after searching for data or viewing data.  
+> A dataset is a set of items (plots, communities, or plants) that you are interested in. The datacart is the current or active dataset to which you can add items when searching for data or viewing data. You add items to the datacart by clicking the "add to datacart" icon: ![add to datacart icon](data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==) after searching for data or viewing data.  
 >   
 > If you are not logged in, you have access to a single datacart. If you have items in your datacart and then log in, those items are retained in your datacart. If are logged in, you can have multiple datasets that are remembered the next time you log in. You can then activate different datasets to become the current datacart, performing various functions on the datacart, such as viewing a constancy table, mapping plots, or querying for plots that match plants or communities in a dataset. All the dataset and datacart functionality is available from the [DATASETS](/vegbank/general/datasets.html) link in the upper right of all pages in VegBank.  
 >   
@@ -282,7 +282,7 @@ Please select from the following questions, or browse through this file:
 > *   [StemSize.StemTaxonArea](/dd/stemsize/stemtaxonarea) - this is the area used to record a particular stem size for a particular species. Overrides the above value.
 > 
 > Explained graphically:  
-> ![](/vegbank/images/size-explanation.png)
+> ![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMBAQEAAP//AwAFgwJ/oAAAAABJRU5ErkJggg==)
 
 [back to top...](#topoffaq)
 
