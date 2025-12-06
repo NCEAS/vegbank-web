@@ -313,50 +313,6 @@ create_empty_map <- function(map_defaults = NULL, center_lng = NULL, center_lat 
 
 # ---- Marker Content ----
 
-#' Escape a string for safe inclusion in HTML content
-#'
-#' Converts HTML special characters to their entity equivalents to prevent XSS.
-#'
-#' @param text Character string to escape
-#' @return HTML-escaped string safe for inclusion in HTML content
-#' @noRd
-escape_html <- function(text) {
-
-  if (is.null(text) || is.na(text)) {
-    return("")
-  }
-  text <- gsub("&", "&amp;", text, fixed = TRUE)
-  text <- gsub("<", "&lt;", text, fixed = TRUE)
-  text <- gsub(">", "&gt;", text, fixed = TRUE)
-  text <- gsub("\"", "&quot;", text, fixed = TRUE)
-  text <- gsub("'", "&#39;", text, fixed = TRUE)
-  text
-}
-
-#' Escape a string for safe inclusion in a JavaScript string literal
-#'
-#' Escapes characters that could break out of a JS string context.
-#'
-#' @param text Character string to escape
-#' @return String safe for inclusion inside JS single-quoted string literals
-#' @noRd
-escape_js_string <- function(text) {
-  if (is.null(text) || is.na(text)) {
-    return("")
-  }
-  # Escape backslashes first, then other special chars
-
-  text <- gsub("\\", "\\\\", text, fixed = TRUE)
-  text <- gsub("'", "\\'", text, fixed = TRUE)
-  text <- gsub("\"", "\\\"", text, fixed = TRUE)
-  text <- gsub("\n", "\\n", text, fixed = TRUE)
-  text <- gsub("\r", "\\r", text, fixed = TRUE)
-  # Prevent </script> injection
-
-  text <- gsub("/", "\\/", text, fixed = TRUE)
-  text
-}
-
 #' Create a marker popup HTML for a group of observations
 #'
 #' @param author_obs_codes Character vector of author observation codes
