@@ -78,3 +78,73 @@ test_that("render_detail_table handles valid and invalid fields gracefully", {
     }
   )
 })
+
+# ---- XSS Prevention tests ----
+
+test_that("escape_html escapes HTML special characters", {
+  expect_equal(escape_html("<script>alert('xss')</script>"),
+               "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;")
+  expect_equal(escape_html("\"quotes\" & 'apostrophes'"),
+               "&quot;quotes&quot; &amp; &#39;apostrophes&#39;")
+  expect_equal(escape_html("normal text"), "normal text")
+  expect_equal(escape_html(NULL), "")
+  expect_equal(escape_html(NA), "")
+})
+
+test_that("escape_js_string escapes JS string metacharacters", {
+  expect_equal(escape_js_string("'); alert(1); //"),
+               "\\'); alert(1); \\/\\/")
+  expect_equal(escape_js_string("line1\nline2"),
+               "line1\\nline2")
+  expect_equal(escape_js_string("back\\slash"),
+               "back\\\\slash")
+  expect_equal(escape_js_string("</script>"),
+               "<\\/script>")
+  expect_equal(escape_js_string(NULL), "")
+  expect_equal(escape_js_string(NA), "")
+})
+
+test_that("create_detail_link escapes code_value to prevent XSS", {
+  # Test JS injection in code_value
+  xss_code <- "'); alert('xss'); //"
+  link <- create_detail_link("test_click", xss_code, "Display Text")
+  link_html <- as.character(link)
+
+  # Should NOT contain unescaped single quote that could break JS string
+  # The raw pattern "'); would allow JS injection
+  expect_false(grepl("'\\);", link_html, fixed = TRUE))
+  # htmltools HTML-encodes attribute values, so single quotes become &#39;
+  # and the JS escape \' becomes \&#39; in the HTML output
+  # This pattern confirms the apostrophe is escaped with backslash before HTML encoding
+  expect_true(grepl("\\&#39;", link_html, fixed = TRUE))
+})
+
+test_that("create_detail_link escapes display_text to prevent XSS", {
+  # Test HTML injection in display_text
+  xss_display <- "<script>alert('xss')</script>"
+  link <- create_detail_link("test_click", "code123", xss_display)
+  link_html <- as.character(link)
+
+  # Should NOT contain raw script tag
+  expect_false(grepl("<script>", link_html, fixed = TRUE))
+  # Should contain escaped version
+  expect_true(grepl("&lt;script&gt;", link_html, fixed = TRUE))
+})
+
+test_that("create_detail_link handles special characters safely", {
+  # Test various edge cases
+  special_code <- "ob.123/456"
+  special_display <- "Plot's \"Name\" <test> & more"
+
+  link <- create_detail_link("test_click", special_code, special_display)
+  link_html <- as.character(link)
+
+  # Code should have forward slash escaped for JS
+  expect_true(grepl("ob.123\\/456", link_html, fixed = TRUE))
+
+  # Display text should be HTML escaped
+  expect_true(grepl("&#39;", link_html)) # escaped apostrophe
+  expect_true(grepl("&quot;", link_html)) # escaped quote
+  expect_true(grepl("&lt;test&gt;", link_html)) # escaped angle brackets
+  expect_true(grepl("&amp;", link_html)) # escaped ampersand
+})

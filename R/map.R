@@ -136,7 +136,7 @@ show_map_validation_error <- function(reason) {
 #' @returns A leaflet map object containing clustered markers for each plot location
 #'
 #' @importFrom leaflet leaflet leafletOptions setMaxBounds addTiles addMarkers markerClusterOptions
-#' @importFrom dplyr arrange group_by summarizeå n
+#' @importFrom dplyr arrange group_by summarize n
 #' @importFrom htmltools HTML
 #' @importFrom shiny withProgress incProgress showNotification
 #' @importFrom htmlwidgets onRender
@@ -324,10 +324,13 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
   header <- ifelse(count == 1, "1 Observation", paste(count, "Observations"))
 
   links <- mapply(
-    function(obs, acc) {
+    function(author_obs_code, ob_code) {
+      # Escape for XSS prevention
+      safe_ob <- escape_js_string(ob_code)
+      safe_author <- escape_html(author_obs_code)
       sprintf(
-        "<a href=\"#\" onclick=\"Shiny.setInputValue('label_link_click',\n '%s', {priority: 'event'})\">%s</a>",
-        acc, obs
+        "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click', '%s', {priority: 'event'}); return false;\">%s</a>",
+        safe_ob, safe_author
       )
     },
     author_obs_codes, ob_codes

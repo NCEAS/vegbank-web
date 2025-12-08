@@ -19,6 +19,49 @@
   a
 }
 
+# ---- XSS Prevention Helpers ----
+
+#' Escape a string for safe inclusion in HTML content
+#'
+#' Converts HTML special characters to their entity equivalents to prevent XSS.
+#'
+#' @param text Character string to escape
+#' @return HTML-escaped string safe for inclusion in HTML content
+#' @noRd
+escape_html <- function(text) {
+  if (is.null(text) || is.na(text)) {
+    return("")
+  }
+  text <- gsub("&", "&amp;", text, fixed = TRUE)
+  text <- gsub("<", "&lt;", text, fixed = TRUE)
+  text <- gsub(">", "&gt;", text, fixed = TRUE)
+  text <- gsub('"', "&quot;", text, fixed = TRUE)
+  text <- gsub("'", "&#39;", text, fixed = TRUE)
+  text
+}
+
+#' Escape a string for safe inclusion in a JavaScript string literal
+#'
+#' Escapes characters that could break out of a JS string context.
+#'
+#' @param text Character string to escape
+#' @return String safe for inclusion inside JS single-quoted string literals
+#' @noRd
+escape_js_string <- function(text) {
+  if (is.null(text) || is.na(text)) {
+    return("")
+  }
+  # Escape backslashes first, then other special chars
+  text <- gsub("\\", "\\\\", text, fixed = TRUE)
+  text <- gsub("'", "\\'", text, fixed = TRUE)
+  text <- gsub('"', '\\"', text, fixed = TRUE)
+  text <- gsub("\n", "\\n", text, fixed = TRUE)
+  text <- gsub("\r", "\\r", text, fixed = TRUE)
+  # Prevent </script> injection
+  text <- gsub("/", "\\/", text, fixed = TRUE)
+  text
+}
+
 #' Safe Date Parser for GMT Format Strings
 #' Parses date strings that may be in GMT format or other standard formats.
 #' @param date_string The date string to parse
@@ -242,20 +285,26 @@ create_section_header <- function(title, margin_bottom = "8px") {
 #' detail views. The link prevents default anchor behavior and sets a Shiny input value
 #' with priority 'event' to ensure proper reactivity.
 #'
+#' Values are escaped to prevent XSS attacks from malicious data in VegBank records.
+#'
 #' @param input_id The Shiny input ID to trigger (e.g., "ref_link_click")
 #' @param code_value The value to send to the input (e.g., rf_code)
 #' @param display_text The text to display in the link
 #' @return An htmltools anchor tag with onclick handler
 #' @noRd
 create_detail_link <- function(input_id, code_value, display_text) {
+  # Escape for XSS prevention
+  safe_code <- escape_js_string(as.character(code_value))
+  safe_display <- escape_html(as.character(display_text))
+
   htmltools::tags$a(
     href = "#",
     onclick = sprintf(
       "Shiny.setInputValue('%s', '%s', {priority: 'event'}); return false;",
       input_id,
-      code_value
+      safe_code
     ),
-    display_text
+    htmltools::HTML(safe_display)
   )
 }
 
@@ -306,6 +355,24 @@ format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d")
   } else {
     "Date not recorded"
   }
+}
+
+#' Format Boolean Value for Display
+#'
+#' Formats a boolean or logical value into a human-readable string.
+#' Handles NULL, NA, and non-logical values gracefully.
+#'
+#' @param val A boolean, logical, or other value to format
+#' @return A human-readable string representation of the boolean value
+#' @noRd
+format_boolean <- function(val) {
+  if (is.null(val) || is.na(val)) {
+    return("Not recorded")
+  }
+  if (is.logical(val)) {
+    return(if (val) "Yes" else "No")
+  }
+  as.character(val)
 }
 
 #' Bind Nested Rows into a Single Data Frame

@@ -16,7 +16,7 @@ test_that("create_marker_popup creates correct HTML", {
   # Single observation
   single_popup <- create_marker_popup("Plot1", "ACC1", 1)
   expect_true(grepl("<strong>1 Observation</strong>", single_popup))
-  expect_true(grepl("onclick=\"Shiny.setInputValue\\('label_link_click',\\s*'ACC1'", single_popup))
+  expect_true(grepl("onclick=\"Shiny.setInputValue\\('plot_link_click',\\s*'ACC1'", single_popup))
   expect_true(grepl(">Plot1</a>", single_popup))
 
   # Multiple observations
@@ -29,6 +29,74 @@ test_that("create_marker_popup creates correct HTML", {
   expect_true(grepl(">Plot1</a>", multi_popup))
   expect_true(grepl(">Plot2</a>", multi_popup))
   expect_true(grepl("<br>", multi_popup))
+})
+
+# ---- XSS Prevention tests ----
+
+test_that("escape_html escapes HTML special characters", {
+  expect_equal(escape_html("<script>alert('xss')</script>"),
+               "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;")
+  expect_equal(escape_html("\"quotes\" & 'apostrophes'"),
+               "&quot;quotes&quot; &amp; &#39;apostrophes&#39;")
+  expect_equal(escape_html("normal text"), "normal text")
+  expect_equal(escape_html(NULL), "")
+  expect_equal(escape_html(NA), "")
+})
+
+test_that("escape_js_string escapes JS string metacharacters", {
+  expect_equal(escape_js_string("'); alert(1); //"),
+               "\\'); alert(1); \\/\\/")
+  expect_equal(escape_js_string("line1\nline2"),
+               "line1\\nline2")
+  expect_equal(escape_js_string("back\\slash"),
+               "back\\\\slash")
+  expect_equal(escape_js_string("</script>"),
+               "<\\/script>")
+  expect_equal(escape_js_string(NULL), "")
+  expect_equal(escape_js_string(NA), "")
+})
+
+test_that("create_marker_popup prevents XSS in author_obs_code", {
+  # Test HTML injection in display text
+  xss_obs <- "<script>alert('xss')</script>"
+  popup <- create_marker_popup(xss_obs, "ACC1", 1)
+
+  # Should NOT contain raw script tag
+  expect_false(grepl("<script>", popup, fixed = TRUE))
+  # Should contain escaped version
+  expect_true(grepl("&lt;script&gt;", popup, fixed = TRUE))
+})
+
+test_that("create_marker_popup prevents XSS in ob_code", {
+  # Test JS injection in onclick handler
+  xss_acc <- "'); alert('xss'); //"
+  popup <- create_marker_popup("Plot1", xss_acc, 1)
+
+  # Should NOT contain unescaped single quote followed by closing paren
+  # that could break out of the JS string (the raw pattern "');")
+  expect_false(grepl("'\\);", popup, fixed = TRUE))
+  # Forward slashes should be escaped to prevent </script> injection
+  expect_true(grepl("\\/\\/", popup, fixed = TRUE))
+  # The apostrophes should be escaped with backslash
+  # In R regex, need to escape backslash twice: \\\\ matches one backslash
+  expect_true(grepl("\\\\'", popup))
+})
+
+test_that("create_marker_popup handles special characters safely", {
+  # Test various edge cases
+  special_obs <- "Plot's \"Name\" <test> & more"
+  special_acc <- "ob.123/456"
+
+  popup <- create_marker_popup(special_obs, special_acc, 1)
+
+  # Display text should be HTML escaped
+  expect_true(grepl("&#39;", popup)) # escaped apostrophe
+  expect_true(grepl("&quot;", popup)) # escaped quote
+  expect_true(grepl("&lt;test&gt;", popup)) # escaped angle brackets
+  expect_true(grepl("&amp;", popup)) # escaped ampersand
+
+  # JS string should have forward slash escaped
+  expect_true(grepl("ob.123\\/456", popup, fixed = TRUE))
 })
 
 # ---- validate_map_data tests ----

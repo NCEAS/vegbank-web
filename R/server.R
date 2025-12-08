@@ -684,11 +684,6 @@ server <- function(input, output, session) {
     })
   }
 
-  shiny::observeEvent(input$see_obs_details, {
-    vb_code <- input$see_obs_details
-    open_detail("plot-observation", vb_code)
-  })
-
   shiny::observeEvent(input$show_on_map,
     {
       map_data <- input$show_on_map
@@ -750,8 +745,8 @@ server <- function(input, output, session) {
     close_detail(push_history = TRUE)
   })
 
-  shiny::observeEvent(input$label_link_click, {
-    vb_code <- input$label_link_click
+  shiny::observeEvent(input$plot_link_click, {
+    vb_code <- input$plot_link_click
     if (!is.null(vb_code) && nchar(vb_code) > 0) {
       open_detail("plot-observation", vb_code)
     }

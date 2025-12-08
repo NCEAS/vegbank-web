@@ -351,7 +351,7 @@ create_plot_action_renderer <- function() {
         var detailButton;
         if (detailCode) {
           detailButton = '<button type=\"button\" class=\"btn btn-sm btn-outline-primary dt-shiny-action\" ' +
-            'data-input-id=\"see_obs_details\" data-value=\"' + escapeAttr(detailCode) + '\">Details</button>';
+            'data-input-id=\"plot_link_click\" data-value=\"' + escapeAttr(detailCode) + '\">Details</button>';
         } else {
           detailButton = '<button type=\"button\" class=\"btn btn-sm btn-outline-primary\" disabled>Details</button>';
         }
