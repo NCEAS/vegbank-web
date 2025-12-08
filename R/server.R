@@ -42,7 +42,9 @@ server <- function(input, output, session) {
     current_tab = shiny::reactiveVal("Overview"),
     details_open = shiny::reactiveVal(FALSE),
     detail_type = shiny::reactiveVal(NULL),
-    selected_code = shiny::reactiveVal(NULL),
+    detail_code = shiny::reactiveVal(NULL),
+    highlighted_table = shiny::reactiveVal(NULL),
+    highlighted_row = shiny::reactiveVal(NULL),
     map_center_lat = map_state$map_center_lat,
     map_center_lng = map_state$map_center_lng,
     map_zoom = map_state$map_zoom,
@@ -271,7 +273,7 @@ server <- function(input, output, session) {
     if (is.null(detail_type) || is.null(detail_code)) {
       if (isTRUE(state$details_open())) {
         detail_type <- state$detail_type()
-        detail_code <- state$selected_code()
+        detail_code <- state$detail_code()
       } else {
         detail_type <- NULL
         detail_code <- NULL
@@ -345,14 +347,14 @@ server <- function(input, output, session) {
     # If already closed, just ensure state is cleared
     if (!isTRUE(state$details_open())) {
       state$detail_type(NULL)
-      state$selected_code(NULL)
+      state$detail_code(NULL)
       return(invisible(FALSE))
     }
 
     # Clear detail state
     state$details_open(FALSE)
     state$detail_type(NULL)
-    state$selected_code(NULL)
+    state$detail_code(NULL)
 
     # Hide overlay UI element via custom message
     if (hide_overlay) {
@@ -412,7 +414,7 @@ server <- function(input, output, session) {
         target_code <- url_manager$first_param(params$code)
 
         needs_open <- !identical(state$detail_type(), target_type) ||
-          !identical(state$selected_code(), target_code) ||
+          !identical(state$detail_code(), target_code) ||
           !isTRUE(state$details_open())
 
         if (needs_open) {
@@ -656,10 +658,27 @@ server <- function(input, output, session) {
         mode = "push",
         tab = input$page,
         detail_type = if (isTRUE(state$details_open())) state$detail_type() else NULL,
-        detail_code = if (isTRUE(state$details_open())) state$selected_code() else NULL
+        detail_code = if (isTRUE(state$details_open())) state$detail_code() else NULL
       )
     },
     ignoreNULL = FALSE
+  )
+
+  shiny::observeEvent(input$row_highlight,
+    {
+      payload <- input$row_highlight
+      table_id <- payload$tableId %||% NULL
+      row_index <- payload$rowIndex %||% NULL
+
+      state$highlighted_table(table_id)
+
+      if (is.null(row_index) || is.na(row_index)) {
+        state$highlighted_row(NULL)
+      } else {
+        state$highlighted_row(as.integer(row_index))
+      }
+    },
+    ignoreNULL = TRUE
   )
 
   for (key in names(table_registry)) {
@@ -707,7 +726,7 @@ server <- function(input, output, session) {
         mode = mode,
         tab = "Map",
         detail_type = if (isTRUE(state$details_open())) state$detail_type() else NULL,
-        detail_code = if (isTRUE(state$details_open())) state$selected_code() else NULL
+        detail_code = if (isTRUE(state$details_open())) state$detail_code() else NULL
       )
       shiny::updateNavbarPage(session, "page", selected = "Map")
 
@@ -797,13 +816,18 @@ open_code_details <- function(
   }
 
   state$detail_type(detail_type)
-  state$selected_code(vb_code)
+  state$detail_code(vb_code)
   state$details_open(TRUE)
 
-  # Request client-side row selection in the relevant DataTable; tables are
-  # AJAX-backed so the client will perform a search/draw if the row is not
-  # currently present in the DOM.
-  select_table_row_by_code(session, detail_type, vb_code)
+  # Request client-side row selection; prefer the row/table that originated the
+  # click (highlighted_table/highlighted_row) to avoid selecting every matching code.
+  select_table_row_by_code(
+    session = session,
+    detail_type = detail_type,
+    vb_code = vb_code,
+    table_id_override = state$highlighted_table(),
+    row_index = state$highlighted_row()
+  )
 
   show_detail_view(detail_type, vb_code, output, session)
 
@@ -840,8 +864,8 @@ move_map_to_obs <- function(session, lat, lng, message) {
 resolve_table_id_for_detail <- function(detail_type) {
   switch(detail_type,
     "plot-observation" = "plot_table",
+    "community-classification" = "plot_table",
     "community-concept" = "comm_table",
-    "community-classification" = "comm_table",
     "project" = "proj_table",
     "party" = "party_table",
     "plant-concept" = "plant_table",
@@ -854,18 +878,21 @@ resolve_table_id_for_detail <- function(detail_type) {
 #' @param session The Shiny session object
 #' @param detail_type The type of detail view being opened (used to target the correct table)
 #' @param vb_code The VegBank code to select
+#' @param table_id_override Optional table ID to target (e.g., source table of the click)
+#' @param row_index Optional zero-based row index inside the targeted table
 #' @noRd
-select_table_row_by_code <- function(session, detail_type, vb_code) {
+select_table_row_by_code <- function(session, detail_type, vb_code, table_id_override = NULL, row_index = NULL) {
   # Skip if invalid VegBank code
   if (!is_valid_vb_code(vb_code)) {
     return()
   }
 
-  table_id <- resolve_table_id_for_detail(detail_type)
+  target_table <- table_id_override %||% resolve_table_id_for_detail(detail_type)
 
   # Send selection message to JavaScript
   session$sendCustomMessage("selectTableRowByCode", list(
     vbCode = vb_code,
-    tableId = table_id
+    tableId = target_table,
+    rowIndex = row_index
   ))
 }
