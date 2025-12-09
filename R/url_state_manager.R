@@ -372,9 +372,12 @@ URLStateManager <- R6::R6Class(
         params$map_zoom <- self$format_zoom(map_zoom)
       }
 
-      table_key <- self$get_table_key(tab)
-      if (!is.null(table_key) && !is.null(table_states[[table_key]])) {
+      # Include table state for ALL tables with non-default state, not just current tab
+      # This ensures highlights on other tabs are restored to the correct page
+      for (table_key in names(table_states)) {
         table_state <- table_states[[table_key]]
+        if (is.null(table_state)) next
+
         params[[paste0(table_key, "_start")]] <- as.character(table_state$start)
         params[[paste0(table_key, "_length")]] <- as.character(table_state$length)
 

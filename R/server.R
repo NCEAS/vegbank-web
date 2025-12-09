@@ -525,9 +525,10 @@ server <- function(input, output, session) {
           )
       }
 
-      # Parse and apply table state (pagination, sorting, filtering)
-      table_key <- url_manager$get_table_key(requested_tab)
-      if (!is.null(table_key)) {
+      # Parse and apply table state for ALL tables (not just current tab)
+      # This ensures that when user navigates to another tab, that table's
+      # pagination state is already restored from URL
+      for (table_key in names(table_registry)) {
         table_params_present <- any(vapply(
           c("_start", "_length", "_order", "_search"),
           function(suffix) {
@@ -541,20 +542,40 @@ server <- function(input, output, session) {
         if (is.null(table_state_from_query) || url_manager$is_default_table_state(table_key, table_state_from_query)) {
           state$table_states[[table_key]] <- NULL
           state$table_sync_pending[[table_key]] <- FALSE
-          if (table_params_present) {
-            if (url_manager$is_history_initialized()) {
-              update_app_query(
-                mode = "replace",
-                tab = requested_tab,
-                detail_type = if (detail_valid) target_type else NULL,
-                detail_code = if (detail_valid) target_code else NULL
-              )
-            }
-          }
         } else {
           state$table_states[[table_key]] <- table_state_from_query
-          state$table_sync_pending[[table_key]] <- TRUE
-          send_table_state_to_client(table_key, table_state_from_query)
+          # Only set sync pending and send to client for the CURRENT tab's table
+          # Other tables will be synced when user navigates to them
+          current_tab_key <- url_manager$get_table_key(requested_tab)
+          if (!is.null(current_tab_key) && identical(table_key, current_tab_key)) {
+            state$table_sync_pending[[table_key]] <- TRUE
+            send_table_state_to_client(table_key, table_state_from_query)
+          }
+        }
+      }
+
+      # Clean up invalid table params from URL (for current tab only)
+      current_table_key <- url_manager$get_table_key(requested_tab)
+      if (!is.null(current_table_key)) {
+        current_table_params_present <- any(vapply(
+          c("_start", "_length", "_order", "_search"),
+          function(suffix) {
+            !is.null(params[[paste0(current_table_key, suffix)]])
+          },
+          logical(1)
+        ))
+        current_table_state <- state$table_states[[current_table_key]]
+
+        if (current_table_params_present && is.null(current_table_state)) {
+          # Current tab had invalid table params, clean them up
+          if (url_manager$is_history_initialized()) {
+            update_app_query(
+              mode = "replace",
+              tab = requested_tab,
+              detail_type = if (detail_valid) target_type else NULL,
+              detail_code = if (detail_valid) target_code else NULL
+            )
+          }
         }
       }
 
@@ -680,6 +701,16 @@ server <- function(input, output, session) {
       }
 
       state$current_tab(input$page)
+
+      # When switching tabs, apply any stored table state for the new tab's table
+      new_table_key <- url_manager$get_table_key(input$page)
+      if (!is.null(new_table_key)) {
+        stored_state <- shiny::isolate(state$table_states[[new_table_key]])
+        if (!is.null(stored_state)) {
+          state$table_sync_pending[[new_table_key]] <- TRUE
+          send_table_state_to_client(new_table_key, stored_state)
+        }
+      }
 
       # Defer history mutations until the initial URL restoration has completed
       if (!can_mutate_history()) {
