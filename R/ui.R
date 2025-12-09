@@ -1061,7 +1061,7 @@ build_navbar <- function() {
           shiny::column(
             12,
             bslib::card(
-              bslib::card_header("App Overview"),
+              bslib::card_header("Overview"),
               bslib::card_body(shiny::uiOutput("dataSummary"))
             )
           )

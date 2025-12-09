@@ -601,15 +601,101 @@ server <- function(input, output, session) {
   # RENDER UI ELEMENTS --------------------------------------------------------------------------------
 
   output$dataSummary <- shiny::renderUI({
-    htmltools::tags$p(
-      "Vegbank is a database of vegetation plot data. Navigate to the Plots tab ",
-      "to browse the available plot data. Each row in the table represents a plot observation.",
-      "You can also view the plot locations on a map by navigating to the 'Map' tab. ",
-      "Clicking on the see details button in a row in the table or a link in the pin label on the ",
-      "map will display detailed information about that plot observation including information ",
-      "about the plot location, species observed, and other details. Clicking on buttons in the other ",
-      "tables or links in a detail view will open another detail views of the selected entity. You can ",
-      " navigate back to previous views using your browser's back button.",
+    htmltools::tagList(
+      htmltools::tags$div(
+        htmltools::tags$strong("Welcome to VegBank Beta!"),
+        htmltools::p(" VegBank is the vegetation plot database of the Ecological Society of America's ",
+        "Panel on Vegetation Classification, operated in cooperation with the ",
+        "National Center for Ecological Analysis and Synthesis (NCEAS).")
+      ),
+      htmltools::tags$br(),
+      htmltools::tags$h5("Getting Started"),
+      htmltools::tags$ul(
+        htmltools::tags$li(
+          htmltools::tags$strong("Plots:"),
+          " Browse vegetation plot observations. Each row represents a single plot observation ",
+          "with location, date, and ecological data. Use the search box to filter by plant species, ",
+          "community type, author code, or location."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Plants:"),
+          " Explore the plant taxonomy database. Search for plant concepts by plant name or browse ",
+          "the full list of plant concepts."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Communities:"),
+          " View community classification types. Communities represent recurring patterns of ",
+          "co-occurring plant species. You can also search them by name or browse the full list."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("People:"),
+          " Find contributors, authors, and parties associated with plot data."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Projects:"),
+          " Explore research projects that have contributed data to VegBank."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Map:"),
+          " View plot locations on an interactive map. Click markers to zoom to plot clusters and ",
+          "the links on location labels to plot details. It will take about 10 seconds to load."
+        )
+      ),
+      htmltools::tags$h5("Using the App"),
+      htmltools::tags$ul(
+        htmltools::tags$li(
+          "Click ", htmltools::tags$strong("'Details'"),
+          " buttons or links in tables to view detailed information about any entity."
+        ),
+        htmltools::tags$li(
+          "Browse the ", htmltools::tags$strong("'Map'"),
+          " to see plots grouped by location. Clicking the links on the pin labels will show details",
+          " for a plot, and clicking the ", htmltools::tags$strong("'Map'"),
+          " button in a row of the plot table will center the map on that plot."
+        ),
+        htmltools::tags$li(
+          "Use the ", htmltools::tags$strong("search box"),
+          " in the top-right of each table to filter results."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Sorting"), " is currently unsupported, but soon you'll be able to click",
+          " column headers to sort table data."
+        ),
+        htmltools::tags$li(
+          "Your ", htmltools::tags$strong("URL updates"),
+          " as you navigate, so you can bookmark or share specific views."
+        ),
+        htmltools::tags$li(
+          "Use your browser's ", htmltools::tags$strong("back/forward buttons"),
+          " to navigate through your browsing history."
+        ),
+        htmltools::tags$li(
+          "For common questions, check the ",
+          htmltools::tags$strong("'FAQ'"),
+          " tab."
+        )
+      ),
+
+      htmltools::tags$h5("Beta Notice"),
+      htmltools::tags$p(
+        htmltools::tags$em(
+          "This is a beta release. Things are slow and buggy. Most features are still in development. ",
+          "When you encounter issues, please report them to help@vegbank.org with details ",
+          "about what you were doing when the problem occurred."
+        )
+      ),
+      htmltools::tags$br(),
+      htmltools::tags$p(
+        "For more information, see the previous ",
+        htmltools::tags$a(href = "http://vegbank.org", target = "_blank", " VegBank site"),
+        " or the ",
+        htmltools::tags$a(
+          href = "https://github.com/NCEAS/vegbankr",
+          target = "_blank",
+          "vegbankr R package"
+        ),
+        " for programmatic data access."
+      )
     )
   })
 
