@@ -872,15 +872,8 @@ open_code_details <- function(
     highlight_table <- hl_table_override %||% state$highlighted_table()
     highlight_row <- if (!is.null(hl_row_override)) as.integer(hl_row_override) else state$highlighted_row()
 
-    # Request client-side row highlight; prefer the row/table that originated the
-    # click (highlighted_table/highlighted_row) to avoid highlighting every matching code.
-    highlight_table_row(
-      session = session,
-      detail_type = detail_type,
-      vb_code = vb_code,
-      table_id_override = highlight_table,
-      row_index = highlight_row
-    )
+    # Request client-side row highlight
+    highlight_table_row(session, highlight_table, highlight_row)
   }
 
   show_detail_view(detail_type, vb_code, output, session)
@@ -910,42 +903,20 @@ move_map_to_obs <- function(session, lat, lng, message) {
     update_map_view(lng = lng, lat = lat, label = message)
 }
 
-#' Matches detail type to corresponding table ID
-#'
-#' @param detail_type The type of detail view being opened (used to target the correct table)
-#' @return The table ID corresponding to the detail type
-#' @noRd
-resolve_table_id_for_detail <- function(detail_type) {
-  switch(detail_type,
-    "plot-observation" = "plot_table",
-    "community-classification" = "plot_table",
-    "community-concept" = "comm_table",
-    "project" = "proj_table",
-    "party" = "party_table",
-    "plant-concept" = "plant_table",
-    NULL
-  )
-}
-
-#' Highlight a table row by VegBank code using a custom Shiny message
+#' Highlight a table row using a custom Shiny message
 #'
 #' @param session The Shiny session object
-#' @param detail_type The type of detail view being opened (used to target the correct table)
-#' @param vb_code The VegBank code to highlight
-#' @param table_id_override Optional table ID to target (e.g., source table of the click)
-#' @param row_index Optional zero-based row index inside the targeted table
+#' @param table_id The table ID to target for highlighting
+#' @param row_index Zero-based row index inside the targeted table
 #' @noRd
-highlight_table_row <- function(session, detail_type, vb_code, table_id_override = NULL, row_index = NULL) {
-  # Skip if invalid VegBank code
-  if (!is_valid_vb_code(vb_code)) {
+highlight_table_row <- function(session, table_id, row_index) {
+  # Skip if no table or row specified
+  if (is.null(table_id) || is.null(row_index)) {
     return()
   }
 
-  target_table <- table_id_override %||% resolve_table_id_for_detail(detail_type)
-
   message_payload <- list(
-    vbCode = vb_code,
-    tableId = target_table,
+    tableId = table_id,
     rowIndex = row_index
   )
 

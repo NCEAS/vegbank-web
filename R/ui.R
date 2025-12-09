@@ -59,8 +59,7 @@ ui <- function(req) {
 
     // Track pending table state application and pending highlight for initial loads
     var pendingTableStates = [];
-    var pendingHighlight = null; // { vbCode, tableId, rowIndex }
-    var currentHighlight = null; // Track the currently highlighted VegBank code
+    var pendingHighlight = null; // { tableId, rowIndex }
     var currentHighlightTableId = null; // Track which table the highlight belongs to
     var currentHighlightRowIndex = null; // Track which row index is highlighted within the table
 
@@ -489,7 +488,6 @@ ui <- function(req) {
         // Immediately highlight the clicked row
         $('table tbody tr').removeClass('selected-entity');
         row.addClass('selected-entity');
-        currentHighlight = value || null;
         var containingTable = btn.closest('table');
         var wrapperId = btn.closest('.datatables').attr('id');
         // Use wrapperId (widget ID) preferentially, as it's consistent across page loads
@@ -501,7 +499,6 @@ ui <- function(req) {
         Shiny.setInputValue('row_highlight', {
           tableId: currentHighlightTableId,
           rowIndex: rowIndex,
-          vbCode: value || null,
           timestamp: Date.now()
         }, {priority: 'event'});
 
@@ -698,22 +695,21 @@ ui <- function(req) {
       console.log('DataTable draw event for:', widgetId || settings.sTableId);
 
       // Restore current highlight after table redraw
-      if (currentHighlight) {
-        console.log('Restoring current highlight after table redraw:', currentHighlight);
-        attemptRowHighlight(currentHighlight, false, currentHighlightTableId, currentHighlightRowIndex);
+      if (currentHighlightTableId && currentHighlightRowIndex !== null) {
+        console.log('Restoring current highlight after table redraw:', currentHighlightTableId, currentHighlightRowIndex);
+        attemptRowHighlight(false, currentHighlightTableId, currentHighlightRowIndex);
       }
 
       // Check for pending highlight for this table
       if (pendingHighlight) {
         var targetId = pendingHighlight.tableId || widgetId;
-        console.log('Processing pending highlight:', pendingHighlight.vbCode);
+        console.log('Processing pending highlight for table:', targetId, 'row:', pendingHighlight.rowIndex);
 
         // Try to highlight the row now that table is ready
-        var applied = attemptRowHighlight(pendingHighlight.vbCode, true, targetId, pendingHighlight.rowIndex);
+        var applied = attemptRowHighlight(true, targetId, pendingHighlight.rowIndex);
         if (applied) {
-          console.log('Successfully processed pending highlight for:', pendingHighlight.vbCode);
+          console.log('Successfully processed pending highlight');
           // Remove from pending and set as current highlight
-          currentHighlight = pendingHighlight.vbCode;
           currentHighlightTableId = targetId;
           currentHighlightRowIndex = pendingHighlight.rowIndex;
           pendingHighlight = null;
@@ -723,7 +719,7 @@ ui <- function(req) {
       // Apply initial URL highlight (for page refresh with hl_table/hl_row params)
       if (initialUrlHighlight && !initialUrlHighlight.applied && initialUrlHighlight.tableId === widgetId) {
         console.log('Applying initial URL highlight for table:', widgetId, 'row:', initialUrlHighlight.rowIndex);
-        var hlApplied = attemptRowHighlight(null, true, widgetId, initialUrlHighlight.rowIndex);
+        var hlApplied = attemptRowHighlight(true, widgetId, initialUrlHighlight.rowIndex);
         if (hlApplied) {
           initialUrlHighlight.applied = true;
           currentHighlightTableId = widgetId;
@@ -757,10 +753,9 @@ ui <- function(req) {
             var targetId = pendingHighlight.tableId || widgetId;
             console.log('Post-XHR highlight attempt for', targetId);
 
-            var applied = attemptRowHighlight(pendingHighlight.vbCode, true, targetId, pendingHighlight.rowIndex);
+            var applied = attemptRowHighlight(true, targetId, pendingHighlight.rowIndex);
             if (applied) {
-              console.log('Applied pending highlight after XHR for', pendingHighlight.vbCode);
-              currentHighlight = pendingHighlight.vbCode;
+              console.log('Applied pending highlight after XHR');
               currentHighlightTableId = targetId;
               currentHighlightRowIndex = pendingHighlight.rowIndex;
               pendingHighlight = null;
@@ -771,7 +766,7 @@ ui <- function(req) {
           // Try initial URL highlight if not yet applied
           if (initialUrlHighlight && !initialUrlHighlight.applied && initialUrlHighlight.tableId === widgetId) {
             console.log('Post-XHR URL highlight attempt for table:', widgetId, 'row:', initialUrlHighlight.rowIndex);
-            var hlApplied = attemptRowHighlight(null, true, widgetId, initialUrlHighlight.rowIndex);
+            var hlApplied = attemptRowHighlight(true, widgetId, initialUrlHighlight.rowIndex);
             if (hlApplied) {
               initialUrlHighlight.applied = true;
               currentHighlightTableId = widgetId;
@@ -784,9 +779,8 @@ ui <- function(req) {
     });
 
     // Function to attempt row highlight using the explicit table and row index.
-    // Code-based fallback searches are NOT used; highlighting is solely driven by
-    // highlighted_table and highlighted_row state set at click time.
-    function attemptRowHighlight(vbCode, clearCurrent, tableId, rowIndex) {
+    // Highlighting is solely driven by tableId and rowIndex.
+    function attemptRowHighlight(clearCurrent, tableId, rowIndex) {
       if (clearCurrent !== false) { // Default to true unless explicitly set to false
         console.log('Attempting to highlight row tableId=', tableId, 'rowIndex=', rowIndex);
         // Clear all highlights from all tables first
@@ -830,7 +824,6 @@ ui <- function(req) {
       if (indexedRow && indexedRow.length) {
         indexedRow.addClass('selected-entity');
         console.log('SUCCESS: Highlighted row by explicit index', numericIndex, 'in table', tableId);
-        currentHighlight = vbCode;
         currentHighlightTableId = tableId;
         currentHighlightRowIndex = numericIndex;
         return true;
@@ -841,28 +834,18 @@ ui <- function(req) {
     }
 
     Shiny.addCustomMessageHandler('highlightTableRow', function(message) {
-      console.log('Received highlight request for:', message.vbCode);
+      console.log('Received highlight request for table:', message.tableId, 'row:', message.rowIndex);
 
       var targetTableId = message.tableId || null;
-      var shouldClear = true;
-      if (currentHighlight && String(currentHighlight).trim() === String(message.vbCode).trim()) {
-        // Keep existing highlight when we already have the same code highlighted (e.g., link clicks inside a row)
-        shouldClear = false;
-        if (currentHighlightTableId) {
-          targetTableId = currentHighlightTableId;
-        }
-      }
-
       var rowIndex = (message.rowIndex !== undefined) ? message.rowIndex : null;
 
       // Try immediate highlight first
-      if (!attemptRowHighlight(message.vbCode, shouldClear, targetTableId, rowIndex)) {
+      if (!attemptRowHighlight(true, targetTableId, rowIndex)) {
         console.log('Immediate highlight failed; will retry after table draw');
-        pendingHighlight = { vbCode: message.vbCode, tableId: message.tableId || null, rowIndex: rowIndex };
+        pendingHighlight = { tableId: targetTableId, rowIndex: rowIndex };
       } else {
         // Set as current highlight if successful
-        currentHighlight = message.vbCode;
-        currentHighlightTableId = targetTableId || message.tableId || null;
+        currentHighlightTableId = targetTableId;
         currentHighlightRowIndex = rowIndex;
         pendingHighlight = null;
       }
@@ -870,7 +853,6 @@ ui <- function(req) {
 
     Shiny.addCustomMessageHandler('clearAllTableHighlights', function(message) {
       $('table tbody tr').removeClass('selected-entity');
-      currentHighlight = null;
       currentHighlightTableId = null;
       currentHighlightRowIndex = null;
       console.log('Cleared all table highlights');
