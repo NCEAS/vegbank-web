@@ -683,7 +683,7 @@ server <- function(input, output, session) {
           "For common questions, check the ",
           htmltools::tags$a(
             href = "?tab=FAQ",
-            htmltools::tags$strong("'FAQ'")
+            htmltools::tags$strong("FAQ")
           ),
           " tab."
         )

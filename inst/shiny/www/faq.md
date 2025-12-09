@@ -45,7 +45,7 @@ Please select from the following questions, or browse through this file:
 [back to top...](#topoffaq)
 
 * * *
-/
+
 ##### What is a community? {#whatcommunity}
 
 > In overly simple terms, a community is a set of plant taxa that live adjacent to one another within a set of physical conditions. This community of co-occurring plants may be seen to repeat itself in a predictable pattern. One may classify (or interpret) a plot as belonging to a certain community type.  
