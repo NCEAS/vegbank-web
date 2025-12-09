@@ -69,13 +69,6 @@ server <- function(input, output, session) {
     state$table_sync_pending[[key]] <- FALSE
   }
 
-  # Placeholder values used for row-selection helpers when cached data are
-  # unavailable (remote tables fetch rows on demand). These ensure that detail
-  # navigation observers can safely reference the objects without triggering
-  # "object not found" errors.
-  comm_class_data <- NULL
-  taxa_data <- NULL
-
   # Map data state: observations for the leaflet map and fetch status flag
   map_observations <- shiny::reactiveVal(NULL)
   map_fetch_in_progress <- shiny::reactiveVal(FALSE)
@@ -341,10 +334,10 @@ server <- function(input, output, session) {
     # Ensure we have an up-to-date record of the current tab
     state$current_tab(input$page %||% state$current_tab())
 
-    # When restoring from URL with highlight params, skip server-side row selection.
-    # The client reads hl_table/hl_row directly from URL and handles selection after
+    # When restoring from URL with highlight params, skip server-side row highlight.
+    # The client reads hl_table/hl_row directly from URL and handles highlight after
     # table state is loaded (to ensure correct pagination).
-    skip_selection <- !push_history && !is.null(hl_table_override) && !is.null(hl_row_override)
+    skip_highlight <- !push_history && !is.null(hl_table_override) && !is.null(hl_row_override)
 
     # Prepare arguments for open_code_details helper
     args <- list(
@@ -355,7 +348,7 @@ server <- function(input, output, session) {
       detail_type = detail_type,
       hl_table_override = hl_table_override,
       hl_row_override = hl_row_override,
-      skip_selection = skip_selection
+      skip_highlight = skip_highlight
     )
 
     success <- do.call(open_code_details, args)
@@ -399,8 +392,8 @@ server <- function(input, output, session) {
       session$sendCustomMessage("closeOverlay", list())
     }
 
-    # Clear any table row selections
-    session$sendCustomMessage("clearAllTableSelections", list())
+    # Clear any table row highlights
+    session$sendCustomMessage("clearAllTableHighlights", list())
 
     # Update URL to remove detail parameters
     if (push_history) {
@@ -857,12 +850,12 @@ server <- function(input, output, session) {
 #' @param error_message Custom error message for invalid VegBank codes
 #' @param hl_table_override Optional explicit table ID for highlighting (bypasses state)
 #' @param hl_row_override Optional explicit row index for highlighting (bypasses state)
-#' @param skip_selection If TRUE, skip sending row selection message (client handles it)
+#' @param skip_highlight If TRUE, skip sending row highlight message (client handles it)
 #' @return TRUE if successful, FALSE if validation failed
 #' @noRd
 open_code_details <- function(
   state, session, output, vb_code, detail_type, error_message = NULL,
-  hl_table_override = NULL, hl_row_override = NULL, skip_selection = FALSE) {
+  hl_table_override = NULL, hl_row_override = NULL, skip_highlight = FALSE) {
   if (!is_valid_vb_code(vb_code)) {
     error_msg <- error_message %||% paste0("No VegBank code found for that ", gsub("-", " ", detail_type))
     shiny::showNotification(error_msg, type = "error")
@@ -873,15 +866,15 @@ open_code_details <- function(
   state$detail_code(vb_code)
   state$details_open(TRUE)
 
-  # Skip row selection if client will handle it (e.g., during URL restore)
-  if (!isTRUE(skip_selection)) {
+  # Skip row highlight if client will handle it (e.g., during URL restore)
+  if (!isTRUE(skip_highlight)) {
     # Use explicit overrides if provided, otherwise fall back to state
     highlight_table <- hl_table_override %||% state$highlighted_table()
     highlight_row <- if (!is.null(hl_row_override)) as.integer(hl_row_override) else state$highlighted_row()
 
-    # Request client-side row selection; prefer the row/table that originated the
-    # click (highlighted_table/highlighted_row) to avoid selecting every matching code.
-    select_table_row_by_code(
+    # Request client-side row highlight; prefer the row/table that originated the
+    # click (highlighted_table/highlighted_row) to avoid highlighting every matching code.
+    highlight_table_row(
       session = session,
       detail_type = detail_type,
       vb_code = vb_code,
@@ -917,10 +910,10 @@ move_map_to_obs <- function(session, lat, lng, message) {
     update_map_view(lng = lng, lat = lat, label = message)
 }
 
-#' Select a table row by VegBank code using a custom Shiny message
+#' Matches detail type to corresponding table ID
 #'
-#' @param session The Shiny session object
-#' @param vb_code The VegBank code to select
+#' @param detail_type The type of detail view being opened (used to target the correct table)
+#' @return The table ID corresponding to the detail type
 #' @noRd
 resolve_table_id_for_detail <- function(detail_type) {
   switch(detail_type,
@@ -934,15 +927,15 @@ resolve_table_id_for_detail <- function(detail_type) {
   )
 }
 
-#' Select a table row by VegBank code using a custom Shiny message
+#' Highlight a table row by VegBank code using a custom Shiny message
 #'
 #' @param session The Shiny session object
 #' @param detail_type The type of detail view being opened (used to target the correct table)
-#' @param vb_code The VegBank code to select
+#' @param vb_code The VegBank code to highlight
 #' @param table_id_override Optional table ID to target (e.g., source table of the click)
 #' @param row_index Optional zero-based row index inside the targeted table
 #' @noRd
-select_table_row_by_code <- function(session, detail_type, vb_code, table_id_override = NULL, row_index = NULL) {
+highlight_table_row <- function(session, detail_type, vb_code, table_id_override = NULL, row_index = NULL) {
   # Skip if invalid VegBank code
   if (!is_valid_vb_code(vb_code)) {
     return()
@@ -958,6 +951,6 @@ select_table_row_by_code <- function(session, detail_type, vb_code, table_id_ove
 
   # Defer sending until after the current flush cycle to ensure client is ready
   session$onFlushed(function() {
-    session$sendCustomMessage("selectTableRowByCode", message_payload)
+    session$sendCustomMessage("highlightTableRow", message_payload)
   }, once = TRUE)
 }

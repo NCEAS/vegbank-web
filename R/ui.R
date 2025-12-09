@@ -57,12 +57,12 @@ ui <- function(req) {
     //    navigation) it sends an `applyTableState` custom message, which uses the
     //    same `applyTableState` helper below to drive the DataTables API.
 
-    // Track pending table state application and pending selection for initial loads
+    // Track pending table state application and pending highlight for initial loads
     var pendingTableStates = [];
-    var pendingSelection = null; // { vbCode, tableId, rowIndex }
-    var currentSelection = null; // Track the currently selected VegBank code
-    var currentSelectionTableId = null; // Track which table the selection belongs to
-    var currentSelectionRowIndex = null; // Track which row index was selected within the table
+    var pendingHighlight = null; // { vbCode, tableId, rowIndex }
+    var currentHighlight = null; // Track the currently highlighted VegBank code
+    var currentHighlightTableId = null; // Track which table the highlight belongs to
+    var currentHighlightRowIndex = null; // Track which row index is highlighted within the table
 
     // Initial highlight from URL - applied after table reaches correct page
     var initialUrlHighlight = (function() {
@@ -489,17 +489,17 @@ ui <- function(req) {
         // Immediately highlight the clicked row
         $('table tbody tr').removeClass('selected-entity');
         row.addClass('selected-entity');
-        currentSelection = value || null;
+        currentHighlight = value || null;
         var containingTable = btn.closest('table');
         var wrapperId = btn.closest('.datatables').attr('id');
         // Use wrapperId (widget ID) preferentially, as it's consistent across page loads
         // The internal DataTables ID (e.g., DataTables_Table_0) can vary
         var rawTableId = (containingTable && containingTable.attr('id')) || null;
-        currentSelectionTableId = wrapperId || resolveWidgetId(rawTableId) || rawTableId;
-        currentSelectionRowIndex = rowIndex;
+        currentHighlightTableId = wrapperId || resolveWidgetId(rawTableId) || rawTableId;
+        currentHighlightRowIndex = rowIndex;
 
         Shiny.setInputValue('row_highlight', {
-          tableId: currentSelectionTableId,
+          tableId: currentHighlightTableId,
           rowIndex: rowIndex,
           vbCode: value || null,
           timestamp: Date.now()
@@ -697,37 +697,37 @@ ui <- function(req) {
       var widgetId = resolveWidgetId(settings.sTableId);
       console.log('DataTable draw event for:', widgetId || settings.sTableId);
 
-      // Restore current selection after table redraw
-      if (currentSelection) {
-        console.log('Restoring current selection after table redraw:', currentSelection);
-        attemptRowSelection(currentSelection, false, currentSelectionTableId, currentSelectionRowIndex);
+      // Restore current highlight after table redraw
+      if (currentHighlight) {
+        console.log('Restoring current highlight after table redraw:', currentHighlight);
+        attemptRowHighlight(currentHighlight, false, currentHighlightTableId, currentHighlightRowIndex);
       }
 
-      // Check for pending selection for this table
-      if (pendingSelection) {
-        var targetId = pendingSelection.tableId || widgetId;
-        console.log('Processing pending selection:', pendingSelection.vbCode);
+      // Check for pending highlight for this table
+      if (pendingHighlight) {
+        var targetId = pendingHighlight.tableId || widgetId;
+        console.log('Processing pending highlight:', pendingHighlight.vbCode);
 
-        // Try to select the row now that table is ready
-        var applied = attemptRowSelection(pendingSelection.vbCode, true, targetId, pendingSelection.rowIndex);
+        // Try to highlight the row now that table is ready
+        var applied = attemptRowHighlight(pendingHighlight.vbCode, true, targetId, pendingHighlight.rowIndex);
         if (applied) {
-          console.log('Successfully processed pending selection for:', pendingSelection.vbCode);
-          // Remove from pending and set as current selection
-          currentSelection = pendingSelection.vbCode;
-          currentSelectionTableId = targetId;
-          currentSelectionRowIndex = pendingSelection.rowIndex;
-          pendingSelection = null;
+          console.log('Successfully processed pending highlight for:', pendingHighlight.vbCode);
+          // Remove from pending and set as current highlight
+          currentHighlight = pendingHighlight.vbCode;
+          currentHighlightTableId = targetId;
+          currentHighlightRowIndex = pendingHighlight.rowIndex;
+          pendingHighlight = null;
         }
       }
 
       // Apply initial URL highlight (for page refresh with hl_table/hl_row params)
       if (initialUrlHighlight && !initialUrlHighlight.applied && initialUrlHighlight.tableId === widgetId) {
         console.log('Applying initial URL highlight for table:', widgetId, 'row:', initialUrlHighlight.rowIndex);
-        var hlApplied = attemptRowSelection(null, true, widgetId, initialUrlHighlight.rowIndex);
+        var hlApplied = attemptRowHighlight(null, true, widgetId, initialUrlHighlight.rowIndex);
         if (hlApplied) {
           initialUrlHighlight.applied = true;
-          currentSelectionTableId = widgetId;
-          currentSelectionRowIndex = initialUrlHighlight.rowIndex;
+          currentHighlightTableId = widgetId;
+          currentHighlightRowIndex = initialUrlHighlight.rowIndex;
           console.log('Initial URL highlight applied successfully');
         }
       }
@@ -743,27 +743,27 @@ ui <- function(req) {
       }
     });
 
-    // For server-side AJAX tables, try row selection after data arrives
+    // For server-side AJAX tables, try row highlight after data arrives
     $(document).on('xhr.dt', function(e, settings, json, xhr) {
       var widgetId = resolveWidgetId(settings.sTableId);
       console.log('DataTable xhr event for:', widgetId, '- data received, records:', json && json.recordsTotal);
 
-      // After AJAX data is received, retry selections with a small delay
+      // After AJAX data is received, retry highlights with a small delay
       // Use requestAnimationFrame + setTimeout to ensure DOM has been updated
       requestAnimationFrame(function() {
         setTimeout(function() {
-          // Try pending selection first
-          if (pendingSelection && (!pendingSelection.tableId || pendingSelection.tableId === widgetId)) {
-            var targetId = pendingSelection.tableId || widgetId;
-            console.log('Post-XHR selection attempt for', targetId);
+          // Try pending highlight first
+          if (pendingHighlight && (!pendingHighlight.tableId || pendingHighlight.tableId === widgetId)) {
+            var targetId = pendingHighlight.tableId || widgetId;
+            console.log('Post-XHR highlight attempt for', targetId);
 
-            var applied = attemptRowSelection(pendingSelection.vbCode, true, targetId, pendingSelection.rowIndex);
+            var applied = attemptRowHighlight(pendingHighlight.vbCode, true, targetId, pendingHighlight.rowIndex);
             if (applied) {
-              console.log('Applied pending selection after XHR for', pendingSelection.vbCode);
-              currentSelection = pendingSelection.vbCode;
-              currentSelectionTableId = targetId;
-              currentSelectionRowIndex = pendingSelection.rowIndex;
-              pendingSelection = null;
+              console.log('Applied pending highlight after XHR for', pendingHighlight.vbCode);
+              currentHighlight = pendingHighlight.vbCode;
+              currentHighlightTableId = targetId;
+              currentHighlightRowIndex = pendingHighlight.rowIndex;
+              pendingHighlight = null;
               return; // Don't also apply URL highlight
             }
           }
@@ -771,11 +771,11 @@ ui <- function(req) {
           // Try initial URL highlight if not yet applied
           if (initialUrlHighlight && !initialUrlHighlight.applied && initialUrlHighlight.tableId === widgetId) {
             console.log('Post-XHR URL highlight attempt for table:', widgetId, 'row:', initialUrlHighlight.rowIndex);
-            var hlApplied = attemptRowSelection(null, true, widgetId, initialUrlHighlight.rowIndex);
+            var hlApplied = attemptRowHighlight(null, true, widgetId, initialUrlHighlight.rowIndex);
             if (hlApplied) {
               initialUrlHighlight.applied = true;
-              currentSelectionTableId = widgetId;
-              currentSelectionRowIndex = initialUrlHighlight.rowIndex;
+              currentHighlightTableId = widgetId;
+              currentHighlightRowIndex = initialUrlHighlight.rowIndex;
               console.log('Applied URL highlight after XHR');
             }
           }
@@ -783,19 +783,19 @@ ui <- function(req) {
       });
     });
 
-    // Function to attempt row selection using the explicit table and row index.
+    // Function to attempt row highlight using the explicit table and row index.
     // Code-based fallback searches are NOT used; highlighting is solely driven by
     // highlighted_table and highlighted_row state set at click time.
-    function attemptRowSelection(vbCode, clearCurrent, tableId, rowIndex) {
+    function attemptRowHighlight(vbCode, clearCurrent, tableId, rowIndex) {
       if (clearCurrent !== false) { // Default to true unless explicitly set to false
-        console.log('Attempting to select row tableId=', tableId, 'rowIndex=', rowIndex);
-        // Clear all selections from all tables first
+        console.log('Attempting to highlight row tableId=', tableId, 'rowIndex=', rowIndex);
+        // Clear all highlights from all tables first
         $('table tbody tr').removeClass('selected-entity');
       }
 
       // Must have both tableId and rowIndex to highlight
       if (!tableId || rowIndex === undefined || rowIndex === null || isNaN(rowIndex)) {
-        console.log('No explicit tableId/rowIndex provided; skipping selection');
+        console.log('No explicit tableId/rowIndex provided; skipping highlight');
         return false;
       }
 
@@ -829,10 +829,10 @@ ui <- function(req) {
       var indexedRow = allRows.eq(numericIndex);
       if (indexedRow && indexedRow.length) {
         indexedRow.addClass('selected-entity');
-        console.log('SUCCESS: Selected row by explicit index', numericIndex, 'in table', tableId);
-        currentSelection = vbCode;
-        currentSelectionTableId = tableId;
-        currentSelectionRowIndex = numericIndex;
+        console.log('SUCCESS: Highlighted row by explicit index', numericIndex, 'in table', tableId);
+        currentHighlight = vbCode;
+        currentHighlightTableId = tableId;
+        currentHighlightRowIndex = numericIndex;
         return true;
       }
 
@@ -840,40 +840,40 @@ ui <- function(req) {
       return false;
     }
 
-    Shiny.addCustomMessageHandler('selectTableRowByCode', function(message) {
-      console.log('Received selection request for:', message.vbCode);
+    Shiny.addCustomMessageHandler('highlightTableRow', function(message) {
+      console.log('Received highlight request for:', message.vbCode);
 
       var targetTableId = message.tableId || null;
       var shouldClear = true;
-      if (currentSelection && String(currentSelection).trim() === String(message.vbCode).trim()) {
-        // Keep existing highlight when we already have the same code selected (e.g., link clicks inside a row)
+      if (currentHighlight && String(currentHighlight).trim() === String(message.vbCode).trim()) {
+        // Keep existing highlight when we already have the same code highlighted (e.g., link clicks inside a row)
         shouldClear = false;
-        if (currentSelectionTableId) {
-          targetTableId = currentSelectionTableId;
+        if (currentHighlightTableId) {
+          targetTableId = currentHighlightTableId;
         }
       }
 
       var rowIndex = (message.rowIndex !== undefined) ? message.rowIndex : null;
 
-      // Try immediate selection first
-      if (!attemptRowSelection(message.vbCode, shouldClear, targetTableId, rowIndex)) {
-        console.log('Immediate selection failed; will retry after table draw');
-        pendingSelection = { vbCode: message.vbCode, tableId: message.tableId || null, rowIndex: rowIndex };
+      // Try immediate highlight first
+      if (!attemptRowHighlight(message.vbCode, shouldClear, targetTableId, rowIndex)) {
+        console.log('Immediate highlight failed; will retry after table draw');
+        pendingHighlight = { vbCode: message.vbCode, tableId: message.tableId || null, rowIndex: rowIndex };
       } else {
-        // Set as current selection if successful
-        currentSelection = message.vbCode;
-        currentSelectionTableId = targetTableId || message.tableId || null;
-        currentSelectionRowIndex = rowIndex;
-        pendingSelection = null;
+        // Set as current highlight if successful
+        currentHighlight = message.vbCode;
+        currentHighlightTableId = targetTableId || message.tableId || null;
+        currentHighlightRowIndex = rowIndex;
+        pendingHighlight = null;
       }
     });
 
-    Shiny.addCustomMessageHandler('clearAllTableSelections', function(message) {
+    Shiny.addCustomMessageHandler('clearAllTableHighlights', function(message) {
       $('table tbody tr').removeClass('selected-entity');
-      currentSelection = null;
-      currentSelectionTableId = null;
-      currentSelectionRowIndex = null;
-      console.log('Cleared all table selections');
+      currentHighlight = null;
+      currentHighlightTableId = null;
+      currentHighlightRowIndex = null;
+      console.log('Cleared all table highlights');
     });
 
     $(document).ready(function() {
