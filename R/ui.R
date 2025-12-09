@@ -1108,6 +1108,10 @@ build_navbar <- function() {
       bslib::nav_panel(
         title = "FAQ",
         shiny::includeMarkdown(file.path("inst", "shiny", "www", "faq.md"))
+      ),
+      bslib::nav_panel(
+        title = "Cite",
+        shiny::includeMarkdown(file.path("inst", "shiny", "www", "cite.md"))
       )
     )
   )

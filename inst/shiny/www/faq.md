@@ -128,7 +128,7 @@ Please select from the following questions, or browse through this file:
 
 ##### How do I cite VegBank? {#cite}
 
-> You may cite VegBank, as a whole or one or more elements, with the instructions on the [citation page](http://vegbank.org/vegbank/general/cite.html). That page also shows how to cite a description of VegBank.
+> You may cite VegBank, as a whole or one or more elements, with the instructions on the [Cite page](?tab=Cite) in the About menu. That page also shows how to cite a description of VegBank.
 
 [back to top...](#topoffaq)
 
