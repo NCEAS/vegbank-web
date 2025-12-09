@@ -376,6 +376,10 @@ server <- function(input, output, session) {
     state$detail_type(NULL)
     state$detail_code(NULL)
 
+    # Clear highlighted table and row state
+    state$highlighted_table(NULL)
+    state$highlighted_row(NULL)
+
     # Hide overlay UI element via custom message
     if (hide_overlay) {
       session$sendCustomMessage("closeOverlay", list())
