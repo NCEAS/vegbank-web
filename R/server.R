@@ -51,7 +51,8 @@ server <- function(input, output, session) {
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
     table_states = shiny::reactiveValues(),
-    table_sync_pending = shiny::reactiveValues()
+    table_sync_pending = shiny::reactiveValues(),
+    table_sync_completed_at = shiny::reactiveValues()
   )
 
   # Table registry: maps tab names to table IDs and default page lengths
@@ -214,12 +215,33 @@ server <- function(input, output, session) {
     tab_for_key <- table_registry[[key]]$tab
     pending_sync <- shiny::isolate(isTRUE(state$table_sync_pending[[key]]))
     current <- shiny::isolate(state$table_states[[key]])
+    sync_completed_at <- shiny::isolate(state$table_sync_completed_at[[key]])
 
+    # When a sync is pending (we're restoring state from URL), ignore incoming
+    # state reports until the table settles at the expected state. This prevents
+    # race conditions where the table reports its initial state (start=0) before
+    # the URL-specified pagination is applied.
     if (pending_sync) {
-      state$table_sync_pending[[key]] <- FALSE
       if (!is.null(current) && identical(current, sanitized)) {
+        # Table has reached the expected state - sync complete
+        state$table_sync_pending[[key]] <- FALSE
+        # Record when sync completed to ignore stale default state callbacks
+        state$table_sync_completed_at[[key]] <- Sys.time()
+      }
+      # Either way, don't update URL while sync is pending
+      return()
+    }
+
+    # Grace period: ignore default state callbacks within 10 seconds of sync completion
+    # This handles race conditions where stale default state callbacks arrive after sync
+    # The delay can be significant due to server-side AJAX processing and table re-rendering
+    if (!is.null(sync_completed_at)) {
+      grace_period_active <- difftime(Sys.time(), sync_completed_at, units = "secs") < 10
+      if (grace_period_active && url_manager$is_default_table_state(key, sanitized)) {
         return()
       }
+      # Clear the completed timestamp once grace period is over or we have non-default state
+      state$table_sync_completed_at[[key]] <- NULL
     }
 
     if (url_manager$is_default_table_state(key, sanitized)) {
@@ -280,6 +302,9 @@ server <- function(input, output, session) {
       }
     }
 
+    # Get table states, being careful about sync pending state
+    table_states_list <- shiny::reactiveValuesToList(state$table_states)
+
     # Build query string using URL manager
     target_query <- url_manager$build_query_string(
       tab = tab,
@@ -289,7 +314,9 @@ server <- function(input, output, session) {
       map_lng = state$map_center_lng(),
       map_zoom = state$map_zoom(),
       map_has_custom_state = state$map_has_custom_state(),
-      table_states = shiny::reactiveValuesToList(state$table_states)
+      table_states = table_states_list,
+      highlight_table = state$highlighted_table(),
+      highlight_row = state$highlighted_row()
     )
 
     url_manager$update_query_string(target_query, mode = mode)
@@ -307,9 +334,17 @@ server <- function(input, output, session) {
   #   vb_code - VegBank entity code (e.g., "VB.123")
   #   push_history - If TRUE, updates URL and adds browser history entry
   #   history_mode - "push" creates new history entry, "replace" updates current entry
-  open_detail <- function(detail_type, vb_code, push_history = TRUE, history_mode = "push") {
+  #   hl_table_override - Optional explicit table ID for row highlighting (used during URL restore)
+  #   hl_row_override - Optional explicit row index for row highlighting (used during URL restore)
+  open_detail <- function(detail_type, vb_code, push_history = TRUE, history_mode = "push",
+                          hl_table_override = NULL, hl_row_override = NULL) {
     # Ensure we have an up-to-date record of the current tab
     state$current_tab(input$page %||% state$current_tab())
+
+    # When restoring from URL with highlight params, skip server-side row selection.
+    # The client reads hl_table/hl_row directly from URL and handles selection after
+    # table state is loaded (to ensure correct pagination).
+    skip_selection <- !push_history && !is.null(hl_table_override) && !is.null(hl_row_override)
 
     # Prepare arguments for open_code_details helper
     args <- list(
@@ -317,7 +352,10 @@ server <- function(input, output, session) {
       session = session,
       output = output,
       vb_code = vb_code,
-      detail_type = detail_type
+      detail_type = detail_type,
+      hl_table_override = hl_table_override,
+      hl_row_override = hl_row_override,
+      skip_selection = skip_selection
     )
 
     success <- do.call(open_code_details, args)
@@ -413,12 +451,24 @@ server <- function(input, output, session) {
         target_type <- url_manager$first_param(params$detail)
         target_code <- url_manager$first_param(params$code)
 
+        # Restore highlight state from URL
+        hl_table <- url_manager$first_param(params$hl_table)
+        hl_row <- url_manager$parse_numeric_param(params$hl_row)
+        if (!is.null(hl_table) && nzchar(hl_table)) {
+          state$highlighted_table(hl_table)
+        }
+        if (!is.null(hl_row) && !is.na(hl_row)) {
+          state$highlighted_row(as.integer(hl_row))
+        }
+
         needs_open <- !identical(state$detail_type(), target_type) ||
           !identical(state$detail_code(), target_code) ||
           !isTRUE(state$details_open())
 
         if (needs_open) {
-          open_detail(target_type, target_code, push_history = FALSE)
+          # Pass highlight params explicitly from URL to avoid reactive timing issues
+          open_detail(target_type, target_code, push_history = FALSE,
+                      hl_table_override = hl_table, hl_row_override = hl_row)
         }
       } else if (isTRUE(state$details_open())) {
         close_detail(push_history = FALSE, hide_overlay = TRUE)
@@ -805,10 +855,14 @@ server <- function(input, output, session) {
 #' @param vb_code The VegBank code for the entity
 #' @param detail_type The type of detail view to open
 #' @param error_message Custom error message for invalid VegBank codes
+#' @param hl_table_override Optional explicit table ID for highlighting (bypasses state)
+#' @param hl_row_override Optional explicit row index for highlighting (bypasses state)
+#' @param skip_selection If TRUE, skip sending row selection message (client handles it)
 #' @return TRUE if successful, FALSE if validation failed
 #' @noRd
 open_code_details <- function(
-  state, session, output, vb_code, detail_type, error_message = NULL) {
+  state, session, output, vb_code, detail_type, error_message = NULL,
+  hl_table_override = NULL, hl_row_override = NULL, skip_selection = FALSE) {
   if (!is_valid_vb_code(vb_code)) {
     error_msg <- error_message %||% paste0("No VegBank code found for that ", gsub("-", " ", detail_type))
     shiny::showNotification(error_msg, type = "error")
@@ -819,15 +873,22 @@ open_code_details <- function(
   state$detail_code(vb_code)
   state$details_open(TRUE)
 
-  # Request client-side row selection; prefer the row/table that originated the
-  # click (highlighted_table/highlighted_row) to avoid selecting every matching code.
-  select_table_row_by_code(
-    session = session,
-    detail_type = detail_type,
-    vb_code = vb_code,
-    table_id_override = state$highlighted_table(),
-    row_index = state$highlighted_row()
-  )
+  # Skip row selection if client will handle it (e.g., during URL restore)
+  if (!isTRUE(skip_selection)) {
+    # Use explicit overrides if provided, otherwise fall back to state
+    highlight_table <- hl_table_override %||% state$highlighted_table()
+    highlight_row <- if (!is.null(hl_row_override)) as.integer(hl_row_override) else state$highlighted_row()
+
+    # Request client-side row selection; prefer the row/table that originated the
+    # click (highlighted_table/highlighted_row) to avoid selecting every matching code.
+    select_table_row_by_code(
+      session = session,
+      detail_type = detail_type,
+      vb_code = vb_code,
+      table_id_override = highlight_table,
+      row_index = highlight_row
+    )
+  }
 
   show_detail_view(detail_type, vb_code, output, session)
 
@@ -889,10 +950,14 @@ select_table_row_by_code <- function(session, detail_type, vb_code, table_id_ove
 
   target_table <- table_id_override %||% resolve_table_id_for_detail(detail_type)
 
-  # Send selection message to JavaScript
-  session$sendCustomMessage("selectTableRowByCode", list(
+  message_payload <- list(
     vbCode = vb_code,
     tableId = target_table,
     rowIndex = row_index
-  ))
+  )
+
+  # Defer sending until after the current flush cycle to ensure client is ready
+  session$onFlushed(function() {
+    session$sendCustomMessage("selectTableRowByCode", message_payload)
+  }, once = TRUE)
 }

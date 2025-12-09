@@ -336,10 +336,13 @@ URLStateManager <- R6::R6Class(
     #' @param map_zoom Map zoom level
     #' @param map_has_custom_state Whether map has custom state
     #' @param table_states List of table states
+    #' @param highlight_table Table ID where selection occurred
+    #' @param highlight_row Row index of selection
     #' @return Query string (e.g., "?tab=Plots&detail=plot&code=123")
     build_query_string = function(tab = NULL, detail_type = NULL, detail_code = NULL,
                                   map_lat = NULL, map_lng = NULL, map_zoom = NULL,
-                                  map_has_custom_state = FALSE, table_states = list()) {
+                                  map_has_custom_state = FALSE, table_states = list(),
+                                  highlight_table = NULL, highlight_row = NULL) {
       if (is.null(tab) || !nzchar(tab)) {
         tab <- "Overview"
       }
@@ -351,6 +354,14 @@ URLStateManager <- R6::R6Class(
         nzchar(detail_type) && nzchar(detail_code)) {
         params$detail <- detail_type
         params$code <- detail_code
+
+        # Include highlight state when detail overlay is open
+        if (!is.null(highlight_table) && nzchar(highlight_table)) {
+          params$hl_table <- highlight_table
+        }
+        if (!is.null(highlight_row) && !is.na(highlight_row)) {
+          params$hl_row <- as.character(as.integer(highlight_row))
+        }
       }
 
       include_map_params <- identical(tab, "Map") || isTRUE(map_has_custom_state)
