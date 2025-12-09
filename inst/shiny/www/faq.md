@@ -13,7 +13,6 @@ Please select from the following questions, or browse through this file:
 > [What is your standard list of species/communities?](#standardtaxa)  
 > [How do I find plots in VegBank?](#howsearch)  
 > [How do I download VegBank data to my computer?](#howdownload)  
-> [What is a dataset? What is the datacart?](#dataset)  
 > [What features does VegBank offer for analysis of plot data?](#analysis)  
 > [What is metadata?](#metadata)  
 > [How do I cite VegBank?](#cite)  
@@ -33,7 +32,7 @@ Please select from the following questions, or browse through this file:
 
 ##### Who runs VegBank? {#whoruns}
 
-> VegBank is operated by the Ecological Society of America's [Vegetation Panel](http://vegbank.org/vegdocs/panel/panel.html) in cooperation with the [National Center for Ecological Analysis and Synthesis](http://www.nceas.ucsb.edu/).
+> VegBank is operated by the [National Center for Ecological Analysis and Synthesis](http://www.nceas.ucsb.edu/) in cooperation with the Ecological Society of America's [Vegetation Panel](http://vegbank.org/vegdocs/panel/panel.html).
 
 [back to top...](#topoffaq)
 

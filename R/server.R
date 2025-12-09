@@ -114,31 +114,34 @@ server <- function(input, output, session) {
 
   # Fetch map data when Map tab is first visited.
   # Uses map_fetch_in_progress flag to prevent duplicate requests.
-  shiny::observeEvent(state$current_tab(), {
-    # Only fetch when switching to Map tab
-    if (!identical(state$current_tab(), "Map")) {
-      return()
-    }
+  shiny::observeEvent(state$current_tab(),
+    {
+      # Only fetch when switching to Map tab
+      if (!identical(state$current_tab(), "Map")) {
+        return()
+      }
 
-    # Already have data? Skip fetch.
-    if (!is.null(map_observations())) {
-      return()
-    }
+      # Already have data? Skip fetch.
+      if (!is.null(map_observations())) {
+        return()
+      }
 
-    # Already fetching? Skip.
-    if (isTRUE(map_fetch_in_progress())) {
-      return()
-    }
+      # Already fetching? Skip.
+      if (isTRUE(map_fetch_in_progress())) {
+        return()
+      }
 
-    # Fetch data
-    map_fetch_in_progress(TRUE)
-    observations <- fetch_plot_map_data()
-    map_fetch_in_progress(FALSE)
+      # Fetch data
+      map_fetch_in_progress(TRUE)
+      observations <- fetch_plot_map_data()
+      map_fetch_in_progress(FALSE)
 
-    if (!is.null(observations)) {
-      map_observations(observations)
-    }
-  }, ignoreInit = TRUE)
+      if (!is.null(observations)) {
+        map_observations(observations)
+      }
+    },
+    ignoreInit = TRUE
+  )
 
   # --- DataTable State Management -----
 
@@ -406,13 +409,16 @@ server <- function(input, output, session) {
       params <- current_query()
 
       url_manager$set_updating(TRUE)
-      on.exit({
-        url_manager$set_updating(FALSE)
-        if (!url_manager$is_history_initialized()) {
-          session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
-          url_manager$set_history_initialized(TRUE)
-        }
-      }, add = TRUE)
+      on.exit(
+        {
+          url_manager$set_updating(FALSE)
+          if (!url_manager$is_history_initialized()) {
+            session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+            url_manager$set_history_initialized(TRUE)
+          }
+        },
+        add = TRUE
+      )
 
       # Parse and apply requested tab
       requested_tab <- url_manager$first_param(params$tab)
@@ -453,8 +459,10 @@ server <- function(input, output, session) {
 
         if (needs_open) {
           # Skip server-side highlight; client handles it from URL params after table loads
-          open_detail(target_type, target_code, push_history = FALSE,
-                      skip_highlight = TRUE)
+          open_detail(target_type, target_code,
+            push_history = FALSE,
+            skip_highlight = TRUE
+          )
         }
       } else if (isTRUE(state$details_open())) {
         close_detail(push_history = FALSE, hide_overlay = TRUE)
@@ -604,9 +612,11 @@ server <- function(input, output, session) {
     htmltools::tagList(
       htmltools::tags$div(
         htmltools::tags$strong("Welcome to VegBank Beta!"),
-        htmltools::p(" VegBank is the vegetation plot database of the Ecological Society of America's ",
-        "Panel on Vegetation Classification, operated in cooperation with the ",
-        "National Center for Ecological Analysis and Synthesis (NCEAS).")
+        htmltools::p(
+          " VegBank is the vegetation plot database of the Ecological Society of America's ",
+          "Panel on Vegetation Classification, operated in cooperation with the ",
+          "National Center for Ecological Analysis and Synthesis (NCEAS)."
+        )
       ),
       htmltools::tags$br(),
       htmltools::tags$h5("Getting Started"),
@@ -671,15 +681,17 @@ server <- function(input, output, session) {
         ),
         htmltools::tags$li(
           "For common questions, check the ",
-          htmltools::tags$strong("'FAQ'"),
+          htmltools::tags$a(
+            href = "?tab=FAQ",
+            htmltools::tags$strong("'FAQ'")
+          ),
           " tab."
         )
       ),
-
       htmltools::tags$h5("Beta Notice"),
       htmltools::tags$p(
         htmltools::tags$em(
-          "This is a beta release. Things are slow and buggy. Most features are still in development. ",
+          "This is a beta release. Things may be slow and buggy. Most features are still in development. ",
           "When you encounter issues, please report them to help@vegbank.org with details ",
           "about what you were doing when the problem occurred."
         )
@@ -962,8 +974,8 @@ server <- function(input, output, session) {
 #' @return TRUE if successful, FALSE if validation failed
 #' @noRd
 open_code_details <- function(
-  state, session, output, vb_code, detail_type, error_message = NULL,
-  skip_highlight = FALSE) {
+    state, session, output, vb_code, detail_type, error_message = NULL,
+    skip_highlight = FALSE) {
   if (!is_valid_vb_code(vb_code)) {
     error_msg <- error_message %||% paste0("No VegBank code found for that ", gsub("-", " ", detail_type))
     shiny::showNotification(error_msg, type = "error")
