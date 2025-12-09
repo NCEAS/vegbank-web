@@ -327,31 +327,20 @@ server <- function(input, output, session) {
   #   vb_code - VegBank entity code (e.g., "VB.123")
   #   push_history - If TRUE, updates URL and adds browser history entry
   #   history_mode - "push" creates new history entry, "replace" updates current entry
-  #   hl_table_override - Optional explicit table ID for row highlighting (used during URL restore)
-  #   hl_row_override - Optional explicit row index for row highlighting (used during URL restore)
+  #   skip_highlight - If TRUE, skip server-side row highlight (client handles it from URL)
   open_detail <- function(detail_type, vb_code, push_history = TRUE, history_mode = "push",
-                          hl_table_override = NULL, hl_row_override = NULL) {
+                          skip_highlight = FALSE) {
     # Ensure we have an up-to-date record of the current tab
     state$current_tab(input$page %||% state$current_tab())
 
-    # When restoring from URL with highlight params, skip server-side row highlight.
-    # The client reads hl_table/hl_row directly from URL and handles highlight after
-    # table state is loaded (to ensure correct pagination).
-    skip_highlight <- !push_history && !is.null(hl_table_override) && !is.null(hl_row_override)
-
-    # Prepare arguments for open_code_details helper
-    args <- list(
+    success <- open_code_details(
       state = state,
       session = session,
       output = output,
       vb_code = vb_code,
       detail_type = detail_type,
-      hl_table_override = hl_table_override,
-      hl_row_override = hl_row_override,
       skip_highlight = skip_highlight
     )
-
-    success <- do.call(open_code_details, args)
 
     # Update URL and browser history if successful and requested
     if (isTRUE(success) && push_history) {
@@ -459,9 +448,9 @@ server <- function(input, output, session) {
           !isTRUE(state$details_open())
 
         if (needs_open) {
-          # Pass highlight params explicitly from URL to avoid reactive timing issues
+          # Skip server-side highlight; client handles it from URL params after table loads
           open_detail(target_type, target_code, push_history = FALSE,
-                      hl_table_override = hl_table, hl_row_override = hl_row)
+                      skip_highlight = TRUE)
         }
       } else if (isTRUE(state$details_open())) {
         close_detail(push_history = FALSE, hide_overlay = TRUE)
@@ -848,14 +837,12 @@ server <- function(input, output, session) {
 #' @param vb_code The VegBank code for the entity
 #' @param detail_type The type of detail view to open
 #' @param error_message Custom error message for invalid VegBank codes
-#' @param hl_table_override Optional explicit table ID for highlighting (bypasses state)
-#' @param hl_row_override Optional explicit row index for highlighting (bypasses state)
 #' @param skip_highlight If TRUE, skip sending row highlight message (client handles it)
 #' @return TRUE if successful, FALSE if validation failed
 #' @noRd
 open_code_details <- function(
   state, session, output, vb_code, detail_type, error_message = NULL,
-  hl_table_override = NULL, hl_row_override = NULL, skip_highlight = FALSE) {
+  skip_highlight = FALSE) {
   if (!is_valid_vb_code(vb_code)) {
     error_msg <- error_message %||% paste0("No VegBank code found for that ", gsub("-", " ", detail_type))
     shiny::showNotification(error_msg, type = "error")
@@ -868,12 +855,7 @@ open_code_details <- function(
 
   # Skip row highlight if client will handle it (e.g., during URL restore)
   if (!isTRUE(skip_highlight)) {
-    # Use explicit overrides if provided, otherwise fall back to state
-    highlight_table <- hl_table_override %||% state$highlighted_table()
-    highlight_row <- if (!is.null(hl_row_override)) as.integer(hl_row_override) else state$highlighted_row()
-
-    # Request client-side row highlight
-    highlight_table_row(session, highlight_table, highlight_row)
+    highlight_table_row(session, state$highlighted_table(), state$highlighted_row())
   }
 
   show_detail_view(detail_type, vb_code, output, session)
