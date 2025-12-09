@@ -63,18 +63,17 @@ ui <- function(req) {
     var currentHighlightTableId = null; // Track which table the highlight belongs to
     var currentHighlightRowIndex = null; // Track which row index is highlighted within the table
 
-    // Initial highlight from URL - applied after table reaches correct page
-    var initialUrlHighlight = (function() {
+    // Check for highlight params in URL and set as pending highlight
+    (function() {
       var params = new URLSearchParams(window.location.search);
       var hlTable = params.get('hl_table');
       var hlRow = params.get('hl_row');
       if (hlTable && hlRow !== null) {
         var rowNum = parseInt(hlRow, 10);
         if (!isNaN(rowNum)) {
-          return { tableId: hlTable, rowIndex: rowNum, applied: false };
+          pendingHighlight = { tableId: hlTable, rowIndex: rowNum };
         }
       }
-      return null;
     })();
 
     // Track expected start offsets (pagination) per table so we only highlight
@@ -694,37 +693,18 @@ ui <- function(req) {
       var widgetId = resolveWidgetId(settings.sTableId);
       console.log('DataTable draw event for:', widgetId || settings.sTableId);
 
-      // Restore current highlight after table redraw
-      if (currentHighlightTableId && currentHighlightRowIndex !== null) {
+      // Restore current highlight after table redraw (e.g., sorting, filtering)
+      if (currentHighlightTableId && currentHighlightRowIndex !== null && !pendingHighlight) {
         console.log('Restoring current highlight after table redraw:', currentHighlightTableId, currentHighlightRowIndex);
         attemptRowHighlight(false, currentHighlightTableId, currentHighlightRowIndex);
       }
 
       // Check for pending highlight for this table
-      if (pendingHighlight) {
-        var targetId = pendingHighlight.tableId || widgetId;
-        console.log('Processing pending highlight for table:', targetId, 'row:', pendingHighlight.rowIndex);
-
-        // Try to highlight the row now that table is ready
-        var applied = attemptRowHighlight(true, targetId, pendingHighlight.rowIndex);
-        if (applied) {
-          console.log('Successfully processed pending highlight');
-          // Remove from pending and set as current highlight
-          currentHighlightTableId = targetId;
-          currentHighlightRowIndex = pendingHighlight.rowIndex;
+      if (pendingHighlight && pendingHighlight.tableId === widgetId) {
+        console.log('Processing pending highlight for table:', widgetId, 'row:', pendingHighlight.rowIndex);
+        if (attemptRowHighlight(true, widgetId, pendingHighlight.rowIndex)) {
+          console.log('Successfully applied pending highlight');
           pendingHighlight = null;
-        }
-      }
-
-      // Apply initial URL highlight (for page refresh with hl_table/hl_row params)
-      if (initialUrlHighlight && !initialUrlHighlight.applied && initialUrlHighlight.tableId === widgetId) {
-        console.log('Applying initial URL highlight for table:', widgetId, 'row:', initialUrlHighlight.rowIndex);
-        var hlApplied = attemptRowHighlight(true, widgetId, initialUrlHighlight.rowIndex);
-        if (hlApplied) {
-          initialUrlHighlight.applied = true;
-          currentHighlightTableId = widgetId;
-          currentHighlightRowIndex = initialUrlHighlight.rowIndex;
-          console.log('Initial URL highlight applied successfully');
         }
       }
 
@@ -744,38 +724,21 @@ ui <- function(req) {
       var widgetId = resolveWidgetId(settings.sTableId);
       console.log('DataTable xhr event for:', widgetId, '- data received, records:', json && json.recordsTotal);
 
-      // After AJAX data is received, retry highlights with a small delay
+      // After AJAX data is received, retry pending highlight with a small delay
       // Use requestAnimationFrame + setTimeout to ensure DOM has been updated
-      requestAnimationFrame(function() {
-        setTimeout(function() {
-          // Try pending highlight first
-          if (pendingHighlight && (!pendingHighlight.tableId || pendingHighlight.tableId === widgetId)) {
-            var targetId = pendingHighlight.tableId || widgetId;
-            console.log('Post-XHR highlight attempt for', targetId);
-
-            var applied = attemptRowHighlight(true, targetId, pendingHighlight.rowIndex);
-            if (applied) {
-              console.log('Applied pending highlight after XHR');
-              currentHighlightTableId = targetId;
-              currentHighlightRowIndex = pendingHighlight.rowIndex;
-              pendingHighlight = null;
-              return; // Don't also apply URL highlight
+      if (pendingHighlight && pendingHighlight.tableId === widgetId) {
+        requestAnimationFrame(function() {
+          setTimeout(function() {
+            if (pendingHighlight && pendingHighlight.tableId === widgetId) {
+              console.log('Post-XHR highlight attempt for', widgetId);
+              if (attemptRowHighlight(true, widgetId, pendingHighlight.rowIndex)) {
+                console.log('Applied pending highlight after XHR');
+                pendingHighlight = null;
+              }
             }
-          }
-
-          // Try initial URL highlight if not yet applied
-          if (initialUrlHighlight && !initialUrlHighlight.applied && initialUrlHighlight.tableId === widgetId) {
-            console.log('Post-XHR URL highlight attempt for table:', widgetId, 'row:', initialUrlHighlight.rowIndex);
-            var hlApplied = attemptRowHighlight(true, widgetId, initialUrlHighlight.rowIndex);
-            if (hlApplied) {
-              initialUrlHighlight.applied = true;
-              currentHighlightTableId = widgetId;
-              currentHighlightRowIndex = initialUrlHighlight.rowIndex;
-              console.log('Applied URL highlight after XHR');
-            }
-          }
-        }, 100);
-      });
+          }, 100);
+        });
+      }
     });
 
     // Function to attempt row highlight using the explicit table and row index.
@@ -836,17 +799,11 @@ ui <- function(req) {
     Shiny.addCustomMessageHandler('highlightTableRow', function(message) {
       console.log('Received highlight request for table:', message.tableId, 'row:', message.rowIndex);
 
-      var targetTableId = message.tableId || null;
-      var rowIndex = (message.rowIndex !== undefined) ? message.rowIndex : null;
-
-      // Try immediate highlight first
-      if (!attemptRowHighlight(true, targetTableId, rowIndex)) {
+      // Try immediate highlight; if it fails, set as pending for retry after table draw
+      if (!attemptRowHighlight(true, message.tableId, message.rowIndex)) {
         console.log('Immediate highlight failed; will retry after table draw');
-        pendingHighlight = { tableId: targetTableId, rowIndex: rowIndex };
+        pendingHighlight = { tableId: message.tableId, rowIndex: message.rowIndex };
       } else {
-        // Set as current highlight if successful
-        currentHighlightTableId = targetTableId;
-        currentHighlightRowIndex = rowIndex;
         pendingHighlight = null;
       }
     });
