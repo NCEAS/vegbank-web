@@ -17,6 +17,7 @@ Please select from the following questions, or browse through this file:
 > [What is metadata?](#metadata)  
 > [How do I cite VegBank?](#cite)  
 > [What is a VegBank Code?](#vegbankcode)  
+> [How is VegBank financed? How can I help VegBank operate financially?](#donate)
 > [How can I get help with VegBank? Is there a tutorial?](#tutorial)  
 > [What if I find something not working in VegBank?](#bug)  
 
@@ -24,7 +25,7 @@ Please select from the following questions, or browse through this file:
 
 ##### What is VegBank? {#whatisvegbank}
 
-> VegBank is the vegetation plot database of the Ecological Society of America's Panel on Vegetation Classification. VegBank stores data about vegetation plots and necessary supplemental data, such as a plant taxon database and community type database. VegBank's purpose is to allow plant Ecologists to submit and share data to allow permanent documentation of plot data, which will provide a permanent record of plots which define communities.
+> VegBank is the vegetation plot database of the Ecological Society of America's Panel on Vegetation Classification. VegBank stores data about vegetation plots and necessary supplemental data, such as a plant taxon database and community type database. VegBank's purpose is to allow plant ecologists to submit and share data to allow permanent documentation of plot data, which will provide a permanent record of plots which define communities.
 
 [back to top...](#topoffaq)
 
@@ -40,7 +41,7 @@ Please select from the following questions, or browse through this file:
 
 ##### What is a plot? {#whatisplot}
 
-> The purpose of plots is to record the vegetation and its environmental context. A plot may be contained by a single bounded area, such as a 50m x 20m rectangle. It could also consist of smaller subplots which sample vegetation over a large range. While we encourage plots to have boundaries and definite size, VegBank also accepts relevés that have no bounds as valid plots. An observation is a one-time record of vegetation present in a plot. So multiple observations of a plot could be made at different times, producing different values for both vegetation present (both in which taxa are present and its abundance as well as environmental variables, such as soil characteristics).
+> The purpose of plots is to record the vegetation and its environmental context. A plot may be contained by a single bounded area, such as a 50m x 20m rectangle. It could also consist of smaller subplots which sample vegetation over a large range. While we encourage plots to have boundaries and definite size, VegBank also accepts relevés that have no bounds as valid plots. An observation is a one-time record of vegetation present in a plot. So multiple observations of a plot could be made at different times, producing different values for both vegetation (i.e., which taxa are present, and their abundance if recorded) and environmental variables (e.g., soil characteristics).
 
 [back to top...](#topoffaq)
 
@@ -103,7 +104,7 @@ Please select from the following questions, or browse through this file:
 
 ##### How do I download VegBank data? {#howdownload}
 
-> Data can be downloaded from the [vegbankr api](https://github.com/NCEAS/vegbankr) underpinning this website.
+> Data can be downloaded from the [vegbankr](https://github.com/NCEAS/vegbankr) R package, which underpins this website and serves as an interface to the VegBank API.
 
 [back to top...](#topoffaq)
 
@@ -137,7 +138,7 @@ Please select from the following questions, or browse through this file:
 
 > A VegBank Code is a unique combination of letters, numbers, and a period which uniquely identify something in VegBank. VegBank Codes are used to identify plots and observations, as well as methods, plant taxa, and community types. This allows communication about these elements to take place so that each party knows that they are mentioning the same thing. VegBank Codes are important when vegbankr and VegBank communicate, because this helps the two align the different types of data, rather than repeating redundant information.  
 >   
-> For those who want to know how a VegBank Code works (this is not necessary!), it is broken into two parts, each divided by a period (.). An example VB Code is that of Quercus alba, with reference of USDA 2002 : pc.48413. The first part is the table identifier (i.e. pc for plant concepts), then a record number (i.e. the primary key, 48413)
+> For those who want to know how a VegBank Code works (this is not necessary!), it is broken into two parts, each divided by a period (.). An example VB Code is that of Quercus alba, with reference of USDA 2002 : pc.48413. The first part is the table identifier (i.e. pc for plant concepts), then the record number (i.e., 48413).
 
 [back to top...](#topoffaq)
 
@@ -157,7 +158,7 @@ Please select from the following questions, or browse through this file:
 
 ##### How can I get help with VegBank? Is there a tutorial? {#tutorial}
 
-> Not yet. We're working on [the instructions page]() to help with this.
+> Not yet. We're working on an instructions page to help with this.
 
 [back to top...](#topoffaq)
 
