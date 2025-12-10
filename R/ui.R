@@ -1061,7 +1061,7 @@ build_navbar <- function() {
           shiny::column(
             12,
             bslib::card(
-              bslib::card_header("App Overview"),
+              bslib::card_header("Overview"),
               bslib::card_body(shiny::uiOutput("dataSummary"))
             )
           )
@@ -1108,6 +1108,10 @@ build_navbar <- function() {
       bslib::nav_panel(
         title = "FAQ",
         shiny::includeMarkdown(file.path("inst", "shiny", "www", "faq.md"))
+      ),
+      bslib::nav_panel(
+        title = "Cite",
+        shiny::includeMarkdown(file.path("inst", "shiny", "www", "cite.md"))
       )
     )
   )
