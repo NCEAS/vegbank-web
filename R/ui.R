@@ -57,10 +57,29 @@ ui <- function(req) {
     //    navigation) it sends an `applyTableState` custom message, which uses the
     //    same `applyTableState` helper below to drive the DataTables API.
 
-    // Store pending row selections until tables are ready
-    var pendingSelections = [];
+    // Track pending table state application and pending highlight for initial loads
     var pendingTableStates = [];
-    var currentSelection = null; // Track the currently selected VegBank code
+    var pendingHighlight = null; // { tableId, rowIndex }
+    var currentHighlightTableId = null; // Track which table the highlight belongs to
+    var currentHighlightRowIndex = null; // Track which row index is highlighted within the table
+
+    // Check for highlight params in URL and set as pending highlight
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      var hlTable = params.get('hl_table');
+      var hlRow = params.get('hl_row');
+      if (hlTable && hlRow !== null) {
+        var rowNum = parseInt(hlRow, 10);
+        if (!isNaN(rowNum)) {
+          pendingHighlight = { tableId: hlTable, rowIndex: rowNum };
+        }
+      }
+    })();
+
+    // Track expected start offsets (pagination) per table so we only highlight
+    // after the table has actually navigated to the intended page.
+    // Exposed on window for access from DataTables initComplete callback.
+    var expectedStartByTable = window.expectedStartByTable = {};
 
     var tableIdToKey = {
       'plot_table': 'plots',
@@ -195,6 +214,7 @@ ui <- function(req) {
       return rawNode;
     }
 
+
     function buildDefaultDtState(settings) {
       var columns = Array.isArray(settings.aoColumns)
         ? settings.aoColumns.map(function(col) {
@@ -308,6 +328,10 @@ ui <- function(req) {
         var parsed = getUrlTableState(widgetId);
         tableInitialUrlState[widgetId] = parsed;
 
+        if (parsed && typeof parsed.start === 'number') {
+          expectedStartByTable[widgetId] = parsed.start;
+        }
+
         if (parsed) {
           tableStateLoadComplete[widgetId] = false;
         }
@@ -320,14 +344,17 @@ ui <- function(req) {
       registerDataTableMapping(settings);
 
       var tableId = resolveWidgetId(settings && settings.sTableId);
-      console.log('vegbankLoadTableState called for table:', tableId);
+      console.log('vegbankLoadTableState called for table:', tableId, 'URL:', window.location.search);
       if (!tableId) {
+        console.log('vegbankLoadTableState: no tableId, returning null');
         return null;
       }
 
       var urlState = getInitialUrlState(tableId);
+      console.log('vegbankLoadTableState: urlState for', tableId, '=', JSON.stringify(urlState));
       if (!urlState) {
         tableStateLoadComplete[tableId] = true;
+        console.log('vegbankLoadTableState: no urlState, returning null');
         return null;
       }
 
@@ -356,6 +383,7 @@ ui <- function(req) {
         hasOverride = hasOverride || urlState.search.length > 0;
       }
 
+      console.log('vegbankLoadTableState: returning state with start=', state.start, 'hasOverride=', hasOverride);
       return hasOverride ? state : null;
     };
 
@@ -450,7 +478,29 @@ ui <- function(req) {
         var btn = $(this);
         var inputId = btn.data('input-id');
         var value = btn.data('value');
+        var rowIndex = null;
+        var row = btn.closest('tr');
+        if (row && row.length) {
+          rowIndex = row.index();
+        }
         
+        // Immediately highlight the clicked row
+        $('table tbody tr').removeClass('selected-entity');
+        row.addClass('selected-entity');
+        var containingTable = btn.closest('table');
+        var wrapperId = btn.closest('.datatables').attr('id');
+        // Use wrapperId (widget ID) preferentially, as it's consistent across page loads
+        // The internal DataTables ID (e.g., DataTables_Table_0) can vary
+        var rawTableId = (containingTable && containingTable.attr('id')) || null;
+        currentHighlightTableId = wrapperId || resolveWidgetId(rawTableId) || rawTableId;
+        currentHighlightRowIndex = rowIndex;
+
+        Shiny.setInputValue('row_highlight', {
+          tableId: currentHighlightTableId,
+          rowIndex: rowIndex,
+          timestamp: Date.now()
+        }, {priority: 'event'});
+
         if (inputId && value) {
           Shiny.setInputValue(inputId, value, {priority: 'event'});
         }
@@ -510,6 +560,10 @@ ui <- function(req) {
       var widgetId = resolveWidgetId(tableId);
       var targetId = widgetId || tableId;
       console.log('Applying state to table:', targetId, state);
+
+      if (state && typeof state.start === 'number') {
+        expectedStartByTable[targetId] = state.start;
+      }
 
       var table = getDataTableApi(targetId, settings);
       if (!table) {
@@ -639,26 +693,22 @@ ui <- function(req) {
       var widgetId = resolveWidgetId(settings.sTableId);
       console.log('DataTable draw event for:', widgetId || settings.sTableId);
 
-      // Restore current selection after table redraw
-      if (currentSelection) {
-        console.log('Restoring current selection after table redraw:', currentSelection);
-        attemptRowSelection(currentSelection, false); // false = don't clear current selection
+      // Restore current highlight after table redraw (e.g., sorting, filtering)
+      if (currentHighlightTableId && currentHighlightRowIndex !== null && !pendingHighlight) {
+        console.log('Restoring current highlight after table redraw:', currentHighlightTableId, currentHighlightRowIndex);
+        attemptRowHighlight(false, currentHighlightTableId, currentHighlightRowIndex);
       }
 
-      // Check for any pending selections for this table or any table
-      for (var i = pendingSelections.length - 1; i >= 0; i--) {
-        var pendingSelection = pendingSelections[i];
-        console.log('Processing pending selection:', pendingSelection.vbCode);
-
-        // Try to select the row now that table is ready
-        if (attemptRowSelection(pendingSelection.vbCode)) {
-          console.log('Successfully processed pending selection for:', pendingSelection.vbCode);
-          // Remove from pending list and set as current selection
-          currentSelection = pendingSelection.vbCode;
-          pendingSelections.splice(i, 1);
+      // Check for pending highlight for this table
+      if (pendingHighlight && pendingHighlight.tableId === widgetId) {
+        console.log('Processing pending highlight for table:', widgetId, 'row:', pendingHighlight.rowIndex);
+        if (attemptRowHighlight(true, widgetId, pendingHighlight.rowIndex)) {
+          console.log('Successfully applied pending highlight');
+          pendingHighlight = null;
         }
       }
 
+      // Apply pending table states
       for (var j = pendingTableStates.length - 1; j >= 0; j--) {
         var pendingState = pendingTableStates[j];
         if (pendingState.tableId === widgetId) {
@@ -669,55 +719,100 @@ ui <- function(req) {
       }
     });
 
-    // Function to attempt row selection
-    function attemptRowSelection(vbCode, clearCurrent) {
-      if (clearCurrent !== false) { // Default to true unless explicitly set to false
-        console.log('Attempting to select row with VegBank code:', vbCode);
-        // Clear all selections from all tables first
-        $('table tbody tr').removeClass('selected-entity');
-      }
+    // For server-side AJAX tables, try row highlight after data arrives
+    $(document).on('xhr.dt', function(e, settings, json, xhr) {
+      var widgetId = resolveWidgetId(settings.sTableId);
+      console.log('DataTable xhr event for:', widgetId, '- data received, records:', json && json.recordsTotal);
 
-      // Find the button with the specific VegBank code
-      var targetButton = $('button').filter(function() {
-        var onclick = $(this).attr('onclick');
-        return onclick && onclick.includes(\"'\" + vbCode + \"'\");
-      });
-
-      console.log('Found', targetButton.length, 'buttons with VegBank code');
-
-      if (targetButton.length > 0) {
-        // Get the row containing the button and select it
-        var targetRow = targetButton.closest('tr');
-        targetRow.addClass('selected-entity');
-        console.log('SUCCESS: Selected row for VegBank code', vbCode);
-        return true;
-      } else {
-        console.log('No buttons found for VegBank code', vbCode);
-        return false;
-      }
-    }
-
-    Shiny.addCustomMessageHandler('selectTableRowByCode', function(message) {
-      console.log('Received selection request for:', message.vbCode);
-
-      // Try immediate selection first
-      if (!attemptRowSelection(message.vbCode)) {
-        console.log('Immediate selection failed, adding to pending queue');
-        // Add to pending selections if immediate attempt fails
-        pendingSelections.push({
-          vbCode: message.vbCode,
-          timestamp: Date.now()
+      // After AJAX data is received, retry pending highlight with a small delay
+      // Use requestAnimationFrame + setTimeout to ensure DOM has been updated
+      if (pendingHighlight && pendingHighlight.tableId === widgetId) {
+        requestAnimationFrame(function() {
+          setTimeout(function() {
+            if (pendingHighlight && pendingHighlight.tableId === widgetId) {
+              console.log('Post-XHR highlight attempt for', widgetId);
+              if (attemptRowHighlight(true, widgetId, pendingHighlight.rowIndex)) {
+                console.log('Applied pending highlight after XHR');
+                pendingHighlight = null;
+              }
+            }
+          }, 100);
         });
-      } else {
-        // Set as current selection if successful
-        currentSelection = message.vbCode;
       }
     });
 
-    Shiny.addCustomMessageHandler('clearAllTableSelections', function(message) {
+    // Function to attempt row highlight using the explicit table and row index.
+    // Highlighting is solely driven by tableId and rowIndex.
+    function attemptRowHighlight(clearCurrent, tableId, rowIndex) {
+      if (clearCurrent !== false) { // Default to true unless explicitly set to false
+        console.log('Attempting to highlight row tableId=', tableId, 'rowIndex=', rowIndex);
+        // Clear all highlights from all tables first
+        $('table tbody tr').removeClass('selected-entity');
+      }
+
+      // Must have both tableId and rowIndex to highlight
+      if (!tableId || rowIndex === undefined || rowIndex === null || isNaN(rowIndex)) {
+        console.log('No explicit tableId/rowIndex provided; skipping highlight');
+        return false;
+      }
+
+      // For DT widgets, the tableId is the widget container ID (e.g., 'plant_table')
+      // The actual data rows may be in a scrollBody table, separate from the header table
+      var widgetContainer = $('#' + tableId);
+      if (!widgetContainer.length) {
+        console.log('No widget container found for tableId', tableId);
+        return false;
+      }
+
+      // Look for rows in scrollBody first (for tables with scroll enabled)
+      var scrollBody = widgetContainer.find('.dataTables_scrollBody tbody');
+      var allRows;
+      if (scrollBody.length && scrollBody.find('tr').length > 0) {
+        allRows = scrollBody.find('tr');
+        console.log('Found', allRows.length, 'rows in scrollBody for', tableId);
+      } else {
+        // Fallback: find any tbody rows in the widget
+        allRows = widgetContainer.find('table.dataTable tbody tr');
+        console.log('Found', allRows.length, 'rows in dataTable for', tableId);
+      }
+
+      // Check if rows are actually loaded (not just a Loading placeholder)
+      if (allRows.length === 0 || (allRows.length === 1 && allRows.find('td.dataTables_empty').length > 0)) {
+        console.log('Table appears to be loading or empty, rows not ready yet');
+        return false;
+      }
+
+      var numericIndex = Number(rowIndex);
+      var indexedRow = allRows.eq(numericIndex);
+      if (indexedRow && indexedRow.length) {
+        indexedRow.addClass('selected-entity');
+        console.log('SUCCESS: Highlighted row by explicit index', numericIndex, 'in table', tableId);
+        currentHighlightTableId = tableId;
+        currentHighlightRowIndex = numericIndex;
+        return true;
+      }
+
+      console.log('Row index', numericIndex, 'not found in table', tableId, '(total rows:', allRows.length, ')');
+      return false;
+    }
+
+    Shiny.addCustomMessageHandler('highlightTableRow', function(message) {
+      console.log('Received highlight request for table:', message.tableId, 'row:', message.rowIndex);
+
+      // Try immediate highlight; if it fails, set as pending for retry after table draw
+      if (!attemptRowHighlight(true, message.tableId, message.rowIndex)) {
+        console.log('Immediate highlight failed; will retry after table draw');
+        pendingHighlight = { tableId: message.tableId, rowIndex: message.rowIndex };
+      } else {
+        pendingHighlight = null;
+      }
+    });
+
+    Shiny.addCustomMessageHandler('clearAllTableHighlights', function(message) {
       $('table tbody tr').removeClass('selected-entity');
-      currentSelection = null;
-      console.log('Cleared all table selections');
+      currentHighlightTableId = null;
+      currentHighlightRowIndex = null;
+      console.log('Cleared all table highlights');
     });
 
     $(document).ready(function() {
@@ -738,6 +833,14 @@ ui <- function(req) {
       tableStateLoadComplete[tableInfo.effectiveId] = true;
       clearPendingTableStates(tableInfo.effectiveId);
 
+      var api = getDataTableApi(tableInfo.effectiveId, settings);
+      var info = api && typeof api.page === 'function' && typeof api.page().info === 'function'
+        ? api.page().info()
+        : null;
+      if (info && typeof info.start === 'number') {
+        expectedStartByTable[tableInfo.effectiveId] = info.start;
+      }
+
       if (!window.Shiny || typeof Shiny.setInputValue !== 'function') {
         return;
       }
@@ -757,7 +860,6 @@ ui <- function(req) {
       const plotCards = document.getElementById('plot-details-cards');
       const communityConceptCards = document.getElementById('community-concept-details-cards');
       const communityClassificationCards = document.getElementById('community-classification-details-cards');
-      const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
       const projectCards = document.getElementById('project-details-cards');
       const partyCards = document.getElementById('party-details-cards');
       const plantConceptCards = document.getElementById('plant-concept-details-cards');
@@ -766,12 +868,11 @@ ui <- function(req) {
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards &&
-      taxonObservationCards && projectCards && partyCards && plantConceptCards && referenceCards) {
+          projectCards && partyCards && plantConceptCards && referenceCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
         communityClassificationCards.style.display = 'none';
-        taxonObservationCards.style.display = 'none';
         projectCards.style.display = 'none';
         partyCards.style.display = 'none';
         plantConceptCards.style.display = 'none';
@@ -787,9 +888,6 @@ ui <- function(req) {
         } else if (type === 'community-classification') {
           console.log('Showing community classification details');
           communityClassificationCards.style.display = 'block';
-        } else if (type === 'taxon-observation') {
-          console.log('Showing taxon observation details');
-          taxonObservationCards.style.display = 'block';
         } else if (type === 'project') {
           console.log('Showing project details');
           projectCards.style.display = 'block';
@@ -977,31 +1075,31 @@ build_navbar <- function() {
     bslib::nav_panel(
       title = "Plots",
       shiny::fluidPage(
-        DT::dataTableOutput("plot_table"),
+        DT::dataTableOutput("plot_table")
       )
     ),
     bslib::nav_panel(
       title = "Plants",
       shiny::fluidPage(
-        DT::dataTableOutput("plant_table"),
+        DT::dataTableOutput("plant_table")
       )
     ),
     bslib::nav_panel(
       title = "Communities",
       shiny::fluidPage(
-        DT::dataTableOutput("comm_table"),
+        DT::dataTableOutput("comm_table")
       )
     ),
     bslib::nav_panel(
       title = "People",
       shiny::fluidPage(
-        DT::dataTableOutput("party_table"),
+        DT::dataTableOutput("party_table")
       )
     ),
     bslib::nav_panel(
       title = "Projects",
       shiny::fluidPage(
-        DT::dataTableOutput("proj_table"),
+        DT::dataTableOutput("proj_table")
       )
     ),
     bslib::nav_menu(
@@ -1078,16 +1176,6 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Dates"), shiny::uiOutput("project_dates")),
           bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("project_contributors")),
           bslib::card(bslib::card_header("Plot Observation Count"), shiny::uiOutput("project_observations"))
-        ),
-
-        # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility
-        htmltools::tags$div(
-          id = "taxon-observation-details-cards",
-          class = "detail-section",
-          bslib::card(bslib::card_header("Taxon Name"), shiny::uiOutput("taxon_name")),
-          bslib::card(bslib::card_header("Coverage"), shiny::uiOutput("taxon_coverage")),
-          bslib::card(bslib::card_header("Aliases"), shiny::uiOutput("taxon_aliases")),
-          bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("taxon_identifiers"))
         ),
 
         # Party Details Cards - wrapped in a div with class for toggling visibility

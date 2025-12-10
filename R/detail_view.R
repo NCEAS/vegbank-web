@@ -19,7 +19,7 @@ get_plot_observation <- function(ob_code) {
 #'
 #' @param resource_type Type of detail to show (e.g., "plot-observation",
 #'   "community-concept", "community-classification", "project",
-#'   "taxon-observation", "plant-concept", "party")
+#'   "plant-concept", "party")
 #' @param vb_code VegBank identifier used to fetch the detail payload
 #' @param output Shiny output object
 #' @param session Shiny session object
@@ -35,7 +35,6 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       result <- switch(resource_type,
         "community-classification" = vegbankr::get_community_classification(vb_code, detail = "full", with_nested = TRUE),
         "community-concept" = vegbankr::get_community_concept(vb_code),
-        "taxon-observation" = vegbankr::get_taxon_observation(vb_code),
         "plot-observation" = get_plot_observation(vb_code),
         "project" = vegbankr::get_project(vb_code),
         "party" = vegbankr::get_party(vb_code),
@@ -120,13 +119,6 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           output$community_concept_name <- details$community_concept_name
           output$community_concept_details <- details$community_concept_details
           output$community_party_perspective <- details$community_party_perspective
-        },
-        "taxon-observation" = {
-          details <- build_taxon_details_view(result)
-          output$taxon_name <- details$taxon_name
-          output$taxon_aliases <- details$taxon_aliases
-          output$taxon_coverage <- details$taxon_coverage
-          output$taxon_identifiers <- details$taxon_identifiers
         },
         "plot-observation" = {
           details <- build_plot_obs_details_view(result)

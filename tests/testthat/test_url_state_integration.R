@@ -251,7 +251,7 @@ test_that("URL manager handles edge cases gracefully", {
   expect_equal(manager$first_param(params$invalid), "param")
 })
 
-test_that("Multiple table states can be managed independently", {
+test_that("Multiple table states are all included in URL regardless of current tab", {
   mock_session <- list(
     clientData = list(url_search = ""),
     sendCustomMessage = function(...) NULL
@@ -272,21 +272,22 @@ test_that("Multiple table states can be managed independently", {
     communities = list(start = 0, length = 100, order = NULL, search = "community")
   )
 
-  # When on Plots tab, only plots state should be in URL
+  # When on Plots tab, ALL table states should be in URL
   query_plots <- manager$build_query_string(tab = "Plots", table_states = table_states)
 
   expect_match(query_plots, "plots_start=50")
   expect_match(query_plots, "plots_search=plot")
-  expect_false(grepl("plants_", query_plots))
-  expect_false(grepl("communities_", query_plots))
+  expect_match(query_plots, "plants_start=100")
+  expect_match(query_plots, "plants_order=1")
+  expect_match(query_plots, "communities_search=community")
 
-  # When on Plants tab, only plants state should be in URL
+  # When on Plants tab, ALL table states should still be in URL
   query_plants <- manager$build_query_string(tab = "Plants", table_states = table_states)
 
   expect_match(query_plants, "plants_start=100")
   expect_match(query_plants, "plants_order=1")
-  expect_false(grepl("plots_", query_plants))
-  expect_false(grepl("communities_", query_plants))
+  expect_match(query_plants, "plots_start=50")
+  expect_match(query_plants, "communities_search=community")
 })
 
 test_that("State sanitization handles malformed DataTables state", {
