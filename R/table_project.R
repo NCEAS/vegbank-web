@@ -108,7 +108,7 @@ coerce_project_page <- create_coercer(PROJECT_TABLE_SCHEMA_TEMPLATE)
 
 PROJECT_TABLE_SPEC <- list(
   table_id = "proj_table",
-  endpoint = "projects",
+  resource = "projects",
   remote_label = "project records",
   column_defs = create_project_column_defs(),
   schema_fields = PROJECT_TABLE_FIELDS,

@@ -3,7 +3,7 @@
 #' Constructs the complete detail view for a reference, including summary, identifiers, and
 #' publication sections. Handles NULL or empty results gracefully by returning empty UI elements.
 #'
-#' @param result A dataframe containing reference data from vegbankr::get_reference()
+#' @param result A dataframe containing reference data from vegbankr::vb_get_references()
 #' @return A named list with three shiny.render.function elements: reference_summary, reference_identifiers, reference_publication
 #' @noRd
 build_reference_details_view <- function(result) {

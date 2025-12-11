@@ -34,7 +34,7 @@ test_that("project table spec wires AJAX data source", {
   spec <- ajax_env$data_source_spec
 
   expect_equal(spec$table_id, "proj_table")
-  expect_equal(spec$endpoint, "projects")
+  expect_equal(spec$resource, "projects")
   expect_equal(spec$detail, "full")
   expect_false(spec$clean_names)
   expect_true(is.function(spec$normalize_fn))

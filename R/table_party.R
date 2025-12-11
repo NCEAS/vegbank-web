@@ -101,7 +101,7 @@ coerce_party_page <- create_coercer(PARTY_TABLE_SCHEMA_TEMPLATE)
 
 PARTY_TABLE_SPEC <- list(
   table_id = "party_table",
-  endpoint = "parties",
+  resource = "parties",
   remote_label = "party records",
   column_defs = create_party_column_defs(),
   schema_fields = PARTY_TABLE_FIELDS,

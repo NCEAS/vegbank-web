@@ -525,7 +525,7 @@ create_community_list_renderer <- function() {
 
 PLOT_TABLE_SPEC <- list(
   table_id = "plot_table",
-  endpoint = "plot-observations",
+  resource = "plot-observations",
   remote_label = "plot observations",
   column_defs = create_plot_column_defs(),
   schema_fields = PLOT_TABLE_FIELDS,

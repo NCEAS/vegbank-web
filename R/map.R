@@ -22,7 +22,7 @@ fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
     error_occurred <- FALSE
 
     data <- tryCatch(
-      vegbankr::get_all_plot_observations(
+      vegbankr::vb_get_plot_observations(
         limit = limit,
         detail = detail,
         with_nested = FALSE

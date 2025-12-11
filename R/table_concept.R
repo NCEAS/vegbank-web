@@ -6,7 +6,7 @@ CONCEPT_CONFIG <- list(
   plant = build_table_module_config(
     type = "plant",
     table_id = "plant_table",
-    endpoint = "plant-concepts",
+    resource = "plant-concepts",
     data_key = "plant_data",
     remote_label = "plant concepts",
     fields = c(
@@ -31,7 +31,7 @@ CONCEPT_CONFIG <- list(
   community = build_table_module_config(
     type = "community",
     table_id = "comm_table",
-    endpoint = "community-concepts",
+    resource = "community-concepts",
     data_key = "community_data",
     remote_label = "community concepts",
     fields = c(
@@ -367,7 +367,7 @@ CONCEPT_TABLE_SPECS <- local({
 
     list(
       table_id = config$table_id,
-      endpoint = config$endpoint,
+      resource = config$resource,
       remote_label = config$remote_label,
       column_defs = create_concept_column_defs(link_input_id),
       schema_fields = config$fields,
