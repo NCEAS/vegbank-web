@@ -1,16 +1,5 @@
-#' @noRd 
+#' @noRd
 MAX_TAXA_RETURNED <- 100000
-
-# Shim to support temporary plot fetching until vegbankr is updated
-# TODO: Replace when vegbankr:::get_resource_by_code is updated
-get_plot_observation <- function(ob_code) {
-  vegbankr:::get_all_resources(
-    resource = paste("plot-observations", ob_code, sep = "/"),
-    detail = "full",
-    with_nested = TRUE,
-    num_taxa = MAX_TAXA_RETURNED
-  )
-}
 
 #' Detail View Router
 #'
@@ -33,13 +22,23 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       shiny::incProgress(0.3, "Fetching details")
 
       result <- switch(resource_type,
-        "community-classification" = vegbankr::get_community_classification(vb_code, detail = "full", with_nested = TRUE),
-        "community-concept" = vegbankr::get_community_concept(vb_code),
-        "plot-observation" = get_plot_observation(vb_code),
-        "project" = vegbankr::get_project(vb_code),
-        "party" = vegbankr::get_party(vb_code),
-        "plant-concept" = vegbankr::get_plant_concept(vb_code),
-        "reference" = vegbankr::get_reference(vb_code)
+        "community-classification" =
+          vegbankr::vb_get_community_classifications(vb_code, detail = "full", with_nested = TRUE),
+        "community-concept" =
+          vegbankr::vb_get_community_concepts(vb_code, detail = "full", with_nested = TRUE),
+        "plot-observation" =
+          vegbankr::vb_get_plot_observations(vb_code,
+            detail = "full", with_nested = TRUE,
+            max_taxa = MAX_TAXA_RETURNED
+          ),
+        "project" =
+          vegbankr::vb_get_projects(vb_code, detail = "full"),
+        "party" =
+          vegbankr::vb_get_parties(vb_code, detail = "full"),
+        "plant-concept" =
+          vegbankr::vb_get_plant_concepts(vb_code, detail = "full", with_nested = TRUE),
+        "reference" =
+          vegbankr::vb_get_references(vb_code, detail = "full")
       )
 
       if (length(result) == 0) {

@@ -262,7 +262,7 @@ test_that("plot table spec produces valid config", {
   spec <- ajax_env$data_source_spec
 
   expect_equal(spec$table_id, "plot_table")
-  expect_equal(spec$endpoint, "plot-observations")
+  expect_equal(spec$resource, "plot-observations")
   expect_equal(spec$detail, "minimal")
   expect_equal(spec$query$with_nested, "TRUE")
 })

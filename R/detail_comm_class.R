@@ -14,7 +14,7 @@ comm_class_detail_output_names <- c(
 #' observation details, analysis methods, community interpretations, and
 #' contributors.
 #'
-#' @param result A data frame returned by vegbankr::get_community_classification()
+#' @param result A data frame returned by vegbankr::vb_get_community_classifications()
 #'   Expected columns at top level:
 #'   - cl_code, ob_code, class_start_date, class_stop_date
 #'   - inspection, table_analysis, multivariate_analysis, expert_system

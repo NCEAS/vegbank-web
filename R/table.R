@@ -169,10 +169,10 @@ safe_inc_progress <- function(amount, detail = NULL) {
 
 #' Fetch a paginated VegBank resource page
 #'
-#' Provides a shared wrapper around vegbankr:::get_all_resources with consistent
+#' Provides a shared wrapper around vegbankr:::vb_get with consistent
 #' error handling and optional data coercion.
 #'
-#' @param endpoint VegBank resource endpoint (e.g., "plant-concepts")
+#' @param resource VegBank resource type (e.g., "plant-concepts")
 #' @param limit Number of rows to request
 #' @param offset Row offset for pagination
 #' @param detail API detail level ("minimal" or "full")
@@ -186,7 +186,7 @@ safe_inc_progress <- function(amount, detail = NULL) {
 #' @param query Named list of additional query parameters to append
 #' @returns A list containing `data`, `details`, and optional `error`
 #' @noRd
-fetch_remote_page <- function(endpoint,
+fetch_remote_page <- function(resource,
                               limit,
                               offset,
                               detail = c("minimal", "full"),
@@ -199,7 +199,7 @@ fetch_remote_page <- function(endpoint,
   detail <- match.arg(detail)
 
   args <- list(
-    resource = endpoint,
+    resource = resource,
     limit = limit,
     offset = offset,
     detail = detail,
@@ -216,14 +216,14 @@ fetch_remote_page <- function(endpoint,
   }
 
   vb_result <- try(
-    suppressWarnings(do.call(vegbankr:::get_all_resources, args)),
+    suppressWarnings(do.call(vegbankr:::vb_get, args)),
     silent = TRUE
   )
 
   if (inherits(vb_result, "try-error")) {
     vb_error <- attr(vb_result, "condition")
     warning(
-      "vegbankr:::get_all_resources failed for ", endpoint, ": ",
+      "vegbankr:::vb_get failed for ", resource, ": ",
       if (!is.null(vb_error)) conditionMessage(vb_error) else "unknown error"
     )
     data <- if (!is.null(empty_factory)) empty_factory() else NULL
@@ -242,13 +242,12 @@ fetch_remote_page <- function(endpoint,
   list(data = data, details = details, error = NULL)
 }
 
-# TODO: Replace this with vegbankr::get_resource_count() when available
 #' Fetch total record count for a VegBank resource
 #'
-#' Convenience wrapper that requests a single record and reads the
-#' `count_reported` metadata to avoid redundant implementations across tables.
+#' Convenience wrapper around `vegbankr:::vb_count` to fetch the total record count
+#' for a given VegBank resource, avoiding redundant implementations across tables.
 #'
-#' @param endpoint VegBank resource endpoint (e.g., "plant-concepts")
+#' @param resource VegBank resource type (e.g., "plant-concepts")
 #' @param search Optional search term to include in the count query
 #' @param detail API detail level (defaults to "minimal" for efficiency)
 #' @param parquet Whether to request parquet output (default FALSE)
@@ -256,28 +255,36 @@ fetch_remote_page <- function(endpoint,
 #' @param query Additional query parameters to pass through
 #' @returns Integer count or NA_integer_ when unavailable
 #' @noRd
-fetch_remote_count <- function(endpoint,
-                               search = NULL,
-                               detail = c("minimal", "full"),
-                               parquet = FALSE,
-                               clean_names = TRUE,
-                               query = list()) {
+fetch_total_count <- function(resource,
+                              search = NULL,
+                              detail = c("minimal", "full"),
+                              parquet = FALSE,
+                              clean_names = TRUE) {
   detail <- match.arg(detail)
 
-  page <- fetch_remote_page(
-    endpoint = endpoint,
-    limit = 1L,
-    offset = 0L,
+  args <- list(
+    resource = resource,
+    search = search,
     detail = detail,
     parquet = parquet,
-    clean_names = clean_names,
-    search = search,
-    coerce_fn = identity,
-    empty_factory = function() NULL,
-    query = query
+    clean_names = clean_names
   )
 
-  extract_reported_total(page$details)
+  vb_result <- try(
+    suppressWarnings(do.call(vegbankr:::vb_count, args)),
+    silent = TRUE
+  )
+
+  if (inherits(vb_result, "try-error")) {
+    vb_error <- attr(vb_result, "condition")
+    warning(
+      "vegbankr:::vb_count failed for ", resource, ": ",
+      if (!is.null(vb_error)) conditionMessage(vb_error) else "unknown error"
+    )
+    return(NA_integer_)
+  }
+
+  as.integer(vb_result)
 }
 
 #' Extract reported total count from VegBank API page details
@@ -310,7 +317,7 @@ extract_reported_total <- function(details) {
 #'
 #' @param type Unique identifier for the table variant (e.g., "plant")
 #' @param table_id Output ID of the DT widget
-#' @param endpoint VegBank (or other API) endpoint used for remote data
+#' @param resource VegBank (or other API) resource type used for remote data
 #' @param data_key Name of the data source entry used inside processing helpers
 #' @param remote_label Friendly label for progress/loading messages
 #' @param fields Character vector describing the canonical data schema
@@ -319,7 +326,7 @@ extract_reported_total <- function(details) {
 #' @noRd
 build_table_module_config <- function(type,
                                       table_id,
-                                      endpoint,
+                                      resource,
                                       data_key,
                                       remote_label,
                                       fields,
@@ -327,7 +334,7 @@ build_table_module_config <- function(type,
   base <- list(
     table_type = type,
     table_id = table_id,
-    endpoint = endpoint,
+    resource = resource,
     data_key = data_key,
     remote_label = remote_label,
     fields = fields
@@ -343,7 +350,7 @@ build_table_module_config <- function(type,
 #' modules can call this once and pass the result to `build_remote_table_config()`.
 #'
 #' @param table_id Output ID of the DT widget
-#' @param endpoint Remote endpoint used for page fetches
+#' @param resource Remote resource type in vegbankr used for page fetches
 #' @param coerce_fn Function converting raw API results into a data frame
 #' @param normalize_fn Function enforcing schema/typing on the coerced data
 #' @param display_fn Function transforming normalized data into display rows
@@ -358,7 +365,7 @@ build_table_module_config <- function(type,
 #' @returns A list tagged with class `data_source_spec`
 #' @noRd
 build_data_source_spec <- function(table_id,
-                                   endpoint,
+                                   resource,
                                    coerce_fn = identity,
                                    normalize_fn = identity,
                                    display_fn = identity,
@@ -369,8 +376,8 @@ build_data_source_spec <- function(table_id,
   if (is.null(table_id) || !nzchar(table_id)) {
     stop("table_id is required for a data source specification")
   }
-  if (is.null(endpoint) || !nzchar(endpoint)) {
-    stop("endpoint is required for a data source specification")
+  if (is.null(resource) || !nzchar(resource)) {
+    stop("resource is required for a data source specification")
   }
 
   if (!is.function(display_fn)) {
@@ -384,7 +391,7 @@ build_data_source_spec <- function(table_id,
 
   spec <- list(
     table_id = table_id,
-    endpoint = endpoint,
+    resource = resource,
     label = label,
     coerce_fn = coerce_fn %||% identity,
     normalize_fn = normalize_fn %||% identity,
@@ -400,14 +407,14 @@ build_data_source_spec <- function(table_id,
 #' Build AJAX configuration for server-side DataTables
 #'
 #' Creates a reusable `remote_filter` closure that fetches paginated data from a
-#' VegBank endpoint, processes it for display, and returns the response structure
+#' VegBank resource, processes it for display, and returns the response structure
 #' expected by DataTables when operating in server-side mode.
 #'
 #' @param session Shiny session used by `DT::dataTableAjax`
 #' @param table_id Output ID of the DT widget
-#' @param initial_data Zero-row data frame describing the table schema
-#' @param data_source_spec List describing the remote data behavior (endpoint, handlers, etc.).
-#'   Expected entries include `endpoint`, optional handler overrides (e.g.,
+#' @param initial_data Zero-row data frame desceribing the table schema
+#' @param data_source_spec List describing the remote data behavior (resource, handlers, etc.).
+#'   Expected entries include `resource`, optional handler overrides (e.g.,
 #'   `coerce_fn`, `normalize_fn`, `display_fn`, `empty_factory`), and transport
 #'   options such as `page_length`, `detail`, `parquet`, `query`, and `count_*` overrides.
 #' @returns List with `url` entry suitable for `table_config$ajax`
@@ -424,7 +431,7 @@ build_remote_ajax_config <- function(session,
     stop("data_source_spec must be a list")
   }
 
-  endpoint <- data_source_spec$endpoint %||% stop("data_source_spec$endpoint is required")
+  resource <- data_source_spec$resource %||% stop("data_source_spec$resource is required")
   page_length <- data_source_spec$page_length %||% TABLE_PAGE_LENGTH
   coerce_fn <- data_source_spec$coerce_fn %||% identity
   normalize_fn <- data_source_spec$normalize_fn %||% identity
@@ -455,7 +462,7 @@ build_remote_ajax_config <- function(session,
     }
 
     page <- fetch_remote_page(
-      endpoint = endpoint,
+      resource = resource,
       limit = page_length,
       offset = offset,
       detail = detail,
@@ -474,14 +481,13 @@ build_remote_ajax_config <- function(session,
     reported_total <- extract_reported_total(details)
     filtered_records <- reported_total
 
-    # TODO: Replace this with vegbankr::get_resource_count() when available and add caching to
     # fetch total count each time the page is refreshed
-    total_records <- fetch_remote_count(
-      endpoint = endpoint,
+    total_records <- fetch_total_count(
+      resource = resource,
       search = NULL,
       detail = detail,
       parquet = parquet,
-      clean_names = clean_names,
+      clean_names = clean_names
     )
 
     list(
@@ -510,7 +516,7 @@ build_remote_ajax_config <- function(session,
 #' @param column_defs Column definition list for DataTables
 #' @param initial_data Zero-row data frame representing the table schema
 #' @param data_source_spec List describing how to fetch, normalize, and display remote data.
-#'   Must include `table_id`, `endpoint`, and optionally:
+#'   Must include `table_id`, `resource`, and optionally:
 #'   `page_length`, `coerce_fn`, `normalize_fn`, `display_fn`, `empty_factory`,
 #'   `detail`, `parquet`, `clean_names`, `search_normalizer`, `clean_rows_fn`,
 #'   `count_*` overrides, `query`, `count_query`, or a custom `ajax_factory`.
@@ -535,8 +541,8 @@ build_remote_table_config <- function(column_defs,
   if (is.null(data_source_spec$table_id)) {
     stop("data_source_spec$table_id is required")
   }
-  if (is.null(data_source_spec$endpoint)) {
-    stop("data_source_spec$endpoint is required")
+  if (is.null(data_source_spec$resource)) {
+    stop("data_source_spec$resource is required")
   }
 
   remote_label <- remote_label %||% data_source_spec$label %||% "data"
@@ -662,12 +668,12 @@ build_display_template <- function(column_names, column_types = NULL) {
 
 #' Build a remote table configuration from a metadata specification
 #'
-#' @param spec List describing the table (id, endpoint, schema, handlers, etc.)
+#' @param spec List describing the table (id, resource, schema, handlers, etc.)
 #' @returns A table_config list suitable for `create_table()`
 #' @noRd
 build_table_config_from_spec <- function(spec) {
   required_fields <- c(
-    "table_id", "endpoint", "remote_label", "column_defs",
+    "table_id", "resource", "remote_label", "column_defs",
     "schema_fields", "coerce_fn", "normalize_fn", "display_fn"
   )
   missing <- required_fields[vapply(required_fields, function(field) is.null(spec[[field]]), logical(1))]
@@ -684,7 +690,7 @@ build_table_config_from_spec <- function(spec) {
   data_source_args <- utils::modifyList(
     list(
       table_id = spec$table_id,
-      endpoint = spec$endpoint,
+      resource = spec$resource,
       coerce_fn = spec$coerce_fn,
       normalize_fn = spec$normalize_fn,
       display_fn = spec$display_fn,
