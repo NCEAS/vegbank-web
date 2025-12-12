@@ -221,7 +221,7 @@ test_that("fetch_plot_map_data returns data when API succeeds", {
   with_mock_shiny_notifications({
     result <- testthat::with_mocked_bindings(
       fetch_plot_map_data(),
-      get_all_plot_observations = function(...) fake_data,
+      vb_get_plot_observations = function(...) fake_data,
       .package = "vegbankr"
     )
 
@@ -234,7 +234,7 @@ test_that("fetch_plot_map_data surfaces API errors", {
   with_mock_shiny_notifications({
     result <- testthat::with_mocked_bindings(
       fetch_plot_map_data(),
-      get_all_plot_observations = function(...) stop("API offline"),
+      vb_get_plot_observations = function(...) stop("API offline"),
       .package = "vegbankr"
     )
 
@@ -249,7 +249,7 @@ test_that("fetch_plot_map_data warns when API returns no rows", {
   with_mock_shiny_notifications({
     result <- testthat::with_mocked_bindings(
       fetch_plot_map_data(),
-      get_all_plot_observations = function(...) data.frame(),
+      vb_get_plot_observations = function(...) data.frame(),
       .package = "vegbankr"
     )
 

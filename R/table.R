@@ -244,8 +244,8 @@ fetch_remote_page <- function(resource,
 
 #' Fetch total record count for a VegBank resource
 #'
-#' Convenience wrapper that requests a single record and reads the
-#' `count_reported` metadata to avoid redundant implementations across tables.
+#' Convenience wrapper around `vegbankr:::vb_count` to fetch the total record count
+#' for a given VegBank resource, avoiding redundant implementations across tables.
 #'
 #' @param resource VegBank resource type (e.g., "plant-concepts")
 #' @param search Optional search term to include in the count query
@@ -259,8 +259,7 @@ fetch_total_count <- function(resource,
                               search = NULL,
                               detail = c("minimal", "full"),
                               parquet = FALSE,
-                              clean_names = TRUE,
-                              query = list()) {
+                              clean_names = TRUE) {
   detail <- match.arg(detail)
 
   args <- list(
@@ -488,7 +487,7 @@ build_remote_ajax_config <- function(session,
       search = NULL,
       detail = detail,
       parquet = parquet,
-      clean_names = clean_names,
+      clean_names = clean_names
     )
 
     list(

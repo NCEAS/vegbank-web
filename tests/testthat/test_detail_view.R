@@ -11,7 +11,8 @@ test_that("show_detail_view handles API errors appropriately", {
   )
 
   with_mocked_bindings(
-    get_plot_observation = function(ob_code) list(),
+    vb_get_plot_observations = function(ob_code, detail = NULL, with_nested = NULL, max_taxa = NULL) list(),
+    .package = "vegbankr",
     {
       with_mock_shiny_notifications({
         result <- show_detail_view("plot-observation", "TEST123", test_output, test_session)
@@ -39,7 +40,8 @@ test_that("show_detail_view handles success case for plot details", {
   fake_output <- new.env()
 
   with_mocked_bindings(
-    get_plot_observation = function(ob_code) mock_plot_data,
+    vb_get_plot_observations = function(ob_code, detail = NULL, with_nested = NULL, max_taxa = NULL) mock_plot_data,
+    .package = "vegbankr",
     {
       with_mock_shiny_notifications({
         result <- show_detail_view("plot-observation", "TEST123", fake_output, fake_session)
@@ -64,7 +66,7 @@ test_that("show_detail_view handles project data correctly", {
   fake_output <- new.env()
 
   with_mocked_bindings(
-    get_project = function(pj_code) mock_project_data,
+    vb_get_projects = function(pj_code, detail = NULL) mock_project_data,
     .package = "vegbankr",
     {
       with_mock_shiny_notifications({
@@ -90,7 +92,7 @@ test_that("show_detail_view handles community classification data correctly", {
   fake_output <- new.env()
 
   with_mocked_bindings(
-    get_community_classification = function(cl_code, detail = NULL, with_nested = NULL) mock_comm_class_data,
+    vb_get_community_classifications = function(cl_code, detail = NULL, with_nested = NULL) mock_comm_class_data,
     .package = "vegbankr",
     {
       with_mock_shiny_notifications({
@@ -121,7 +123,7 @@ test_that("show_detail_view handles party data correctly", {
   fake_output <- new.env()
 
   with_mocked_bindings(
-    get_party = function(py_code) mock_party_data,
+    vb_get_parties = function(py_code, detail = NULL) mock_party_data,
     .package = "vegbankr",
     {
       with_mock_shiny_notifications({
@@ -148,7 +150,7 @@ test_that("show_detail_view handles reference data correctly", {
   fake_output <- new.env()
 
   with_mocked_bindings(
-    get_reference = function(rf_code) mock_reference_data,
+    vb_get_references = function(rf_code, detail = NULL) mock_reference_data,
     .package = "vegbankr",
     {
       with_mock_shiny_notifications({
