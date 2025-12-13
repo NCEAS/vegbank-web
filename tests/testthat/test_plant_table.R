@@ -29,7 +29,7 @@ test_that("plant concept data includes plant-specific values", {
     plant_level = c("Species", NA),
     current_accepted = c(TRUE, FALSE),
     concept_rf_code = c("rf.9", ""),
-    concept_rf_name = c("Oak Ref", "Not provided"),
+    concept_rf_label = c("Oak Ref", "Not provided"),
     obs_count = c("15", "7"),
     plant_description = c("Deciduous tree", "Deciduous tree"),
     stringsAsFactors = FALSE
@@ -49,7 +49,7 @@ test_that("plant concept data includes plant-specific values", {
     expect_equal(result$status_sort, c(0, 1))
     expect_equal(result$Level, c("Species", "Not provided"))
     expect_equal(result$`Reference Source`, plant_data$concept_rf_code)
-    expect_equal(result$ref_sort, plant_data$concept_rf_name)
+    expect_equal(result$ref_sort, plant_data$concept_rf_label)
     expect_equal(result$Observations, c(15, 7))
     expect_equal(result$Description, plant_data$plant_description)
   })

@@ -63,9 +63,9 @@ mock_comm_concept_data <- data.frame(
   comm_level = "Association",
   comm_description = "Test <em>description</em> with HTML",
   concept_rf_code = "rf.999",
-  concept_rf_name = "Reference Community 2023",
+  concept_rf_label = "Reference Community 2023",
   obs_count = 42,
-  party = "Test Ecologist",
+  party_label = "Test Ecologist",
   py_code = "py.777",
   status = "Active",
   start_date = "2018-04-15",
@@ -106,7 +106,7 @@ mock_comm_class_interpretations <- data.frame(
   ci_code = c("ci.001", "ci.002"),
   class_confidence = c("High", "Medium"),
   class_fit = c("Good", "Fair"),
-  comm_authority_name = c("NVC Authority", "State Authority"),
+  comm_authority_rf_label = c("NVC Authority", "State Authority"),
   comm_authority_rf_code = c("rf.100", NA),
   comm_code = c("COMM001", "COMM002"),
   comm_name = c("Oak-Hickory Forest", "Mixed Hardwood Forest"),
@@ -117,7 +117,7 @@ mock_comm_class_interpretations <- data.frame(
 )
 
 mock_comm_class_contributors <- data.frame(
-  party = c("John Smith", "Jane Doe"),
+  party_label = c("John Smith", "Jane Doe"),
   py_code = c("py.123", "py.456"),
   role = c("Author", "Classifier"),
   stringsAsFactors = FALSE
@@ -173,9 +173,9 @@ mock_plant_concept_data <- data.frame(
   plant_level = "Species",
   plant_description = "<em>Test plant description</em> with HTML",
   concept_rf_code = "rf.123",
-  concept_rf_name = "Reference Flora 2023",
+  concept_rf_label = "Reference Flora 2023",
   obs_count = 150,
-  party = "Test Botanist",
+  party_label = "Test Botanist",
   py_code = "py.123",
   start_date = "2020-01-01",
   stop_date = "2023-12-31",

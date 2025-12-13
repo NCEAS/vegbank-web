@@ -29,7 +29,7 @@ test_that("community concept data includes community-specific values", {
     comm_level = c("Alliance", NA),
     current_accepted = c(FALSE, NA),
     concept_rf_code = c("cr.5", ""),
-    concept_rf_name = c("Prairie Ref", "Not provided"),
+    concept_rf_label = c("Prairie Ref", "Not provided"),
     obs_count = c("8", "0"),
     comm_description = c("Grassland", "Marsh"),
     stringsAsFactors = FALSE
@@ -50,7 +50,7 @@ test_that("community concept data includes community-specific values", {
     expect_equal(result$status_sort, c(1, 2))
     expect_equal(result$Level, c("Alliance", "Not provided"))
     expect_equal(result$`Reference Source`, community_data$concept_rf_code)
-    expect_equal(result$ref_sort, community_data$concept_rf_name)
+    expect_equal(result$ref_sort, community_data$concept_rf_label)
     expect_equal(result$Observations, c(8, 0))
     expect_equal(result$Description, community_data$comm_description)
   })

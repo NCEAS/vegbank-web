@@ -15,7 +15,7 @@ CONCEPT_CONFIG <- list(
       "current_accepted",
       "plant_level",
       "concept_rf_code",
-      "concept_rf_name",
+      "concept_rf_label",
       "obs_count",
       "plant_description"
     ),
@@ -40,7 +40,7 @@ CONCEPT_CONFIG <- list(
       "current_accepted",
       "comm_level",
       "concept_rf_code",
-      "concept_rf_name",
+      "concept_rf_label",
       "obs_count",
       "comm_description"
     ),
@@ -103,7 +103,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   levels <- clean_column_data(concept_data, config$level_field)
 
   reference_codes <- concept_data$concept_rf_code
-  reference_names <- clean_column_data(concept_data, "concept_rf_name")
+  reference_names <- clean_column_data(concept_data, "concept_rf_label")
 
   obs_counts <- suppressWarnings(as.numeric(clean_column_data(concept_data, "obs_count", "0")))
   obs_counts[is.na(obs_counts)] <- 0

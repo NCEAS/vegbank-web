@@ -128,7 +128,7 @@ test_that("create_party_perspective_ui handles NA values", {
   na_data <- mock_plant_concept_data
   na_data$children <- I(list(NA))
   na_data$usages <- I(list(NA))
-  na_data$party <- NA
+  na_data$party_label <- NA
   na_data$status <- NA
   na_data$start_date <- NA
   na_data$stop_date <- NA
