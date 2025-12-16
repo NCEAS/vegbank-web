@@ -84,7 +84,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$plant_concept_name <- shiny::renderUI(NULL)
       output$plant_concept_details <- shiny::renderUI(NULL)
       output$plant_party_perspective <- shiny::renderUI(NULL)
-      output$reference_summary <- shiny::renderUI(NULL)
+      output$reference_header <- shiny::renderUI(NULL)
       output$reference_identifiers <- shiny::renderUI(NULL)
       output$reference_publication <- shiny::renderUI(NULL)
 
@@ -138,7 +138,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         },
         "reference" = {
           details <- build_reference_details_view(result)
-          output$reference_summary <- details$reference_summary
+          output$reference_header <- details$reference_header
           output$reference_identifiers <- details$reference_identifiers
           output$reference_publication <- details$reference_publication
         }

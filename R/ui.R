@@ -1205,7 +1205,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "reference-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Reference"), shiny::uiOutput("reference_summary")),
+          bslib::card(bslib::card_header("Reference"), shiny::uiOutput("reference_header")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("reference_identifiers")),
           bslib::card(bslib::card_header("Publication"), shiny::uiOutput("reference_publication"))
         )
