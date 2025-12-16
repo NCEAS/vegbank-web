@@ -1,7 +1,7 @@
 # Helper functions extracted from detail_view.R
 
-#' Coalesce Function for NULL or NA
-#' Returns the first argument if it is not NULL or NA; otherwise returns the second argument.
+#' Coalesce Function for empty string, NULL, or NA
+#' Returns the first argument if it is not an empty string, NULL, or NA otherwise returns the second argument.
 #' @param a First value to check
 #' @param b Second value to return if the first is NULL or NA
 #' @return The first value if valid, otherwise the second value
@@ -13,7 +13,7 @@
   if (length(a) > 1) {
     a <- a[1]
   }
-  if (is.na(a)) {
+  if (is.na(a) || trimws(as.character(a)) == "") {
     return(b)
   }
   a

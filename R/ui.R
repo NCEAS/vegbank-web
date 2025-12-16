@@ -1186,7 +1186,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "party-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Name"), shiny::uiOutput("party_name")),
+          bslib::card(bslib::card_header("Party"), shiny::uiOutput("party_header")),
           bslib::card(bslib::card_header("Organization"), shiny::uiOutput("party_organization")),
           bslib::card(bslib::card_header("Contact Information"), shiny::uiOutput("party_contact")),
           bslib::card(bslib::card_header("Contributions"), shiny::uiOutput("party_contributions"))

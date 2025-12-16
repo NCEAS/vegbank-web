@@ -77,7 +77,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$project_dates <- shiny::renderUI(NULL)
       output$project_contributors <- shiny::renderUI(NULL)
       output$project_observations <- shiny::renderUI(NULL)
-      output$party_name <- shiny::renderUI(NULL)
+      output$party_header <- shiny::renderUI(NULL)
       output$party_organization <- shiny::renderUI(NULL)
       output$party_contact <- shiny::renderUI(NULL)
       output$party_contributions <- shiny::renderUI(NULL)
@@ -101,7 +101,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         },
         "party" = {
           details <- build_party_details_view(result)
-          output$party_name <- details$party_name
+          output$party_header <- details$party_header
           output$party_organization <- details$party_organization
           output$party_contact <- details$party_contact
           output$party_contributions <- details$party_contributions
