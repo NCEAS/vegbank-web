@@ -96,9 +96,9 @@ create_concept_aliases_ui <- function(result, is_plant = TRUE) {
     {
       class_system_col <- if ("class_system" %in% names(usages_data)) "class_system" else NULL
       if (is_plant && "plant_name" %in% names(usages_data)) {
-        "plant_name"
+        name_col <- "plant_name"
       } else if (!is_plant && "comm_name" %in% names(usages_data)) {
-        "comm_name"
+        name_col <- "comm_name"
       } else {
         stop("No suitable name column found in usages_data.
         Expected either 'plant_name' or 'comm_name'")
