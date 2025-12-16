@@ -72,7 +72,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$comm_class_details <- shiny::renderUI(NULL)
       output$comm_class_interpretations <- shiny::renderUI(NULL)
       output$comm_class_contributors <- shiny::renderUI(NULL)
-      output$project_name <- shiny::renderUI(NULL)
+      output$project_header <- shiny::renderUI(NULL)
       output$project_description <- shiny::renderUI(NULL)
       output$project_dates <- shiny::renderUI(NULL)
       output$project_contributors <- shiny::renderUI(NULL)
@@ -93,11 +93,11 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       switch(resource_type,
         "project" = {
           details <- build_project_details_view(result)
-          output$project_name <- details$project_name
+          output$project_header <- details$project_header
           output$project_description <- details$project_description
           output$project_dates <- details$project_dates
-          output$project_contributors <- details$project_contributors
           output$project_observations <- details$project_observations
+          output$project_contributors <- details$project_contributors
         },
         "party" = {
           details <- build_party_details_view(result)

@@ -1175,11 +1175,11 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "project-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Project Name"), shiny::uiOutput("project_name")),
+          bslib::card(bslib::card_header("Project"), shiny::uiOutput("project_header")),
           bslib::card(bslib::card_header("Description"), shiny::uiOutput("project_description")),
           bslib::card(bslib::card_header("Dates"), shiny::uiOutput("project_dates")),
-          bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("project_contributors")),
-          bslib::card(bslib::card_header("Plot Observation Count"), shiny::uiOutput("project_observations"))
+          bslib::card(bslib::card_header("Plot Observation Count"), shiny::uiOutput("project_observations")),
+          bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("project_contributors"))
         ),
 
         # Party Details Cards - wrapped in a div with class for toggling visibility

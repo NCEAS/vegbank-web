@@ -7,12 +7,12 @@ test_that("build_project_details_view handles NULL data gracefully", {
   # It should return a list with placeholder components
   expect_type(result, "list")
   expect_setequal(names(result), c(
-    "project_name", "project_description",
+    "project_header", "project_description",
     "project_dates", "project_contributors", "project_observations"
   ))
 
   # Each component should be a render function
-  expect_true(inherits(result$project_name, "shiny.render.function"))
+  expect_true(inherits(result$project_header, "shiny.render.function"))
   expect_true(inherits(result$project_description, "shiny.render.function"))
   expect_true(inherits(result$project_dates, "shiny.render.function"))
   expect_true(inherits(result$project_contributors, "shiny.render.function"))
@@ -26,12 +26,12 @@ test_that("build_project_details_view formats project data correctly", {
   expect_type(result, "list")
   # Verify names in any order
   expect_setequal(names(result), c(
-    "project_name", "project_observations", "project_description",
+    "project_header", "project_observations", "project_description",
     "project_contributors", "project_dates"
   ))
 
   # Each component should be a render function
-  expect_true(inherits(result$project_name, "shiny.render.function"))
+  expect_true(inherits(result$project_header, "shiny.render.function"))
   expect_true(inherits(result$project_description, "shiny.render.function"))
   expect_true(inherits(result$project_observations, "shiny.render.function"))
   expect_true(inherits(result$project_dates, "shiny.render.function"))
