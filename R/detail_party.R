@@ -8,35 +8,24 @@ build_party_details_view <- function(result) {
     ))
   }
 
-  full_name <- paste(
-    ifelse(is.na(result$salutation), "", paste0(result$salutation, " ")),
-    ifelse(is.na(result$given_name), "", result$given_name),
-    ifelse(is.na(result$middle_name), "", paste0(" ", result$middle_name)),
-    ifelse(is.na(result$surname), "", paste0(" ", result$surname))
-  )
-  full_name <- trimws(full_name)
-  if (identical(full_name, "")) {
-    full_name <- if (!is.na(result$organization_name)) {
-      result$organization_name
-    } else {
-      "Unknown Name"
-    }
-  }
+  label <- result$party_label %|||% "Unknown Name"
+  organization <- result$organization_name %|||% "No organization specified"
+  # TODO: if this is filled it directs to something like the email field which we don't display here
+  contact <- result$contact_instructions %|||% "No contact information provided"
+  contributions <- result$obs_count %|||% 0
 
   list(
     party_name = shiny::renderUI({
-      htmltools::tags$p(full_name)
+      htmltools::tags$p(label)
     }),
     party_organization = shiny::renderUI({
-      if (is.na(result$organization_name)) {
-        htmltools::tags$p("No organization specified")
-      } else {
-        htmltools::tags$p(result$organization_name)
-      }
+      htmltools::tags$p(organization)
     }),
-    party_contact = render_detail_table(c("contact_instructions"), result),
+    party_contact = shiny::renderUI({
+      htmltools::tags$p(contact)
+    }),
     party_contributions = shiny::renderUI({
-      htmltools::tags$p("Number of observations: ", htmltools::tags$strong(result$obs_count %|||% 0))
+      htmltools::tags$p("Number of observations: ", htmltools::tags$strong(contributions))
     })
   )
 }

@@ -44,7 +44,7 @@ plant_test_data <- data.frame(
   plant_level = c("Species", NA),
   current_accepted = c(TRUE, NA),
   concept_rf_code = c("rf.9", ""),
-  concept_rf_name = c("Oak Ref", NA),
+  concept_rf_label = c("Oak Ref", NA),
   obs_count = c("15", ""),
   plant_description = c("Deciduous tree", NA),
   stringsAsFactors = FALSE
@@ -56,7 +56,7 @@ community_test_data <- data.frame(
   comm_level = c("Alliance", NA),
   current_accepted = c(FALSE, NA),
   concept_rf_code = c("cr.5", NA),
-  concept_rf_name = c("Prairie Ref", ""),
+  concept_rf_label = c("Prairie Ref", ""),
   obs_count = c("8", ""),
   comm_description = c("Grassland", NA),
   stringsAsFactors = FALSE

@@ -45,10 +45,10 @@ build_concept_details_view <- function(result, concept_type = "plant") {
             htmltools::tags$td("Reference"),
             htmltools::tags$td(
               class = "text-end",
-              if (!is.na(result$concept_rf_code) && !is.na(result$concept_rf_name)) {
-                create_detail_link("ref_link_click", result$concept_rf_code, result$concept_rf_name)
+              if (!is.na(result$concept_rf_code) && !is.na(result$concept_rf_label)) {
+                create_detail_link("ref_link_click", result$concept_rf_code, result$concept_rf_label)
               } else {
-                result$concept_rf_name %|||% "Not specified"
+                result$concept_rf_label %|||% "Not specified"
               }
             )
           ),
@@ -96,9 +96,9 @@ create_concept_aliases_ui <- function(result, is_plant = TRUE) {
     {
       class_system_col <- if ("class_system" %in% names(usages_data)) "class_system" else NULL
       if (is_plant && "plant_name" %in% names(usages_data)) {
-        "plant_name"
+        name_col <- "plant_name"
       } else if (!is_plant && "comm_name" %in% names(usages_data)) {
-        "comm_name"
+        name_col <- "comm_name"
       } else {
         stop("No suitable name column found in usages_data.
         Expected either 'plant_name' or 'comm_name'")
@@ -183,10 +183,10 @@ create_party_perspective_ui <- function(result, concept_type, id_field, parent_i
 
     htmltools::tags$div(
       htmltools::tags$b({
-        if (!is.na(result$py_code) && !is.na(result$party)) {
-          create_detail_link("party_link_click", result$py_code, result$party)
+        if (!is.na(result$py_code) && !is.na(result$party_label)) {
+          create_detail_link("party_link_click", result$py_code, result$party_label)
         } else {
-          result$party %|||% "Party not recorded"
+          result$party_label %|||% "Party not recorded"
         }
       }),
       htmltools::tags$span(
