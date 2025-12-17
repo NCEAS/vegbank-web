@@ -647,7 +647,8 @@ server <- function(input, output, session) {
         htmltools::tags$li(
           htmltools::tags$strong("Map:"),
           " View plot locations on an interactive map. Click markers to zoom to plot clusters and ",
-          "the links on location labels to plot details. It will take about 10 seconds to load."
+          "the links on location labels to plot details. It will take a while to load. Please don't ",
+          "click elsewhere until it finishes loading."
         )
       ),
       htmltools::tags$h5("Using the App"),
@@ -664,7 +665,24 @@ server <- function(input, output, session) {
         ),
         htmltools::tags$li(
           "Use the ", htmltools::tags$strong("search box"),
-          " in the top-right of each table to filter results."
+          " in the top-right of each table to filter results.",
+          htmltools::tags$ul(
+            htmltools::tags$li(
+              htmltools::tags$i("Quotes:"),
+              " Use double quotes to search for exact phrases (e.g., ",
+              htmltools::tags$code('"Quercus alba"'), ")."
+            ),
+            htmltools::tags$li(
+              htmltools::tags$i("Multiple terms:"),
+              " Separate words with spaces to match rows containing multiple terms (e.g., ",
+              htmltools::tags$code("oak prairie"), ")."
+            ),
+            htmltools::tags$li(
+              htmltools::tags$i("Exclude terms:"),
+              " Prefix a word with a minus sign to exclude it (e.g., ",
+              htmltools::tags$code("-alliance"), ")."
+            )
+          )
         ),
         htmltools::tags$li(
           htmltools::tags$strong("Sorting"), " is currently unsupported, but soon you'll be able to click",
