@@ -1107,11 +1107,11 @@ build_navbar <- function() {
       align = "right",
       bslib::nav_panel(
         title = "FAQ",
-        shiny::includeMarkdown(system.file("inst", "shiny", "www", "faq.md"))
+        shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
       ),
       bslib::nav_panel(
         title = "Cite",
-        shiny::includeMarkdown(system.file("inst", "shiny", "www", "cite.md"))
+        shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
       )
     )
   )
