@@ -72,7 +72,10 @@ test_that("process_concept_data formats plant concepts", {
     ))
 
     expect_equal(result$Actions, plant_test_data$pc_code)
-    expect_equal(result$`Plant Name`, c("Oak", "Not provided"))
+    # Name column now includes HTML-formatted code below the name
+    expect_true(grepl("Oak", result$`Plant Name`[1]))
+    expect_true(grepl("pc.101", result$`Plant Name`[1]))
+    expect_true(grepl("#2c5443", result$`Plant Name`[1]))
     expect_equal(result$Status, plant_test_data$current_accepted)
     expect_equal(result$status_sort, c(0, 2))
     expect_equal(result$Level, c("Species", "Not provided"))
@@ -94,7 +97,10 @@ test_that("process_concept_data formats community concepts", {
     ))
 
     expect_equal(result$Actions, community_test_data$cc_code)
-    expect_equal(result$`Community Name`, c("Prairie", "Not provided"))
+    # Name column now includes HTML-formatted code below the name
+    expect_true(grepl("Prairie", result$`Community Name`[1]))
+    expect_true(grepl("cc.201", result$`Community Name`[1]))
+    expect_true(grepl("#2c5443", result$`Community Name`[1]))
     expect_equal(result$Status, community_test_data$current_accepted)
     expect_equal(result$status_sort, c(1, 2))
     expect_equal(result$Level, c("Alliance", "Not provided"))

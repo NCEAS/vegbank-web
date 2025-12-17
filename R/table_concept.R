@@ -25,7 +25,7 @@ CONCEPT_CONFIG <- list(
       name_field = "plant_name",
       level_field = "plant_level",
       description_field = "plant_description",
-      name_label = "Plant Name"
+      name_label = "Plant Concept"
     )
   ),
   community = build_table_module_config(
@@ -50,7 +50,7 @@ CONCEPT_CONFIG <- list(
       name_field = "comm_name",
       level_field = "comm_level",
       description_field = "comm_description",
-      name_label = "Community Name"
+      name_label = "Community Concept"
     )
   )
 )
@@ -96,6 +96,10 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   }
 
   display_names <- clean_column_data(concept_data, config$name_field)
+  concept_codes <- concept_data[[config$code_field]]
+
+  # Format name column with concept code in green below
+  formatted_names <- format_concept_name_column(display_names, concept_codes)
 
   status_raw <- concept_data$current_accepted
   status_sort <- ifelse(is.na(status_raw), 2, ifelse(status_raw == TRUE, 0, 1))
@@ -115,7 +119,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   result <- data.frame(
     Actions = action_codes,
-    Name = display_names,
+    Name = formatted_names,
     Status = status_raw,
     status_sort = status_sort,
     Level = levels,
@@ -130,6 +134,40 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   names(result)[names(result) == "Name"] <- config$name_label
 
   result
+}
+
+#' Build HTML-friendly name string with concept code
+#'
+#' Creates multi-line HTML name strings with the concept name on top and
+#' the concept code (pc_code or cc_code) in green below.
+#'
+#' @param names Character vector of concept names
+#' @param codes Character vector of concept codes (pc_code or cc_code)
+#' @return Character vector of HTML-formatted name strings
+#' @noRd
+format_concept_name_column <- function(names, codes) {
+  vapply(seq_along(names), function(idx) {
+    name <- names[[idx]]
+    code <- codes[[idx]]
+
+    lines <- character(0)
+
+    if (!is.null(name) && !is.na(name) && nzchar(name)) {
+      lines <- c(lines, as.character(htmltools::htmlEscape(name)))
+    } else {
+      lines <- c(lines, "Not provided")
+    }
+
+    if (!is.null(code) && !is.na(code) && nzchar(code)) {
+      code_line <- sprintf(
+        '<span style="color: #2c5443; font-size: small;">%s</span>',
+        as.character(htmltools::htmlEscape(code))
+      )
+      lines <- c(lines, code_line)
+    }
+
+    paste(lines, collapse = "<br>")
+  }, character(1), USE.NAMES = FALSE)
 }
 
 #' Create column definitions for concept DataTables
