@@ -3,7 +3,7 @@ test_that("build_party_table configures remote datatable", {
 
   with_mocked_bindings(
     create_table = function(table_config) {
-      expect_equal(length(table_config$column_defs), 6)
+      expect_equal(length(table_config$column_defs), 5)
       expect_true(is.function(table_config$ajax))
       expect_s3_class(table_config$initial_data, "data.frame")
 
@@ -20,8 +20,7 @@ test_that("build_party_table configures remote datatable", {
 test_that("process_party_data formats normalized rows", {
   test_data <- data.frame(
     py_code = c("py.1", "py.2"),
-    given_name = c("Norm", NA),
-    surname = c("Aaseng", ""),
+    party_label = c("Norm Aaseng", NA),
     organization_name = c("MN DNR", NA),
     contact_instructions = c("email@example.com", NA),
     obs_count = c(191, NA_integer_)
@@ -29,10 +28,14 @@ test_that("process_party_data formats normalized rows", {
 
   result <- process_party_data(test_data)
 
-  expect_equal(colnames(result), c("Actions", "Given Name", "Surname", "Organization", "Observations", "Contact"))
+  expect_equal(colnames(result), c("Actions", "Party", "Organization", "Observations", "Contact"))
   expect_equal(result$Actions, c("py.1", "py.2"))
-  expect_equal(result$`Given Name`, c("Norm", "Not provided"))
-  expect_equal(result$Surname, c("Aaseng", "Not provided"))
+  # Party column now includes HTML-formatted py_code below the label
+
+  expect_true(grepl("Norm Aaseng", result$Party[1]))
+  expect_true(grepl("py.1", result$Party[1]))
+  expect_true(grepl("#2c5443", result$Party[1]))
+  expect_true(grepl("Not provided", result$Party[2]))
   expect_equal(result$Organization, c("MN DNR", "Not provided"))
   expect_equal(result$Observations, c(191L, 0L))
   expect_equal(result$Contact, c("Email@example.com", "Not provided"))
