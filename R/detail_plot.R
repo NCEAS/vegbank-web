@@ -127,6 +127,10 @@ build_plot_obs_details_view <- function(result) {
 
   plot_observation <- normalized$plot_observation
 
+  # Format Dates and Elevation
+  plot_observation$obs_start_date <- format_date(plot_observation$obs_start_date)
+  plot_observation$elevation <- paste0(round(as.numeric(plot_observation$elevation)), " m")
+
   taxa_details_ui <- shiny::renderUI({
     tryCatch(
       {
@@ -185,6 +189,22 @@ build_plot_obs_details_view <- function(result) {
   })
 
   list(
+    plot_header = shiny::renderUI({
+      htmltools::div(
+        htmltools::tags$h5(plot_observation$author_obs_code, style = "font-weight: 600; margin-bottom: 0px;"),
+        htmltools::tags$h5(plot_observation$ob_code, style = "color: #2c5443; font-weight: 600;"),
+        if (has_valid_field_value(plot_observation, "project_name")) {
+          htmltools::tags$p(
+            htmltools::tags$span("Project: "),
+            create_detail_link("proj_link_click", plot_observation$pj_code, plot_observation$project_name),
+            style = "margin-bottom: 0px;"
+          )
+        },
+        if (has_valid_field_value(plot_observation, "obs_start_date")) {
+          htmltools::tags$p(format_date_range(plot_observation$obs_start_date, plot_observation$obs_end_date))
+        }
+      )
+    }),
     plot_id_details = render_detail_table(
       c("author_obs_code", "author_plot_code"),
       plot_observation

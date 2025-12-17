@@ -347,7 +347,11 @@ format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d")
   stop_parsed <- safe_parse_date(stop_date)
 
   if (!is.na(start_parsed) && !is.na(stop_parsed)) {
-    paste0("From ", format(start_parsed, format_string), " to ", format(stop_parsed, format_string))
+    if (start_parsed == stop_parsed) {
+      paste0("From ", format(start_parsed, format_string))
+    } else {
+      paste0("From ", format(start_parsed, format_string), " to ", format(stop_parsed, format_string))
+    }
   } else if (!is.na(start_parsed)) {
     paste0("From ", format(start_parsed, format_string))
   } else if (!is.na(stop_parsed)) {
