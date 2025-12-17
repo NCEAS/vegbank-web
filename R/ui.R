@@ -1157,7 +1157,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "community-concept-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Community Concept"), shiny::uiOutput("community_concept_name")),
+          bslib::card(bslib::card_header("Community Concept"), shiny::uiOutput("community_concept_header")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("community_concept_details")),
           bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("community_party_perspective"))
         ),
@@ -1197,7 +1197,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "plant-concept-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_name")),
+          bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_header")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("plant_concept_details")),
           bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("plant_party_perspective"))
         ),

@@ -7,13 +7,13 @@ test_that("build_comm_concept_details_view handles NULL data gracefully", {
   # It should return a list with placeholder components
   expect_type(result, "list")
   expect_named(result, c(
-    "community_concept_name",
+    "community_concept_header",
     "community_concept_details",
     "community_party_perspective"
   ))
 
   # Each component should be a render function
-  expect_true(inherits(result$community_concept_name, "shiny.render.function"))
+  expect_true(inherits(result$community_concept_header, "shiny.render.function"))
 })
 
 test_that("build_comm_concept_details_view formats community data correctly", {
@@ -22,13 +22,13 @@ test_that("build_comm_concept_details_view formats community data correctly", {
   # Test structure and types
   expect_type(result, "list")
   expect_named(result, c(
-    "community_concept_name",
+    "community_concept_header",
     "community_concept_details",
     "community_party_perspective"
   ))
 
   # Each component should be a render function
-  expect_true(inherits(result$community_concept_name, "shiny.render.function"))
+  expect_true(inherits(result$community_concept_header, "shiny.render.function"))
   expect_true(inherits(result$community_concept_details, "shiny.render.function"))
   expect_true(inherits(result$community_party_perspective, "shiny.render.function"))
 })
@@ -45,9 +45,9 @@ test_that("build_plant_concept_details_view handles valid data", {
       expect_type(result, "list")
       expect_equal(
         names(result),
-        c("plant_concept_name", "plant_concept_details", "plant_party_perspective")
+        c("plant_concept_header", "plant_concept_details", "plant_party_perspective")
       )
-      expect_s3_class(result$plant_concept_name, "shiny.render.function")
+      expect_s3_class(result$plant_concept_header, "shiny.render.function")
       expect_s3_class(result$plant_concept_details, "shiny.render.function")
       expect_s3_class(result$plant_party_perspective, "shiny.render.function")
     }
@@ -66,7 +66,7 @@ test_that("build_plant_concept_details_view handles null/empty data", {
       expect_type(result_null, "list")
       expect_equal(
         names(result_null),
-        c("plant_concept_name", "plant_concept_details", "plant_party_perspective")
+        c("plant_concept_header", "plant_concept_details", "plant_party_perspective")
       )
 
       # Test with empty data frame
@@ -75,7 +75,7 @@ test_that("build_plant_concept_details_view handles null/empty data", {
       expect_type(result_empty, "list")
       expect_equal(
         names(result_empty),
-        c("plant_concept_name", "plant_concept_details", "plant_party_perspective")
+        c("plant_concept_header", "plant_concept_details", "plant_party_perspective")
       )
     }
   )

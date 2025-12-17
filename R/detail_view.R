@@ -60,7 +60,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$plot_quality_details <- shiny::renderUI(NULL)
       output$taxa_details <- shiny::renderUI(NULL)
       output$communities_details <- shiny::renderUI(NULL)
-      output$community_concept_name <- shiny::renderUI(NULL)
+      output$community_concept_header <- shiny::renderUI(NULL)
       output$community_concept_details <- shiny::renderUI(NULL)
       output$community_party_perspective <- shiny::renderUI(NULL)
       output$taxon_name <- shiny::renderUI(NULL)
@@ -82,7 +82,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$party_organization <- shiny::renderUI(NULL)
       output$party_contact <- shiny::renderUI(NULL)
       output$party_contributions <- shiny::renderUI(NULL)
-      output$plant_concept_name <- shiny::renderUI(NULL)
+      output$plant_concept_header <- shiny::renderUI(NULL)
       output$plant_concept_details <- shiny::renderUI(NULL)
       output$plant_party_perspective <- shiny::renderUI(NULL)
       output$reference_header <- shiny::renderUI(NULL)
@@ -116,7 +116,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         },
         "community-concept" = {
           details <- build_comm_concept_details_view(result)
-          output$community_concept_name <- details$community_concept_name
+          output$community_concept_header <- details$community_concept_header
           output$community_concept_details <- details$community_concept_details
           output$community_party_perspective <- details$community_party_perspective
         },
@@ -134,7 +134,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         },
         "plant-concept" = {
           details <- build_plant_concept_details_view(result)
-          output$plant_concept_name <- details$plant_concept_name
+          output$plant_concept_header <- details$plant_concept_header
           output$plant_concept_details <- details$plant_concept_details
           output$plant_party_perspective <- details$plant_party_perspective
         },

@@ -10,7 +10,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
   parent_id_field <- if (is_plant) "parent_pc_code" else "parent_cc_code"
   link_input_id <- if (is_plant) "plant_link_click" else "comm_link_click"
 
-  name_output <- if (is_plant) "plant_concept_name" else "community_concept_name"
+  name_output <- if (is_plant) "plant_concept_header" else "community_concept_header"
   details_output <- if (is_plant) "plant_concept_details" else "community_concept_details"
   perspective_output <- if (is_plant) "plant_party_perspective" else "community_party_perspective"
 
@@ -28,7 +28,8 @@ build_concept_details_view <- function(result, concept_type = "plant") {
     htmltools::div(
       htmltools::tags$i(tools::toTitleCase(as.character(result[[level_field]])) %|||% "Unspecified level"),
       htmltools::tags$h5(result[[name_field]], style = "font-weight: 600; margin-bottom: 0px;"),
-      if (!is.na(result[[code_field]])) htmltools::tags$p(paste0("(", result[[code_field]], ")"))
+      if (!is.na(result[[code_field]])) htmltools::tags$p(paste0("(", result[[code_field]], ")"), style = "margin-bottom: 0px;"),
+      htmltools::tags$h5(result[[id_field]], style = "color: #2c5443; font-weight: 600;")
     )
   })
 
@@ -37,10 +38,6 @@ build_concept_details_view <- function(result, concept_type = "plant") {
       htmltools::tags$table(
         class = "table table-sm table-striped table-hover",
         htmltools::tags$tbody(
-          htmltools::tags$tr(
-            htmltools::tags$td(paste0(tools::toTitleCase(concept_type), " Code")),
-            htmltools::tags$td(class = "text-end", result[[id_field]])
-          ),
           htmltools::tags$tr(
             htmltools::tags$td("Reference"),
             htmltools::tags$td(
