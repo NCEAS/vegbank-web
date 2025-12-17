@@ -147,7 +147,7 @@ test_that("process_plot_data returns correctly formatted display data", {
   expect_equal(nrow(result), 2)
   expect_equal(ncol(result), 6)
 
-  expected_cols <- c("Actions", "Author Plot Code", "Location", "Top Taxa", "Communities", "Year")
+  expected_cols <- c("Actions", "Code", "Location", "Top Taxa", "Communities", "Year")
   expect_equal(names(result), expected_cols)
 
   # Check action payloads encode detail code plus map metadata
@@ -170,7 +170,13 @@ test_that("process_plot_data returns correctly formatted display data", {
   )
 
   # Check other data values
-  expect_equal(result$`Author Plot Code`, c("OBS001", "OBS002"))
+  expect_equal(
+    result$Code,
+    c(
+      "OBS001<br><span class=\"text-success small\">ob.123</span>",
+      "OBS002<br><span class=\"text-success small\">ob.456</span>"
+    )
+  )
   expect_equal(
     result$Location,
     c(
