@@ -55,7 +55,7 @@ create_comm_class_header_ui <- function(result) {
         result$cl_code,
         "of ",
         create_detail_link("plot_link_click", result$ob_code, result$ob_code),
-        style = "font-weight: 600;"
+        style = "color: #2c5443; font-weight: 600;"
       ),
       if (has_valid_field_value(result, "class_start_date") ||
           has_valid_field_value(result, "class_stop_date")) {
