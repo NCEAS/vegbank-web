@@ -33,7 +33,7 @@ PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
   "Location",
   "Top Taxa",
   "Communities",
-  "Year"
+  "Survey Year"
 ))
 
 #' Create column definitions for plot table
@@ -140,7 +140,8 @@ process_plot_data <- function(plot_data) {
     "Location" = locations,
     "Top Taxa" = top_taxa_json,
     "Communities" = communities_json,
-    "Year" = years,
+    # TODO: Make this a date not just a year
+    "Survey Year" = years,
     stringsAsFactors = FALSE,
     check.names = FALSE
   )

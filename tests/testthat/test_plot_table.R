@@ -147,7 +147,7 @@ test_that("process_plot_data returns correctly formatted display data", {
   expect_equal(nrow(result), 2)
   expect_equal(ncol(result), 6)
 
-  expected_cols <- c("Actions", "Observation Code", "Location", "Top Taxa", "Communities", "Year")
+  expected_cols <- c("Actions", "Observation Code", "Location", "Top Taxa", "Communities", "Survey Year")
   expect_equal(names(result), expected_cols)
 
   # Check action payloads encode detail code plus map metadata
@@ -180,7 +180,7 @@ test_that("process_plot_data returns correctly formatted display data", {
       "Maryland<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">39.2000, -77.0000 &bull; 750m</span>"
     )
   )
-  expect_equal(result$Year, c("2020", "2021"))
+  expect_equal(result$`Survey Year`, c("2020", "2021"))
 
   # Check JSON columns are strings
   expect_type(result$`Top Taxa`, "character")
