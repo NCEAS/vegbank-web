@@ -20,12 +20,12 @@ build_reference_details_view <- function(result) {
   summary_ui <- shiny::renderUI({
     reference_type <- ref$reference_type
     vb_code <- ref$rf_code
-    short_name <- ref$short_name %|||% "Reference not recorded"
+    label <- ref$rf_label %|||% "Reference not recorded"
     htmltools::tags$div(
       if (has_valid_field_value(result, "reference_type")) {
         htmltools::tags$i(tools::toTitleCase(reference_type))
       },
-      htmltools::tags$h5(short_name, style = "font-weight: 600; margin-bottom: 0px;"),
+      htmltools::tags$h5(label, style = "font-weight: 600; margin-bottom: 0px;"),
       htmltools::tags$h5(vb_code, style = "color: #2c5443; font-weight: 600;"),
       if (has_valid_field_value(result, "publication_date")) {
         htmltools::tags$p(paste0("Published: ", (ref$publication_date)))

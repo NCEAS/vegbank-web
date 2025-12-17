@@ -208,6 +208,7 @@ mock_reference_data <- data.frame(
   publisher = "Example Publisher",
   reference_type = "Book",
   rf_code = "rf.123",
+  rf_label = "Example Author. 2020.",
   short_name = "Example Author. 2020.",
   title = "Example Title",
   total_pages = 250,
