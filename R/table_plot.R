@@ -29,7 +29,7 @@ PLOT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 
 PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
   "Actions",
-  "Code",
+  "Observation",
   "Location",
   "Top Taxa",
   "Communities",
