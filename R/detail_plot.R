@@ -1,5 +1,6 @@
 #' @noRd
-plot_detail_output_names <- c("plot_header",
+plot_detail_output_names <- c(
+  "plot_header",
   "plot_id_details", "location_details", "layout_details",
   "environmental_details", "methods_details", "plot_quality_details",
   "taxa_details", "communities_details"
@@ -127,9 +128,10 @@ build_plot_obs_details_view <- function(result) {
 
   plot_observation <- normalized$plot_observation
 
-  # Format Dates and Elevation
-  plot_observation$obs_start_date <- format_date(plot_observation$obs_start_date)
-  plot_observation$elevation <- paste0(round(as.numeric(plot_observation$elevation)), " m")
+  # Format Elevation
+  if (!is.na(plot_observation$elevation)) {
+    plot_observation$elevation <- paste0(round(as.numeric(plot_observation$elevation)), " m")
+  }
 
   taxa_details_ui <- shiny::renderUI({
     tryCatch(
@@ -223,7 +225,7 @@ build_plot_obs_details_view <- function(result) {
     ),
     methods_details = render_detail_table(
       c(
-        "obs_start_date", "project_name", "cover_type", "stratum_method_name", "stratum_method_description",
+        "project_name", "cover_type", "stratum_method_name", "stratum_method_description",
         "taxon_observation_area", "auto_taxon_cover"
       ),
       plot_observation

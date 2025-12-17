@@ -9,11 +9,11 @@ build_project_details_view <- function(result) {
   }
 
   # Format date fields with helper function for consistency
+  date_range <- format_date_range(result$start_date, result$stop_date)
   date_fields <- intersect(c("start_date", "stop_date", "last_plot_added_date"), names(result))
   for (field in date_fields) {
     result[[field]] <- vapply(result[[field]], format_date, character(1), USE.NAMES = FALSE)
   }
-  date_range <- format_date_range(result$start_date, result$stop_date)
 
   list(
     project_header = shiny::renderUI({
