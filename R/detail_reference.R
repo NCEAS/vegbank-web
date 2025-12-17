@@ -4,12 +4,12 @@
 #' publication sections. Handles NULL or empty results gracefully by returning empty UI elements.
 #'
 #' @param result A dataframe containing reference data from vegbankr::vb_get_references()
-#' @return A named list with three shiny.render.function elements: reference_summary, reference_identifiers, reference_publication
+#' @return A named list with three shiny.render.function elements: reference_header, reference_identifiers, reference_publication
 #' @noRd
 build_reference_details_view <- function(result) {
   if (is.null(result) || nrow(result) == 0) {
     return(create_empty_detail_view(
-      c("reference_summary", "reference_identifiers", "reference_publication"),
+      c("reference_header", "reference_identifiers", "reference_publication"),
       "Reference details"
     ))
   }
@@ -18,12 +18,18 @@ build_reference_details_view <- function(result) {
   ref$publication_date <- format_date(ref$publication_date)
 
   summary_ui <- shiny::renderUI({
-    short_name <- ref$short_name %|||% "Reference not recorded"
     reference_type <- ref$reference_type
-    type_available <- !is.null(reference_type) && !is.na(reference_type) && reference_type != ""
+    vb_code <- ref$rf_code
+    label <- ref$rf_label %|||% "Reference not recorded"
     htmltools::tags$div(
-      if (type_available) htmltools::tags$div(htmltools::tags$i(tools::toTitleCase(reference_type))),
-      htmltools::tags$div(short_name, style = "font-weight: 600;")
+      if (has_valid_field_value(result, "reference_type")) {
+        htmltools::tags$i(tools::toTitleCase(reference_type))
+      },
+      htmltools::tags$h5(label, style = "font-weight: 600; margin-bottom: 0px;"),
+      htmltools::tags$h5(vb_code, style = "color: #2c5443; font-weight: 600;"),
+      if (has_valid_field_value(result, "publication_date")) {
+        htmltools::tags$p(paste0("Published: ", (ref$publication_date)))
+      }
     )
   })
 
@@ -32,7 +38,7 @@ build_reference_details_view <- function(result) {
   publication_ui <- build_reference_publication_ui(ref)
 
   list(
-    reference_summary = summary_ui,
+    reference_header = summary_ui,
     reference_identifiers = identifiers_ui,
     reference_publication = publication_ui
   )

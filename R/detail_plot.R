@@ -1,5 +1,6 @@
 #' @noRd
 plot_detail_output_names <- c(
+  "plot_header",
   "plot_id_details", "location_details", "layout_details",
   "environmental_details", "methods_details", "plot_quality_details",
   "taxa_details", "communities_details"
@@ -127,6 +128,11 @@ build_plot_obs_details_view <- function(result) {
 
   plot_observation <- normalized$plot_observation
 
+  # Format Elevation
+  if (!is.na(plot_observation$elevation)) {
+    plot_observation$elevation <- paste0(round(as.numeric(plot_observation$elevation)), " m")
+  }
+
   taxa_details_ui <- shiny::renderUI({
     tryCatch(
       {
@@ -185,6 +191,22 @@ build_plot_obs_details_view <- function(result) {
   })
 
   list(
+    plot_header = shiny::renderUI({
+      htmltools::div(
+        htmltools::tags$h5(plot_observation$author_obs_code, style = "font-weight: 600; margin-bottom: 0px;"),
+        htmltools::tags$h5(plot_observation$ob_code, style = "color: #2c5443; font-weight: 600;"),
+        if (has_valid_field_value(plot_observation, "project_name")) {
+          htmltools::tags$p(
+            htmltools::tags$span("Project: "),
+            create_detail_link("proj_link_click", plot_observation$pj_code, plot_observation$project_name),
+            style = "margin-bottom: 0px;"
+          )
+        },
+        if (has_valid_field_value(plot_observation, "obs_start_date")) {
+          htmltools::tags$p(format_date_range(plot_observation$obs_start_date, plot_observation$obs_end_date))
+        }
+      )
+    }),
     plot_id_details = render_detail_table(
       c("author_obs_code", "author_plot_code"),
       plot_observation
@@ -203,7 +225,7 @@ build_plot_obs_details_view <- function(result) {
     ),
     methods_details = render_detail_table(
       c(
-        "obs_start_date", "project_name", "cover_type", "stratum_method_name", "stratum_method_description",
+        "project_name", "cover_type", "stratum_method_name", "stratum_method_description",
         "taxon_observation_area", "auto_taxon_cover"
       ),
       plot_observation

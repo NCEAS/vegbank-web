@@ -5,8 +5,7 @@
 #' @noRd
 PARTY_TABLE_FIELDS <- c(
   "py_code",
-  "given_name",
-  "surname",
+  "party_label",
   "organization_name",
   "obs_count",
   "contact_instructions"
@@ -18,7 +17,7 @@ PARTY_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 )
 
 PARTY_TABLE_DISPLAY_TEMPLATE <- build_display_template(
-  column_names = c("Actions", "Given Name", "Surname", "Organization", "Observations", "Contact"),
+  column_names = c("Actions", "Party", "Organization", "Observations", "Contact"),
   column_types = list("Observations" = integer())
 )
 
@@ -31,11 +30,10 @@ create_party_column_defs <- function() {
       width = "10%",
       render = create_action_button_renderer("party_link_click", "Details")
     ),
-    list(targets = 1, width = "15%"),
-    list(targets = 2, width = "15%"),
-    list(targets = 3, width = "30%"),
-    list(targets = 4, width = "10%", className = "dt-right", type = "num"),
-    list(targets = 5, width = "30%")
+    list(targets = 1, width = "25%"),
+    list(targets = 2, width = "30%"),
+    list(targets = 3, width = "10%", className = "dt-right", type = "num"),
+    list(targets = 4, width = "25%")
   )
 }
 
@@ -64,10 +62,13 @@ process_party_data <- function(party_data) {
     return(PARTY_TABLE_DISPLAY_TEMPLATE)
   }
 
-  given_names <- clean_column_data(party_data, "given_name")
-  surnames <- clean_column_data(party_data, "surname")
+  party_labels <- clean_column_data(party_data, "party_label")
+  py_codes <- party_data$py_code
   organizations <- clean_column_data(party_data, "organization_name")
   contact_info <- clean_column_data(party_data, "contact_instructions")
+
+  # Format party column with party_label and py_code in green below
+  formatted_parties <- format_party_name_column(party_labels, py_codes)
 
   action_codes <- party_data$py_code
   action_codes <- if (is.null(action_codes)) rep("", row_count) else as.character(action_codes)
@@ -78,14 +79,47 @@ process_party_data <- function(party_data) {
 
   data.frame(
     "Actions" = action_codes,
-    "Given Name" = given_names,
-    "Surname" = surnames,
+    "Party" = formatted_parties,
     "Organization" = organizations,
     "Observations" = obs_counts,
     "Contact" = contact_info,
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+}
+
+#' Build HTML-friendly party string with py_code
+#'
+#' Creates multi-line HTML party strings with the party_label on top and
+#' the party code (py_code) in green below.
+#'
+#' @param labels Character vector of party labels
+#' @param codes Character vector of party codes (py_code)
+#' @return Character vector of HTML-formatted party strings
+#' @noRd
+format_party_name_column <- function(labels, codes) {
+  vapply(seq_along(labels), function(idx) {
+    label <- labels[[idx]]
+    code <- codes[[idx]]
+
+    lines <- character(0)
+
+    if (!is.null(label) && !is.na(label) && nzchar(label)) {
+      lines <- c(lines, as.character(htmltools::htmlEscape(label)))
+    } else {
+      lines <- c(lines, "Not provided")
+    }
+
+    if (!is.null(code) && !is.na(code) && nzchar(code)) {
+      code_line <- sprintf(
+        '<span style="color: #2c5443; font-size: small;">%s</span>',
+        as.character(htmltools::htmlEscape(code))
+      )
+      lines <- c(lines, code_line)
+    }
+
+    paste(lines, collapse = "<br>")
+  }, character(1), USE.NAMES = FALSE)
 }
 
 #' Normalize party API responses into a consistent schema

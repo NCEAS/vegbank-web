@@ -1142,6 +1142,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "plot-details-cards",
           class = "detail-section",
+          bslib::card(bslib::card_header("Plot Observation"), shiny::uiOutput("plot_header")),
           bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
           bslib::card(bslib::card_header("Location"), shiny::uiOutput("location_details")),
           bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
@@ -1156,7 +1157,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "community-concept-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Community Concept"), shiny::uiOutput("community_concept_name")),
+          bslib::card(bslib::card_header("Community Concept"), shiny::uiOutput("community_concept_header")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("community_concept_details")),
           bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("community_party_perspective"))
         ),
@@ -1175,18 +1176,18 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "project-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Project Name"), shiny::uiOutput("project_name")),
+          bslib::card(bslib::card_header("Project"), shiny::uiOutput("project_header")),
           bslib::card(bslib::card_header("Description"), shiny::uiOutput("project_description")),
           bslib::card(bslib::card_header("Dates"), shiny::uiOutput("project_dates")),
-          bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("project_contributors")),
-          bslib::card(bslib::card_header("Plot Observation Count"), shiny::uiOutput("project_observations"))
+          bslib::card(bslib::card_header("Plot Observation Count"), shiny::uiOutput("project_observations")),
+          bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("project_contributors"))
         ),
 
         # Party Details Cards - wrapped in a div with class for toggling visibility
         htmltools::tags$div(
           id = "party-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Name"), shiny::uiOutput("party_name")),
+          bslib::card(bslib::card_header("Party"), shiny::uiOutput("party_header")),
           bslib::card(bslib::card_header("Organization"), shiny::uiOutput("party_organization")),
           bslib::card(bslib::card_header("Contact Information"), shiny::uiOutput("party_contact")),
           bslib::card(bslib::card_header("Contributions"), shiny::uiOutput("party_contributions"))
@@ -1196,7 +1197,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "plant-concept-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_name")),
+          bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_header")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("plant_concept_details")),
           bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("plant_party_perspective"))
         ),
@@ -1205,7 +1206,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "reference-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Reference"), shiny::uiOutput("reference_summary")),
+          bslib::card(bslib::card_header("Reference"), shiny::uiOutput("reference_header")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("reference_identifiers")),
           bslib::card(bslib::card_header("Publication"), shiny::uiOutput("reference_publication"))
         )

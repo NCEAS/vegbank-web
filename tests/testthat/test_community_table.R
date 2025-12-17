@@ -40,12 +40,15 @@ test_that("community concept data includes community-specific values", {
                                                 concept_type = "community")
 
     expect_equal(colnames(result), c(
-      "Actions", "Community Name", "Status", "status_sort",
+      "Actions", "Community Concept", "Status", "status_sort",
       "Level", "Reference Source", "ref_sort", "Observations", "Description"
     ))
 
     expect_equal(result$Actions, community_data$cc_code)
-    expect_equal(result$`Community Name`, community_data$comm_name)
+    # Name column now includes HTML-formatted code below the name
+    expect_true(grepl("Prairie", result$`Community Concept`[1]))
+    expect_true(grepl("cc.101", result$`Community Concept`[1]))
+    expect_true(grepl("#2c5443", result$`Community Concept`[1]))
     expect_equal(result$Status, community_data$current_accepted)
     expect_equal(result$status_sort, c(1, 2))
     expect_equal(result$Level, c("Alliance", "Not provided"))

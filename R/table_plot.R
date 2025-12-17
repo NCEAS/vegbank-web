@@ -6,7 +6,6 @@
 PLOT_TABLE_FIELDS <- c(
   "ob_code",
   "pl_code",
-  "author_plot_code",
   "author_obs_code",
   "state_province",
   "country",
@@ -30,7 +29,7 @@ PLOT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 
 PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
   "Actions",
-  "Author Plot Code",
+  "Observation Code",
   "Location",
   "Top Taxa",
   "Communities",
@@ -101,6 +100,9 @@ process_plot_data <- function(plot_data) {
   author_codes <- clean_column_data(plot_data, "author_obs_code")
   years <- clean_column_data(plot_data, "year")
 
+  # Format code column with author code and ob_code in green below
+  formatted_codes <- format_code_column(author_codes, ob_codes)
+
   # Format numeric columns
   latitudes <-   suppressWarnings(as.numeric(plot_data$latitude))
   longitudes <- suppressWarnings(as.numeric(plot_data$longitude))
@@ -134,7 +136,7 @@ process_plot_data <- function(plot_data) {
 
   data.frame(
     "Actions" = action_payloads,
-    "Author Plot Code" = author_codes,
+    "Observation Code" = formatted_codes,
     "Location" = locations,
     "Top Taxa" = top_taxa_json,
     "Communities" = communities_json,
@@ -142,6 +144,40 @@ process_plot_data <- function(plot_data) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+}
+
+#' Build HTML-friendly code string with author code and ob_code
+#'
+#' Creates multi-line HTML code strings with author_obs_code on top and
+#' ob_code in green below.
+#'
+#' @param author_codes Character vector of author observation codes
+#' @param ob_codes Character vector of VegBank observation codes
+#' @return Character vector of HTML-formatted code strings
+#' @noRd
+format_code_column <- function(author_codes, ob_codes) {
+  vapply(seq_along(author_codes), function(idx) {
+    author_code <- author_codes[[idx]]
+    ob_code <- ob_codes[[idx]]
+
+    lines <- character(0)
+
+    if (!is.null(author_code) && !is.na(author_code) && nzchar(author_code)) {
+      lines <- c(lines, as.character(htmltools::htmlEscape(author_code)))
+    } else {
+      lines <- c(lines, "Not provided")
+    }
+
+    if (!is.null(ob_code) && !is.na(ob_code) && nzchar(ob_code)) {
+      ob_code_line <- sprintf(
+        '<span style="color: #2c5443; font-size: small;">%s</span>',
+        as.character(htmltools::htmlEscape(ob_code))
+      )
+      lines <- c(lines, ob_code_line)
+    }
+
+    paste(lines, collapse = "<br>")
+  }, character(1), USE.NAMES = FALSE)
 }
 
 #' Build HTML-friendly location string from components

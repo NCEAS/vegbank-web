@@ -5,14 +5,14 @@ test_that("build_reference_details_view handles NULL data gracefully", {
 
   expect_type(result, "list")
   expect_named(result, c(
-    "reference_summary",
+    "reference_header",
     "reference_identifiers",
     "reference_publication"
   ))
 
-  expect_s3_class(result$reference_summary, "shiny.render.function")
+  expect_s3_class(result$reference_header, "shiny.render.function")
   mock_session <- shiny::MockShinySession$new()
-  html <- htmltools::renderTags(result$reference_summary(shinysession = mock_session))$html
+  html <- htmltools::renderTags(result$reference_header(shinysession = mock_session))$html
   expect_true(grepl("Reference details not available", html))
 })
 
@@ -21,14 +21,14 @@ test_that("build_reference_details_view formats reference data", {
 
   expect_type(details, "list")
   expect_named(details, c(
-    "reference_summary",
+    "reference_header",
     "reference_identifiers",
     "reference_publication"
   ))
 
-  expect_s3_class(details$reference_summary, "shiny.render.function")
+  expect_s3_class(details$reference_header, "shiny.render.function")
   mock_session <- shiny::MockShinySession$new()
-  summary_html <- htmltools::renderTags(details$reference_summary(shinysession = mock_session))$html
+  summary_html <- htmltools::renderTags(details$reference_header(shinysession = mock_session))$html
   expect_true(grepl("Example Author. 2020.", summary_html, fixed = TRUE))
   expect_true(grepl("Book", summary_html, fixed = TRUE))
 

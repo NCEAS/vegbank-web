@@ -51,6 +51,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       }
 
       # Clear all output slots - names must stay aligned with ui.R definitions
+      output$plot_header <- shiny::renderUI(NULL)
       output$plot_id_details <- shiny::renderUI(NULL)
       output$location_details <- shiny::renderUI(NULL)
       output$layout_details <- shiny::renderUI(NULL)
@@ -59,7 +60,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$plot_quality_details <- shiny::renderUI(NULL)
       output$taxa_details <- shiny::renderUI(NULL)
       output$communities_details <- shiny::renderUI(NULL)
-      output$community_concept_name <- shiny::renderUI(NULL)
+      output$community_concept_header <- shiny::renderUI(NULL)
       output$community_concept_details <- shiny::renderUI(NULL)
       output$community_party_perspective <- shiny::renderUI(NULL)
       output$taxon_name <- shiny::renderUI(NULL)
@@ -72,19 +73,19 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$comm_class_details <- shiny::renderUI(NULL)
       output$comm_class_interpretations <- shiny::renderUI(NULL)
       output$comm_class_contributors <- shiny::renderUI(NULL)
-      output$project_name <- shiny::renderUI(NULL)
+      output$project_header <- shiny::renderUI(NULL)
       output$project_description <- shiny::renderUI(NULL)
       output$project_dates <- shiny::renderUI(NULL)
       output$project_contributors <- shiny::renderUI(NULL)
       output$project_observations <- shiny::renderUI(NULL)
-      output$party_name <- shiny::renderUI(NULL)
+      output$party_header <- shiny::renderUI(NULL)
       output$party_organization <- shiny::renderUI(NULL)
       output$party_contact <- shiny::renderUI(NULL)
       output$party_contributions <- shiny::renderUI(NULL)
-      output$plant_concept_name <- shiny::renderUI(NULL)
+      output$plant_concept_header <- shiny::renderUI(NULL)
       output$plant_concept_details <- shiny::renderUI(NULL)
       output$plant_party_perspective <- shiny::renderUI(NULL)
-      output$reference_summary <- shiny::renderUI(NULL)
+      output$reference_header <- shiny::renderUI(NULL)
       output$reference_identifiers <- shiny::renderUI(NULL)
       output$reference_publication <- shiny::renderUI(NULL)
 
@@ -93,15 +94,15 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       switch(resource_type,
         "project" = {
           details <- build_project_details_view(result)
-          output$project_name <- details$project_name
+          output$project_header <- details$project_header
           output$project_description <- details$project_description
           output$project_dates <- details$project_dates
-          output$project_contributors <- details$project_contributors
           output$project_observations <- details$project_observations
+          output$project_contributors <- details$project_contributors
         },
         "party" = {
           details <- build_party_details_view(result)
-          output$party_name <- details$party_name
+          output$party_header <- details$party_header
           output$party_organization <- details$party_organization
           output$party_contact <- details$party_contact
           output$party_contributions <- details$party_contributions
@@ -115,12 +116,13 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         },
         "community-concept" = {
           details <- build_comm_concept_details_view(result)
-          output$community_concept_name <- details$community_concept_name
+          output$community_concept_header <- details$community_concept_header
           output$community_concept_details <- details$community_concept_details
           output$community_party_perspective <- details$community_party_perspective
         },
         "plot-observation" = {
           details <- build_plot_obs_details_view(result)
+          output$plot_header <- details$plot_header
           output$plot_id_details <- details$plot_id_details
           output$location_details <- details$location_details
           output$layout_details <- details$layout_details
@@ -132,13 +134,13 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         },
         "plant-concept" = {
           details <- build_plant_concept_details_view(result)
-          output$plant_concept_name <- details$plant_concept_name
+          output$plant_concept_header <- details$plant_concept_header
           output$plant_concept_details <- details$plant_concept_details
           output$plant_party_perspective <- details$plant_party_perspective
         },
         "reference" = {
           details <- build_reference_details_view(result)
-          output$reference_summary <- details$reference_summary
+          output$reference_header <- details$reference_header
           output$reference_identifiers <- details$reference_identifiers
           output$reference_publication <- details$reference_publication
         }
