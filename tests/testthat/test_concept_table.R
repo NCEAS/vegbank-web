@@ -67,15 +67,15 @@ test_that("process_concept_data formats plant concepts", {
     result <- vegbankweb:::process_concept_data(list(plant_data = plant_test_data), concept_type = "plant")
 
     expect_equal(colnames(result), c(
-      "Actions", "Plant Name", "Status", "status_sort",
+      "Actions", "Plant Concept", "Status", "status_sort",
       "Level", "Reference Source", "ref_sort", "Observations", "Description"
     ))
 
     expect_equal(result$Actions, plant_test_data$pc_code)
     # Name column now includes HTML-formatted code below the name
-    expect_true(grepl("Oak", result$`Plant Name`[1]))
-    expect_true(grepl("pc.101", result$`Plant Name`[1]))
-    expect_true(grepl("#2c5443", result$`Plant Name`[1]))
+    expect_true(grepl("Oak", result$`Plant Concept`[1]))
+    expect_true(grepl("pc.101", result$`Plant Concept`[1]))
+    expect_true(grepl("#2c5443", result$`Plant Concept`[1]))
     expect_equal(result$Status, plant_test_data$current_accepted)
     expect_equal(result$status_sort, c(0, 2))
     expect_equal(result$Level, c("Species", "Not provided"))
@@ -92,15 +92,15 @@ test_that("process_concept_data formats community concepts", {
                                                 concept_type = "community")
 
     expect_equal(colnames(result), c(
-      "Actions", "Community Name", "Status", "status_sort",
+      "Actions", "Community Concept", "Status", "status_sort",
       "Level", "Reference Source", "ref_sort", "Observations", "Description"
     ))
 
     expect_equal(result$Actions, community_test_data$cc_code)
     # Name column now includes HTML-formatted code below the name
-    expect_true(grepl("Prairie", result$`Community Name`[1]))
-    expect_true(grepl("cc.201", result$`Community Name`[1]))
-    expect_true(grepl("#2c5443", result$`Community Name`[1]))
+    expect_true(grepl("Prairie", result$`Community Concept`[1]))
+    expect_true(grepl("cc.201", result$`Community Concept`[1]))
+    expect_true(grepl("#2c5443", result$`Community Concept`[1]))
     expect_equal(result$Status, community_test_data$current_accepted)
     expect_equal(result$status_sort, c(1, 2))
     expect_equal(result$Level, c("Alliance", "Not provided"))

@@ -1,5 +1,5 @@
 #' @noRd
-plot_detail_output_names <- c(
+plot_detail_output_names <- c("plot_header",
   "plot_id_details", "location_details", "layout_details",
   "environmental_details", "methods_details", "plot_quality_details",
   "taxa_details", "communities_details"

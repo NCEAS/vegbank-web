@@ -39,15 +39,15 @@ test_that("plant concept data includes plant-specific values", {
     result <- vegbankweb:::process_concept_data(list(plant_data = plant_data), concept_type = "plant")
 
     expect_equal(colnames(result), c(
-      "Actions", "Plant Name", "Status", "status_sort",
+      "Actions", "Plant Concept", "Status", "status_sort",
       "Level", "Reference Source", "ref_sort", "Observations", "Description"
     ))
 
     expect_equal(result$Actions, plant_data$pc_code)
     # Name column now includes HTML-formatted code below the name
-    expect_true(grepl("Oak", result$`Plant Name`[1]))
-    expect_true(grepl("pc.101", result$`Plant Name`[1]))
-    expect_true(grepl("#2c5443", result$`Plant Name`[1]))
+    expect_true(grepl("Oak", result$`Plant Concept`[1]))
+    expect_true(grepl("pc.101", result$`Plant Concept`[1]))
+    expect_true(grepl("#2c5443", result$`Plant Concept`[1]))
     expect_equal(result$Status, plant_data$current_accepted)
     expect_equal(result$status_sort, c(0, 1))
     expect_equal(result$Level, c("Species", "Not provided"))

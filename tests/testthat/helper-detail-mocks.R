@@ -26,7 +26,7 @@ mock_plot_data <- data.frame(
   country = "Test Country",
   area = "10x10m",
   permanence = "Permanent",
-  elevation = "100m",
+  elevation = 100,
   slope_aspect = "North",
   slope_gradient = "10%",
   confidentiality_text = "Not confidential",
