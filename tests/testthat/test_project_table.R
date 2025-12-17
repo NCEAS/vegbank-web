@@ -60,7 +60,12 @@ test_that("process_project_data formats normalized data", {
 
   expect_equal(nrow(result), 3)
   expect_equal(result$Actions, c("pj.1", "pj.2", "pj.314"))
-  expect_equal(result$Name, c("Alpha", "Beta", "Walker et al. 2010"))
+  # Name column now includes HTML-formatted pj_code below the name
+  expect_true(grepl("Alpha", result$Name[1]))
+  expect_true(grepl("pj.1", result$Name[1]))
+  expect_true(grepl("#2c5443", result$Name[1]))
+  expect_true(grepl("Beta", result$Name[2]))
+  expect_true(grepl("pj.2", result$Name[2]))
   expect_equal(result$Description, c("Not provided", "Second", "Angelina National Forest.  Sampling work conducted between 1998 and 2002 supported the application of the United States National Vegetation Classification (USNVC) standard to Region 8 Forests. This resulted in a basic list of vegetation units (alliances and community associations) for the National Forests in this region.\nThe vegetation classification produced through this agreement, and the NatureServe Ecological Systems Classification which is based on it, form the foundation for continuing use of the USNVC on U.S. Forest Service lands in Region 8 for natural resource planning and management.\nReports on the US National Vegetation Classification for various National Fores..."))
   expect_equal(result$Plots, c(0L, 12L, 149L))
   expect_equal(result$Started, c("Not provided", "1997-08-21", "2022-01-01"))
