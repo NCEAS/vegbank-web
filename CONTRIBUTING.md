@@ -19,9 +19,9 @@ might consider contributing by:
 - Report a bug or request a new feature in our [issue tracker](https://github.com/NCEAS/vegbank-web/issues)
 - Fix a bug and contribute the code with a Pull Request
 - Write or edit some documentation
-- Sharing helpful tips or FAQ-type answers to users or future contributors
+- Share helpful tips or FAQ-type answers to users or future contributors
+- Create vignettes or tutorials about vegbankweb features
 - Answer questions on [VegBank Discussions](https://github.com/NCEAS/vegbank2/discussions)
-- ...
 
 This is an open source project, and we welcome full participation in the
 project. Contributions are reviewed and suggestions are made to increase
@@ -78,8 +78,9 @@ next release number (e.g., `2.9.0`), or the planned next release number
 with a `beta` designator or release candidate `rc` designator appended
 as appropriate. For example, `2.8.6-beta1` or `2.9.0-rc1`.
 
-**feature**. To isolate development on a specific set of capabilities, especially if it may be disruptive to other 
-developers working on the `develop` branch, feature branches should be created.
+**feature**. To isolate development on a specific set of capabilities,
+especially if it may be disruptive to other developers working on the
+`develop` branch, feature branches should be created.
 
 Feature branches are named as `feature-` + `{issue}` +
 `-{short-description}`, with `{issue}` being the GitHub issue number
@@ -160,18 +161,14 @@ responds correctly to both good data inputs and various classes of
 corrupt or bad data. All tests should pass before submitting a PR or
 merging to `develop`.
 
-Tests are automatically run via GitHub Actions. Check the root
-`README.md` file for the GitHub Actions status badge and make sure it
-says "Passing".
-
 ## 🎨 Code style
 
 Code should be written to professional standards to enable clean,
 well-documented, readable, and maintainable software. While there has
 been significant variability in the coding styles applied historically,
 new contributions should strive for clean code formatting. We generally
-follow PEP8 guidelines for Python code formatting, typically enforced
-through the `black` code formatting package.
+lean toward (but do not automatically enforce)`tidyverse` styling, which
+can be applied using the `styler` code formatting package.
 
 ## 📄 Contributor license agreement
 

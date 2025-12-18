@@ -5,27 +5,23 @@
 - [**Submit Bugs and feature requests**](https://github.com/NCEAS/vegbank-web/issues)
 
 
-This package is an web access point for VegBank, the vegetation plot database of the Ecological Society of America's Panel on Vegetation Classification, hosted by the National Center for Ecological Analysis and Synthesis (NCEAS). VegBank contains vegetation plot data, community types recognized by the U.S. National Vegetation Classification and others, and all ITIS/USDA plant taxa along with other taxa recorded in plot records. As a VegBank API client, the 'vegbankweb' package supports browsing, searching, inspecting, and downloading vegetation plot records and other supporting information to and from the VegBank database.
+This package is an web access point for VegBank, the vegetation plot database of the Ecological Society of America's Panel on Vegetation Classification, hosted by the National Center for Ecological Analysis and Synthesis (NCEAS). VegBank contains vegetation plot data, community types recognized by the U.S. National Vegetation Classification and others, and all ITIS/USDA plant taxa along with other taxa recorded in plot records. As a VegBank API client, the 'vegbankweb' package supports browsing, searching, and inspecting vegetation plot records and other supporting information in the VegBank database.
 
-VegBank in general, and the vegbankweb package in particular, are open source, community projects. We [welcome contributions](./CONTRIBUTING.md) in many forms, including code, data, documentation, bug reports, testing, etc. Use the VegBank discussions to discuss these contributions with us.
+VegBank in general, and the vegbankweb package in particular, are open source, community projects. We [welcome contributions](./CONTRIBUTING.md) in many forms, including code, data, documentation, bug reports, testing, etc. Use the [VegBank Discussions](https://github.com/NCEAS/vegbank2/discussions), or email help@vegbank.org to discuss these contributions with us.
 
-
-## Documentation
-
-Documentation is a work in progress, and can be found ...
-
-## Development build
+## Running Locally
 
 This is a [Shiny App](https://shiny.posit.co/) built using the [Shiny R package](https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/). 
 
-The app is currently configured to read from inst/cached_data RDS files by default, or hit an api running on kubernetes for data if you set the use_api parameter for load_data_type in server.R to TRUE.
+The app is currently configured to hit the [vegbankr](https://github.com/NCEAS/vegbankr) api for data.
 
-To run the app locally, run the following commands your IDE terminal: 
+To run the app locally, run the following commands in your IDE terminal: 
 
 ```
 ~ % R
 
-~ % devtools::load_all()
+# or use `devtools::` if you prefer
+~ remotes::install_github("NCEAS/vegbank-web")
 
 ~ % vegbankweb::run_app()
 ```
@@ -50,6 +46,9 @@ limitations under the License.
 ## Acknowledgements
 Work on this package was supported by:
 
-- The National Center for Ecological Analysis and Synthesis, a Center funded by the University of California, Santa Barbara, and the State of California.
+- California Department of Fish and Wildlife
+- The ESA Panel on Vegetation Classification
+
+Additional support was provided for collaboration by the National Center for Ecological Analysis and Synthesis, a Center funded by the University of California, Santa Barbara, and the State of California.
 
 [![nceas_footer](https://www.nceas.ucsb.edu/sites/default/files/2020-03/NCEAS-full%20logo-4C.png)](https://www.nceas.ucsb.edu)
