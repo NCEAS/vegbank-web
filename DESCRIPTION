@@ -1,0 +1,28 @@
+Package: vegbankweb
+Type: Package
+Title: "VegBank Web: A Shiny Application for Vegetation Plot Data"
+Version: 0.1.0
+Authors@R: 
+    person(given = "Darian", family = "Gill", email = "help@vegbank.org", role = c("aut", "cre"))
+Description: "This package provides a Shiny web interface to browse, search, inspect and download vegetation plot data."
+License: Apache License (>= 2)
+Imports: 
+    bslib (>= 0.8.0),
+    dplyr (>= 1.0.10),
+    DT (>= 0.34.0),
+    ggplot2 (>= 3.5.2),
+    htmltools (>= 0.5.8.1),
+    htmlwidgets (>= 1.6.2),
+    leaflet (>= 2.2.2),
+    markdown (>= 2.0),
+    R6 (>= 2.6.1),
+    shiny (>= 1.11.1),
+    vegbankr
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Suggests: 
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3

@@ -1,0 +1,650 @@
+lower,snake,display
+abbreviation,abbreviation,Abbreviation
+acceptedsynonym,accepted_synonym,Accepted Synonym
+accessdate,access_date,Access Date
+accessioncode,accession_code,Accession Code
+additionalinfo,additional_info,Additional Info
+addl_stmt,addl_stmt,Additional Statement
+address_id,address_id,Address ID
+addressstartdate,address_start_date,Address Start Date
+administrativearea,administrative_area,Administrative Area
+area,area,Area
+attributename,attribute_name,Attribute Name
+authordatum,author_datum,Author Datum
+authore,author_e,Author E
+authorlocation,author_location,Author Location
+authorn,author_n,Author N
+authorobscode,author_obs_code,Author Observation Code
+authorplantname,author_plant_name,Author Plant Name
+authorplotcode,author_plot_code,Author Plot Code
+authorzone,author_zone,Author Zone
+autotaxoncover,auto_taxon_cover,Auto Taxon Cover
+azimuth,azimuth,Azimuth
+basalarea,basal_area,Basal Area
+basesaturation,base_saturation,Base Saturation
+begin_time,begin_time,Begin Time
+biomass,biomass,Biomass
+bryophytequality,bryophyte_quality,Bryophyte Quality
+cache_key,cache_key,Cache Key
+cache_label,cache_label,Cache Label
+cache_order,cache_order,Cache Order
+calculated,calculated,Calculated
+certificationstatus,certification_status,Certification Status
+certificationstatuscomments,certification_status_comments,Certification Status Comments
+chapternumber,chapter_number,Chapter Number
+cheatrole,cheat_role,Cheat Role
+childcommstatus_id,child_comm_status_id,Child Comm Status ID
+childparty_id,child_party_id,Child Party ID
+childplace_id,child_place_id,Child Place ID
+childplantstatus_id,child_plant_status_id,Child Plant Status ID
+city,city,City
+classconfidence,class_confidence,Classification Confidence
+classcontributor_id,class_contributor_id,Classification Contributor ID
+classfit,class_fit,Classification Fit
+classnotes,class_notes,Classification Notes
+classpublication_id,class_publication_id,Classification Publication ID
+classstartdate,class_start_date,Classification Start Date
+classstopdate,class_stop_date,Classification Stop Date
+classsystem,class_system,Classification System
+code,code,Code
+codeisused,code_is_used,Code Is Used
+collectiondate,collection_date,Collection Date
+collectionnumber,collection_number,Collection Number
+collector_id,collector_id,Collector ID
+commauthority_id,comm_authority_id,Community Authority ID
+commclass_id,comm_class_id,Community Classification ID
+commclassaccessioncode,comm_class_accession_code,Community Classification Accession Code
+commcode,comm_code,Community Code
+commconcept_id,comm_concept_id,Community Concept ID
+commconceptaccessioncode,comm_concept_accession_code,Community Concept Accession Code
+commconceptstatus,comm_concept_status,Community Concept Status
+commconvergence,comm_convergence,Community Convergence
+commcorrelation_id,comm_correlation_id,Community Correlation ID
+commdescription,comm_description,Community Description
+commframework,comm_framework,Community Framework
+comminterpretation_id,comm_interpretation_id,Community Interpretation ID
+commlevel,comm_level,Community Level
+commlineage_id,comm_lineage_id,Community Lineage ID
+commname,comm_name,Community Name
+commname_id,comm_name_id,Community Name ID
+commnamedateentered,comm_name_date_entered,Community Name Date Entered
+commnamereferenceid,comm_name_reference_id,Community Name Reference ID
+commnamestatus,comm_name_status,Community Name Status
+common,common,Common
+commparent_id,comm_parent_id,Community Parent ID
+commpartycomments,comm_party_comments,Community Party Comments
+commstatus_id,comm_status_id,Community Status ID
+communicationtype,communication_type,Communication Type
+communities,communities,Communities
+commusage_id,comm_usage_id,Community Usage ID
+conferencedate,conference_date,Conference Date
+confidentialityreason,confidentiality_reason,Confidentiality Reason
+confidentialityshorttext,confidentiality_short_text,Confidentiality Short Text
+confidentialitystatus,confidentiality_status,Confidentiality Status
+confidentialitytext,confidentiality_text,Confidentiality
+confirmcode,confirm_code,Confirm Code
+contactinstructions,contact_instructions,Contact Instructions
+contributiondate,contribution_date,Contribution Date
+cookie_id,cookie_id,Cookie ID
+cookielabel_id,cookie_label_id,Cookie Label ID
+cookiename,cookie_name,Cookie Name
+correlationstart,correlation_start,Correlation Start
+correlationstop,correlation_stop,Correlation Stop
+countrecs,count_recs,Count Recs
+country,country,Country
+cover,cover,Cover
+covercode,cover_code,Cover Code
+coverdispersion,cover_dispersion,Cover Dispersion
+coverestimationmethod,cover_estimation_method,Cover Estimation Method
+coverindex_id,cover_index_id,Cover Index ID
+covermethod_id,cover_method_id,Cover Method ID
+covermethodaccessioncode,cover_method_accession_code,Cover Method Accession Code
+coverpercent,cover_percent,Cover Percent
+covertype,cover_type,Cover Type
+current_cert_level,current_cert_level,Current Cert Level
+current_org,current_org,Current Organization
+current_pos,current_pos,Current Position
+currentaccepted,current_accepted,Current Accepted
+currentflag,current_flag,Current Flag
+currentinterpretation,current_interpretation,Current Interpretation
+currentname_id,current_name_id,Current Name ID
+currentparty_id,current_party_id,Current Party ID
+d_currentaccepted,d_current_accepted,D Current Accepted
+d_lastplotaddeddate,d_last_plot_added_date,D Last Plot Added Date
+d_obscount,d_obs_count,D Observation Count
+data1,data_1,Data 1
+data2,data_2,Data 2
+data3,data_3,Data 3
+data4,data_4,Data 4
+data5,data_5,Data 5
+data6,data_6,Data 6
+data7,data_7,Data 7
+data8,data_8,Data 8
+data9,data_9,Data 9
+data10,data_10,Data 10
+databasekey,database_key,Database Key
+datasetdescription,dataset_description,Dataset Description
+datasetname,dataset_name,Dataset Name
+datasetpassword,dataset_password,Dataset Password
+datasetsharing,dataset_sharing,Dataset Sharing
+datasetstart,dataset_start,Dataset Start
+datasetstop,dataset_stop,Dataset Stop
+datasettype,dataset_type,Dataset Type
+dateaccuracy,date_accuracy,Date Accuracy
+dateentered,date_entered,Date Entered
+dba_datacache_id,dba_datacache_id,DBA Datacache ID
+dba_datamodelversion_id,dba_data_model_version_id,DBA Data Model Version ID
+dba_fielddescription_id,dba_field_description_id,DBA Field Description ID
+dba_fieldlist_id,dba_field_list_id,DBA Field List ID
+dba_onerow_id,dba_one_row_id,DBA One Row ID
+dba_preassignacccode_id,dba_preassign_acc_code_id,DBA Preassign Acc Code ID
+dba_requestnumber,dba_request_number,DBA Request Number
+dba_tabledescription_id,dba_table_description_id,DBA Table Description ID
+defaultname,default_name,Default Name
+defaultstatus,default_status,Default Status
+defaultvalue,default_value,Default Value
+definedvalue,defined_value,Defined Value
+definedvalue_id,defined_value_id,Defined Value ID
+degree,degree,Degree
+degree_institution,degree_institution,Degree Institution
+degree_year,degree_year,Degree Year
+deliverypoint,delivery_point,Delivery Point
+description,description,Description
+disturbanceage,disturbance_age,Disturbance Age
+disturbancecomment,disturbance_comment,Disturbance Comment
+disturbanceextent,disturbance_extent,Disturbance Extent
+disturbanceintensity,disturbance_intensity,Disturbance Intensity
+disturbanceobs_id,disturbance_obs_id,Disturbance Observation ID
+disturbancetype,disturbance_type,Disturbance Type
+doi,doi,DOI
+dominantstratum,dominant_stratum,Dominant Stratum
+dsgpoly,dsg_poly,DSG Poly
+edition,edition,Edition
+effortlevel,effort_level,Effort Level
+elevation,elevation,Elevation
+elevationaccuracy,elevation_accuracy,Elevation Accuracy
+elevationrange,elevation_range,Elevation Range
+email,email,Email
+email_address,email_address,Email Address
+emb_classcontributor,emb_class_contributor,Emb Classification Contributor
+emb_commclass,emb_comm_class,Emb Comm Class
+emb_comminterpretation,emb_comm_interpretation,Emb Comm Interpretation
+emb_disturbanceobs,emb_disturbance_obs,Emb Disturbance Obs
+emb_observation,emb_observation,Emb Observation
+emb_plot,emb_plot,Emb Plot
+emb_soilobs,emb_soil_obs,Emb Soil Obs
+emb_stemcount,emb_stem_count,Emb Stem Count
+emb_stemlocation,emb_stem_location,Emb Stem Location
+emb_taxonalt,emb_taxon_alt,Emb Taxon Alt
+emb_taxonimportance,emb_taxon_importance,Emb Taxon Importance
+emb_taxoninterpretation,emb_taxon_interpretation,Emb Taxon Interpretation
+emb_taxonobservation,emb_taxon_observation,Emb Taxon Observation
+embargo_id,embargo_id,Embargo ID
+embargoreason,embargo_reason,Embargo Reason
+embargostart,embargo_start,Embargo Start
+embargostop,embargo_stop,Embargo Stop
+entity,entity,Entity
+esa_member,esa_member,ESA Member
+esa_sponsor_email_a,esa_sponsor_email_a,ESA Sponsor Email A
+esa_sponsor_email_b,esa_sponsor_email_b,ESA Sponsor Email B
+esa_sponsor_name_a,esa_sponsor_name_a,ESA Sponsor Name A
+esa_sponsor_name_b,esa_sponsor_name_b,ESA Sponsor Name B
+examplepk,example_pk,Example PK
+exchangecapacity,exchange_capacity,Exchange Capacity
+exp_region_a,exp_region_a,Exp Region A
+exp_region_a_flor,exp_region_a_flor,Exp Region A Flor
+exp_region_a_nvc,exp_region_a_nvc,Exp Region A NVC
+exp_region_a_veg,exp_region_a_veg,Exp Region A Veg
+exp_region_b,exp_region_b,Exp Region B
+exp_region_b_flor,exp_region_b_flor,Exp Region B Flor
+exp_region_b_nvc,exp_region_b_nvc,Exp Region B NVC
+exp_region_b_veg,exp_region_b_veg,Exp Region B Veg
+exp_region_c,exp_region_c,Exp Region C
+exp_region_c_flor,exp_region_c_flor,Exp Region C Flor
+exp_region_c_nvc,exp_region_c_nvc,Exp Region C NVC
+exp_region_c_veg,exp_region_c_veg,Exp Region C Veg
+expertsystem,expert_system,Expert System
+externalaccessioncode,external_accession_code,External Accession Code
+fieldcover,field_cover,Field Cover
+fielddefinition,field_definition,Field Definition
+fieldht,field_ht,Field Height 
+fieldkey,field_key,Field Key
+fieldkeywords,field_keywords,Field Keywords
+fieldlabel,field_label,Field Label
+fieldlist,field_list,Field List
+fieldmodel,field_model,Field Model
+fieldname,field_name,Field Name
+fieldnotes,field_notes,Field Notes
+fieldnulls,field_nulls,Field Nulls
+fieldreferences,field_references,Field References
+fieldtype,field_type,Field Type
+floatingcover,floating_cover,Floating Cover
+floristicquality,floristic_quality,Floristic Quality
+floristics,floristics,Floristics
+fullCitation,full_citation,Citation
+fulltext,fulltext,Fulltext
+givenname,given_name,Given Name
+graphic_id,graphic_id,Graphic ID
+graphicdata,graphic_data,Graphic Data
+graphicdate,graphic_date,Graphic Date
+graphicdescription,graphic_description,Graphic Description
+graphiclocation,graphic_location,Graphic Location
+graphicname,graphic_name,Graphic Name
+graphictype,graphic_type,Graphic Type
+grouptype,group_type,Group Type
+growthform1cover,growthform_1_cover,Growthform 1 Cover
+growthform1type,growthform_1_type,Growthform 1 Type
+growthform2cover,growthform_2_cover,Growthform 2 Cover
+growthform2type,growthform_2_type,Growthform 2 Type
+growthform3cover,growthform_3_cover,Growthform 3 Cover
+growthform3type,growthform_3_type,Growthform 3 Type
+hasobservationsynonym,has_observation_synonym,Has Observation Synonym
+highest_degree,highest_degree,Highest Degree
+homogeneity,homogeneity,Homogeneity
+hydrologicregime,hydrologic_regime,Hydrologic Regime
+identifier,identifier,Identifier
+indexdescription,index_description,Index Description
+inferencearea,inference_area,Inference Area
+inspection,inspection,Inspection
+int_currplantcode,int_curr_plant_code,Current Code
+int_currplantcommon,int_curr_plant_common,Current Common Name
+int_currplantconcept_id,int_curr_plant_concept_id,Current Plant Concept ID
+int_currplantscifull,int_curr_plant_sci_full,Current Full Scientific Name
+int_currplantscinamenoauth,int_curr_plant_sci_name_no_auth,Current Scientific Name No Author
+int_origplantcode,int_orig_plant_code,Original Code
+int_origplantcommon,int_orig_plant_common,Original Common Name
+int_origplantconcept_id,int_orig_plant_concept_id,Original Plant Concept ID
+int_origplantscifull,int_orig_plant_sci_full,Original Full Scientific Name
+int_origplantscinamenoauth,int_orig_plant_sci_name_no_auth,Original Scientific Name No Author
+interp_bestfit_cc_id,interp_bestfit_cc_id,Best-fit Community Concept ID
+interp_bestfit_ci_id,interp_bestfit_ci_id,Best-fit Community Interpretation ID
+interp_bestfit_code,interp_bestfit_code,Best-fit Code
+interp_bestfit_party_id,interp_bestfit_party_id,Best-fit Party ID
+interp_bestfit_partyname,interp_bestfit_partyname,Best-fit Party Name
+interp_bestfit_sciname,interp_bestfit_sciname,Best-fit Scientific Name
+interp_current_cc_id,interp_current_cc_id,Current Community Concept ID
+interp_current_ci_id,interp_current_ci_id,Current Community Interpreatation ID
+interp_current_code,interp_current_code,Current Code
+interp_current_party_id,interp_current_party_id,Current Party ID
+interp_current_partyname,interp_current_partyname,Current Party Name
+interp_current_sciname,interp_current_sciname,Current Scientific Name
+interp_orig_cc_id,interp_orig_cc_id,Original Community Concept ID
+interp_orig_ci_id,interp_orig_ci_id,Original Community Interpretation ID
+interp_orig_code,interp_orig_code,Original Code
+interp_orig_party_id,interp_orig_party_id,Original Party ID
+interp_orig_partyname,interp_orig_party_name,Original Party Name
+interp_orig_sciname,interp_orig_sci_name,Original Scientific Name
+interpretationdate,interpretation_date,Interpretation Date
+interpretationtype,interpretation_type,Interpretation Type
+isbn,isbn,ISBN
+issn,issn,ISSN
+issue,issue,Issue
+itemaccessioncode,item_accession_code,Item Accession Code
+itemdatabase,item_database,Item Database
+itemrecord,item_record,Item Record
+itemstart,item_start,Item Start
+itemstop,item_stop,Item Stop
+itemtable,item_table,Item Table
+itemtype,item_type,Item Type
+journal,journal,Journal
+keywords,keywords,Keywords
+landform,landform,Landform
+landscapenarrative,landscape_narrative,Landscape Narrative
+last_connect,last_connect,Last Connect
+lastcheckdate,last_check_date,Last Check Date
+lastplotaddeddate,last_plot_added_date,Last Plot Added Date
+latitude,latitude,Latitude
+layoutnarrative,layout_narrative,Layout Narrative
+lichenquality,lichen_quality,Lichen Quality
+listvalue,list_value,List Value
+listvaluedescription,list_value_description,List Value Description
+listvaluesortorder,list_value_sort_order,List Value Sort Order
+locationaccuracy,location_accuracy,Location Accuracy
+locationnarrative,location_narrative,Location Narrative
+longitude,longitude,Longitude
+lowerlimit,lower_limit,Lower Limit
+maxcover,max_cover,Max Cover
+maxpk,max_pk,Max PK
+maxslopeaspect,max_slope_aspect,Max Slope Aspect
+maxslopegradient,max_slope_gradient,Max Slope Gradient
+memberstart,member_start,Member Start
+memberstop,member_stop,Member Stop
+methodnarrative,method_narrative,Method Narrative
+middlename,middle_name,Middle Name
+minpk,min_pk,Min PK
+minslopeaspect,min_slope_aspect,Min Slope Aspect
+minslopegradient,min_slope_gradient,Min Slope Gradient
+multivariateanalysis,multivariate_analysis,Multivariate Analysis
+museum_id,museum_id,Museum ID
+museumaccessionnumber,museum_accession_number,Museum Accession Number
+namedplace_id,named_place_id,Named Place ID
+namedplacecorrelation_id,named_place_correlation_id,Named Place Correlation ID
+nameother,name_other,Name Other
+nomenclaturaltype,nomenclatural_type,Nomenclatural Type
+nonvascularcover,nonvascular_cover,Nonvascular Cover
+nonvascularht,nonvascular_ht,Nonvascular Height 
+note_id,note_id,Note ID
+notedate,note_date,Note Date
+notelink_id,note_link_id,Note Link ID
+notes,notes,Notes
+notesmgt,notes_mgt,Notes Mgt
+notespublic,notes_public,Notes Public
+notetext,note_text,Note Text
+notetype,note_type,Note Type
+notifydescription,notify_description,Notify Description
+notifyname,notify_name,Notify Name
+notifysql,notify_sql,Notify SQL
+notifystart,notify_start,Notify Start
+notifystop,notify_stop,Notify Stop
+numberoftaxa,number_of_taxa,Number Of Taxa
+numberofvolumes,number_of_volumes,Number Of Volumes
+nvc_ivc,nvc_ivc,NVC IVC
+obsaccessioncode,obs_accession_code,Observation Accession Code
+obscount,obs_count,Number of Observations
+obsenddate,obs_end_date,Observation End Date
+observation_id,observation_id,Observation ID
+observationaccessioncode,observation_accession_code,Observation Accession Code
+observationcontributor_id,observation_contributor_id,Observation Contributor ID
+observationnarrative,observation_narrative,Observation Narrative
+observationsynonym_id,observation_synonym_id,Observation Synonym ID
+obsstartdate,obs_start_date,Observation Start Date
+organicdepth,organic_depth,Organic Depth
+organization_id,organization_id,Organization ID
+organizationname,organization_name,Organization Name
+orgposition,org_position,Original Position
+originaldata,original_data,Original Data
+originalinterpretation,original_interpretation,Original Interpretation
+owner,owner,Owner
+ownerstart,owner_start,Owner Start
+ownerstop,owner_stop,Owner Stop
+ownertype,owner_type,Owner Type
+pagerange,page_range,Page Range
+parent_id,parent_id,Parent ID
+parentcommstatus_id,parent_comm_status_id,Parent Comm Status ID
+parentparty_id,parent_party_id,Parent Party ID
+parentplace_id,parent_place_id,Parent Place ID
+parentplantstatus_id,parent_plant_status_id,Parent Plant Status ID
+party_id,party_id,Party ID
+partyaccessioncode,party_accession_code,Party Accession Code
+partymember_id,party_member_id,Party Member ID
+partypublic,party_public,Party Public
+partytype,party_type,Party Type
+password,password,Password
+peer_review,peer_review,Peer Review
+percentbaresoil,percent_bare_soil,Percent Bare Soil
+percentbedrock,percent_bed_rock,Percent Bed Rock
+percentlitter,percent_litter,Percent Litter
+percentother,percent_other,Percent Other
+percentrockgravel,percent_rock_gravel,Percent Rock Gravel
+percentwater,percent_water,Percent Water
+percentwood,percent_wood,Percent Wood
+permanence,permanence,Permanent
+permission_type,permission_type,Permission Type
+permissionnotes,permission_notes,Permission Notes
+permissionstart,permission_start,Permission Start
+permissionstatus,permission_status,Permission Status
+permissionstop,permission_stop,Permission Stop
+phenologicaspect,phenologic_aspect,Phenologic Aspect
+phonenumber,phone_number,Phone Number
+phonetype,phone_type,Phone Type
+placecode,place_code,Place Code
+placeconvergence,place_convergence,Place Convergence
+placedescription,place_description,Place Description
+placementmethod,placement_method,Placement Method
+placename,place_name,Place Name
+placesystem,place_system,Place System
+plantcode,plant_code,Plant Code
+plantconcept_id,plant_concept_id,Plant Concept ID
+plantconceptstatus,plant_concept_status,Plant Concept Status
+plantconvergence,plant_convergence,Plant Convergence
+plantcorrelation_id,plant_correlation_id,Plant Correlation ID
+plantdescription,plant_description,Plant Description
+plantlevel,plant_level,Plant Level
+plantlineage_id,plant_lineage_id,Plant Lineage ID
+plantname,plant_name,Plant Name
+plantname_id,plant_name_id,Plant Name ID
+plantnamestatus,plant_name_status,Plant Name Status
+plantparent_id,plant_parent_id,Plant Parent ID
+plantparentconcept_id,plant_parent_concept_id,Plant Parent Concept ID
+plantparentname,plant_parent_name,Plant Parent Name
+plantpartycomments,plant_party_comments,Plant Party Comments
+plantstatus_id,plant_status_id,Plant Status ID
+plantusage_id,plant_usage_id,Plant Usage ID
+plot_id,plot_id,Plot ID
+plotaccessioncode,plot_accession_code,Plot Accession Code
+plotnotespublic,plot_notes_public,Plot Notes Public
+plotplace_id,plot_place_id,Plot Place ID
+plotrationalenarrative,plot_rationale_narrative,Plot Rationale Narrative
+plotvalidationlevel,plot_validation_level,Plot Validation Level
+plotvalidationleveldescr,plot_validation_level_descr,Plot Validation Level Descr
+position,position,Position
+positionname,position_name,Position Name
+postalcode,postal_code,Postal Code
+preferencename,preference_name,Preference Name
+preferencepriority,preference_priority,Preference Priority
+preferencestart,preference_start,Preference Start
+preferencestop,preference_stop,Preference Stop
+preferencevalue,preference_value,Preference Value
+preferred_name,preferred_name,Preferred Name
+prefixhtml,prefix_html,Prefix Html
+previousobs_id,previous_obs_id,Previous Observation ID
+previousrevision_id,previous_revision_id,Previous Revision ID
+previousvaluetext,previous_value_text,Previous Value Text
+previousvaluetype,previous_value_type,Previous Value Type
+primaryobservation_id,primary_observation_id,Primary Observation ID
+prof_exp,prof_exp,Prof Exp
+project_id,project_id,Project ID
+projectaccessioncode,project_accession_code,Project Accession Code
+projectcontributor_id,project_contributor_id,Project Contributor ID
+projectdescription,project_description,Project Description
+projectname,project_name,Project Name
+pubdate,pub_date,Publication Date
+publicationdate,publication_date,Publication Date
+publicationplace,publication_place,Publication Place
+publisher,publisher,Publisher
+querydescription,query_description,Query Description
+queryname,query_name,Query Name
+querypassword,query_password,Query Password
+querysharing,query_sharing,Query Sharing
+querysql,query_sql,Query SQL
+querystart,query_start,Query Start
+querystop,query_stop,Query Stop
+querytype,query_type,Query Type
+reallatitude,real_latitude,Real Latitude
+reallongitude,real_longitude,Real Longitude
+recordcreationdate,record_creation_date,Record Creation Date
+reference_id,reference_id,Reference ID
+referenceaccessioncode,reference_accession_code,Reference Accession Code
+referencealtident_id,reference_alt_ident_id,Reference Alt Ident ID
+referencecontributor_id,reference_contributor_id,Reference Contributor ID
+referencejournal_id,reference_journal_id,Reference Journal ID
+referenceparty_id,reference_party_id,Reference Party ID
+referencetype,reference_type,Reference Type
+region,region,Region
+relevant_pubs,relevant_pubs,Relevant Pubs
+remote_address,remote_address,Remote Address
+reportnumber,report_number,Report Number
+representativeness,representativeness,Representativeness
+requested_cert_level,requested_cert_level,Requested Cert Level
+revision_id,revision_id,Revision ID
+revisiondate,revision_date,Revision Date
+revisions,revisions,Revisions
+rocktype,rock_type,Rock Type
+role_id,role_id,Role ID
+roleclassint,role_class_int,Role Classification Int
+rolecode,role_code,Role Code
+roledescription,role_description,Role Description
+roleobservation,role_observation,Role Observation
+roleproject,role_project,Role Project
+roletaxonint,role_taxon_int,Role Taxon Int
+roletype,role_type,Role Type
+salutation,salutation,Salutation
+sciname,sci_name,Scientific Name
+scinamenoauth,sci_name_no_auth,Scientific Name No Author
+shape,shape,Shape
+shoredistance,shore_distance,Shore Distance
+shortname,short_name,Short Name
+shrubcover,shrub_cover,Shrub Cover
+shrubht,shrub_ht,Shrub Height
+slopeaspect,slope_aspect,Slope Aspect
+slopegradient,slope_gradient,Slope Gradient
+soilclay,soil_clay,Soil Clay
+soilcoarse,soil_coarse,Soil Coarse
+soilcode,soil_code,Soil Code
+soilcolor,soil_color,Soil Color
+soildepth,soil_depth,Soil Depth
+soildepthbottom,soil_depth_bottom,Soil Depth Bottom
+soildepthtop,soil_depth_top,Soil Depth Top
+soildescription,soil_description,Soil Description
+soildrainage,soil_drainage,Soil Drainage
+soilframework,soil_framework,Soil Framework
+soilhorizon,soil_horizon,Soil Horizon
+soillevel,soil_level,Soil Level
+soilmoistureregime,soil_moisture_regime,Soil Moisture Regime
+soilname,soil_name,Soil Name
+soilobs_id,soil_obs_id,Soil Observation ID
+soilorganic,soil_organic,Soil Organic
+soilparent_id,soil_parent_id,Soil Parent ID
+soilph,soil_ph,Soil pH
+soilsand,soil_sand,Soil Sand
+soilsilt,soil_silt,Soil Silt
+soiltaxon_id,soil_taxon_id,Soil Taxon ID
+soiltaxonsrc,soil_taxon_src,Soil Taxon Src
+soiltexture,soil_texture,Soil Texture
+sortorder,sort_order,Sort Order
+standmaturity,stand_maturity,Stand Maturity
+standsize,stand_size,Stand Size
+startdate,start_date,Start Date
+startgroup,start_group,Start Group
+stat_id,stat_id,Stat ID
+statdate,stat_date,Stat Date
+stateprovince,state_province,State Province
+statname,stat_name,Stat Name
+statpkg,stat_pkg,Stat Pkg
+stattable,stat_table,Stat Table
+stemcode,stem_code,Stem Code
+stemcount,stem_count,Stem Count
+stemcount_id,stem_count_id,Stem Count ID
+stemdiameter,stem_diameter,Stem Diameter
+stemdiameteraccuracy,stem_diameter_accuracy,Stem Diameter Accuracy
+stemhealth,stem_health,Stem Health
+stemheight,stem_height,Stem Height
+stemheightaccuracy,stem_height_accuracy,Stem Height Accuracy
+stemlocation_id,stem_location_id,Stem Location ID
+stemobservationarea,stem_observation_area,Stem Observation Area
+stemsamplemethod,stem_sample_method,Stem Sample Method
+stemsizelimit,stem_size_limit,Stem Size Limit
+stemtaxonarea,stem_taxon_area,Stem Taxon Area
+stemxposition,stem_x_position,Stem X Position
+stemyposition,stem_y_position,Stem Y Position
+stopdate,stop_date,Stop Date
+stratum,stratum,Stratum
+stratum_id,stratum_id,Stratum ID
+stratumassignment,stratum_assignment,Stratum Assignment
+stratumbase,stratum_base,Stratum Base
+stratumcover,stratum_cover,Stratum Cover
+stratumdescription,stratum_description,Stratum Description
+stratumheight,stratum_height,Stratum Height
+stratumindex,stratum_index,Stratum Index
+stratummethod_id,stratum_method_id,Stratum Method ID
+stratummethodaccessioncode,stratum_method_accession_code,Stratum Method Accession Code
+stratummethoddescription,stratum_method_description,Stratum Method Description
+stratummethodname,stratum_method_name,Stratum Method Name
+stratumname,stratum_name,Stratum Name
+stratumtype_id,stratum_type_id,Stratum Type ID
+submergedcover,submerged_cover,Submerged Cover
+submergedht,submerged_ht,Submerged Height
+submitter_email,submitter_email,Submitter Email
+submitter_givenname,submitter_givenname,Submitter Given Name
+submitter_surname,submitter_surname,Submitter Surname
+successionalstatus,successional_status,Successional Status
+suffix,suffix,Suffix
+suffixhtml,suffix_html,Suffix Html
+surficialdeposits,surficial_deposits,Surficial Deposits
+surname,surname,Surname
+synonymcomment,synonym_comment,Synonym Comment
+synonymobservation_id,synonym_observation_id,Synonym Observation ID
+system,system,System
+table_id,table_id,Table ID
+tableabbrev,table_abbrev,Table Abbrev
+tableanalysis,table_analysis,Table Analysis
+tableattribute,table_attribute,Table Attribute
+tabledescription,table_description,Table Description
+tablekeywords,table_keywords,Table Keywords
+tablelabel,table_label,Table Label
+tablename,table_name,Table Name
+tablenotes,table_notes,Table Notes
+tablerecord,table_record,Table Record
+tablerecord_id,table_record_id,Table Record ID
+taxa,taxa,Taxa
+taxonalt_id,taxon_alt_id,Taxon Alt ID
+taxonaltconfidence,taxon_alt_confidence,Taxon Alt Confidence
+taxonaltfit,taxon_alt_fit,Taxon Alt Fit
+taxonaltnotes,taxon_alt_notes,Taxon Alt Notes
+taxonconfidence,taxon_confidence,Taxon Confidence
+taxonfit,taxon_fit,Taxon Fit
+taxonimportance_id,taxon_importance_id,Taxon Importance ID
+taxoninferencearea,taxon_inference_area,Taxon Inference Area
+taxoninterpretation_id,taxon_interpretation_id,Taxon Interpretation ID
+taxonobservation_id,taxon_observation_id,Taxon Observation ID
+taxonobservationaccessioncode,taxon_observation_accession_code,Taxon Observation Accession Code
+taxonobservationarea,taxon_observation_area,Taxon Observation Area
+telephone_id,telephone_id,Telephone ID
+ticket_count,ticket_count,Ticket Count
+title,title,Title
+titlesuperior,title_superior,Title Superior
+tools_exp,tools_exp,Tools Exp
+topoposition,topo_position,Topo Position
+toptaxon1name,top_taxon_1_name,Top Taxon 1 Name
+toptaxon2name,top_taxon_2_name,Top Taxon 2 Name
+toptaxon3name,top_taxon_3_name,Top Taxon 3 Name
+toptaxon4name,top_taxon_4_name,Top Taxon 4 Name
+toptaxon5name,top_taxon_5_name,Top Taxon 5 Name
+totalcover,total_cover,Total Cover
+totalpages,total_pages,Total Pages
+translated,translated,Translated
+treecover,tree_cover,Tree Cover
+treeht,tree_ht,Tree Height 
+type,type,Type
+upperlimit,upper_limit,Upper Limit
+url,url,URL
+usagestart,usage_start,Usage Start
+usagestop,usage_stop,Usage Stop
+usercertification_id,user_certification_id,User Certification ID
+userdataset_id,user_dataset_id,User Dataset ID
+userdatasetitem_id,user_dataset_item_id,User Dataset Item ID
+userdefined_id,user_defined_id,User Defined ID
+userdefinedcategory,user_defined_category,User Defined Category
+userdefinedmetadata,user_defined_metadata,User Defined Metadata
+userdefinedname,user_defined_name,User Defined Name
+userdefinedtype,user_defined_type,User Defined Type
+usernotify_id,user_notify_id,User Notify ID
+userpermission_id,user_permission_id,User Permission ID
+userpreference_id,user_preference_id,User Preference ID
+userquery_id,user_query_id,User Query ID
+userrecordowner_id,user_record_owner_id,User Record Owner ID
+userregionalexp_id,user_regional_exp_id,User Regional Exp ID
+usnvc_exp,usnvc_exp,USNVC Explaination
+usr_id,usr_id,USR ID
+vb_exp,vb_exp,Vegbank Explaination
+vb_intention,vb_intention,Vegbank Intention
+veg_analysis_exp,veg_analysis_exp,Vegetation Analysis Explaination
+veg_sampling_exp,veg_sampling_exp,Vegetation Sampling Explaination
+vegetation,vegetation,Vegetation
+versionimplemented,version_implemented,Version Implemented
+versiontext,version_text,Version Text
+viewname,view_name,View Name
+vieworcookie,view_or_cookie,View Or Cookie
+volume,volume,Volume
+waterdepth,water_depth,Water Depth
+watersalinity,water_salinity,Water Salinity
+xml,xml,XML
+
+givenname,given_name,Given Name
+middlename,middle_name,Middle Name
+surname,surname,Surname
+salutation,salutation,Salutation
+organizationname,organization_name,Organization
+contactinstructions,contact_instructions,Contact Instructions
+partyid,party_id,Party ID
+partyaccessioncode,party_accession_code,Party Accession Code
