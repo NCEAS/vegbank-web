@@ -145,9 +145,10 @@ test_that("process_plot_data returns correctly formatted display data", {
 
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 2)
-  expect_equal(ncol(result), 6)
+  expect_equal(ncol(result), 7)
 
   expected_cols <- c("Actions", "Observation Code", "Location", "Top Taxa", "Communities", "Survey Year")
+  expected_cols <- c("Actions", "Vegbank Code", "Author Code", "Location", "Top Taxa", "Communities", "Survey Year")
   expect_equal(names(result), expected_cols)
 
   # Check action payloads encode detail code plus map metadata
@@ -169,10 +170,9 @@ test_that("process_plot_data returns correctly formatted display data", {
     c(-78.2, -77.0)
   )
 
-  # Check Observation Code column with HTML formatting
-  expect_true(grepl("OBS001", result$`Observation Code`[1]))
-  expect_true(grepl("ob.123", result$`Observation Code`[1]))
-  expect_true(grepl("#2c5443", result$`Observation Code`[1]))
+  # Check separate code columns
+  expect_equal(result$`Vegbank Code`, c("ob.123", "ob.456"))
+  expect_equal(result$`Author Code`, c("OBS001", "OBS002"))
   expect_equal(
     result$Location,
     c(
@@ -204,7 +204,7 @@ test_that("process_plot_data handles empty data correctly", {
 
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
-  expect_equal(ncol(result), 6)
+  expect_equal(ncol(result), 7)
 
   result_empty <- process_plot_data(vegbankweb:::PLOT_TABLE_SCHEMA_TEMPLATE)
   expect_equal(nrow(result_empty), 0)
@@ -236,7 +236,7 @@ test_that("plot table spec produces valid config", {
   expect_true("initial_data" %in% names(config))
   expect_true("ajax" %in% names(config))
 
-  expect_equal(length(config$column_defs), 6)
+  expect_equal(length(config$column_defs), 7)
 
   # Check actions column (index 0)
   expect_equal(config$column_defs[[1]]$targets, 0)
@@ -244,15 +244,15 @@ test_that("plot table spec produces valid config", {
   expect_false(config$column_defs[[1]]$searchable)
   expect_true(inherits(config$column_defs[[1]]$render, "JS_EVAL"))
 
-  # Check taxon list column (index 3)
-  expect_equal(config$column_defs[[4]]$targets, 3)
-  expect_false(config$column_defs[[4]]$orderable)
-  expect_true(inherits(config$column_defs[[4]]$render, "JS_EVAL"))
-
-  # Check community list column (index 4)
+  # Check taxon list column (index 4)
   expect_equal(config$column_defs[[5]]$targets, 4)
   expect_false(config$column_defs[[5]]$orderable)
   expect_true(inherits(config$column_defs[[5]]$render, "JS_EVAL"))
+
+  # Check community list column (index 5)
+  expect_equal(config$column_defs[[6]]$targets, 5)
+  expect_false(config$column_defs[[6]]$orderable)
+  expect_true(inherits(config$column_defs[[6]]$render, "JS_EVAL"))
 
   # Check initial data
   expect_s3_class(config$initial_data, "data.frame")
