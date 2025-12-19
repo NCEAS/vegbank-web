@@ -95,11 +95,12 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     )
   }
 
+
   display_names <- clean_column_data(concept_data, config$name_field)
   concept_codes <- concept_data[[config$code_field]]
 
-  # Format name column with concept code in green below
-  formatted_names <- format_concept_name_column(display_names, concept_codes)
+  # Name column is now just the name (no code)
+  formatted_names <- display_names
 
   status_raw <- concept_data$current_accepted
   status_sort <- ifelse(is.na(status_raw), 2, ifelse(status_raw == TRUE, 0, 1))
@@ -119,11 +120,12 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   result <- data.frame(
     Actions = action_codes,
+    `Vegbank Code` = concept_codes,
     Name = formatted_names,
     Status = status_raw,
     status_sort = status_sort,
     Level = levels,
-    "Reference Source" = reference_codes,
+    `Reference Source` = reference_codes,
     ref_sort = reference_names,
     Observations = obs_counts,
     Description = descriptions,
@@ -186,26 +188,27 @@ create_concept_column_defs <- function(detail_input_id) {
       orderable = FALSE,
       searchable = FALSE,
       render = create_action_button_renderer(detail_input_id, "Details")
-    ),
-    list(targets = 1, width = "25%"),
+    ), # Actions
+    list(targets = 1, width = "12%", orderable = TRUE), # Vegbank Code
+    list(targets = 2, width = "23%", orderable = TRUE), # Name
     list(
-      targets = 2,
+      targets = 3,
       width = "10%",
       className = "dt-center",
       render = create_status_badge_renderer(),
-      orderData = 3
-    ),
-    list(targets = 3, visible = FALSE, searchable = FALSE),
-    list(targets = 4, width = "10%", className = "dt-center"),
+      orderable = FALSE
+    ), # Status
+    list(targets = 4, visible = FALSE, searchable = FALSE), # Hidden sort column for status badges
+    list(targets = 5, width = "10%", className = "dt-center", orderable = FALSE), # Level
     list(
-      targets = 5,
+      targets = 6,
       width = "10%",
       render = create_reference_link_renderer(),
-      orderData = 6
-    ),
-    list(targets = 6, visible = FALSE, searchable = FALSE),
-    list(targets = 7, width = "10%", type = "num", className = "dt-right"),
-    list(targets = 8, width = "25%")
+      orderable = FALSE
+    ), # Reference Source
+    list(targets = 7, visible = FALSE, searchable = FALSE), # Hidden sort column for reference names
+    list(targets = 8, width = "10%", type = "num", className = "dt-right", orderable = TRUE), # Observations
+    list(targets = 9, width = "25%", orderable = FALSE) # Description
   )
 }
 
@@ -221,7 +224,7 @@ create_concept_column_defs <- function(detail_input_id) {
 normalize_concepts <- function(df, concept_type) {
   config <- get_concept_config(concept_type)
   schema_template <- build_schema_template(config$fields)
-  
+
   # Custom transform for concept-specific type handling
   parse_current_accepted <- function(normalized) {
     if ("current_accepted" %in% names(normalized)) {
@@ -229,7 +232,7 @@ normalize_concepts <- function(df, concept_type) {
     }
     normalized
   }
-  
+
   create_normalizer(
     schema_template,
     na_to_zero_fields = "obs_count",
@@ -367,9 +370,9 @@ create_reference_link_renderer <- function() {
             .replace(/'/g, '&#39;');
         };
 
-        // data is the reference code; the display name is in the hidden sort column
+        // data is the reference code; the display name is in the hidden sort column (index 7)
         var code = data === null || typeof data === 'undefined' ? '' : String(data);
-        var name = row && row.length > 6 ? row[6] : '';
+        var name = row && row.length > 7 ? row[7] : '';
 
         if (name === null || name === undefined) {
           name = '';
@@ -403,6 +406,13 @@ CONCEPT_TABLE_SPECS <- local({
     schema_template <- build_schema_template(config$fields)
     link_input_id <- if (config$concept_type == "plant") "plant_link_click" else "comm_link_click"
 
+    # Map: col index -> field for sorting
+    sort_field_map <- list(
+      "1" = "default", # Vegbank Code
+      "2" = config$name_field, # Name
+      "8" = "obs_count" # Observations
+    )
+
     list(
       table_id = config$table_id,
       resource = config$resource,
@@ -416,7 +426,9 @@ CONCEPT_TABLE_SPECS <- local({
       data_source = list(
         page_length = config$page_length %||% TABLE_PAGE_LENGTH,
         clean_rows_fn = sanitize_dt_rows,
-        count_clean_names = FALSE
+        count_clean_names = FALSE,
+        sort_field_map = sort_field_map,
+        default_order = list(list(column = 2, dir = "asc")) # Default: Vegbank Code
       ),
       page_length = config$page_length,
       options = list(),
