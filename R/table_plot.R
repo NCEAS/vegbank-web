@@ -5,7 +5,6 @@
 
 PLOT_TABLE_FIELDS <- c(
   "ob_code",
-  "pl_code",
   "author_obs_code",
   "state_province",
   "country",
@@ -29,7 +28,8 @@ PLOT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 
 PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
   "Actions",
-  "Observation Code",
+  "Vegbank Code",
+  "Author Code",
   "Location",
   "Top Taxa",
   "Communities",
@@ -51,21 +51,22 @@ create_plot_column_defs <- function() {
       width = "10%",
       render = create_plot_action_renderer()
     ),
-    list(targets = 1, width = "10%"), # Author Plot Code
-    list(targets = 2, width = "20%"), # Location
+    list(targets = 1, width = "10%", orderable = TRUE), # Vegbank Code
+    list(targets = 2, width = "10%", orderable = TRUE), # Author Code
+    list(targets = 3, width = "15%", orderable = FALSE), # Location
     list(
-      targets = 3,
+      targets = 4,
       width = "25%",
       orderable = FALSE,
       render = create_taxon_list_renderer()
     ),
     list(
-      targets = 4,
-      width = "25%",
+      targets = 5,
+      width = "20%",
       orderable = FALSE,
       render = create_community_list_renderer()
     ),
-    list(targets = 5, width = "10%") # Year
+    list(targets = 6, width = "10%", orderable = FALSE) # Year
   )
 }
 
@@ -79,11 +80,6 @@ build_plot_table <- function() {
   build_table_from_spec(PLOT_TABLE_SPEC)
 }
 
-#' Transform normalized plot data into display rows
-#'
-#' @param plot_data Data frame with normalized plot columns including nested lists
-#' @return Data frame formatted for DataTables consumption
-#' @noRd
 process_plot_data <- function(plot_data) {
   if (is.null(plot_data)) {
     plot_data <- PLOT_TABLE_SCHEMA_TEMPLATE
@@ -95,21 +91,15 @@ process_plot_data <- function(plot_data) {
   }
 
   ob_codes <- plot_data$ob_code
-
-  # Clean text columns
   author_codes <- clean_column_data(plot_data, "author_obs_code")
   years <- clean_column_data(plot_data, "year")
 
-  # Format code column with author code and ob_code in green below
-  formatted_codes <- format_code_column(author_codes, ob_codes)
-
   # Format numeric columns
-  latitudes <-   suppressWarnings(as.numeric(plot_data$latitude))
+  latitudes <- suppressWarnings(as.numeric(plot_data$latitude))
   longitudes <- suppressWarnings(as.numeric(plot_data$longitude))
   elevations <- suppressWarnings(as.numeric(plot_data$elevation))
 
   locations <- format_location_column(plot_data, latitudes, longitudes, elevations)
-
 
   # Serialize nested list columns as JSON strings for the renderer
   top_taxa_json <- vapply(seq_len(row_count), function(idx) {
@@ -130,13 +120,13 @@ process_plot_data <- function(plot_data) {
         code = author_codes[[idx]]
       )
     )
-
     jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", na = "null", digits = NA)
   }, character(1))
 
   data.frame(
     "Actions" = action_payloads,
-    "Observation Code" = formatted_codes,
+    "Vegbank Code" = ob_codes,
+    "Author Code" = author_codes,
     "Location" = locations,
     "Top Taxa" = top_taxa_json,
     "Communities" = communities_json,
@@ -147,39 +137,6 @@ process_plot_data <- function(plot_data) {
   )
 }
 
-#' Build HTML-friendly code string with author code and ob_code
-#'
-#' Creates multi-line HTML code strings with author_obs_code on top and
-#' ob_code in green below.
-#'
-#' @param author_codes Character vector of author observation codes
-#' @param ob_codes Character vector of VegBank observation codes
-#' @return Character vector of HTML-formatted code strings
-#' @noRd
-format_code_column <- function(author_codes, ob_codes) {
-  vapply(seq_along(author_codes), function(idx) {
-    author_code <- author_codes[[idx]]
-    ob_code <- ob_codes[[idx]]
-
-    lines <- character(0)
-
-    if (!is.null(author_code) && !is.na(author_code) && nzchar(author_code)) {
-      lines <- c(lines, as.character(htmltools::htmlEscape(author_code)))
-    } else {
-      lines <- c(lines, "Not provided")
-    }
-
-    if (!is.null(ob_code) && !is.na(ob_code) && nzchar(ob_code)) {
-      ob_code_line <- sprintf(
-        '<span style="color: #2c5443; font-size: small;">%s</span>',
-        as.character(htmltools::htmlEscape(ob_code))
-      )
-      lines <- c(lines, ob_code_line)
-    }
-
-    paste(lines, collapse = "<br>")
-  }, character(1), USE.NAMES = FALSE)
-}
 
 #' Build HTML-friendly location string from components
 #'
@@ -574,7 +531,12 @@ PLOT_TABLE_SPEC <- list(
     detail = "minimal",
     clean_names = FALSE,
     clean_rows_fn = sanitize_dt_rows,
-    query = list(with_nested = "TRUE")
+    query = list(with_nested = "TRUE"),
+    # DataTable columns: 0=Actions, 1=Observation Code, 2=Author Obs Code
+    sort_field_map = list(
+      "1" = "default",
+      "2" = "author_obs_code"
+    )
   ),
   page_length = NULL,
   options = list(),

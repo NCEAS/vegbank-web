@@ -443,6 +443,7 @@ build_remote_ajax_config <- function(session,
   search_normalizer <- data_source_spec$search_normalizer %||% normalize_search_term
   clean_rows_fn <- data_source_spec$clean_rows_fn %||% identity
   query <- data_source_spec$query %||% list()
+  sort_field_map <- data_source_spec$sort_field_map %||% NULL
 
   if (!is.function(display_fn)) {
     stop("data_source_spec$display_fn must be a function")
@@ -461,6 +462,17 @@ build_remote_ajax_config <- function(session,
       search_term <- search_normalizer(params$search$value)
     }
 
+    # Build dynamic sort param if mapping is provided and DataTables requests sorting
+    query_actual <- query
+    if (!is.null(sort_field_map) && !is.null(params$order) && length(params$order) > 0) {
+      ord <- params$order[[1]]
+      col_idx <- as.integer(ord$column)
+      dir <- ord$dir
+      field <- sort_field_map[[as.character(col_idx)]]
+      if (!is.null(field)) {
+        query_actual$sort <- if (dir == "desc") paste0("-", field) else field
+      }
+    }
     page <- fetch_remote_page(
       resource = resource,
       limit = page_length,
@@ -471,7 +483,7 @@ build_remote_ajax_config <- function(session,
       search = search_term,
       coerce_fn = coerce_fn,
       empty_factory = empty_factory,
-      query = query
+      query = query_actual
     )
 
     normalized <- normalize_fn(page$data)
@@ -558,7 +570,7 @@ build_remote_table_config <- function(column_defs,
   remote_defaults <- list(
     serverSide = TRUE,
     lengthChange = FALSE,
-    ordering = FALSE,
+    ordering = TRUE,
     searching = TRUE,
     language = list(processing = processing_label)
   )
