@@ -427,8 +427,7 @@ CONCEPT_TABLE_SPECS <- local({
         page_length = config$page_length %||% TABLE_PAGE_LENGTH,
         clean_rows_fn = sanitize_dt_rows,
         count_clean_names = FALSE,
-        sort_field_map = sort_field_map,
-        default_order = list(list(column = 2, dir = "asc")) # Default: Vegbank Code
+        sort_field_map = sort_field_map
       ),
       page_length = config$page_length,
       options = list(),
