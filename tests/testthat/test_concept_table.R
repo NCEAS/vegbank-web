@@ -3,22 +3,39 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
 
   with_mocked_bindings(
     create_table = function(table_config) {
-      expect_equal(length(table_config$column_defs), 9)
 
-      status_col <- table_config$column_defs[[3]]
-      expect_equal(status_col$orderData, 3)
+      expect_equal(length(table_config$column_defs), 10)
 
-      status_sort_col <- table_config$column_defs[[4]]
+      # Vegbank Code column
+      vegbank_col <- table_config$column_defs[[2]]
+      expect_equal(vegbank_col$targets, 1)
+      expect_equal(vegbank_col$width, "12%")
+
+      # Name column
+      name_col <- table_config$column_defs[[3]]
+      expect_equal(name_col$targets, 2)
+      expect_equal(name_col$width, "23%")
+
+      # Status column
+      status_col <- table_config$column_defs[[4]]
+      expect_equal(status_col$targets, 3)
+      expect_equal(status_col$className, "dt-center")
+
+      # Hidden sort column for status
+      status_sort_col <- table_config$column_defs[[5]]
       expect_false(status_sort_col$visible)
       expect_false(status_sort_col$searchable)
 
-      level_col <- table_config$column_defs[[5]]
-      expect_equal(level_col$targets, 4)
+      # Level column
+      level_col <- table_config$column_defs[[6]]
+      expect_equal(level_col$targets, 5)
 
-      ref_col <- table_config$column_defs[[6]]
-      expect_equal(ref_col$orderData, 6)
+      # Reference Source column
+      ref_col <- table_config$column_defs[[7]]
+      expect_equal(ref_col$targets, 6)
 
-      ref_sort_col <- table_config$column_defs[[7]]
+      # Hidden sort column for reference
+      ref_sort_col <- table_config$column_defs[[8]]
       expect_false(ref_sort_col$visible)
       expect_false(ref_sort_col$searchable)
 
@@ -67,15 +84,14 @@ test_that("process_concept_data formats plant concepts", {
     result <- vegbankweb:::process_concept_data(list(plant_data = plant_test_data), concept_type = "plant")
 
     expect_equal(colnames(result), c(
-      "Actions", "Plant Concept", "Status", "status_sort",
+      "Actions", "Vegbank Code", "Plant Concept", "Status", "status_sort",
       "Level", "Reference Source", "ref_sort", "Observations", "Description"
     ))
 
     expect_equal(result$Actions, plant_test_data$pc_code)
-    # Name column now includes HTML-formatted code below the name
-    expect_true(grepl("Oak", result$`Plant Concept`[1]))
-    expect_true(grepl("pc.101", result$`Plant Concept`[1]))
-    expect_true(grepl("#2c5443", result$`Plant Concept`[1]))
+    expect_equal(result$`Vegbank Code`, plant_test_data$pc_code)
+    # Name column is just the name (no code in HTML)
+    expect_equal(result$`Plant Concept`, c("Oak", "Not provided"))
     expect_equal(result$Status, plant_test_data$current_accepted)
     expect_equal(result$status_sort, c(0, 2))
     expect_equal(result$Level, c("Species", "Not provided"))
@@ -92,15 +108,13 @@ test_that("process_concept_data formats community concepts", {
                                                 concept_type = "community")
 
     expect_equal(colnames(result), c(
-      "Actions", "Community Concept", "Status", "status_sort",
+      "Actions", "Vegbank Code", "Community Concept", "Status", "status_sort",
       "Level", "Reference Source", "ref_sort", "Observations", "Description"
     ))
 
     expect_equal(result$Actions, community_test_data$cc_code)
-    # Name column now includes HTML-formatted code below the name
-    expect_true(grepl("Prairie", result$`Community Concept`[1]))
-    expect_true(grepl("cc.201", result$`Community Concept`[1]))
-    expect_true(grepl("#2c5443", result$`Community Concept`[1]))
+    expect_equal(result$`Vegbank Code`, community_test_data$cc_code)
+    expect_equal(result$`Community Concept`, c("Prairie", "Not provided"))
     expect_equal(result$Status, community_test_data$current_accepted)
     expect_equal(result$status_sort, c(1, 2))
     expect_equal(result$Level, c("Alliance", "Not provided"))

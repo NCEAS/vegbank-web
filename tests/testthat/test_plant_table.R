@@ -3,12 +3,12 @@ test_that("build_plant_table delegates to concept builder with plant config", {
 
   with_mocked_bindings(
     create_table = function(table_config) {
-      expect_equal(length(table_config$column_defs), 9)
-      expect_equal(table_config$column_defs[[2]]$targets, 1)
-      expect_equal(table_config$column_defs[[2]]$width, "25%")
-      expect_equal(table_config$column_defs[[3]]$targets, 2)
-      expect_equal(table_config$column_defs[[4]]$visible, FALSE)
-      expect_equal(table_config$column_defs[[7]]$visible, FALSE)
+      expect_equal(length(table_config$column_defs), 10)
+      expect_equal(table_config$column_defs[[2]]$targets, 1) # Vegbank Code
+      expect_equal(table_config$column_defs[[2]]$width, "12%")
+      expect_equal(table_config$column_defs[[3]]$targets, 2) # Name
+      expect_equal(table_config$column_defs[[5]]$visible, FALSE) # status_sort hidden
+      expect_equal(table_config$column_defs[[8]]$visible, FALSE) # ref_sort hidden
       expect_true(is.function(table_config$ajax))
       structure(list(options = list()), class = "datatables")
     },
@@ -39,15 +39,13 @@ test_that("plant concept data includes plant-specific values", {
     result <- vegbankweb:::process_concept_data(list(plant_data = plant_data), concept_type = "plant")
 
     expect_equal(colnames(result), c(
-      "Actions", "Plant Concept", "Status", "status_sort",
+      "Actions", "Vegbank Code", "Plant Concept", "Status", "status_sort",
       "Level", "Reference Source", "ref_sort", "Observations", "Description"
     ))
 
     expect_equal(result$Actions, plant_data$pc_code)
-    # Name column now includes HTML-formatted code below the name
-    expect_true(grepl("Oak", result$`Plant Concept`[1]))
-    expect_true(grepl("pc.101", result$`Plant Concept`[1]))
-    expect_true(grepl("#2c5443", result$`Plant Concept`[1]))
+    expect_equal(result$`Vegbank Code`, plant_data$pc_code)
+    expect_equal(result$`Plant Concept`, c("Oak", "Maple"))
     expect_equal(result$Status, plant_data$current_accepted)
     expect_equal(result$status_sort, c(0, 1))
     expect_equal(result$Level, c("Species", "Not provided"))
