@@ -138,40 +138,6 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   result
 }
 
-#' Build HTML-friendly name string with concept code
-#'
-#' Creates multi-line HTML name strings with the concept name on top and
-#' the concept code (pc_code or cc_code) in green below.
-#'
-#' @param names Character vector of concept names
-#' @param codes Character vector of concept codes (pc_code or cc_code)
-#' @return Character vector of HTML-formatted name strings
-#' @noRd
-format_concept_name_column <- function(names, codes) {
-  vapply(seq_along(names), function(idx) {
-    name <- names[[idx]]
-    code <- codes[[idx]]
-
-    lines <- character(0)
-
-    if (!is.null(name) && !is.na(name) && nzchar(name)) {
-      lines <- c(lines, as.character(htmltools::htmlEscape(name)))
-    } else {
-      lines <- c(lines, "Not provided")
-    }
-
-    if (!is.null(code) && !is.na(code) && nzchar(code)) {
-      code_line <- sprintf(
-        '<span style="color: #2c5443; font-size: small;">%s</span>',
-        as.character(htmltools::htmlEscape(code))
-      )
-      lines <- c(lines, code_line)
-    }
-
-    paste(lines, collapse = "<br>")
-  }, character(1), USE.NAMES = FALSE)
-}
-
 #' Create column definitions for concept DataTables
 #'
 #' Defines column-specific rendering, visibility, width, and sorting behavior for concept tables.
