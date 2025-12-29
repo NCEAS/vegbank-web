@@ -28,14 +28,11 @@ test_that("process_party_data formats normalized rows", {
 
   result <- process_party_data(test_data)
 
-  expect_equal(colnames(result), c("Actions", "Party", "Organization", "Observations", "Contact"))
+  expect_equal(colnames(result), c("Actions", "Vegbank Code", "Party", "party_sort", "Organization", "Observations", "Contact"))
   expect_equal(result$Actions, c("py.1", "py.2"))
-  # Party column now includes HTML-formatted py_code below the label
-
-  expect_true(grepl("Norm Aaseng", result$Party[1]))
-  expect_true(grepl("py.1", result$Party[1]))
-  expect_true(grepl("#2c5443", result$Party[1]))
-  expect_true(grepl("Not provided", result$Party[2]))
+  expect_equal(result$`Vegbank Code`, c("py.1", "py.2"))
+  expect_equal(result$Party, c("Norm Aaseng", "Not provided"))
+  expect_equal(result$party_sort, c("Aaseng", ""))
   expect_equal(result$Organization, c("MN DNR", "Not provided"))
   expect_equal(result$Observations, c(191L, 0L))
   expect_equal(result$Contact, c("Email@example.com", "Not provided"))
