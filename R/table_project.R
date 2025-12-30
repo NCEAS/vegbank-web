@@ -19,7 +19,7 @@ PROJECT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 )
 
 PROJECT_TABLE_DISPLAY_TEMPLATE <- build_display_template(
-  column_names = c("Actions", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"),
+  column_names = c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"),
   column_types = list("Plots" = integer())
 )
 
@@ -31,13 +31,14 @@ create_project_column_defs <- function() {
       searchable = FALSE,
       width = "10%",
       render = create_action_button_renderer("proj_link_click", "Details")
-    ),
-    list(targets = 1, width = "30%"),
-    list(targets = 2, width = "8%", className = "dt-right", type = "num"),
-    list(targets = 3, width = "12%"),
-    list(targets = 4, width = "12%"),
-    list(targets = 5, width = "13%"),
-    list(targets = 6, width = "25%")
+    ), # Actions
+    list(targets = 1, width = "12%", orderable = TRUE), # pj_code (Vegbank Code)
+    list(targets = 2, width = "23%", orderable = TRUE), # Project Name
+    list(targets = 3, width = "8%", className = "dt-right", type = "num", orderable = TRUE), # Plots (obs_count)
+    list(targets = 4, width = "12%", orderable = FALSE), # Started
+    list(targets = 5, width = "12%", orderable = FALSE), # Ended
+    list(targets = 6, width = "13%", orderable = FALSE), # Last Plot Added
+    list(targets = 7, width = "25%", orderable = FALSE) # Description
   )
 }
 
@@ -73,9 +74,6 @@ process_project_data <- function(project_data) {
   names <- clean_column_data(project_data, "project_name")
   pj_codes <- project_data$pj_code
 
-  # Format name column with pj_code in green below
-  formatted_names <- format_project_name_column(names, pj_codes)
-
   obs_counts <- suppressWarnings(as.integer(project_data$obs_count))
   obs_counts[is.na(obs_counts)] <- 0L
 
@@ -88,7 +86,8 @@ process_project_data <- function(project_data) {
 
   data.frame(
     "Actions" = action_codes,
-    "Project" = formatted_names,
+    "Vegbank Code" = pj_codes,
+    "Project" = names,
     "Plots" = obs_counts,
     "Started" = starts,
     "Ended" = stops,
@@ -97,40 +96,6 @@ process_project_data <- function(project_data) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
-}
-
-#' Build HTML-friendly name string with project code
-#'
-#' Creates multi-line HTML name strings with the project name on top and
-#' the project code (pj_code) in green below.
-#'
-#' @param names Character vector of project names
-#' @param codes Character vector of project codes (pj_code)
-#' @return Character vector of HTML-formatted name strings
-#' @noRd
-format_project_name_column <- function(names, codes) {
-  vapply(seq_along(names), function(idx) {
-    name <- names[[idx]]
-    code <- codes[[idx]]
-
-    lines <- character(0)
-
-    if (!is.null(name) && !is.na(name) && nzchar(name)) {
-      lines <- c(lines, as.character(htmltools::htmlEscape(name)))
-    } else {
-      lines <- c(lines, "Not provided")
-    }
-
-    if (!is.null(code) && !is.na(code) && nzchar(code)) {
-      code_line <- sprintf(
-        '<span style="color: #2c5443; font-size: small;">%s</span>',
-        as.character(htmltools::htmlEscape(code))
-      )
-      lines <- c(lines, code_line)
-    }
-
-    paste(lines, collapse = "<br>")
-  }, character(1), USE.NAMES = FALSE)
 }
 
 #' Normalize project API responses into a consistent schema
@@ -157,7 +122,12 @@ PROJECT_TABLE_SPEC <- list(
   data_source = list(
     detail = "full",
     clean_names = FALSE,
-    clean_rows_fn = sanitize_dt_rows
+    clean_rows_fn = sanitize_dt_rows,
+    sort_field_map = list(
+      "1" = "default",           # Vegbank Code
+      "2" = "project_name",      # Project (sort by name)
+      "3" = "obs_count"          # Plots (sort by obs_count)
+    )
   ),
   page_length = NULL,
   options = list(),
