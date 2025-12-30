@@ -3,7 +3,6 @@ test_that("build_community_table delegates to concept builder with community con
 
   with_mocked_bindings(
     create_table = function(table_config) {
-      # Only visible columns now, no hidden sort columns
       expect_equal(length(table_config$column_defs), 8)
       expect_equal(table_config$column_defs[[2]]$targets, 1) # Vegbank Code
       expect_equal(table_config$column_defs[[2]]$width, "12%")

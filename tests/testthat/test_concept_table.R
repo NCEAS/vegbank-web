@@ -3,7 +3,6 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
 
   with_mocked_bindings(
     create_table = function(table_config) {
-      # Only visible columns now, no hidden sort columns
       expect_equal(length(table_config$column_defs), 8)
 
       # Vegbank Code column
@@ -78,13 +77,11 @@ test_that("process_concept_data formats plant concepts", {
       "Level", "Reference Source", "Observations", "Description"
     ))
 
-    # Expect R-generated HTML for Actions
     expect_true(all(grepl("<button", result$Actions)))
     expect_equal(result$`Vegbank Code`, plant_test_data$pc_code)
     expect_equal(result$`Plant Concept`, c("Oak", "Not provided"))
     expect_equal(result$Status, plant_test_data$current_accepted)
     expect_equal(result$Level, c("Species", "Not provided"))
-    # Reference Source is now an HTML link or Not provided
     expect_true(grepl("<a ", result$`Reference Source`[1]))
     expect_equal(result$`Reference Source`[2], "Not provided")
     expect_equal(result$Observations, c(15, 0))
