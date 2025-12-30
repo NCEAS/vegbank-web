@@ -133,12 +133,12 @@ test_that("process_plot_data returns correctly formatted display data", {
     stringsAsFactors = FALSE
   )
   plot_data$top_taxon_observations <- list(
-    data.frame(to_code = "to.1", scientific_name = "Species A", stringsAsFactors = FALSE),
-    data.frame(to_code = "to.2", scientific_name = "Species B", stringsAsFactors = FALSE)
+    data.frame(name = "Species A", pc_code = "pc.1", max_cover = 12.3, stringsAsFactors = FALSE),
+    data.frame(name = "Species B", pc_code = "pc.2", max_cover = 8.7, stringsAsFactors = FALSE)
   )
   plot_data$top_classifications <- list(
-    data.frame(cl_code = "cl.1", class_name = "Class A", stringsAsFactors = FALSE),
-    data.frame(cl_code = "cl.2", class_name = "Class B", stringsAsFactors = FALSE)
+    data.frame(comm_name = "Class A", cl_code = "cl.1", comm_code = "CEGL0001", stringsAsFactors = FALSE),
+    data.frame(comm_name = "Class B", cl_code = "cl.2", comm_code = "CEGL0002", stringsAsFactors = FALSE)
   )
 
   result <- process_plot_data(plot_data)
@@ -151,24 +151,10 @@ test_that("process_plot_data returns correctly formatted display data", {
   expected_cols <- c("Actions", "Vegbank Code", "Author Code", "Location", "Top Taxa", "Communities", "Survey Year")
   expect_equal(names(result), expected_cols)
 
-  # Check action payloads encode detail code plus map metadata
-  action_payloads <- lapply(result$Actions, jsonlite::fromJSON)
-  expect_equal(
-    vapply(action_payloads, function(payload) payload$detail_code, character(1)),
-    c("ob.123", "ob.456")
-  )
-  expect_equal(
-    vapply(action_payloads, function(payload) payload$map$code, character(1)),
-    c("OBS001", "OBS002")
-  )
-  expect_equal(
-    vapply(action_payloads, function(payload) payload$map$lat, numeric(1)),
-    c(38.5, 39.2)
-  )
-  expect_equal(
-    vapply(action_payloads, function(payload) payload$map$lng, numeric(1)),
-    c(-78.2, -77.0)
-  )
+  # Check action column contains HTML buttons
+  expect_true(all(grepl("<button", result$Actions)))
+  expect_true(all(grepl("dt-shiny-action", result$Actions)))
+  expect_true(all(grepl("dt-map-action", result$Actions)))
 
   # Check separate code columns
   expect_equal(result$`Vegbank Code`, c("ob.123", "ob.456"))
@@ -182,21 +168,12 @@ test_that("process_plot_data returns correctly formatted display data", {
   )
   expect_equal(result$`Survey Year`, c("2020", "2021"))
 
-  # Check JSON columns are strings
-  expect_type(result$`Top Taxa`, "character")
-  expect_type(result$Communities, "character")
-  expect_false(result$`Top Taxa`[1] == "[]")
-  expect_false(result$Communities[1] == "[]")
-
-  taxa_payloads <- lapply(result$`Top Taxa`, jsonlite::fromJSON)
-  expect_equal(
-    vapply(taxa_payloads, function(payload) if (is.null(payload$total)) NA_real_ else payload$total, numeric(1)),
-    c(5, 3)
-  )
-  expect_equal(
-    vapply(taxa_payloads, function(payload) nrow(payload$items), integer(1)),
-    c(1L, 1L)
-  )
+  # Check taxa and communities columns contain HTML
+  expect_true(all(grepl("<div", result$`Top Taxa`)))
+  expect_true(all(grepl("dt-shiny-action", result$`Top Taxa`)))
+  expect_true(all(grepl("<a", result$`Top Taxa`)))
+  expect_true(all(grepl("<a", result$Communities)))
+  expect_true(all(grepl("dt-shiny-action", result$Communities)))
 })
 
 test_that("process_plot_data handles empty data correctly", {
@@ -236,23 +213,24 @@ test_that("plot table spec produces valid config", {
   expect_true("initial_data" %in% names(config))
   expect_true("ajax" %in% names(config))
 
+
   expect_equal(length(config$column_defs), 7)
 
   # Check actions column (index 0)
   expect_equal(config$column_defs[[1]]$targets, 0)
   expect_false(config$column_defs[[1]]$orderable)
   expect_false(config$column_defs[[1]]$searchable)
-  expect_true(inherits(config$column_defs[[1]]$render, "JS_EVAL"))
+  expect_null(config$column_defs[[1]]$render)
 
   # Check taxon list column (index 4)
   expect_equal(config$column_defs[[5]]$targets, 4)
   expect_false(config$column_defs[[5]]$orderable)
-  expect_true(inherits(config$column_defs[[5]]$render, "JS_EVAL"))
+  expect_null(config$column_defs[[5]]$render)
 
   # Check community list column (index 5)
   expect_equal(config$column_defs[[6]]$targets, 5)
   expect_false(config$column_defs[[6]]$orderable)
-  expect_true(inherits(config$column_defs[[6]]$render, "JS_EVAL"))
+  expect_null(config$column_defs[[6]]$render)
 
   # Check initial data
   expect_s3_class(config$initial_data, "data.frame")
@@ -269,33 +247,3 @@ test_that("plot table spec produces valid config", {
   expect_equal(spec$query$with_nested, "TRUE")
 })
 
-test_that("create_plot_action_renderer returns JS function", {
-  renderer <- create_plot_action_renderer()
-  expect_s3_class(renderer, "JS_EVAL")
-  expect_type(renderer, "character")
-  expect_true(grepl("dt-map-action", renderer))
-  expect_true(grepl('data-input-id="plot_link_click"', renderer, fixed = TRUE))
-})
-
-test_that("create_taxon_list_renderer returns JS function", {
-  renderer <- create_taxon_list_renderer()
-
-  expect_s3_class(renderer, "JS_EVAL")
-  expect_type(renderer, "character")
-  expect_true(grepl("function\\(data, type, row, meta\\)", renderer))
-  expect_true(grepl("plant_link_click", renderer))
-  expect_true(grepl("pc_code", renderer))
-  expect_true(grepl("<div>", renderer, fixed = TRUE))
-})
-
-test_that("create_community_list_renderer returns JS function", {
-  renderer <- create_community_list_renderer()
-
-  expect_s3_class(renderer, "JS_EVAL")
-  expect_type(renderer, "character")
-  expect_true(grepl("function\\(data, type, row, meta\\)", renderer))
-  expect_true(grepl("comm_class_link_click", renderer))
-  expect_true(grepl("comm_name", renderer))
-  expect_true(grepl("comm_code", renderer))
-  expect_true(grepl("CEGL", renderer))
-})
