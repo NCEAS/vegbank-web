@@ -3,12 +3,10 @@ test_that("build_plant_table delegates to concept builder with plant config", {
 
   with_mocked_bindings(
     create_table = function(table_config) {
-      expect_equal(length(table_config$column_defs), 10)
+      expect_equal(length(table_config$column_defs), 8)
       expect_equal(table_config$column_defs[[2]]$targets, 1) # Vegbank Code
       expect_equal(table_config$column_defs[[2]]$width, "12%")
       expect_equal(table_config$column_defs[[3]]$targets, 2) # Name
-      expect_equal(table_config$column_defs[[5]]$visible, FALSE) # status_sort hidden
-      expect_equal(table_config$column_defs[[8]]$visible, FALSE) # ref_sort hidden
       expect_true(is.function(table_config$ajax))
       structure(list(options = list()), class = "datatables")
     },
@@ -39,18 +37,17 @@ test_that("plant concept data includes plant-specific values", {
     result <- vegbankweb:::process_concept_data(list(plant_data = plant_data), concept_type = "plant")
 
     expect_equal(colnames(result), c(
-      "Actions", "Vegbank Code", "Plant Concept", "Status", "status_sort",
-      "Level", "Reference Source", "ref_sort", "Observations", "Description"
+      "Actions", "Vegbank Code", "Plant Concept", "Status",
+      "Level", "Reference Source", "Observations", "Description"
     ))
 
-    expect_equal(result$Actions, plant_data$pc_code)
+    expect_true(all(grepl("<button", result$Actions)))
     expect_equal(result$`Vegbank Code`, plant_data$pc_code)
     expect_equal(result$`Plant Concept`, c("Oak", "Maple"))
     expect_equal(result$Status, plant_data$current_accepted)
-    expect_equal(result$status_sort, c(0, 1))
     expect_equal(result$Level, c("Species", "Not provided"))
-    expect_equal(result$`Reference Source`, plant_data$concept_rf_code)
-    expect_equal(result$ref_sort, plant_data$concept_rf_label)
+    expect_true(grepl("<a ", result$`Reference Source`[1]))
+    expect_equal(result$`Reference Source`[2], "Not provided")
     expect_equal(result$Observations, c(15, 7))
     expect_equal(result$Description, plant_data$plant_description)
   })

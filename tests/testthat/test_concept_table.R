@@ -3,8 +3,8 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
 
   with_mocked_bindings(
     create_table = function(table_config) {
-
-      expect_equal(length(table_config$column_defs), 10)
+      # Only visible columns now, no hidden sort columns
+      expect_equal(length(table_config$column_defs), 8)
 
       # Vegbank Code column
       vegbank_col <- table_config$column_defs[[2]]
@@ -21,23 +21,13 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
       expect_equal(status_col$targets, 3)
       expect_equal(status_col$className, "dt-center")
 
-      # Hidden sort column for status
-      status_sort_col <- table_config$column_defs[[5]]
-      expect_false(status_sort_col$visible)
-      expect_false(status_sort_col$searchable)
-
       # Level column
-      level_col <- table_config$column_defs[[6]]
-      expect_equal(level_col$targets, 5)
+      level_col <- table_config$column_defs[[5]]
+      expect_equal(level_col$targets, 4)
 
       # Reference Source column
-      ref_col <- table_config$column_defs[[7]]
-      expect_equal(ref_col$targets, 6)
-
-      # Hidden sort column for reference
-      ref_sort_col <- table_config$column_defs[[8]]
-      expect_false(ref_sort_col$visible)
-      expect_false(ref_sort_col$searchable)
+      ref_col <- table_config$column_defs[[6]]
+      expect_equal(ref_col$targets, 5)
 
       expect_false(is.null(table_config$initial_data))
       expect_s3_class(table_config$initial_data, "data.frame")
@@ -84,19 +74,19 @@ test_that("process_concept_data formats plant concepts", {
     result <- vegbankweb:::process_concept_data(list(plant_data = plant_test_data), concept_type = "plant")
 
     expect_equal(colnames(result), c(
-      "Actions", "Vegbank Code", "Plant Concept", "Status", "status_sort",
-      "Level", "Reference Source", "ref_sort", "Observations", "Description"
+      "Actions", "Vegbank Code", "Plant Concept", "Status",
+      "Level", "Reference Source", "Observations", "Description"
     ))
 
-    expect_equal(result$Actions, plant_test_data$pc_code)
+    # Expect R-generated HTML for Actions
+    expect_true(all(grepl("<button", result$Actions)))
     expect_equal(result$`Vegbank Code`, plant_test_data$pc_code)
-    # Name column is just the name (no code in HTML)
     expect_equal(result$`Plant Concept`, c("Oak", "Not provided"))
     expect_equal(result$Status, plant_test_data$current_accepted)
-    expect_equal(result$status_sort, c(0, 2))
     expect_equal(result$Level, c("Species", "Not provided"))
-    expect_equal(result$`Reference Source`, c("rf.9", ""))
-    expect_equal(result$ref_sort, c("Oak Ref", "Not provided"))
+    # Reference Source is now an HTML link or Not provided
+    expect_true(grepl("<a ", result$`Reference Source`[1]))
+    expect_equal(result$`Reference Source`[2], "Not provided")
     expect_equal(result$Observations, c(15, 0))
     expect_equal(result$Description, c("Deciduous tree", "Not provided"))
   })
@@ -108,18 +98,17 @@ test_that("process_concept_data formats community concepts", {
                                                 concept_type = "community")
 
     expect_equal(colnames(result), c(
-      "Actions", "Vegbank Code", "Community Concept", "Status", "status_sort",
-      "Level", "Reference Source", "ref_sort", "Observations", "Description"
+      "Actions", "Vegbank Code", "Community Concept", "Status",
+      "Level", "Reference Source", "Observations", "Description"
     ))
 
-    expect_equal(result$Actions, community_test_data$cc_code)
+    expect_true(all(grepl("<button", result$Actions)))
     expect_equal(result$`Vegbank Code`, community_test_data$cc_code)
     expect_equal(result$`Community Concept`, c("Prairie", "Not provided"))
     expect_equal(result$Status, community_test_data$current_accepted)
-    expect_equal(result$status_sort, c(1, 2))
     expect_equal(result$Level, c("Alliance", "Not provided"))
-    expect_equal(result$`Reference Source`, c("cr.5", NA_character_))
-    expect_equal(result$ref_sort, c("Prairie Ref", "Not provided"))
+    expect_true(grepl("<a ", result$`Reference Source`[1]))
+    expect_equal(result$`Reference Source`[2], "Not provided")
     expect_equal(result$Observations, c(8, 0))
     expect_equal(result$Description, c("Grassland", "Not provided"))
   })

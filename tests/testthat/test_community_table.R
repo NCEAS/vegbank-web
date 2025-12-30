@@ -3,12 +3,11 @@ test_that("build_community_table delegates to concept builder with community con
 
   with_mocked_bindings(
     create_table = function(table_config) {
-      expect_equal(length(table_config$column_defs), 10)
+      # Only visible columns now, no hidden sort columns
+      expect_equal(length(table_config$column_defs), 8)
       expect_equal(table_config$column_defs[[2]]$targets, 1) # Vegbank Code
       expect_equal(table_config$column_defs[[2]]$width, "12%")
       expect_equal(table_config$column_defs[[3]]$targets, 2) # Name
-      expect_equal(table_config$column_defs[[5]]$visible, FALSE) # status_sort hidden
-      expect_equal(table_config$column_defs[[8]]$visible, FALSE) # ref_sort hidden
       expect_true(is.function(table_config$ajax))
       structure(list(options = list()), class = "datatables")
     },
@@ -40,19 +39,18 @@ test_that("community concept data includes community-specific values", {
                                                 concept_type = "community")
 
     expect_equal(colnames(result), c(
-      "Actions", "Vegbank Code", "Community Concept", "Status", "status_sort",
-      "Level", "Reference Source", "ref_sort", "Observations", "Description"
+      "Actions", "Vegbank Code", "Community Concept", "Status",
+      "Level", "Reference Source", "Observations", "Description"
     ))
 
-    expect_equal(result$Actions, community_data$cc_code)
+    expect_true(all(grepl("<button", result$Actions)))
     expect_equal(result$`Vegbank Code`, community_data$cc_code)
     expect_equal(result$`Community Concept`, c("Prairie", "Wetland"))
     expect_equal(result$Status, community_data$current_accepted)
-    expect_equal(result$status_sort, c(1, 2))
     expect_equal(result$Level, c("Alliance", "Not provided"))
-    expect_equal(result$`Reference Source`, community_data$concept_rf_code)
-    expect_equal(result$ref_sort, community_data$concept_rf_label)
+    expect_true(grepl("<a ", result$`Reference Source`[1]))
+    expect_equal(result$`Reference Source`[2], "Not provided")
     expect_equal(result$Observations, c(8, 0))
-    expect_equal(result$Description, community_data$comm_description)
+    expect_equal(result$Description, c("Grassland", "Marsh"))
   })
 })

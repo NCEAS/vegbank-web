@@ -20,19 +20,12 @@ test_that("project table spec wires AJAX data source", {
   expect_true(is.list(config))
   expect_equal(length(config$column_defs), 8)
   expect_equal(config$column_defs[[1]]$targets, 0)
-  expect_equal(
-    as.character(config$column_defs[[1]]$render),
-    as.character(create_action_button_renderer("proj_link_click", "Details"))
-  )
-
   expect_s3_class(config$initial_data, "data.frame")
   expect_equal(nrow(config$initial_data), 0)
   expect_equal(colnames(config$initial_data), c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
-
   expect_true(is.function(config$ajax))
   ajax_env <- environment(config$ajax)
   spec <- ajax_env$data_source_spec
-
   expect_equal(spec$table_id, "proj_table")
   expect_equal(spec$resource, "projects")
   expect_equal(spec$detail, "full")
@@ -40,7 +33,6 @@ test_that("project table spec wires AJAX data source", {
   expect_true(is.function(spec$normalize_fn))
   expect_true(is.function(spec$display_fn))
   expect_equal(colnames(spec$empty_factory()), PROJECT_TABLE_FIELDS)
-
   expect_match(config$options$language$processing, "project records", ignore.case = TRUE)
 })
 
@@ -59,7 +51,7 @@ test_that("process_project_data formats normalized data", {
   result <- process_project_data(test_data)
 
   expect_equal(nrow(result), 3)
-  expect_equal(result$Actions, c("pj.1", "pj.2", "pj.314"))
+  expect_true(all(grepl("<button", result$Actions)))
   # Project column now includes HTML-formatted pj_code below the name
   expect_equal(result$`Vegbank Code`, c("pj.1", "pj.2", "pj.314"))
   expect_equal(result$Project, c("Alpha", "Beta", "Walker et al. 2010"))
