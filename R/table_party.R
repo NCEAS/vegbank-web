@@ -17,8 +17,8 @@ PARTY_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 )
 
 PARTY_TABLE_DISPLAY_TEMPLATE <- build_display_template(
-  column_names = c("Actions", "Party", "Organization", "Observations", "Contact"),
-  column_types = list("Observations" = integer())
+  column_names = c("Actions", "Vegbank Code", "Party", "Organization", "Contributions", "Contact"),
+  column_types = list("Contributions" = integer())
 )
 
 create_party_column_defs <- function() {
@@ -33,7 +33,7 @@ create_party_column_defs <- function() {
     list(targets = 1, width = "12%", orderable = TRUE), # py_code (Vegbank Code)
     list(targets = 2, width = "23%", orderable = TRUE), # Party Label (sortable by surname)
     list(targets = 3, width = "30%", orderable = TRUE), # Organization
-    list(targets = 4, width = "10%", className = "dt-right", type = "num", orderable = TRUE), # Observations
+    list(targets = 4, width = "10%", className = "dt-right", type = "num", orderable = TRUE), # Contributions
     list(targets = 5, width = "25%", orderable = FALSE) # Contact
   )
 }
@@ -65,7 +65,7 @@ process_party_data <- function(party_data) {
       "Vegbank Code" = character(0),
       "Party" = character(0),
       "Organization" = character(0),
-      "Observations" = integer(0),
+      "Contributions" = integer(0),
       "Contact" = character(0),
       stringsAsFactors = FALSE,
       check.names = FALSE
@@ -89,7 +89,7 @@ process_party_data <- function(party_data) {
     "Vegbank Code" = py_codes,
     "Party" = party_labels,
     "Organization" = organizations,
-    "Observations" = obs_counts,
+    "Contributions" = obs_counts,
     "Contact" = contact_info,
     stringsAsFactors = FALSE,
     check.names = FALSE
@@ -125,7 +125,7 @@ PARTY_TABLE_SPEC <- list(
       "1" = "default",           # Vegbank Code
       "2" = "surname",        # Party (sort by surname)
       "3" = "organization_name", # Organization
-      "4" = "obs_count"          # Observations
+      "4" = "obs_count"          # Contributions
     )
   ),
   page_length = NULL,
@@ -136,7 +136,7 @@ PARTY_TABLE_SPEC <- list(
     "Vegbank Code" = character(0),
     "Party" = character(0),
     "Organization" = character(0),
-    "Observations" = integer(0),
+    "Contributions" = integer(0),
     "Contact" = character(0),
     stringsAsFactors = FALSE,
     check.names = FALSE
