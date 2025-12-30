@@ -102,31 +102,39 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   # Name column is now just the name (no code)
   formatted_names <- display_names
 
+
   status_raw <- concept_data$current_accepted
-  status_sort <- ifelse(is.na(status_raw), 2, ifelse(status_raw == TRUE, 0, 1))
-
   levels <- clean_column_data(concept_data, config$level_field)
-
   reference_codes <- concept_data$concept_rf_code
   reference_names <- clean_column_data(concept_data, "concept_rf_label")
-
   obs_counts <- suppressWarnings(as.numeric(clean_column_data(concept_data, "obs_count", "0")))
   obs_counts[is.na(obs_counts)] <- 0
-
   descriptions <- clean_column_data(concept_data, config$description_field)
   descriptions <- truncate_text_with_ellipsis(descriptions, max_chars = 680L)
+  actions <- create_action_buttons(
+    if (concept_type == "plant") "plant_link_click" else "comm_link_click",
+    "Details",
+    concept_data[[config$code_field]]
+  )
 
-  action_codes <- concept_data[[config$code_field]]
+  # Build reference links in R using create_detail_link
+  ref_links <- vapply(seq_along(reference_codes), function(i) {
+    code <- reference_codes[[i]]
+    label <- reference_names[[i]]
+    if (!is.null(code) && !is.na(code) && nzchar(code)) {
+      as.character(create_detail_link("ref_link_click", code, label %|||% code))
+    } else {
+      escape_html(label %|||% "Not provided")
+    }
+  }, character(1))
 
   result <- data.frame(
-    Actions = action_codes,
+    Actions = actions,
     `Vegbank Code` = concept_codes,
     Name = formatted_names,
     Status = status_raw,
-    status_sort = status_sort,
     Level = levels,
-    `Reference Source` = reference_codes,
-    ref_sort = reference_names,
+    `Reference Source` = ref_links,
     Observations = obs_counts,
     Description = descriptions,
     stringsAsFactors = FALSE,
@@ -152,8 +160,7 @@ create_concept_column_defs <- function(detail_input_id) {
       targets = 0,
       width = "10%",
       orderable = FALSE,
-      searchable = FALSE,
-      render = create_action_button_renderer(detail_input_id, "Details")
+      searchable = FALSE
     ), # Actions
     list(targets = 1, width = "12%", orderable = TRUE), # Vegbank Code
     list(targets = 2, width = "23%", orderable = TRUE), # Name
@@ -161,20 +168,12 @@ create_concept_column_defs <- function(detail_input_id) {
       targets = 3,
       width = "10%",
       className = "dt-center",
-      render = create_status_badge_renderer(),
       orderable = FALSE
     ), # Status
-    list(targets = 4, visible = FALSE, searchable = FALSE), # Hidden sort column for status badges
-    list(targets = 5, width = "10%", className = "dt-center", orderable = FALSE), # Level
-    list(
-      targets = 6,
-      width = "10%",
-      render = create_reference_link_renderer(),
-      orderable = FALSE
-    ), # Reference Source
-    list(targets = 7, visible = FALSE, searchable = FALSE), # Hidden sort column for reference names
-    list(targets = 8, width = "10%", type = "num", className = "dt-right", orderable = TRUE), # Observations
-    list(targets = 9, width = "25%", orderable = FALSE) # Description
+    list(targets = 4, width = "10%", className = "dt-center", orderable = FALSE), # Level
+    list(targets = 5, width = "10%", orderable = FALSE), # Reference Source
+    list(targets = 6, width = "10%", type = "num", className = "dt-right", orderable = TRUE), # Observations
+    list(targets = 7, width = "25%", orderable = FALSE) # Description
   )
 }
 
@@ -236,137 +235,6 @@ get_concept_config <- function(concept_type) {
   config
 }
 
-# -------------- JS Renderers ---------------------
-
-#' Create JavaScript renderer for action buttons
-#' Creates Details button with click handler for concept detail view
-#'
-#' @param input_id The Shiny input ID for the button click event
-#' @param button_label The label text for the button (default: "Details")
-#' @returns A DT::JS object containing the JavaScript renderer function
-#' @noRd
-create_action_button_renderer <- function(input_id = "link_click", button_label = "Details") {
-  # Create the JavaScript function with sprintf
-  # Use JSON.stringify to safely encode the data value
-  js_code <- sprintf(
-    "function(data, type, row, meta) {
-      if (type === 'display') {
-        if (!data || data === '') {
-          return '<span class=\"text-muted\">No Data</span>';
-        }
-
-        var inputId = %s;
-        var label = %s;
-
-        var escapeAttr = function(value) {
-          return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-        };
-
-        var safeValue = escapeAttr(data);
-        var safeId = escapeAttr(inputId);
-        var safeLabel = escapeAttr(label);
-
-        return '<div class=\"btn-group btn-group-sm\" role=\"group\">' +
-               '<button type=\"button\" class=\"btn btn-sm btn-outline-primary dt-shiny-action\" ' +
-               'data-input-id=\"' + safeId + '\" data-value=\"' + safeValue + '\">' + safeLabel + '</button>' +
-               '</div>';
-      }
-      return data;
-    }",
-    jsonlite::toJSON(input_id, auto_unbox = TRUE),
-    jsonlite::toJSON(button_label, auto_unbox = TRUE)
-  )
-
-  DT::JS(js_code)
-}
-
-#' Create JavaScript renderer for status badges
-#' Renders badges client-side from raw boolean values
-#'
-#' @returns A DT::JS object containing the JavaScript renderer function
-#' @noRd
-create_status_badge_renderer <- function() {
-  js_code <- "function(data, type, row, meta) {
-      if (type === 'display') {
-        if (data === null || data === '' || typeof data === 'undefined') {
-          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--no-status-bg); ' +
-                    'color: var(--no-status-text);\">No Status</span>';
-        } else if (data === true || data === 'true' || data === 'TRUE') {
-          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--accepted-bg); ' +
-                    'color: var(--accepted-text);\">Accepted</span>';
-        } else {
-          return '<span class=\"badge rounded-pill\" style=\"background-color: var(--not-current-bg); ' +
-                    'color: var(--not-current-text);\">Not Current</span>';
-        }
-      }
-      return data;
-    }"
-
-  DT::JS(js_code)
-}
-
-#' Create JavaScript renderer for reference links
-#' Renders clickable links client-side from reference data objects
-#'
-#' @returns A DT::JS object containing the JavaScript renderer function
-#' @noRd
-create_reference_link_renderer <- function() {
-  js_code <- "function(data, type, row, meta) {
-      if (type === 'display') {
-        var escapeHtml = function(value) {
-          return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-        };
-
-        var escapeAttr = function(value) {
-          return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-        };
-
-        // data is the reference code; the display name is in the hidden sort column (index 7)
-        var code = data === null || typeof data === 'undefined' ? '' : String(data);
-        var name = row && row.length > 7 ? row[7] : '';
-
-        if (name === null || name === undefined) {
-          name = '';
-        }
-
-        name = String(name);
-        if (name.trim() === '') {
-          name = 'Not provided';
-        }
-
-        var safeName = escapeHtml(name);
-
-        // If \"Not provided\" or no code, show as plain text
-        if (name === 'Not provided' || !code) {
-          return '<span>' + safeName + '</span>';
-        }
-
-        var safeCodeAttr = escapeAttr(code);
-        return '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"ref_link_click\" data-value=\"' +
-               safeCodeAttr + '\">' + safeName + '</a>';
-      }
-      // For sort/filter/type, return the raw data (sorting handled by hidden column)
-      return data;
-    }"
-
-  DT::JS(js_code)
-}
-
 CONCEPT_TABLE_SPECS <- local({
   specs <- lapply(CONCEPT_CONFIG, function(config) {
     schema_template <- build_schema_template(config$fields)
@@ -376,7 +244,7 @@ CONCEPT_TABLE_SPECS <- local({
     sort_field_map <- list(
       "1" = "default", # Vegbank Code
       "2" = config$name_field, # Name
-      "8" = "obs_count" # Observations
+      "6" = "obs_count" # Observations
     )
 
     list(

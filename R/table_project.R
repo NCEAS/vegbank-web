@@ -25,13 +25,7 @@ PROJECT_TABLE_DISPLAY_TEMPLATE <- build_display_template(
 
 create_project_column_defs <- function() {
   list(
-    list(
-      targets = 0,
-      orderable = FALSE,
-      searchable = FALSE,
-      width = "10%",
-      render = create_action_button_renderer("proj_link_click", "Details")
-    ), # Actions
+    list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
     list(targets = 1, width = "12%", orderable = TRUE), # pj_code (Vegbank Code)
     list(targets = 2, width = "23%", orderable = TRUE), # Project Name
     list(targets = 3, width = "8%", className = "dt-right", type = "num", orderable = TRUE), # Plots (obs_count)
@@ -67,9 +61,7 @@ process_project_data <- function(project_data) {
     return(PROJECT_TABLE_DISPLAY_TEMPLATE)
   }
 
-  action_codes <- project_data$pj_code
-  action_codes <- if (is.null(action_codes)) rep("", row_count) else as.character(action_codes)
-  action_codes[is.na(action_codes)] <- ""
+  actions <- create_action_buttons("proj_link_click", "Details", project_data$pj_code)
 
   names <- clean_column_data(project_data, "project_name")
   pj_codes <- project_data$pj_code
@@ -85,7 +77,7 @@ process_project_data <- function(project_data) {
   descriptions <- truncate_text_with_ellipsis(descriptions, max_chars = 680L)
 
   data.frame(
-    "Actions" = action_codes,
+    "Actions" = actions,
     "Vegbank Code" = pj_codes,
     "Project" = names,
     "Plots" = obs_counts,

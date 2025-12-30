@@ -120,49 +120,56 @@ clean_column_dates <- function(data, column_name, default_value = "Not provided"
   )
 }
 
-# TODO: Soon to be deprecated by JS renderer
-#' Create generic action buttons for each row
+
+#' Create action buttons for each row (R version)
 #'
-#' @param data Data frame
-#' @param actions List of action definitions, each with id, label, and class
-#' @returns A character vector of HTML strings for action buttons
+#' @param input_id The Shiny input ID for the button click event
+#' @param button_label The label text for the button (default: "Details")
+#' @param code_values A character vector of values to send to the input (e.g., concept codes)
+#' @return A character vector of HTML strings for action buttons
 #' @noRd
-create_action_buttons <- function(data, actions) {
-  vapply(seq_len(nrow(data)), function(i) {
-    buttons <- vapply(actions, function(action) {
-      # Get value (row index or column value)
-      value <- if (!is.null(action$input_value) && action$input_value %in% names(data)) {
-        as.character(data[[action$input_value]][i])
-      } else {
-        as.character(i)
-      }
-
-      # Create button with data attributes instead of onclick
-      sprintf(
-        '<button class="btn btn-sm %s" onclick="Shiny.setInputValue(\'%s\', \'%s\', {priority: \'event\'})">
-        %s</button>',
-        action$class %||% "btn-outline-primary",
-        action$input_id,
-        htmltools::htmlEscape(value),
-        action$label
-      )
-    }, character(1))
-
-    sprintf(
-      '<div class="btn-group btn-group-sm">%s</div>',
-      paste(buttons, collapse = "")
-    )
+create_action_buttons <- function(input_id, button_label = "Details", code_values) {
+  vapply(code_values, function(code) {
+    safe_code <- escape_js_string(as.character(code))
+    safe_label <- escape_html(as.character(button_label))
+    if (!is.null(code) && !is.na(code) && nzchar(code)) {
+      as.character(htmltools::tags$div(
+        class = "btn-group btn-group-sm", role = "group",
+        htmltools::tags$button(
+          type = "button",
+          class = "btn btn-sm btn-outline-primary dt-shiny-action",
+          `data-input-id` = input_id,
+          `data-value` = safe_code,
+          safe_label
+        )
+      ))
+    } else {
+      '<span class="text-muted">No Data</span>'
+    }
   }, character(1))
+}
+
+#' Create a status badge for concept status
+#'
+#' @param status Logical or NA; TRUE for accepted, FALSE for not accepted, NA for unknown
+#' @return HTML string for the badge
+#' @noRd
+create_status_badge <- function(status) {
+  if (is.null(status) || identical(status, "") || is.na(status)) {
+    '<span class="badge rounded-pill" 
+    style="background-color: var(--no-status-bg); color: var(--no-status-text);">No Status</span>'
+  } else if (isTRUE(status) || identical(status, "true") || identical(status, "TRUE")) {
+    '<span class="badge rounded-pill" 
+    style="background-color: var(--accepted-bg); color: var(--accepted-text);">Accepted</span>'
+  } else {
+    '<span class="badge rounded-pill" 
+    style="background-color: var(--not-current-bg); color: var(--not-current-text);">Not Current</span>'
+  }
 }
 
 # Utility function for NULL coalescing
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
-}
-
-# Safely increment progress when a progress bar is active
-safe_inc_progress <- function(amount, detail = NULL) {
-  try(shiny::incProgress(amount, detail = detail), silent = TRUE)
 }
 
 # -------------------- PAGINATED API TABLE HELPERS --------------------

@@ -23,13 +23,7 @@ PARTY_TABLE_DISPLAY_TEMPLATE <- build_display_template(
 
 create_party_column_defs <- function() {
   list(
-    list(
-      targets = 0,
-      orderable = FALSE,
-      searchable = FALSE,
-      width = "10%",
-      render = create_action_button_renderer("party_link_click", "Details")
-    ), # Actions
+    list( targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
     list(targets = 1, width = "12%", orderable = TRUE), # py_code (Vegbank Code)
     list(targets = 2, width = "23%", orderable = TRUE), # Party Label (sortable by surname)
     list(targets = 3, width = "30%", orderable = TRUE), # Organization
@@ -77,15 +71,13 @@ process_party_data <- function(party_data) {
   organizations <- clean_column_data(party_data, "organization_name")
   contact_info <- clean_column_data(party_data, "contact_instructions")
 
-  action_codes <- py_codes
-  action_codes <- if (is.null(action_codes)) rep("", row_count) else as.character(action_codes)
-  action_codes[is.na(action_codes)] <- ""
+  actions <- create_action_buttons("party_link_click", "Details", py_codes)
 
   obs_counts <- suppressWarnings(as.integer(party_data$obs_count))
   obs_counts[is.na(obs_counts)] <- 0L
 
   data.frame(
-    "Actions" = action_codes,
+    "Actions" = actions,
     "Vegbank Code" = py_codes,
     "Party" = party_labels,
     "Organization" = organizations,
