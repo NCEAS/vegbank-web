@@ -85,7 +85,7 @@ ui <- function(req) {
       'plot_table': 'plots',
       'plant_table': 'plants',
       'comm_table': 'communities',
-      'party_table': 'people',
+      'party_table': 'parties',
       'proj_table': 'projects'
     };
 
@@ -1091,7 +1091,7 @@ build_navbar <- function() {
       )
     ),
     bslib::nav_panel(
-      title = "People",
+      title = "Parties",
       shiny::fluidPage(
         DT::dataTableOutput("party_table")
       )
