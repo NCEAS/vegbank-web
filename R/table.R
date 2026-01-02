@@ -157,14 +157,11 @@ create_action_buttons <- function(input_id, button_label = "Details", code_value
 #' @noRd
 create_status_badge <- function(status) {
   if (is.null(status) || identical(status, "") || is.na(status)) {
-    '<span class="badge rounded-pill" 
-    style="background-color: var(--no-status-bg); color: var(--no-status-text);">No Status</span>'
+    '<span class="badge rounded-pill" style="background-color: var(--no-status-bg); color: var(--no-status-text);">No Status</span>'
   } else if (isTRUE(status) || identical(status, "true") || identical(status, "TRUE")) {
-    '<span class="badge rounded-pill" 
-    style="background-color: var(--accepted-bg); color: var(--accepted-text);">Accepted</span>'
+    '<span class="badge rounded-pill" style="background-color: var(--accepted-bg); color: var(--accepted-text);">Accepted</span>'
   } else {
-    '<span class="badge rounded-pill" 
-    style="background-color: var(--not-current-bg); color: var(--not-current-text);">Not Current</span>'
+    '<span class="badge rounded-pill" style="background-color: var(--not-current-bg); color: var(--not-current-text);">Not Current</span>'
   }
 }
 

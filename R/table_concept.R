@@ -103,7 +103,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   formatted_names <- display_names
 
 
-  status_raw <- concept_data$current_accepted
+  statuses <- concept_data$current_accepted
   levels <- clean_column_data(concept_data, config$level_field)
   reference_codes <- concept_data$concept_rf_code
   reference_names <- clean_column_data(concept_data, "concept_rf_label")
@@ -128,11 +128,13 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     }
   }, character(1))
 
+  status_badges <- vapply(statuses, create_status_badge, character(1))
+
   result <- data.frame(
     Actions = actions,
     `Vegbank Code` = concept_codes,
     Name = formatted_names,
-    Status = status_raw,
+    Status = status_badges,
     Level = levels,
     `Reference Source` = ref_links,
     Observations = obs_counts,
@@ -156,20 +158,10 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 #' @noRd
 create_concept_column_defs <- function(detail_input_id) {
   list(
-    list(
-      targets = 0,
-      width = "10%",
-      orderable = FALSE,
-      searchable = FALSE
-    ), # Actions
+    list(targets = 0, width = "10%", orderable = FALSE, searchable = FALSE), # Actions
     list(targets = 1, width = "12%", orderable = TRUE), # Vegbank Code
     list(targets = 2, width = "23%", orderable = TRUE), # Name
-    list(
-      targets = 3,
-      width = "10%",
-      className = "dt-center",
-      orderable = FALSE
-    ), # Status
+    list(targets = 3, width = "10%", className = "dt-center", orderable = FALSE), # Status
     list(targets = 4, width = "10%", className = "dt-center", orderable = FALSE), # Level
     list(targets = 5, width = "10%", orderable = FALSE), # Reference Source
     list(targets = 6, width = "10%", type = "num", className = "dt-right", orderable = TRUE), # Observations
