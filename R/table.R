@@ -35,6 +35,7 @@ create_table <- function(table_config = list()) {
     scrollCollapse = table_config$scroll_collapse %||% FALSE,
     deferRender = table_config$defer_render %||% TRUE,
     processing = table_config$processing %||% TRUE,
+    order = table_config$order %||% list(list(1, "asc")), # Default sort by second column (vb code) ascending
     columnDefs = column_defs
   )
 
