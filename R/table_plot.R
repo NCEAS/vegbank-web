@@ -48,7 +48,7 @@ create_plot_column_defs <- function() {
     list(targets = 1, width = "10%", orderable = TRUE), # Vegbank Code
     list(targets = 2, width = "10%", orderable = TRUE), # Author Code
     list(targets = 3, width = "15%", orderable = FALSE), # Location
-    list(targets = 4, width = "25%",orderable = FALSE), # Top Taxa
+    list(targets = 4, width = "25%", orderable = FALSE), # Top Taxa
     list(targets = 5, width = "20%", orderable = FALSE), # Communities
     list(targets = 6, width = "10%", orderable = FALSE) # Year
   )
@@ -391,9 +391,8 @@ PLOT_TABLE_SPEC <- list(
     clean_names = FALSE,
     clean_rows_fn = sanitize_dt_rows,
     query = list(with_nested = "TRUE"),
-    # DataTable columns: 0=Actions, 1=Observation Code, 2=Author Obs Code
     sort_field_map = list(
-      "1" = "default",
+      "1" = "default", # Vegbank Code
       "2" = "author_obs_code"
     )
   ),

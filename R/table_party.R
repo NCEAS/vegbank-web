@@ -23,7 +23,7 @@ PARTY_TABLE_DISPLAY_TEMPLATE <- build_display_template(
 
 create_party_column_defs <- function() {
   list(
-    list( targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
+    list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
     list(targets = 1, width = "12%", orderable = TRUE), # py_code (Vegbank Code)
     list(targets = 2, width = "23%", orderable = TRUE), # Party Label (sortable by surname)
     list(targets = 3, width = "30%", orderable = TRUE), # Organization
@@ -54,16 +54,7 @@ process_party_data <- function(party_data) {
 
   row_count <- nrow(party_data)
   if (!row_count) {
-    return(data.frame(
-      "Actions" = character(0),
-      "Vegbank Code" = character(0),
-      "Party" = character(0),
-      "Organization" = character(0),
-      "Contributions" = integer(0),
-      "Contact" = character(0),
-      stringsAsFactors = FALSE,
-      check.names = FALSE
-    ))
+    return(PARTY_TABLE_DISPLAY_TEMPLATE)
   }
 
   party_labels <- clean_column_data(party_data, "party_label")
@@ -114,23 +105,14 @@ PARTY_TABLE_SPEC <- list(
     clean_names = FALSE,
     clean_rows_fn = sanitize_dt_rows,
     sort_field_map = list(
-      "1" = "default",           # Vegbank Code
-      "2" = "surname",        # Party (sort by surname)
+      "1" = "default", # Vegbank Code
+      "2" = "surname", # Party (sort by surname)
       "3" = "organization_name", # Organization
-      "4" = "obs_count"          # Contributions
+      "4" = "obs_count" # Contributions
     )
   ),
   page_length = NULL,
   options = list(),
   datatable_args = list(),
-  initial_display = data.frame(
-    "Actions" = character(0),
-    "Vegbank Code" = character(0),
-    "Party" = character(0),
-    "Organization" = character(0),
-    "Contributions" = integer(0),
-    "Contact" = character(0),
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
+  initial_display = PARTY_TABLE_DISPLAY_TEMPLATE
 )
