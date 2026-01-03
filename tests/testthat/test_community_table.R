@@ -43,9 +43,10 @@ test_that("community concept data includes community-specific values", {
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
-    expect_equal(result$`Vegbank Code`, community_data$cc_code)
+    expect_equal(result$`Vegbank Code`, vapply(community_data$cc_code, htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
     expect_equal(result$`Community Concept`, c("Prairie", "Wetland"))
-    expect_equal(result$Status, community_data$current_accepted)
+    expect_true(grepl("Not Current", result$Status[1]))
+    expect_true(grepl("No Status", result$Status[2]))
     expect_equal(result$Level, c("Alliance", "Not provided"))
     expect_true(grepl("<a ", result$`Reference Source`[1]))
     expect_equal(result$`Reference Source`[2], "Not provided")

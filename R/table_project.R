@@ -78,13 +78,13 @@ process_project_data <- function(project_data) {
 
   data.frame(
     "Actions" = actions,
-    "Vegbank Code" = pj_codes,
-    "Project" = names,
+    "Vegbank Code" = vapply(pj_codes, htmltools::htmlEscape, character(1)),
+    "Project" = vapply(names, htmltools::htmlEscape, character(1)),
     "Plots" = obs_counts,
-    "Started" = starts,
-    "Ended" = stops,
-    "Last Plot Added" = last_added,
-    "Description" = descriptions,
+    "Started" = vapply(starts, htmltools::htmlEscape, character(1)),
+    "Ended" = vapply(stops, htmltools::htmlEscape, character(1)),
+    "Last Plot Added" = vapply(last_added, htmltools::htmlEscape, character(1)),
+    "Description" = vapply(descriptions, htmltools::htmlEscape, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )

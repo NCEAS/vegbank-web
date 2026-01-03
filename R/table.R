@@ -54,7 +54,7 @@ create_table <- function(table_config = list()) {
   datatable_args <- list(
     data = display_data,
     rownames = table_config$rownames %||% FALSE,
-    escape = table_config$escape %||% FALSE,
+    escape = table_config$escape %||% TRUE, # It seems this is ignored when ajax is used
     selection = table_config$selection %||% "none",
     options = options
   )
@@ -132,7 +132,7 @@ clean_column_dates <- function(data, column_name, default_value = "Not provided"
 create_action_buttons <- function(input_id, button_label = "Details", code_values) {
   vapply(code_values, function(code) {
     safe_code <- escape_js_string(as.character(code))
-    safe_label <- escape_html(as.character(button_label))
+    safe_label <- htmltools::htmlEscape(as.character(button_label))
     if (!is.null(code) && !is.na(code) && nzchar(code)) {
       as.character(htmltools::tags$div(
         class = "btn-group btn-group-sm", role = "group",

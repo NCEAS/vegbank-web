@@ -69,11 +69,11 @@ process_party_data <- function(party_data) {
 
   data.frame(
     "Actions" = actions,
-    "Vegbank Code" = py_codes,
-    "Party" = party_labels,
-    "Organization" = organizations,
+    "Vegbank Code" = vapply(py_codes, htmltools::htmlEscape, character(1)),
+    "Party" = vapply(party_labels, htmltools::htmlEscape, character(1)),
+    "Organization" = vapply(organizations, htmltools::htmlEscape, character(1)),
     "Contributions" = obs_counts,
-    "Contact" = contact_info,
+    "Contact" = vapply(contact_info, htmltools::htmlEscape, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )

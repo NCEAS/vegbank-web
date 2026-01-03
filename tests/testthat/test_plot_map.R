@@ -33,29 +33,6 @@ test_that("create_marker_popup creates correct HTML", {
 
 # ---- XSS Prevention tests ----
 
-test_that("escape_html escapes HTML special characters", {
-  expect_equal(escape_html("<script>alert('xss')</script>"),
-               "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;")
-  expect_equal(escape_html("\"quotes\" & 'apostrophes'"),
-               "&quot;quotes&quot; &amp; &#39;apostrophes&#39;")
-  expect_equal(escape_html("normal text"), "normal text")
-  expect_equal(escape_html(NULL), "")
-  expect_equal(escape_html(NA), "")
-})
-
-test_that("escape_js_string escapes JS string metacharacters", {
-  expect_equal(escape_js_string("'); alert(1); //"),
-               "\\'); alert(1); \\/\\/")
-  expect_equal(escape_js_string("line1\nline2"),
-               "line1\\nline2")
-  expect_equal(escape_js_string("back\\slash"),
-               "back\\\\slash")
-  expect_equal(escape_js_string("</script>"),
-               "<\\/script>")
-  expect_equal(escape_js_string(NULL), "")
-  expect_equal(escape_js_string(NA), "")
-})
-
 test_that("create_marker_popup prevents XSS in author_obs_code", {
   # Test HTML injection in display text
   xss_obs <- "<script>alert('xss')</script>"
@@ -89,9 +66,8 @@ test_that("create_marker_popup handles special characters safely", {
 
   popup <- create_marker_popup(special_obs, special_acc, 1)
 
-  # Display text should be HTML escaped
-  expect_true(grepl("&#39;", popup)) # escaped apostrophe
-  expect_true(grepl("&quot;", popup)) # escaped quote
+  # Display text should be HTML escaped for text content
+  # Note: htmlEscape() without attribute=TRUE doesn't escape quotes/apostrophes in text nodes (they're safe there)
   expect_true(grepl("&lt;test&gt;", popup)) # escaped angle brackets
   expect_true(grepl("&amp;", popup)) # escaped ampersand
 

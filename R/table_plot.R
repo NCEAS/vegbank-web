@@ -90,12 +90,12 @@ process_plot_data <- function(plot_data) {
 
   data.frame(
     "Actions" = actions_html,
-    "Vegbank Code" = ob_codes,
-    "Author Code" = author_codes,
+    "Vegbank Code" = vapply(ob_codes, htmltools::htmlEscape, character(1)),
+    "Author Code" = vapply(author_codes, htmltools::htmlEscape, character(1)),
     "Location" = locations,
     "Top Taxa" = top_taxa_html,
     "Communities" = communities_html,
-    "Survey Year" = years,
+    "Survey Year" = vapply(years, htmltools::htmlEscape, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )

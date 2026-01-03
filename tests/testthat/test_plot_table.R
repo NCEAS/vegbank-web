@@ -157,7 +157,7 @@ test_that("process_plot_data returns correctly formatted display data", {
   expect_true(all(grepl("dt-map-action", result$Actions)))
 
   # Check separate code columns
-  expect_equal(result$`Vegbank Code`, c("ob.123", "ob.456"))
+  expect_equal(result$`Vegbank Code`, vapply(c("ob.123", "ob.456"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
   expect_equal(result$`Author Code`, c("OBS001", "OBS002"))
   expect_equal(
     result$Location,

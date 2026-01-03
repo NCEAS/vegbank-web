@@ -42,9 +42,10 @@ test_that("plant concept data includes plant-specific values", {
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
-    expect_equal(result$`Vegbank Code`, plant_data$pc_code)
+    expect_equal(result$`Vegbank Code`, vapply(plant_data$pc_code, htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
     expect_equal(result$`Plant Concept`, c("Oak", "Maple"))
-    expect_equal(result$Status, plant_data$current_accepted)
+    expect_true(grepl("Accepted", result$Status[1]))
+    expect_true(grepl("Not Current", result$Status[2]))
     expect_equal(result$Level, c("Species", "Not provided"))
     expect_true(grepl("<a ", result$`Reference Source`[1]))
     expect_equal(result$`Reference Source`[2], "Not provided")

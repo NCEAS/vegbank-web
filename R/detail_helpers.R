@@ -21,24 +21,7 @@
 
 # ---- XSS Prevention Helpers ----
 
-#' Escape a string for safe inclusion in HTML content
-#'
-#' Converts HTML special characters to their entity equivalents to prevent XSS.
-#'
-#' @param text Character string to escape
-#' @return HTML-escaped string safe for inclusion in HTML content
-#' @noRd
-escape_html <- function(text) {
-  if (is.null(text) || is.na(text)) {
-    return("")
-  }
-  text <- gsub("&", "&amp;", text, fixed = TRUE)
-  text <- gsub("<", "&lt;", text, fixed = TRUE)
-  text <- gsub(">", "&gt;", text, fixed = TRUE)
-  text <- gsub('"', "&quot;", text, fixed = TRUE)
-  text <- gsub("'", "&#39;", text, fixed = TRUE)
-  text
-}
+
 
 #' Escape a string for safe inclusion in a JavaScript string literal
 #'
@@ -295,7 +278,7 @@ create_section_header <- function(title, margin_bottom = "8px") {
 create_detail_link <- function(input_id, code_value, display_text) {
   # Escape for XSS prevention
   safe_code <- escape_js_string(as.character(code_value))
-  safe_display <- escape_html(as.character(display_text))
+  safe_display <- htmltools::htmlEscape(as.character(display_text))
 
   htmltools::tags$a(
     href = "#",

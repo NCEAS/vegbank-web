@@ -99,10 +99,6 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   display_names <- clean_column_data(concept_data, config$name_field)
   concept_codes <- concept_data[[config$code_field]]
 
-  # Name column is now just the name (no code)
-  formatted_names <- display_names
-
-
   statuses <- concept_data$current_accepted
   levels <- clean_column_data(concept_data, config$level_field)
   reference_codes <- concept_data$concept_rf_code
@@ -124,7 +120,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     if (!is.null(code) && !is.na(code) && nzchar(code)) {
       as.character(create_detail_link("ref_link_click", code, label %|||% code))
     } else {
-      escape_html(label %|||% "Not provided")
+      htmltools::htmlEscape(label %|||% "Not provided")
     }
   }, character(1))
 
@@ -132,13 +128,13 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   result <- data.frame(
     Actions = actions,
-    `Vegbank Code` = concept_codes,
-    Name = formatted_names,
+    `Vegbank Code` = vapply(concept_codes, htmltools::htmlEscape, character(1)),
+    Name = vapply(display_names, htmltools::htmlEscape, character(1)),
     Status = status_badges,
-    Level = levels,
+    Level = vapply(levels, htmltools::htmlEscape, character(1)),
     `Reference Source` = ref_links,
     Observations = obs_counts,
-    Description = descriptions,
+    Description = vapply(descriptions, htmltools::htmlEscape, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )

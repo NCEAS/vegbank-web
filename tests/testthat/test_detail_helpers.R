@@ -81,16 +81,6 @@ test_that("render_detail_table handles valid and invalid fields gracefully", {
 
 # ---- XSS Prevention tests ----
 
-test_that("escape_html escapes HTML special characters", {
-  expect_equal(escape_html("<script>alert('xss')</script>"),
-               "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;")
-  expect_equal(escape_html("\"quotes\" & 'apostrophes'"),
-               "&quot;quotes&quot; &amp; &#39;apostrophes&#39;")
-  expect_equal(escape_html("normal text"), "normal text")
-  expect_equal(escape_html(NULL), "")
-  expect_equal(escape_html(NA), "")
-})
-
 test_that("escape_js_string escapes JS string metacharacters", {
   expect_equal(escape_js_string("'); alert(1); //"),
                "\\'); alert(1); \\/\\/")
@@ -142,9 +132,8 @@ test_that("create_detail_link handles special characters safely", {
   # Code should have forward slash escaped for JS
   expect_true(grepl("ob.123\\/456", link_html, fixed = TRUE))
 
-  # Display text should be HTML escaped
-  expect_true(grepl("&#39;", link_html)) # escaped apostrophe
-  expect_true(grepl("&quot;", link_html)) # escaped quote
+  # Display text should be HTML escaped for text content
+  # Note: htmlEscape() without attribute=TRUE doesn't escape quotes/apostrophes in text nodes (they're safe there)
   expect_true(grepl("&lt;test&gt;", link_html)) # escaped angle brackets
   expect_true(grepl("&amp;", link_html)) # escaped ampersand
 })

@@ -30,7 +30,7 @@ test_that("process_party_data formats normalized rows", {
 
   expect_equal(colnames(result), c("Actions", "Vegbank Code", "Party", "Organization", "Contributions", "Contact"))
   expect_true(all(grepl("<button", result$Actions)))
-  expect_equal(result$`Vegbank Code`, c("py.1", "py.2"))
+  expect_equal(result$`Vegbank Code`, vapply(c("py.1", "py.2"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
   expect_equal(result$Party, c("Norm Aaseng", "Not provided"))
   expect_equal(result$Organization, c("MN DNR", "Not provided"))
   expect_equal(result$Contributions, c(191L, 0L))
