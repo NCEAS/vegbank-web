@@ -274,6 +274,8 @@ format_location_column <- function(data, latitudes = NULL, longitudes = NULL, el
 #'
 #' @param list_col Column containing nested data frames/lists
 #' @returns Character vector of JSON strings expected by JS renderers
+#'
+#' @importFrom jsonlite toJSON
 #' @noRd
 serialize_nested_column <- function(list_col) {
   if (is.null(list_col)) {
@@ -307,6 +309,8 @@ serialize_nested_column <- function(list_col) {
 #' @param items Data frame (or coercible object) of top taxa rows
 #' @param total_count Total taxon count reported by the API
 #' @returns JSON string containing `items` array and `total` metadata
+#'
+#' @importFrom jsonlite toJSON
 #' @noRd
 serialize_taxa_payload <- function(items, total_count) {
   normalized_items <- normalize_taxa_items(items)
@@ -333,6 +337,8 @@ serialize_taxa_payload <- function(items, total_count) {
 #'
 #' @param items Taxa data as data frame, JSON string, or coercible object
 #' @return Data frame of taxa items, or empty data frame if input is invalid
+#'
+#' @importFrom jsonlite toJSON
 #' @noRd
 normalize_taxa_items <- function(items) {
   if (is.null(items)) {

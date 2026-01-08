@@ -176,7 +176,7 @@ create_status_badge <- function(status) {
 
 #' Fetch a paginated VegBank resource page
 #'
-#' Provides a shared wrapper around vegbankr:::vb_get with consistent
+#' Provides a shared wrapper around vegbankr::vb_get with consistent
 #' error handling and optional data coercion.
 #'
 #' @param resource VegBank resource type (e.g., "plant-concepts")
@@ -223,14 +223,14 @@ fetch_remote_page <- function(resource,
   }
 
   vb_result <- try(
-    suppressWarnings(do.call(vegbankr:::vb_get, args)),
+    suppressWarnings(do.call(vegbankr::vb_get, args)),
     silent = TRUE
   )
 
   if (inherits(vb_result, "try-error")) {
     vb_error <- attr(vb_result, "condition")
     warning(
-      "vegbankr:::vb_get failed for ", resource, ": ",
+      "vegbankr::vb_get failed for ", resource, ": ",
       if (!is.null(vb_error)) conditionMessage(vb_error) else "unknown error"
     )
     data <- if (!is.null(empty_factory)) empty_factory() else NULL
@@ -251,7 +251,7 @@ fetch_remote_page <- function(resource,
 
 #' Fetch total record count for a VegBank resource
 #'
-#' Convenience wrapper around `vegbankr:::vb_count` to fetch the total record count
+#' Convenience wrapper around `vegbankr::vb_count` to fetch the total record count
 #' for a given VegBank resource, avoiding redundant implementations across tables.
 #'
 #' @param resource VegBank resource type (e.g., "plant-concepts")
@@ -278,14 +278,14 @@ fetch_total_count <- function(resource,
   )
 
   vb_result <- try(
-    suppressWarnings(do.call(vegbankr:::vb_count, args)),
+    suppressWarnings(do.call(vegbankr::vb_count, args)),
     silent = TRUE
   )
 
   if (inherits(vb_result, "try-error")) {
     vb_error <- attr(vb_result, "condition")
     warning(
-      "vegbankr:::vb_count failed for ", resource, ": ",
+      "vegbankr::vb_count failed for ", resource, ": ",
       if (!is.null(vb_error)) conditionMessage(vb_error) else "unknown error"
     )
     return(NA_integer_)
@@ -755,6 +755,8 @@ build_table_from_spec <- function(spec) {
 #'
 #' @param value The raw search value from DataTables params
 #' @returns A trimmed search string, or NULL if empty
+#'
+#' @importFrom httpuv decodeURIComponent
 #' @noRd
 normalize_search_term <- function(value) {
   term <- value %||% ""
