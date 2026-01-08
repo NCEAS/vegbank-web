@@ -226,52 +226,44 @@ format_location_column <- function(data, latitudes = NULL, longitudes = NULL, el
   state <- clean_column_data(data, "state_province", default_value = "")
   country <- clean_column_data(data, "country", default_value = "")
 
-  build_coord_line <- function(lat, lng) {
-    if (is.na(lat) || is.na(lng)) {
-      return(NULL)
-    }
-    sprintf("%.4f, %.4f", lat, lng)
-  }
-
-  build_elev_line <- function(elev) {
-    if (is.na(elev)) {
-      return(NULL)
-    }
-    paste0(round(elev), "m")
-  }
-
   vapply(seq_len(row_total), function(idx) {
     lines <- character(0)
 
+    # Add state if provided
     if (nzchar(state[[idx]])) {
-      lines <- c(lines, as.character(htmltools::htmlEscape(state[[idx]])))
+      lines <- c(lines, htmltools::htmlEscape(state[[idx]]))
     }
+
+    # Add country in muted text if provided
     if (nzchar(country[[idx]])) {
-      country_line <- sprintf(
+      lines <- c(lines, sprintf(
         '<span class="text-muted small">%s</span>',
-        as.character(htmltools::htmlEscape(country[[idx]]))
-      )
-      lines <- c(lines, country_line)
+        htmltools::htmlEscape(country[[idx]])
+      ))
     }
+
+    # Default if no location provided
     if (!length(lines)) {
       lines <- "Not provided"
     }
 
-    coord_line <- build_coord_line(latitudes[[idx]], longitudes[[idx]])
-    elev_line <- build_elev_line(elevations[[idx]])
-
-    detail_parts <- c()
-    if (!is.null(coord_line)) {
-      detail_parts <- c(detail_parts, coord_line)
+    # Add coordinates in muted text if available
+    lat <- latitudes[[idx]]
+    lng <- longitudes[[idx]]
+    if (!is.na(lat) && !is.na(lng)) {
+      lines <- c(lines, sprintf(
+        '<span class="text-muted small">%.4f, %.4f</span>',
+        lat, lng
+      ))
     }
-    if (!is.null(elev_line)) {
-      detail_parts <- c(detail_parts, elev_line)
-    }
 
-    if (length(detail_parts)) {
-      detail_line <- paste(detail_parts, collapse = " &bull; ")
-      detail_line <- sprintf('<span class="text-muted small">%s</span>', htmltools::htmlEscape(detail_line, attribute = TRUE))
-      lines <- c(lines, detail_line)
+    # Add elevation in muted text if available
+    elev <- elevations[[idx]]
+    if (!is.na(elev)) {
+      lines <- c(lines, sprintf(
+        '<span class="text-muted small">Elevation: %dm</span>',
+        round(elev)
+      ))
     }
 
     paste(lines, collapse = "<br>")
