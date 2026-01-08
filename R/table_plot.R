@@ -270,7 +270,7 @@ format_location_column <- function(data, latitudes = NULL, longitudes = NULL, el
 
     if (length(detail_parts)) {
       detail_line <- paste(detail_parts, collapse = " &bull; ")
-      detail_line <- sprintf('<span class="text-muted small">%s</span>', detail_line)
+      detail_line <- sprintf('<span class="text-muted small">%s</span>', htmltools::htmlEscape(detail_line, attribute = TRUE))
       lines <- c(lines, detail_line)
     }
 
