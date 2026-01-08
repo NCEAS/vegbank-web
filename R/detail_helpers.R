@@ -19,32 +19,6 @@
   a
 }
 
-# ---- XSS Prevention Helpers ----
-
-
-
-#' Escape a string for safe inclusion in a JavaScript string literal
-#'
-#' Escapes characters that could break out of a JS string context.
-#'
-#' @param text Character string to escape
-#' @return String safe for inclusion inside JS single-quoted string literals
-#' @noRd
-escape_js_string <- function(text) {
-  if (is.null(text) || is.na(text)) {
-    return("")
-  }
-  # Escape backslashes first, then other special chars
-  text <- gsub("\\", "\\\\", text, fixed = TRUE)
-  text <- gsub("'", "\\'", text, fixed = TRUE)
-  text <- gsub('"', '\\"', text, fixed = TRUE)
-  text <- gsub("\n", "\\n", text, fixed = TRUE)
-  text <- gsub("\r", "\\r", text, fixed = TRUE)
-  # Prevent </script> injection
-  text <- gsub("/", "\\/", text, fixed = TRUE)
-  text
-}
-
 #' Safe Date Parser for GMT Format Strings
 #' Parses date strings that may be in GMT format or other standard formats.
 #' @param date_string The date string to parse
@@ -277,7 +251,7 @@ create_section_header <- function(title, margin_bottom = "8px") {
 #' @noRd
 create_detail_link <- function(input_id, code_value, display_text) {
   # Escape for XSS prevention
-  safe_code <- escape_js_string(as.character(code_value))
+  safe_code <- htmltools::htmlEscape(as.character(code_value))
   safe_display <- htmltools::htmlEscape(as.character(display_text))
 
   htmltools::tags$a(

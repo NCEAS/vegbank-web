@@ -118,15 +118,15 @@ format_plot_action_buttons <- function(ob_codes, author_codes, latitudes, longit
     has_coords <- !is.na(lat) && !is.na(lng)
     # Details button
     detail_btn <- if (!is.null(detail_code) && nzchar(detail_code)) {
-      sprintf('<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" data-input-id="plot_link_click" data-value="%s">Details</button>', htmltools::htmlEscape(detail_code))
+      sprintf('<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" data-input-id="plot_link_click" data-value="%s">Details</button>', htmltools::htmlEscape(detail_code, attribute = TRUE))
     } else {
       '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Details</button>'
     }
     # Map button
     map_btn <- if (has_coords) {
-      code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code)) else ''
+      code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code, attribute = TRUE)) else ''
       sprintf('<button type="button" class="btn btn-sm btn-outline-secondary dt-map-action" data-lat="%s" data-lng="%s"%s>Map</button>',
-        htmltools::htmlEscape(lat), htmltools::htmlEscape(lng), code_attr)
+        htmltools::htmlEscape(lat, attribute = TRUE), htmltools::htmlEscape(lng, attribute = TRUE), code_attr)
     } else {
       '<button type="button" class="btn btn-sm btn-outline-secondary" disabled>Map</button>'
     }
@@ -154,13 +154,13 @@ format_plot_taxa_list <- function(taxa_list, taxon_counts) {
       max_cover <- taxa[j, "max_cover", drop = TRUE]
       safe_name <- htmltools::htmlEscape(name)
       name_link <- if (!is.null(pc_code) && nzchar(pc_code)) {
-        sprintf('<a href="#" class="dt-shiny-action" data-input-id="plant_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(pc_code), safe_name)
+        sprintf('<a href="#" class="dt-shiny-action" data-input-id="plant_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(pc_code, attribute = TRUE), safe_name)
       } else {
         sprintf('<span>%s</span>', safe_name)
       }
       if (!is.null(max_cover) && !is.na(max_cover)) {
         cover_text <- sprintf('(%0.1f%%)', as.numeric(max_cover))
-        sprintf('<div style="display: flex; justify-content: space-between;"><span>%s</span><span style="margin-left: 8px;">%s</span></div>', name_link, htmltools::htmlEscape(cover_text))
+        sprintf('<div style="display: flex; justify-content: space-between;"><span>%s</span><span style="margin-left: 8px;">%s</span></div>', name_link, htmltools::htmlEscape(cover_text, attribute = TRUE))
       } else {
         sprintf('<div>%s</div>', name_link)
       }
@@ -192,12 +192,12 @@ format_plot_community_list <- function(comm_list) {
       comm_code <- comms[j, "comm_code", drop = TRUE]
       safe_name <- htmltools::htmlEscape(comm_name)
       entry <- if (!is.null(cl_code) && nzchar(cl_code)) {
-        sprintf('<a href="#" class="dt-shiny-action" data-input-id="comm_class_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(cl_code), safe_name)
+        sprintf('<a href="#" class="dt-shiny-action" data-input-id="comm_class_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(cl_code, attribute = TRUE), safe_name)
       } else {
         sprintf('<span>%s</span>', safe_name)
       }
       if (!is.null(comm_code) && nzchar(comm_code) && grepl('^CEGL', comm_code, ignore.case = TRUE)) {
-        entry <- paste0(entry, sprintf('<br><span class="text-muted small">%s</span>', htmltools::htmlEscape(comm_code)))
+        entry <- paste0(entry, sprintf('<br><span class="text-muted small">%s</span>', htmltools::htmlEscape(comm_code, attribute = TRUE)))
       }
       entry
     }, character(1))

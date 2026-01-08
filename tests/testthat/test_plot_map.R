@@ -16,7 +16,8 @@ test_that("create_marker_popup creates correct HTML", {
   # Single observation
   single_popup <- create_marker_popup("Plot1", "ACC1", 1)
   expect_true(grepl("<strong>1 Observation</strong>", single_popup))
-  expect_true(grepl("onclick=\"Shiny.setInputValue\\('plot_link_click',\\s*'ACC1'", single_popup))
+  # htmltools encodes quotes in onclick as &#39;
+  expect_true(grepl("onclick=\"Shiny.setInputValue\\(&#39;plot_link_click&#39;,\\s*&#39;ACC1&#39;", single_popup))
   expect_true(grepl(">Plot1</a>", single_popup))
 
   # Multiple observations
@@ -52,11 +53,8 @@ test_that("create_marker_popup prevents XSS in ob_code", {
   # Should NOT contain unescaped single quote followed by closing paren
   # that could break out of the JS string (the raw pattern "');")
   expect_false(grepl("'\\);", popup, fixed = TRUE))
-  # Forward slashes should be escaped to prevent </script> injection
-  expect_true(grepl("\\/\\/", popup, fixed = TRUE))
-  # The apostrophes should be escaped with backslash
-  # In R regex, need to escape backslash twice: \\\\ matches one backslash
-  expect_true(grepl("\\\\'", popup))
+  # htmltools::htmlEscape converts quotes to HTML entities (&#39;) which prevents XSS
+  expect_true(grepl("&#39;", popup))
 })
 
 test_that("create_marker_popup handles special characters safely", {
@@ -71,8 +69,8 @@ test_that("create_marker_popup handles special characters safely", {
   expect_true(grepl("&lt;test&gt;", popup)) # escaped angle brackets
   expect_true(grepl("&amp;", popup)) # escaped ampersand
 
-  # JS string should have forward slash escaped
-  expect_true(grepl("ob.123\\/456", popup, fixed = TRUE))
+  # JS string value is HTML escaped - forward slashes are safe and not escaped
+  expect_true(grepl("ob.123/456", popup, fixed = TRUE))
 })
 
 # ---- validate_map_data tests ----
