@@ -88,14 +88,6 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     concept_data <- build_schema_template(config$fields)
   }
 
-  if (!is.data.frame(concept_data)) {
-    concept_data <- tryCatch(
-      as.data.frame(concept_data, stringsAsFactors = FALSE),
-      error = function(e) create_empty_source_df(concept_type)
-    )
-  }
-
-
   display_names <- clean_column_data(concept_data, config$name_field)
   concept_codes <- concept_data[[config$code_field]]
 
