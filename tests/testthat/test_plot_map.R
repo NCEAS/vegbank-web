@@ -16,8 +16,8 @@ test_that("create_marker_popup creates correct HTML", {
   # Single observation
   single_popup <- create_marker_popup("Plot1", "ACC1", 1)
   expect_true(grepl("<strong>1 Observation</strong>", single_popup))
-  # htmltools encodes quotes in onclick as &#39;
-  expect_true(grepl("onclick=\"Shiny.setInputValue\\(&#39;plot_link_click&#39;,\\s*&#39;ACC1&#39;", single_popup))
+  # Single quotes are safe within double-quoted attributes
+  expect_true(grepl("onclick=\"Shiny.setInputValue\\('plot_link_click',\\s*'ACC1'", single_popup))
   expect_true(grepl(">Plot1</a>", single_popup))
 
   # Multiple observations

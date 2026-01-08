@@ -83,11 +83,11 @@ test_that("format_location_column combines location, coordinates, and elevation"
 
   expect_equal(
     result[1],
-    "Virginia<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">38.5000, -78.2000 &bull; 500m</span>"
+    "Virginia<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">38.5000, -78.2000</span><br><span class=\"text-muted small\">Elevation: 500m</span>"
   )
   expect_equal(
     result[2],
-    "Maryland<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">39.2000, -77.0000 &bull; 250m</span>"
+    "Maryland<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">39.2000, -77.0000</span><br><span class=\"text-muted small\">Elevation: 250m</span>"
   )
   expect_equal(
     result[3],
@@ -95,7 +95,7 @@ test_that("format_location_column combines location, coordinates, and elevation"
   )
   expect_equal(
     result[4],
-    "Texas<br><span class=\"text-muted small\">120m</span>"
+    "Texas<br><span class=\"text-muted small\">Elevation: 120m</span>"
   )
 })
 
@@ -162,8 +162,8 @@ test_that("process_plot_data returns correctly formatted display data", {
   expect_equal(
     result$Location,
     c(
-      "Virginia<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">38.5000, -78.2000 &bull; 500m</span>",
-      "Maryland<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">39.2000, -77.0000 &bull; 750m</span>"
+      "Virginia<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">38.5000, -78.2000</span><br><span class=\"text-muted small\">Elevation: 500m</span>",
+      "Maryland<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">39.2000, -77.0000</span><br><span class=\"text-muted small\">Elevation: 750m</span>"
     )
   )
   expect_equal(result$`Survey Year`, c("2020", "2021"))
