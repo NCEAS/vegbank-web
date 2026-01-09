@@ -40,7 +40,7 @@ build_party_details_view <- function(result) {
       htmltools::div(
         htmltools::tags$h5(label, style = "font-weight: 600; margin-bottom: 0px;"),
         if (!is.na(full_name)) htmltools::tags$p(paste0("(", full_name, ")"), style = "margin-bottom: 0px;"),
-        htmltools::tags$h5(vb_code, style = "color: #2c5443; font-weight: 600; margin-bottom: 0px;")
+        htmltools::tags$h5(vb_code, style = "color: var(--vb-green); font-weight: 600; margin-bottom: 0px;")
       )
     }),
     party_organization = shiny::renderUI({

@@ -19,7 +19,7 @@ build_project_details_view <- function(result) {
     project_header = shiny::renderUI({
       htmltools::div(
         htmltools::tags$h5(result$project_name, style = "font-weight: 600; margin-bottom: 0px;"),
-        htmltools::tags$h5(result$pj_code, style = "color: #2c5443; font-weight: 600;"),
+        htmltools::tags$h5(result$pj_code, style = "color: var(--vb-green); font-weight: 600;"),
         if (date_range != "Date not recorded") {
           htmltools::tags$p(
             date_range
@@ -28,8 +28,26 @@ build_project_details_view <- function(result) {
       )
     }),
     project_observations = shiny::renderUI({
-      htmltools::tags$p("Number of observations: ", htmltools::tags$strong(result$obs_count))
+      obs_count <- suppressWarnings(as.integer(result$obs_count))
+      if (is.na(obs_count)) obs_count <- 0L
+
+      if (obs_count > 0 && !is.null(result$pj_code) && !is.null(result$project_name)) {
+        htmltools::tags$p(
+          "Number of observations: ",
+          htmltools::tags$a(
+            href = "#",
+            class = "obs-count-link dt-shiny-action",
+            `data-input-id` = "obs_count_click",
+            `data-value` = htmltools::htmlEscape(result$pj_code, attribute = TRUE),
+            `data-label` = htmltools::htmlEscape(result$project_name, attribute = TRUE),
+            as.character(obs_count)
+          )
+        )
+      } else {
+        htmltools::tags$p("Number of observations: ", htmltools::tags$strong(obs_count))
+      }
     }),
+
     project_description = shiny::renderUI({
       htmltools::tags$div(id = "project-description", htmltools::htmlEscape(result$project_description))
     }),

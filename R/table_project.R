@@ -19,8 +19,7 @@ PROJECT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 )
 
 PROJECT_TABLE_DISPLAY_TEMPLATE <- build_display_template(
-  column_names = c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"),
-  column_types = list("Plots" = integer())
+  column_names = c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description")
 )
 
 create_project_column_defs <- function() {
@@ -69,6 +68,14 @@ process_project_data <- function(project_data) {
   obs_counts <- suppressWarnings(as.integer(project_data$obs_count))
   obs_counts[is.na(obs_counts)] <- 0L
 
+  # Create clickable obs_count links for cross-resource filtering
+  obs_count_links <- create_obs_count_links(
+    "obs_count_click",
+    obs_counts,
+    pj_codes,
+    names
+  )
+
   starts <- clean_column_dates(project_data, "start_date")
   stops <- clean_column_dates(project_data, "stop_date")
   last_added <- clean_column_dates(project_data, "last_plot_added_date")
@@ -80,7 +87,7 @@ process_project_data <- function(project_data) {
     "Actions" = actions,
     "Vegbank Code" = vapply(pj_codes, htmltools::htmlEscape, character(1)),
     "Project" = vapply(names, htmltools::htmlEscape, character(1)),
-    "Plots" = obs_counts,
+    "Plots" = obs_count_links,
     "Started" = vapply(starts, htmltools::htmlEscape, character(1)),
     "Ended" = vapply(stops, htmltools::htmlEscape, character(1)),
     "Last Plot Added" = vapply(last_added, htmltools::htmlEscape, character(1)),

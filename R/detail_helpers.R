@@ -230,7 +230,7 @@ create_section_header <- function(title, margin_bottom = "8px") {
   htmltools::tags$div(
     title,
     style = sprintf(
-      "font-weight: bold; width: 100%%; border-bottom: 1px solid #2c5443; margin-bottom: %s;",
+      "font-weight: bold; width: 100%%; border-bottom: 1px solid var(--vb-green); margin-bottom: %s;",
       margin_bottom
     )
   )

@@ -64,6 +64,25 @@ build_plot_table <- function() {
   build_table_from_spec(PLOT_TABLE_SPEC)
 }
 
+#' Build Plot Table with optional cross-resource filter
+#'
+#' Configures the plot table with an optional vb_code parameter for
+#' cross-resource queries (e.g., showing plots for a specific project).
+#'
+#' @param vb_code Optional VegBank code for cross-resource filtering (e.g., "pj.340")
+#' @return A DT::datatable object
+#' @noRd
+build_plot_table_with_filter <- function(vb_code = NULL) {
+  spec <- PLOT_TABLE_SPEC
+
+  # Add vb_code to query if filtering is active
+  if (!is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)) {
+    spec$data_source$query$vb_code <- vb_code
+  }
+
+  build_table_from_spec(spec)
+}
+
 process_plot_data <- function(plot_data) {
   if (is.null(plot_data)) {
     plot_data <- PLOT_TABLE_SCHEMA_TEMPLATE
@@ -125,10 +144,10 @@ format_plot_action_buttons <- function(ob_codes, author_codes, latitudes, longit
     # Map button
     map_btn <- if (has_coords) {
       code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code, attribute = TRUE)) else ''
-      sprintf('<button type="button" class="btn btn-sm btn-outline-secondary dt-map-action" data-lat="%s" data-lng="%s"%s>Map</button>',
+      sprintf('<button type="button" class="btn btn-sm btn-outline-primary dt-map-action" data-lat="%s" data-lng="%s"%s>Map</button>',
         htmltools::htmlEscape(lat, attribute = TRUE), htmltools::htmlEscape(lng, attribute = TRUE), code_attr)
     } else {
-      '<button type="button" class="btn btn-sm btn-outline-secondary" disabled>Map</button>'
+      '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Map</button>'
     }
     sprintf('<div class="btn-group btn-group-sm" role="group">%s%s</div>', detail_btn, map_btn)
   }, character(1))

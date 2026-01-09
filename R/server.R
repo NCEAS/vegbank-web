@@ -49,6 +49,7 @@ server <- function(input, output, session) {
     map_zoom = map_state$map_zoom,
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
+    plot_filter = shiny::reactiveVal(NULL), # Cross-resource filter: list(type, code, label) or NULL
     table_states = shiny::reactiveValues(),
     table_sync_pending = shiny::reactiveValues(),
     table_sync_completed_at = shiny::reactiveValues()
@@ -311,7 +312,8 @@ server <- function(input, output, session) {
       map_has_custom_state = state$map_has_custom_state(),
       table_states = table_states_list,
       highlight_table = state$highlighted_table(),
-      highlight_row = state$highlighted_row()
+      highlight_row = state$highlighted_row(),
+      plot_filter = state$plot_filter()
     )
 
     url_manager$update_query_string(target_query, mode = mode)
@@ -473,6 +475,39 @@ server <- function(input, output, session) {
             detail_type = NULL,
             detail_code = NULL
           )
+        }
+      }
+
+      # Parse and apply plot filter state
+      filter_code <- url_manager$first_param(params$filter_code)
+      filter_type <- url_manager$first_param(params$filter_type)
+      filter_label <- url_manager$first_param(params$filter_label)
+
+      if (url_manager$is_valid_param(filter_code) && url_manager$is_valid_param(filter_type)) {
+        # Restore filter from URL
+        current_filter <- state$plot_filter()
+        new_filter <- list(
+          type = filter_type,
+          code = filter_code,
+          label = if (url_manager$is_valid_param(filter_label)) filter_label else filter_code
+        )
+
+        # Only update if different from current state
+        if (is.null(current_filter) ||
+          !identical(current_filter$code, new_filter$code) ||
+          !identical(current_filter$type, new_filter$type)) {
+          state$plot_filter(new_filter)
+        }
+      } else if (!is.null(params$filter_code) || !is.null(params$filter_type)) {
+        # Invalid filter params in URL, clear them
+        state$plot_filter(NULL)
+        if (url_manager$is_history_initialized()) {
+          update_app_query(mode = "replace", tab = requested_tab)
+        }
+      } else {
+        # No filter params in URL, clear filter state
+        if (!is.null(state$plot_filter())) {
+          state$plot_filter(NULL)
         }
       }
 
@@ -728,8 +763,36 @@ server <- function(input, output, session) {
     )
   })
 
+  output$plot_filter_alert <- shiny::renderUI({
+    filter <- state$plot_filter()
+    if (is.null(filter)) {
+      return(NULL)
+    }
+
+    htmltools::tags$div(
+      class = "alert alert-info alert-dismissible fade show d-flex align-items-center justify-content-between",
+      role = "alert",
+      style = "margin-bottom: 15px;",
+      htmltools::tags$strong(
+        sprintf(
+          "Showing plots related to %s: %s (%s)",
+          filter$type, filter$code, filter$label
+        )
+      ),
+      htmltools::tags$button(
+        type = "button",
+        class = "btn btn-sm btn-outline-info ms-3",
+        onclick = "Shiny.setInputValue('clear_plot_filter', Math.random());",
+        "Clear Filter"
+      )
+    )
+  })
+
   output$plot_table <- DT::renderDataTable({
-    build_plot_table()
+    # Rebuild table when filter changes to pass vb_code for cross-resource queries
+    filter <- state$plot_filter()
+    vb_code <- if (!is.null(filter)) filter$code else NULL
+    build_plot_table_with_filter(vb_code)
   })
 
   output$comm_table <- DT::renderDataTable({
@@ -974,6 +1037,57 @@ server <- function(input, output, session) {
     vb_code <- input$ref_link_click
     open_detail("reference", vb_code)
   })
+
+  # CROSS-RESOURCE FILTER OBSERVERS ----------------------------------------------------------------
+
+  # Generic observer for all obs_count clicks - extracts entity type from vb_code prefix
+  shiny::observeEvent(input$obs_count_click, {
+    event_data <- input$obs_count_click
+    if (is.null(event_data)) {
+      return()
+    }
+
+    # Extract code and label from the click event
+    # The JS handler sends a list with $code and $label for obs_count links
+    if (is.list(event_data)) {
+      vb_code <- event_data$code
+      label <- event_data$label
+    } else {
+      # Fallback for simple string value
+      vb_code <- event_data
+      label <- event_data
+    }
+
+    if (is.null(vb_code) || is.na(vb_code) || !nzchar(vb_code)) {
+      return()
+    }
+
+    # Extract entity type from vb_code prefix
+    # VegBank codes follow pattern: prefix.id (e.g., pj.340, py.123, pc.456)
+    entity_type <- extract_entity_type_from_code(vb_code)
+    if (is.null(entity_type)) {
+      warning("Could not determine entity type from vb_code: ", vb_code)
+      return()
+    }
+
+    # Set filter state
+    state$plot_filter(list(
+      type = entity_type,
+      code = vb_code,
+      label = label %||% vb_code
+    ))
+
+    # Navigate to Plots tab and update URL
+    state$current_tab("Plots")
+    shiny::updateNavbarPage(session, "page", selected = "Plots")
+    update_app_query(mode = "push", tab = "Plots")
+  })
+
+  shiny::observeEvent(input$clear_plot_filter, {
+    state$plot_filter(NULL)
+    # Update URL to remove filter parameters
+    update_app_query(mode = "push", tab = state$current_tab())
+  })
 }
 
 
@@ -1021,6 +1135,46 @@ open_code_details <- function(
 is_valid_vb_code <- function(vb_code) {
   !is.null(vb_code) && !is.na(vb_code) &&
     nchar(as.character(vb_code)) > 0 && vb_code != "NA"
+}
+
+#' Extract entity type from VegBank code prefix
+#'
+#' VegBank codes follow the pattern: prefix.id (e.g., pj.340, py.123, pc.456)
+#' This function extracts the prefix and maps it to the human-readable entity type.
+#'
+#' @param vb_code The VegBank code (e.g., "pj.340")
+#' @return Character string of entity type (e.g., "project"), or NULL if unknown
+#' @noRd
+extract_entity_type_from_code <- function(vb_code) {
+  if (!is_valid_vb_code(vb_code)) {
+    return(NULL)
+  }
+
+  # Extract prefix before the dot
+  parts <- strsplit(as.character(vb_code), "\\.")[[1]]
+  if (length(parts) < 2) {
+    return(NULL)
+  }
+
+  prefix <- tolower(parts[1])
+
+  # Map VegBank prefixes to entity types
+  prefix_map <- c(
+    "pj" = "project",
+    "py" = "party",
+    "pc" = "plant-concept",
+    "cc" = "community-concept",
+    "ct" = "community-classification",
+    "ob" = "plot-observation",
+    "rf" = "reference"
+  )
+
+  entity_type <- prefix_map[[prefix]]
+  if (is.null(entity_type)) {
+    return(NULL)
+  }
+
+  entity_type
 }
 
 #' Move the map to the specified latitude and longitude with a popup message
