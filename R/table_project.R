@@ -70,7 +70,6 @@ process_project_data <- function(project_data) {
 
   # Create clickable obs_count links for cross-resource filtering
   obs_count_links <- create_obs_count_links(
-    "obs_count_click",
     obs_counts,
     pj_codes,
     names

@@ -770,9 +770,8 @@ server <- function(input, output, session) {
     }
 
     htmltools::tags$div(
-      class = "alert alert-info alert-dismissible fade show d-flex align-items-center justify-content-between",
+      class = "alert alert-info alert-dismissible show d-flex align-items-center justify-content-between",
       role = "alert",
-      style = "margin-bottom: 15px;",
       htmltools::tags$strong(
         sprintf(
           "Showing plots related to %s: %s (%s)",
