@@ -265,6 +265,35 @@ create_detail_link <- function(input_id, code_value, display_text) {
   )
 }
 
+#' Creates a paragraph with a clickable link for observation counts that triggers 
+#' a Shiny input event for cross-resource filtering.
+#'
+#' @param obs_count An observation count (integer or numeric)
+#' @param entity_code A vegbank entity code (e.g., "pj.340")
+#' @param entity_label An entity's display name (e.g. Acadia National Park)
+#' @return Character vector of HTML for obs_count links
+#' @noRd
+create_obs_count_link <- function(obs_count, entity_code, entity_label) {
+  obs_count <- suppressWarnings(as.integer(obs_count))
+  if (is.na(obs_count)) obs_count <- 0L
+
+  if (obs_count > 0 && !is.null(entity_code) && !is.null(entity_label)) {
+    htmltools::tags$p(
+      "Number of observations: ",
+      htmltools::tags$a(
+        href = "#",
+        class = "obs-count-link dt-shiny-action",
+        `data-input-id` = "obs_count_click",
+        `data-value` = htmltools::htmlEscape(entity_code, attribute = TRUE),
+        `data-label` = htmltools::htmlEscape(entity_label, attribute = TRUE),
+        as.character(obs_count)
+      )
+    )
+  } else {
+    htmltools::tags$p("Number of observations: ", htmltools::tags$strong(obs_count))
+  }
+}
+
 #' Check if Field Has Valid Value
 #'
 #' Determines whether a field in a dataframe or list contains a valid, non-empty value.

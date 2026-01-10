@@ -28,24 +28,11 @@ build_project_details_view <- function(result) {
       )
     }),
     project_observations = shiny::renderUI({
-      obs_count <- suppressWarnings(as.integer(result$obs_count))
-      if (is.na(obs_count)) obs_count <- 0L
-
-      if (obs_count > 0 && !is.null(result$pj_code) && !is.null(result$project_name)) {
-        htmltools::tags$p(
-          "Number of observations: ",
-          htmltools::tags$a(
-            href = "#",
-            class = "obs-count-link dt-shiny-action",
-            `data-input-id` = "obs_count_click",
-            `data-value` = htmltools::htmlEscape(result$pj_code, attribute = TRUE),
-            `data-label` = htmltools::htmlEscape(result$project_name, attribute = TRUE),
-            as.character(obs_count)
-          )
-        )
-      } else {
-        htmltools::tags$p("Number of observations: ", htmltools::tags$strong(obs_count))
-      }
+      create_obs_count_link(
+        result$obs_count,
+        result$pj_code,
+        result$project_name
+      )
     }),
 
     project_description = shiny::renderUI({
