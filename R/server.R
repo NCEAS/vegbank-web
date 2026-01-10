@@ -774,7 +774,7 @@ server <- function(input, output, session) {
       role = "alert",
       htmltools::tags$strong(
         sprintf(
-          "Showing plots related to %s: %s (%s)",
+          "Showing plot observatioons related to %s: %s (%s)",
           filter$type, filter$code, filter$label
         )
       ),
@@ -1161,10 +1161,10 @@ extract_entity_type_from_code <- function(vb_code) {
   prefix_map <- c(
     "pj" = "project",
     "py" = "party",
-    "pc" = "plant-concept",
-    "cc" = "community-concept",
-    "ct" = "community-classification",
-    "ob" = "plot-observation",
+    "pc" = "plant concept",
+    "cc" = "community concept",
+    "ct" = "community classification",
+    "ob" = "plot observation",
     "rf" = "reference"
   )
 

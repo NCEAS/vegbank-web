@@ -51,7 +51,14 @@ build_concept_details_view <- function(result, concept_type = "plant") {
           ),
           htmltools::tags$tr(
             htmltools::tags$td("Observation Count"),
-            htmltools::tags$td(class = "text-end", result$obs_count %|||% "0")
+            htmltools::tags$td(
+              class = "text-end",
+              create_obs_count_link(
+                result$obs_count,
+                result[[id_field]],
+                result[[name_field]]
+              )
+            )
           )
         )
       ),

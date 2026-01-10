@@ -105,6 +105,13 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     concept_data[[config$code_field]]
   )
 
+  # Create clickable obs_count links for cross-resource filtering
+  obs_count_links <- create_all_obs_count_links(
+    obs_counts,
+    concept_codes,
+    display_names
+  )
+
   # Build reference links in R using create_detail_link
   ref_links <- vapply(seq_along(reference_codes), function(i) {
     code <- reference_codes[[i]]
@@ -125,7 +132,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     Status = status_badges,
     Level = vapply(levels, htmltools::htmlEscape, character(1)),
     `Reference Source` = ref_links,
-    Observations = obs_counts,
+    Observations = obs_count_links,
     Description = vapply(descriptions, htmltools::htmlEscape, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE

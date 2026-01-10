@@ -28,10 +28,13 @@ build_project_details_view <- function(result) {
       )
     }),
     project_observations = shiny::renderUI({
-      create_obs_count_link(
-        result$obs_count,
-        result$pj_code,
-        result$project_name
+      htmltools::tags$p(
+        "Number of observations: ",
+        create_obs_count_link(
+          result$obs_count,
+          result$pj_code,
+          result$project_name
+        )
       )
     }),
 
