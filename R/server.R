@@ -774,7 +774,7 @@ server <- function(input, output, session) {
       role = "alert",
       htmltools::tags$strong(
         sprintf(
-          "Showing plot observatioons related to %s: %s (%s)",
+          "Showing plot observations related to %s: %s (%s)",
           filter$type, filter$code, filter$label
         )
       ),
