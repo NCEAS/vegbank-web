@@ -67,7 +67,7 @@ process_party_data <- function(party_data) {
   obs_counts[is.na(obs_counts)] <- 0L
 
   # Create clickable obs_count links for cross-resource filtering
-  obs_count_links <- create_obs_count_links(
+  obs_count_links <- create_all_obs_count_links(
     obs_counts,
     py_codes,
     party_labels

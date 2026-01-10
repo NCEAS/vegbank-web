@@ -152,14 +152,15 @@ create_action_buttons <- function(input_id, button_label = "Details", code_value
   }, character(1))
 }
 
-#' Create clickable obs_count links for cross-resource filtering
+#' Create clickable obs_count links for cross-resource filtering for an
+#' entire vector of obs_counts
 #'
 #' @param obs_counts Integer vector of observation counts
 #' @param entity_codes Character vector of entity codes (e.g., "pj.340")
 #' @param entity_labels Character vector of entity display names
 #' @return Character vector of HTML for obs_count links
 #' @noRd
-create_obs_count_links <- function(obs_counts, entity_codes, entity_labels) {
+create_all_obs_count_links <- function(obs_counts, entity_codes, entity_labels) {
   vapply(seq_along(obs_counts), function(idx) {
     count <- obs_counts[[idx]]
     code <- entity_codes[[idx]]
