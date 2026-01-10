@@ -17,23 +17,18 @@ PARTY_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 )
 
 PARTY_TABLE_DISPLAY_TEMPLATE <- build_display_template(
-  column_names = c("Actions", "Party", "Organization", "Observations", "Contact"),
-  column_types = list("Observations" = integer())
+  column_names = c("Actions", "Vegbank Code", "Party", "Organization", "Contributions", "Contact"),
+  column_types = list("Contributions" = integer())
 )
 
 create_party_column_defs <- function() {
   list(
-    list(
-      targets = 0,
-      orderable = FALSE,
-      searchable = FALSE,
-      width = "10%",
-      render = create_action_button_renderer("party_link_click", "Details")
-    ),
-    list(targets = 1, width = "25%"),
-    list(targets = 2, width = "30%"),
-    list(targets = 3, width = "10%", className = "dt-right", type = "num"),
-    list(targets = 4, width = "25%")
+    list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
+    list(targets = 1, width = "12%", orderable = TRUE), # py_code (Vegbank Code)
+    list(targets = 2, width = "23%", orderable = TRUE), # Party Label (sortable by surname)
+    list(targets = 3, width = "30%", orderable = TRUE), # Organization
+    list(targets = 4, width = "10%", className = "dt-right", type = "num", orderable = TRUE), # Contributions
+    list(targets = 5, width = "25%", orderable = FALSE) # Contact
   )
 }
 
@@ -67,59 +62,21 @@ process_party_data <- function(party_data) {
   organizations <- clean_column_data(party_data, "organization_name")
   contact_info <- clean_column_data(party_data, "contact_instructions")
 
-  # Format party column with party_label and py_code in green below
-  formatted_parties <- format_party_name_column(party_labels, py_codes)
-
-  action_codes <- party_data$py_code
-  action_codes <- if (is.null(action_codes)) rep("", row_count) else as.character(action_codes)
-  action_codes[is.na(action_codes)] <- ""
+  actions <- create_action_buttons("party_link_click", "Details", py_codes)
 
   obs_counts <- suppressWarnings(as.integer(party_data$obs_count))
   obs_counts[is.na(obs_counts)] <- 0L
 
   data.frame(
-    "Actions" = action_codes,
-    "Party" = formatted_parties,
-    "Organization" = organizations,
-    "Observations" = obs_counts,
-    "Contact" = contact_info,
+    "Actions" = actions,
+    "Vegbank Code" = vapply(py_codes, htmltools::htmlEscape, character(1)),
+    "Party" = vapply(party_labels, htmltools::htmlEscape, character(1)),
+    "Organization" = vapply(organizations, htmltools::htmlEscape, character(1)),
+    "Contributions" = obs_counts,
+    "Contact" = vapply(contact_info, htmltools::htmlEscape, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
-}
-
-#' Build HTML-friendly party string with py_code
-#'
-#' Creates multi-line HTML party strings with the party_label on top and
-#' the party code (py_code) in green below.
-#'
-#' @param labels Character vector of party labels
-#' @param codes Character vector of party codes (py_code)
-#' @return Character vector of HTML-formatted party strings
-#' @noRd
-format_party_name_column <- function(labels, codes) {
-  vapply(seq_along(labels), function(idx) {
-    label <- labels[[idx]]
-    code <- codes[[idx]]
-
-    lines <- character(0)
-
-    if (!is.null(label) && !is.na(label) && nzchar(label)) {
-      lines <- c(lines, as.character(htmltools::htmlEscape(label)))
-    } else {
-      lines <- c(lines, "Not provided")
-    }
-
-    if (!is.null(code) && !is.na(code) && nzchar(code)) {
-      code_line <- sprintf(
-        '<span style="color: #2c5443; font-size: small;">%s</span>',
-        as.character(htmltools::htmlEscape(code))
-      )
-      lines <- c(lines, code_line)
-    }
-
-    paste(lines, collapse = "<br>")
-  }, character(1), USE.NAMES = FALSE)
 }
 
 #' Normalize party API responses into a consistent schema
@@ -146,7 +103,13 @@ PARTY_TABLE_SPEC <- list(
   data_source = list(
     detail = "full",
     clean_names = FALSE,
-    clean_rows_fn = sanitize_dt_rows
+    clean_rows_fn = sanitize_dt_rows,
+    sort_field_map = list(
+      "1" = "default", # Vegbank Code
+      "2" = "surname", # Party (sort by surname)
+      "3" = "organization_name", # Organization
+      "4" = "obs_count" # Contributions
+    )
   ),
   page_length = NULL,
   options = list(),

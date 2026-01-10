@@ -18,21 +18,14 @@ test_that("project table spec wires AJAX data source", {
   config <- build_table_config_from_spec(vegbankweb:::PROJECT_TABLE_SPEC)
 
   expect_true(is.list(config))
-  expect_equal(length(config$column_defs), 7)
+  expect_equal(length(config$column_defs), 8)
   expect_equal(config$column_defs[[1]]$targets, 0)
-  expect_equal(
-    as.character(config$column_defs[[1]]$render),
-    as.character(create_action_button_renderer("proj_link_click", "Details"))
-  )
-
   expect_s3_class(config$initial_data, "data.frame")
   expect_equal(nrow(config$initial_data), 0)
-  expect_equal(colnames(config$initial_data), c("Actions", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
-
+  expect_equal(colnames(config$initial_data), c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
   expect_true(is.function(config$ajax))
   ajax_env <- environment(config$ajax)
   spec <- ajax_env$data_source_spec
-
   expect_equal(spec$table_id, "proj_table")
   expect_equal(spec$resource, "projects")
   expect_equal(spec$detail, "full")
@@ -40,7 +33,6 @@ test_that("project table spec wires AJAX data source", {
   expect_true(is.function(spec$normalize_fn))
   expect_true(is.function(spec$display_fn))
   expect_equal(colnames(spec$empty_factory()), PROJECT_TABLE_FIELDS)
-
   expect_match(config$options$language$processing, "project records", ignore.case = TRUE)
 })
 
@@ -59,13 +51,9 @@ test_that("process_project_data formats normalized data", {
   result <- process_project_data(test_data)
 
   expect_equal(nrow(result), 3)
-  expect_equal(result$Actions, c("pj.1", "pj.2", "pj.314"))
-  # Project column now includes HTML-formatted pj_code below the name
-  expect_true(grepl("Alpha", result$Project[1]))
-  expect_true(grepl("pj.1", result$Project[1]))
-  expect_true(grepl("#2c5443", result$Project[1]))
-  expect_true(grepl("Beta", result$Project[2]))
-  expect_true(grepl("pj.2", result$Project[2]))
+  expect_true(all(grepl("<button", result$Actions)))
+  expect_equal(result$`Vegbank Code`, vapply(c("pj.1", "pj.2", "pj.314"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
+  expect_equal(result$Project, c("Alpha", "Beta", "Walker et al. 2010"))
   expect_equal(result$Description, c("Not provided", "Second", "Angelina National Forest.  Sampling work conducted between 1998 and 2002 supported the application of the United States National Vegetation Classification (USNVC) standard to Region 8 Forests. This resulted in a basic list of vegetation units (alliances and community associations) for the National Forests in this region.\nThe vegetation classification produced through this agreement, and the NatureServe Ecological Systems Classification which is based on it, form the foundation for continuing use of the USNVC on U.S. Forest Service lands in Region 8 for natural resource planning and management.\nReports on the US National Vegetation Classification for various National Fores..."))
   expect_equal(result$Plots, c(0L, 12L, 149L))
   expect_equal(result$Started, c("Not provided", "1997-08-21", "2022-01-01"))
@@ -77,5 +65,5 @@ test_that("process_project_data handles empty input", {
   result <- process_project_data(vegbankweb:::PROJECT_TABLE_SCHEMA_TEMPLATE)
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
-  expect_equal(colnames(result), c("Actions", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
+  expect_equal(colnames(result), c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
 })

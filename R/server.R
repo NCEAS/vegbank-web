@@ -60,7 +60,7 @@ server <- function(input, output, session) {
     plots = list(tab = "Plots", table_id = "plot_table", default_length = 100L),
     plants = list(tab = "Plants", table_id = "plant_table", default_length = 100L),
     communities = list(tab = "Communities", table_id = "comm_table", default_length = 100L),
-    people = list(tab = "People", table_id = "party_table", default_length = 100L),
+    parties = list(tab = "Parties", table_id = "party_table", default_length = 100L),
     projects = list(tab = "Projects", table_id = "proj_table", default_length = 100L)
   )
 
@@ -637,7 +637,7 @@ server <- function(input, output, session) {
           "co-occurring plant species. You can also search them by name or browse the full list."
         ),
         htmltools::tags$li(
-          htmltools::tags$strong("People:"),
+          htmltools::tags$strong("Parties:"),
           " Find contributors, authors, and parties associated with plot data."
         ),
         htmltools::tags$li(

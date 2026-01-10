@@ -31,7 +31,7 @@ build_project_details_view <- function(result) {
       htmltools::tags$p("Number of observations: ", htmltools::tags$strong(result$obs_count))
     }),
     project_description = shiny::renderUI({
-      htmltools::tags$div(id = "project-description", htmltools::HTML(result$project_description))
+      htmltools::tags$div(id = "project-description", htmltools::htmlEscape(result$project_description))
     }),
     project_dates = render_detail_table(c("start_date", "stop_date", "last_plot_added_date"), result),
     # TODO: Implement contributor listing when API supports cross-resource queries

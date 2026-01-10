@@ -61,7 +61,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
           create_section_header("Description", "10px"),
           htmltools::tags$div(
             id = "concept-description",
-            htmltools::HTML(result[[description_field]] %|||% "No description available")
+            htmltools::htmlEscape(result[[description_field]] %|||% "No description available")
           )
         )
       }
