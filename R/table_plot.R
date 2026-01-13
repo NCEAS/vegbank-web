@@ -73,7 +73,10 @@ build_plot_table <- function() {
 #' @return A DT::datatable object
 #' @noRd
 build_plot_table_with_filter <- function(vb_code = NULL) {
+  # Deep copy to avoid mutating the shared PLOT_TABLE_SPEC
   spec <- PLOT_TABLE_SPEC
+  spec$data_source <- utils::modifyList(spec$data_source, list())
+  spec$data_source$query <- as.list(spec$data_source$query)
 
   # Add vb_code to query if filtering is active
   if (!is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)) {
