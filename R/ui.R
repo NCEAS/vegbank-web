@@ -1221,7 +1221,8 @@ build_detail_overlay <- function() {
           id = "cover-method-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Cover Method"), shiny::uiOutput("cover_method_header")),
-          bslib::card(bslib::card_header("Details"), shiny::uiOutput("cover_method_details"))
+          bslib::card(bslib::card_header("Details"), shiny::uiOutput("cover_method_details")),
+          bslib::card(bslib::card_header("Cover Indexes"), shiny::uiOutput("cover_method_indexes"))
         )
       )
     )

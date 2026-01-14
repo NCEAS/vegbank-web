@@ -40,7 +40,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         "reference" =
           vegbankr::vb_get_references(vb_code, detail = "full"),
         "cover-method" =
-          vegbankr::vb_get_cover_methods(vb_code, detail = "full")
+          vegbankr::vb_get_cover_methods(vb_code, detail = "full", with_nested = TRUE)
       )
 
       if (length(result) == 0) {
@@ -92,6 +92,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$reference_publication <- shiny::renderUI(NULL)
       output$cover_method_header <- shiny::renderUI(NULL)
       output$cover_method_details <- shiny::renderUI(NULL)
+      output$cover_method_indexes <- shiny::renderUI(NULL)
 
       shiny::incProgress(0.5, "Processing details")
 
@@ -152,6 +153,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           details <- build_cover_method_details_view(result)
           output$cover_method_header <- details$cover_method_header
           output$cover_method_details <- details$cover_method_details
+          output$cover_method_indexes <- details$cover_method_indexes
         }
       )
 

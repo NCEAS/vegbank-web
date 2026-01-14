@@ -9,7 +9,7 @@
 build_cover_method_details_view <- function(result) {
   if (is.null(result) || nrow(result) == 0) {
     return(create_empty_detail_view(
-      c("cover_method_header", "cover_method_details"),
+      c("cover_method_header", "cover_method_details", "cover_method_indexes"),
       "Cover method details"
     ))
   }
@@ -52,8 +52,46 @@ build_cover_method_details_view <- function(result) {
     create_detail_table(details, col_names = col_names)
   })
 
+  # Cover Indexes Card - render table of cover indexes
+  indexes_ui <- shiny::renderUI({
+    # Extract nested cover_indexes
+    cover_indexes <- extract_nested_table(cm, "cover_indexes")
+
+    if (is.null(cover_indexes) || nrow(cover_indexes) == 0) {
+      return(htmltools::tags$p("No cover indexes recorded"))
+    }
+
+    # Build table rows
+    rows <- lapply(seq_len(nrow(cover_indexes)), function(i) {
+      idx <- cover_indexes[i, ]
+      htmltools::tags$tr(
+        htmltools::tags$td(idx$cover_code %|||% ""),
+        htmltools::tags$td(idx$lower_limit %|||% ""),
+        htmltools::tags$td(idx$upper_limit %|||% ""),
+        htmltools::tags$td(idx$cover_percent %|||% ""),
+        htmltools::tags$td(idx$index_description %|||% "")
+      )
+    })
+
+    htmltools::tags$table(
+      class = "table table-sm table-striped table-hover",
+      style = "width: 100%; table-layout: auto; word-break: break-word; white-space: normal;",
+      htmltools::tags$thead(
+        htmltools::tags$tr(
+          htmltools::tags$th("Cover Code"),
+          htmltools::tags$th("Lower Limit %"),
+          htmltools::tags$th("Upper Limit %"),
+          htmltools::tags$th("Cover %"),
+          htmltools::tags$th("Index Desc")
+        )
+      ),
+      htmltools::tags$tbody(rows)
+    )
+  })
+
   list(
     cover_method_header = header_ui,
-    cover_method_details = details_ui
+    cover_method_details = details_ui,
+    cover_method_indexes = indexes_ui
   )
 }
