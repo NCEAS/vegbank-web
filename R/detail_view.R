@@ -38,7 +38,9 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         "plant-concept" =
           vegbankr::vb_get_plant_concepts(vb_code, detail = "full", with_nested = TRUE),
         "reference" =
-          vegbankr::vb_get_references(vb_code, detail = "full")
+          vegbankr::vb_get_references(vb_code, detail = "full"),
+        "cover-method" =
+          vegbankr::vb_get_cover_methods(vb_code, detail = "full")
       )
 
       if (length(result) == 0) {
@@ -88,6 +90,8 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$reference_header <- shiny::renderUI(NULL)
       output$reference_identifiers <- shiny::renderUI(NULL)
       output$reference_publication <- shiny::renderUI(NULL)
+      output$cover_method_header <- shiny::renderUI(NULL)
+      output$cover_method_details <- shiny::renderUI(NULL)
 
       shiny::incProgress(0.5, "Processing details")
 
@@ -143,6 +147,11 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           output$reference_header <- details$reference_header
           output$reference_identifiers <- details$reference_identifiers
           output$reference_publication <- details$reference_publication
+        },
+        "cover-method" = {
+          details <- build_cover_method_details_view(result)
+          output$cover_method_header <- details$cover_method_header
+          output$cover_method_details <- details$cover_method_details
         }
       )
 

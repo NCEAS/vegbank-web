@@ -98,6 +98,7 @@ coverdispersion,cover_dispersion,Cover Dispersion
 coverestimationmethod,cover_estimation_method,Cover Estimation Method
 coverindex_id,cover_index_id,Cover Index ID
 covermethod_id,cover_method_id,Cover Method ID
+covermethod_name,cover_method_name,Cover Method Name
 covermethodaccessioncode,cover_method_accession_code,Cover Method Accession Code
 coverpercent,cover_percent,Cover Percent
 covertype,cover_type,Cover Type

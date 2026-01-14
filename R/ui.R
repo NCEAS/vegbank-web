@@ -864,11 +864,12 @@ ui <- function(req) {
       const partyCards = document.getElementById('party-details-cards');
       const plantConceptCards = document.getElementById('plant-concept-details-cards');
       const referenceCards = document.getElementById('reference-details-cards');
+      const coverMethodCards = document.getElementById('cover-method-details-cards');
 
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards &&
-          projectCards && partyCards && plantConceptCards && referenceCards) {
+          projectCards && partyCards && plantConceptCards && referenceCards && coverMethodCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
@@ -877,6 +878,7 @@ ui <- function(req) {
         partyCards.style.display = 'none';
         plantConceptCards.style.display = 'none';
         referenceCards.style.display = 'none';
+        coverMethodCards.style.display = 'none';
 
         // Show the requested type
         if (type === 'plot-observation') {
@@ -900,6 +902,9 @@ ui <- function(req) {
         } else if (type === 'reference') {
           console.log('Showing reference details');
           referenceCards.style.display = 'block';
+        } else if (type === 'cover-method') {
+          console.log('Showing cover method details');
+          coverMethodCards.style.display = 'block';
         }
       }
     });
@@ -1209,6 +1214,14 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Reference"), shiny::uiOutput("reference_header")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("reference_identifiers")),
           bslib::card(bslib::card_header("Publication"), shiny::uiOutput("reference_publication"))
+        ),
+
+        # Cover Method Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "cover-method-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Cover Method"), shiny::uiOutput("cover_method_header")),
+          bslib::card(bslib::card_header("Details"), shiny::uiOutput("cover_method_details"))
         )
       )
     )

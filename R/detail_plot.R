@@ -212,24 +212,79 @@ build_plot_obs_details_view <- function(result) {
       plot_observation
     ),
     location_details = render_detail_table(
-      c("confidentiality_text", "latitude", "longitude", "location_narrative", "state_province", "country"),
+      c("location_accuracy","confidentiality_text", "latitude", "longitude", "author_location","location_narrative", "state_province", "country"),
       plot_observation
     ),
     layout_details = render_detail_table(
-      c("area", "permanence"),
+      c("azimuth", "shape", "area", "permanence"),
       plot_observation
     ),
     environmental_details = render_detail_table(
-      c("elevation", "slope_aspect", "slope_gradient"),
+      c("stand_size", "elevation", "slope_aspect", "slope_gradient", "topographic_position", "landform", "homogeneity", "phenologic_aspect", "hydrologic_regime", "soil_drainage", "water_salinity", "soil_taxon_src"),
       plot_observation
     ),
-    methods_details = render_detail_table(
-      c(
-        "project_name", "cover_type", "stratum_method_name", "stratum_method_description",
-        "taxon_observation_area", "auto_taxon_cover"
-      ),
-      plot_observation
-    ),
+    # TODO: This should be less verbose and shouldn't hide fields if they are missing
+    methods_details = shiny::renderUI({
+      display_names <- get_field_display_names()
+
+      # Build methods details with cover method link
+      details <- list()
+
+      if (has_valid_field_value(plot_observation, "method_narrative")) {
+        details$method_narrative <- plot_observation$method_narrative
+      }
+
+      if (has_valid_field_value(plot_observation, "placement_method")) {
+        details$placement_method <- plot_observation$placement_method
+      }
+
+      # Add cover method as a link if both cm_code and cover_method_name exist
+      if (has_valid_field_value(plot_observation, "cm_code") &&
+        has_valid_field_value(plot_observation, "cover_method_name")) {
+        details$cover_method_name <- create_detail_link(
+          "cover_method_link_click",
+          plot_observation$cm_code,
+          plot_observation$cover_method_name
+        )
+      } else if (has_valid_field_value(plot_observation, "cover_type")) {
+        # Fallback to cover_type if cover_method_name is not available
+        details$cover_type <- plot_observation$cover_type
+      }
+
+      if (has_valid_field_value(plot_observation, "stratum_method_name")) {
+        details$stratum_method_name <- plot_observation$stratum_method_name
+      }
+
+      if (has_valid_field_value(plot_observation, "stem_sample_method")) {
+        details$stem_sample_method <- plot_observation$stem_sample_method
+      }
+
+      if (has_valid_field_value(plot_observation, "stem_observation_area")) {
+        details$stem_observation_area <- plot_observation$stem_observation_area
+      }
+
+      if (has_valid_field_value(plot_observation, "stem_size_limit")) {
+        details$stem_size_limit <- plot_observation$stem_size_limit
+      }
+
+      if (has_valid_field_value(plot_observation, "taxon_observation_area")) {
+        details$taxon_observation_area <- plot_observation$taxon_observation_area
+      }
+
+      if (has_valid_field_value(plot_observation, "cover_dispersion")) {
+        details$cover_dispersion <- plot_observation$cover_dispersion
+      }
+
+      if (has_valid_field_value(plot_observation, "auto_taxon_cover")) {
+        details$auto_taxon_cover <- ifelse(plot_observation$auto_taxon_cover, "Yes", "No")
+      }
+
+      if (length(details) == 0) {
+        return(htmltools::tags$p("No data available for this section"))
+      }
+
+      create_detail_table(details, col_names = display_names)
+    }),
     plot_quality_details = render_detail_table(
       "plot_validation_level_descr",
       plot_observation
