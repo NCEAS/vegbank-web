@@ -69,23 +69,50 @@ build_cover_method_details_view <- function(result) {
         htmltools::tags$td(idx$lower_limit %|||% ""),
         htmltools::tags$td(idx$upper_limit %|||% ""),
         htmltools::tags$td(idx$cover_percent %|||% ""),
-        htmltools::tags$td(idx$index_description %|||% "")
+        htmltools::tags$td(
+          class = "cover-index-description",
+          style = "display: none;",
+          idx$index_description %|||% ""
+        )
       )
     })
 
-    htmltools::tags$table(
-      class = "table table-sm table-striped table-hover",
-      style = "width: 100%; table-layout: auto; word-break: break-word; white-space: normal;",
-      htmltools::tags$thead(
-        htmltools::tags$tr(
-          htmltools::tags$th("Cover Code"),
-          htmltools::tags$th("Lower Limit %"),
-          htmltools::tags$th("Upper Limit %"),
-          htmltools::tags$th("Cover %"),
-          htmltools::tags$th("Index Desc")
+    htmltools::tagList(
+      # Toggle for description column
+      htmltools::tags$div(
+        style = "margin-bottom: 10px;",
+        htmltools::tags$label(style = "display: flex; align-items: center;",
+          htmltools::tags$input(
+            type = "checkbox",
+            id = "toggle_cover_index_description",
+            onclick = "
+              var descCells = document.querySelectorAll('.cover-index-description, .cover-index-description-header');
+              descCells.forEach(function(cell) {
+                cell.style.display = cell.style.display === 'none' ? '' : 'none';
+              });
+            "
+          ),
+          htmltools::tags$span(" Show Index Description Column", style = "margin-left: 5px;")
         )
       ),
-      htmltools::tags$tbody(rows)
+      htmltools::tags$table(
+        class = "table table-sm table-striped table-hover",
+        style = "width: 100%; table-layout: auto; word-break: break-word; white-space: normal;",
+        htmltools::tags$thead(
+          htmltools::tags$tr(
+            htmltools::tags$th("Cover Code"),
+            htmltools::tags$th("Lower Limit %"),
+            htmltools::tags$th("Upper Limit %"),
+            htmltools::tags$th("Cover %"),
+            htmltools::tags$th(
+              class = "cover-index-description-header",
+              style = "display: none;",
+              "Index Desc"
+            )
+          )
+        ),
+        htmltools::tags$tbody(rows)
+      )
     )
   })
 
