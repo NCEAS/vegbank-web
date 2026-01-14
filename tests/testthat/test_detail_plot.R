@@ -7,13 +7,13 @@ test_that("build_plot_obs_details_view handles NULL data gracefully", {
   # It should return a list with placeholder components (no plot_header for empty data)
   expect_type(result, "list")
   expect_named(result, c(
-    "plot_header", "plot_id_details", "location_details", "layout_details",
+    "plot_header", "author_code_details", "location_details", "layout_details",
     "environmental_details", "methods_details", "plot_quality_details",
     "taxa_details", "communities_details"
   ))
 
   # Each component should be a render function
-  expect_true(inherits(result$plot_id_details, "shiny.render.function"))
+  expect_true(inherits(result$author_code_details, "shiny.render.function"))
 })
 
 test_that("build_plot_obs_details_view formats plot data correctly", {
@@ -22,13 +22,13 @@ test_that("build_plot_obs_details_view formats plot data correctly", {
   # Test structure and types (includes plot_header when data is present)
   expect_type(result, "list")
   expect_named(result, c(
-    "plot_header", "plot_id_details", "location_details", "layout_details",
+    "plot_header", "author_code_details", "location_details", "layout_details",
     "environmental_details", "methods_details", "plot_quality_details",
     "taxa_details", "communities_details"
   ))
 
   # Each component should be a render function
-  expect_true(inherits(result$plot_id_details, "shiny.render.function"))
+  expect_true(inherits(result$author_code_details, "shiny.render.function"))
 })
 
 test_that("normalize_plot_obs_result handles dataframe payload format", {

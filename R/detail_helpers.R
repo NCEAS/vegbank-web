@@ -81,6 +81,42 @@ get_field_display_names <- function() {
   }
 }
 
+#' Apply Units to Field Value
+#'
+#' Applies appropriate units to field values based on a lookup map of field names to unit strings.
+#' Only appends units to non-empty, non-"Not recorded" values.
+#'
+#' @param field_name The name of the field
+#' @param value The value to format (can be "Not recorded", NA, or actual value)
+#' @return The value with units appended if applicable, otherwise the original value
+#' @noRd
+apply_units <- function(field_name, value) {
+  # Skip if value is "Not recorded" or NA
+  if (is.null(value) || is.na(value) || identical(value, "Not recorded")) {
+    return(value)
+  }
+
+  unit_map <- c(
+    elevation = " m",
+    location_accuracy = " m",
+    area = " m\u00B2",
+    taxon_observation_area = " m\u00B2",
+    stem_observation_area = " m\u00B2",
+    azimuth = "\u00B0",
+    slope_aspect = "\u00B0",
+    slope_gradient = "\u00B0",
+    latitude = "\u00B0",
+    longitude = "\u00B0",
+    stem_size_limit = " cm"
+  )
+
+  if (field_name %in% names(unit_map)) {
+    paste0(value, unit_map[[field_name]])
+  } else {
+    value
+  }
+}
+
 #' Format Dataframe Fields as Detail Table HTML
 #'
 #' Extracts and formats field values from a dataframe for display in a detail table.
@@ -88,9 +124,11 @@ get_field_display_names <- function() {
 #'
 #' @param fields A character vector of field names to display from the dataframe
 #' @param dataframe A dataframe containing the data to display
+#' @param skip_empty Logical indicating whether to skip fields with no recorded values (default: FALSE)
+#' @param apply_units Logical indicating whether to apply units to numeric fields (default: TRUE)
 #' @return An HTML table element or a paragraph tag if no data is available
 #' @noRd
-format_fields_for_detail_table <- function(fields, dataframe) {
+format_fields_for_detail_table <- function(fields, dataframe, skip_empty = FALSE, apply_units = TRUE) {
   display_names <- get_field_display_names()
   valid_fields <- fields[fields %in% colnames(dataframe)]
 
@@ -106,6 +144,22 @@ format_fields_for_detail_table <- function(fields, dataframe) {
     if (is.logical(x)) ifelse(x, "Yes", "No") else x
   })
 
+  # Skip empty fields if requested
+  if (skip_empty) {
+    non_empty <- sapply(values, function(x) !identical(x, "Not recorded"))
+    values <- values[non_empty]
+    valid_fields <- valid_fields[non_empty]
+  }
+
+  # Apply units if requested
+  if (apply_units) {
+    values <- mapply(apply_units, valid_fields, values, SIMPLIFY = FALSE, USE.NAMES = TRUE)
+  }
+
+  if (length(values) == 0) {
+    return(htmltools::tags$p("No data available for this section"))
+  }
+
   create_detail_table(values, col_names = display_names)
 }
 
@@ -116,11 +170,13 @@ format_fields_for_detail_table <- function(fields, dataframe) {
 #'
 #' @param fields A character vector of field names to display from the dataframe
 #' @param dataframe A dataframe containing the data to display
+#' @param skip_empty Logical indicating whether to skip fields with no recorded values (default: FALSE)
+#' @param apply_units Logical indicating whether to apply units to numeric fields (default: TRUE)
 #' @return A shiny.render.function that renders the detail table
 #' @noRd
-render_detail_table <- function(fields, dataframe) {
+render_detail_table <- function(fields, dataframe, skip_empty = FALSE, apply_units = TRUE) {
   shiny::renderUI({
-    format_fields_for_detail_table(fields, dataframe)
+    format_fields_for_detail_table(fields, dataframe, skip_empty = skip_empty, apply_units = apply_units)
   })
 }
 

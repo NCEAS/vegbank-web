@@ -1,7 +1,7 @@
 #' @noRd
 plot_detail_output_names <- c(
   "plot_header",
-  "plot_id_details", "date_details", "location_details", "layout_details",
+  "author_code_details", "date_details", "location_details", "layout_details",
   "environmental_details", "methods_details", "plot_quality_details",
   "taxa_details", "communities_details"
 )
@@ -128,9 +128,41 @@ build_plot_obs_details_view <- function(result) {
 
   plot_observation <- normalized$plot_observation
 
-  # Format Elevation
-  if (!is.na(plot_observation$elevation)) {
-    plot_observation$elevation <- paste0(round(as.numeric(plot_observation$elevation)), " m")
+  ### Compute formatted fields for use in detail tables
+
+  # Date range for date_details card
+  plot_observation$observed_date <- format_date_range(
+    plot_observation$obs_start_date,
+    plot_observation$obs_end_date,
+    worded = FALSE
+  )
+  # Format entered date for date_details card
+  plot_observation$date_entered <- format_date(plot_observation$date_entered)
+
+  # Format lat and lng to 7 dec place for location_details card
+  if (has_valid_field_value(plot_observation, "latitude")) {
+    plot_observation$latitude <- formatC(plot_observation$latitude, format = "f", digits = 7)
+  }
+  if (has_valid_field_value(plot_observation, "longitude")) {
+    plot_observation$longitude <- formatC(plot_observation$longitude, format = "f", digits = 7)
+  }
+
+  # Elevation to two decimal places for environmental_details card
+  if (has_valid_field_value(plot_observation, "elevation")) {
+    plot_observation$elevation <- formatC(as.numeric(plot_observation$elevation), format = "f", digits = 2)
+  }
+
+  # Cover method display (link or fallback) for methods_details card
+  # Must use list() to wrap HTML tag objects for tibble compatibility
+  if (has_valid_field_value(plot_observation, "cm_code") &&
+        has_valid_field_value(plot_observation, "cover_method_name")) {
+    plot_observation$cover_method_display <- list(create_detail_link(
+      "cover_method_link_click",
+      plot_observation$cm_code,
+      plot_observation$cover_method_name
+    ))
+  } else {
+    plot_observation$cover_method_display <- NA_character_
   }
 
   taxa_details_ui <- shiny::renderUI({
@@ -207,121 +239,42 @@ build_plot_obs_details_view <- function(result) {
         }
       )
     }),
-    plot_id_details = render_detail_table(
+    author_code_details = render_detail_table(
       c("author_obs_code", "author_plot_code"),
       plot_observation
     ),
-    date_details = shiny::renderUI({
-      display_names <- get_field_display_names()
-
-      details <- list()
-
-      # Observed date range
-      if (has_valid_field_value(plot_observation, "obs_start_date") ||
-        has_valid_field_value(plot_observation, "obs_end_date")) {
-        details$observed_date <- format_date_range(
-          plot_observation$obs_start_date,
-          plot_observation$obs_end_date,
-          worded = FALSE
-        )
-      }
-
-      # Uploaded date
-      if (has_valid_field_value(plot_observation, "date_entered")) {
-        details$date_entered <- format_date(plot_observation$date_entered)
-      }
-
-      # Date accuracy
-      if (has_valid_field_value(plot_observation, "date_accuracy")) {
-        details$date_accuracy <- plot_observation$date_accuracy
-      }
-
-      if (length(details) == 0) {
-        return(htmltools::tags$p("No data available for this section"))
-      }
-
-      col_names <- c(
-        observed_date = "Observed",
-        date_entered = "Uploaded",
-        date_accuracy = "Date Accuracy"
-      )
-
-      create_detail_table(details, col_names = col_names)
-    }),
+    date_details = render_detail_table(
+      c("observed_date", "date_entered", "date_accuracy"),
+      plot_observation,
+      skip_empty = TRUE
+    ),
     location_details = render_detail_table(
       c("location_accuracy", "confidentiality_text", "latitude", "longitude", "author_location", "location_narrative", "state_province", "country"),
-      plot_observation
+      plot_observation,
+      skip_empty = TRUE,
+      apply_units = TRUE
     ),
     layout_details = render_detail_table(
       c("azimuth", "shape", "area", "permanence"),
-      plot_observation
+      plot_observation,
+      skip_empty = TRUE,
+      apply_units = TRUE
     ),
     environmental_details = render_detail_table(
       c("stand_size", "elevation", "slope_aspect", "slope_gradient", "topographic_position", "landform", "homogeneity", "phenologic_aspect", "hydrologic_regime", "soil_drainage", "water_salinity", "soil_taxon_src"),
-      plot_observation
+      plot_observation,
+      skip_empty = TRUE,
+      apply_units = TRUE
     ),
-    # TODO: This should be less verbose and shouldn't hide fields if they are missing
-    methods_details = shiny::renderUI({
-      display_names <- get_field_display_names()
-
-      # Build methods details with cover method link
-      details <- list()
-
-      if (has_valid_field_value(plot_observation, "method_narrative")) {
-        details$method_narrative <- plot_observation$method_narrative
-      }
-
-      if (has_valid_field_value(plot_observation, "placement_method")) {
-        details$placement_method <- plot_observation$placement_method
-      }
-
-      # Add cover method as a link if both cm_code and cover_method_name exist
-      if (has_valid_field_value(plot_observation, "cm_code") &&
-        has_valid_field_value(plot_observation, "cover_method_name")) {
-        details$cover_method_name <- create_detail_link(
-          "cover_method_link_click",
-          plot_observation$cm_code,
-          plot_observation$cover_method_name
-        )
-      } else if (has_valid_field_value(plot_observation, "cover_type")) {
-        # Fallback to cover_type if cover_method_name is not available
-        details$cover_type <- plot_observation$cover_type
-      }
-
-      if (has_valid_field_value(plot_observation, "stratum_method_name")) {
-        details$stratum_method_name <- plot_observation$stratum_method_name
-      }
-
-      if (has_valid_field_value(plot_observation, "stem_sample_method")) {
-        details$stem_sample_method <- plot_observation$stem_sample_method
-      }
-
-      if (has_valid_field_value(plot_observation, "stem_observation_area")) {
-        details$stem_observation_area <- plot_observation$stem_observation_area
-      }
-
-      if (has_valid_field_value(plot_observation, "stem_size_limit")) {
-        details$stem_size_limit <- plot_observation$stem_size_limit
-      }
-
-      if (has_valid_field_value(plot_observation, "taxon_observation_area")) {
-        details$taxon_observation_area <- plot_observation$taxon_observation_area
-      }
-
-      if (has_valid_field_value(plot_observation, "cover_dispersion")) {
-        details$cover_dispersion <- plot_observation$cover_dispersion
-      }
-
-      if (has_valid_field_value(plot_observation, "auto_taxon_cover")) {
-        details$auto_taxon_cover <- ifelse(plot_observation$auto_taxon_cover, "Yes", "No")
-      }
-
-      if (length(details) == 0) {
-        return(htmltools::tags$p("No data available for this section"))
-      }
-
-      create_detail_table(details, col_names = display_names)
-    }),
+    methods_details = render_detail_table(
+      c("method_narrative", "placement_method", "cover_method_display",
+        "stratum_method_name", "stem_sample_method", "stem_observation_area",
+        "stem_size_limit", "taxon_observation_area", "cover_dispersion",
+        "auto_taxon_cover"),
+      plot_observation,
+      skip_empty = TRUE,
+      apply_units = TRUE
+    ),
     plot_quality_details = render_detail_table(
       "plot_validation_level_descr",
       plot_observation

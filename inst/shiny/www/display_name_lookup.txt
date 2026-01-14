@@ -649,3 +649,5 @@ organizationname,organization_name,Organization
 contactinstructions,contact_instructions,Contact Instructions
 partyid,party_id,Party ID
 partyaccessioncode,party_accession_code,Party Accession Code
+observeddate,observed_date,Observed
+covermethoddisplay,cover_method_display,Cover Method
