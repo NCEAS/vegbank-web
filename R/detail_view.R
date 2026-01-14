@@ -55,6 +55,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       # Clear all output slots - names must stay aligned with ui.R definitions
       output$plot_header <- shiny::renderUI(NULL)
       output$plot_id_details <- shiny::renderUI(NULL)
+      output$date_details <- shiny::renderUI(NULL)
       output$location_details <- shiny::renderUI(NULL)
       output$layout_details <- shiny::renderUI(NULL)
       output$environmental_details <- shiny::renderUI(NULL)
@@ -129,6 +130,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           details <- build_plot_obs_details_view(result)
           output$plot_header <- details$plot_header
           output$plot_id_details <- details$plot_id_details
+          output$date_details <- details$date_details
           output$location_details <- details$location_details
           output$layout_details <- details$layout_details
           output$environmental_details <- details$environmental_details

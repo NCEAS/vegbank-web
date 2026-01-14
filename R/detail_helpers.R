@@ -297,22 +297,40 @@ has_valid_field_value <- function(data, field) {
 #' @param start_date Start date (as string or Date object)
 #' @param stop_date Stop date (as string or Date object)
 #' @param format_string Date format string for output (default: "%Y-%m-%d")
-#' @return Formatted date range string (e.g., "From 2020-01-01 to 2023-12-31")
+#' @param worded Logical indicating whether to use words like "From", "to", "Until" (TRUE, default)
+#'               or just an en dash separator (FALSE)
+#' @return Formatted date range string (e.g., "From 2020-01-01 to 2023-12-31" or "2020-01-01 – 2023-12-31")
 #' @noRd
-format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d") {
+format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d", worded = TRUE) {
   start_parsed <- safe_parse_date(start_date)
   stop_parsed <- safe_parse_date(stop_date)
 
   if (!is.na(start_parsed) && !is.na(stop_parsed)) {
     if (start_parsed == stop_parsed) {
-      paste0("From ", format(start_parsed, format_string))
+      if (worded) {
+        paste0("From ", format(start_parsed, format_string))
+      } else {
+        format(start_parsed, format_string)
+      }
     } else {
-      paste0("From ", format(start_parsed, format_string), " to ", format(stop_parsed, format_string))
+      if (worded) {
+        paste0("From ", format(start_parsed, format_string), " to ", format(stop_parsed, format_string))
+      } else {
+        paste0(format(start_parsed, format_string), " \u2013 ", format(stop_parsed, format_string))
+      }
     }
   } else if (!is.na(start_parsed)) {
-    paste0("From ", format(start_parsed, format_string))
+    if (worded) {
+      paste0("From ", format(start_parsed, format_string))
+    } else {
+      format(start_parsed, format_string)
+    }
   } else if (!is.na(stop_parsed)) {
-    paste0("Until ", format(stop_parsed, format_string))
+    if (worded) {
+      paste0("Until ", format(stop_parsed, format_string))
+    } else {
+      format(stop_parsed, format_string)
+    }
   } else {
     "Date not recorded"
   }

@@ -1149,6 +1149,7 @@ build_detail_overlay <- function() {
           class = "detail-section",
           bslib::card(bslib::card_header("Plot Observation"), shiny::uiOutput("plot_header")),
           bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
+          bslib::card(bslib::card_header("Dates"), shiny::uiOutput("date_details")),
           bslib::card(bslib::card_header("Location"), shiny::uiOutput("location_details")),
           bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
           bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),

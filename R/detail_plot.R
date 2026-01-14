@@ -1,7 +1,7 @@
 #' @noRd
 plot_detail_output_names <- c(
   "plot_header",
-  "plot_id_details", "location_details", "layout_details",
+  "plot_id_details", "date_details", "location_details", "layout_details",
   "environmental_details", "methods_details", "plot_quality_details",
   "taxa_details", "communities_details"
 )
@@ -211,8 +211,45 @@ build_plot_obs_details_view <- function(result) {
       c("author_obs_code", "author_plot_code"),
       plot_observation
     ),
+    date_details = shiny::renderUI({
+      display_names <- get_field_display_names()
+
+      details <- list()
+
+      # Observed date range
+      if (has_valid_field_value(plot_observation, "obs_start_date") ||
+        has_valid_field_value(plot_observation, "obs_end_date")) {
+        details$observed_date <- format_date_range(
+          plot_observation$obs_start_date,
+          plot_observation$obs_end_date,
+          worded = FALSE
+        )
+      }
+
+      # Uploaded date
+      if (has_valid_field_value(plot_observation, "date_entered")) {
+        details$date_entered <- format_date(plot_observation$date_entered)
+      }
+
+      # Date accuracy
+      if (has_valid_field_value(plot_observation, "date_accuracy")) {
+        details$date_accuracy <- plot_observation$date_accuracy
+      }
+
+      if (length(details) == 0) {
+        return(htmltools::tags$p("No data available for this section"))
+      }
+
+      col_names <- c(
+        observed_date = "Observed",
+        date_entered = "Uploaded",
+        date_accuracy = "Date Accuracy"
+      )
+
+      create_detail_table(details, col_names = col_names)
+    }),
     location_details = render_detail_table(
-      c("location_accuracy","confidentiality_text", "latitude", "longitude", "author_location","location_narrative", "state_province", "country"),
+      c("location_accuracy", "confidentiality_text", "latitude", "longitude", "author_location", "location_narrative", "state_province", "country"),
       plot_observation
     ),
     layout_details = render_detail_table(
