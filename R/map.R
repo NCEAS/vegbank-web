@@ -100,9 +100,9 @@ is_invalid_map_data <- function(map_data) {
 #' @noRd
 filter_valid_map_points <- function(map_data) {
   subset(map_data, !is.na(map_data$latitude) &
-    !is.na(map_data$longitude) &
-    is.numeric(map_data$latitude) &
-    is.numeric(map_data$longitude))
+           !is.na(map_data$longitude) &
+           is.numeric(map_data$latitude) &
+           is.numeric(map_data$longitude))
 }
 
 # ---- Error Notifications ----

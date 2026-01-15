@@ -58,7 +58,7 @@ create_comm_class_header_ui <- function(result) {
         style = "color: var(--vb-green); font-weight: 600;"
       ),
       if (has_valid_field_value(result, "class_start_date") ||
-          has_valid_field_value(result, "class_stop_date")) {
+            has_valid_field_value(result, "class_stop_date")) {
         htmltools::tags$p(
           format_date_range(result$class_start_date, result$class_stop_date)
         )
@@ -99,7 +99,7 @@ create_comm_class_details_ui <- function(result) {
         htmltools::tags$td(
           class = "text-end",
           if (has_valid_field_value(result, "class_publication_rf_code") &&
-            has_valid_field_value(result, "class_publication_rf_label")) {
+                has_valid_field_value(result, "class_publication_rf_label")) {
             create_detail_link(
               "ref_link_click",
               result$class_publication_rf_code,
@@ -126,7 +126,6 @@ create_comm_class_details_ui <- function(result) {
       style = "width: 100%; table-layout: fixed; word-break: break-word;",
       htmltools::tags$tbody(rows)
     )
-
   })
 }
 
@@ -207,7 +206,7 @@ create_comm_class_interpretations_ui <- function(result) {
                   htmltools::tags$td(class = "text-end", typal_value)
                 ),
                 if ("nomenclatural_type" %in% names(interp) &&
-                  has_valid_field_value(interp, "nomenclatural_type")) {
+                      has_valid_field_value(interp, "nomenclatural_type")) {
                   htmltools::tags$tr(
                     htmltools::tags$td("Nomenclatural Type"),
                     htmltools::tags$td(class = "text-end", format_boolean(interp$nomenclatural_type))

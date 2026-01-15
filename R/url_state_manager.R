@@ -353,7 +353,7 @@ URLStateManager <- R6::R6Class(
       params$tab <- tab
 
       if (!is.null(detail_type) && !is.null(detail_code) &&
-        nzchar(detail_type) && nzchar(detail_code)) {
+            nzchar(detail_type) && nzchar(detail_code)) {
         params$detail <- detail_type
         params$code <- detail_code
 

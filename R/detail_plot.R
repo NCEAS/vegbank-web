@@ -246,7 +246,7 @@ build_plot_obs_details_view <- function(result) {
           htmltools::tags$p(format_date_range(plot_observation$obs_start_date, plot_observation$obs_end_date))
         },
         if (has_valid_field_value(plot_observation, "rf_code") &&
-          has_valid_field_value(plot_observation, "rf_label")) {
+              has_valid_field_value(plot_observation, "rf_label")) {
           htmltools::tags$p(
             htmltools::tags$span("Reference: "),
             create_detail_link("ref_link_click", plot_observation$rf_code, plot_observation$rf_label)

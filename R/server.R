@@ -494,8 +494,8 @@ server <- function(input, output, session) {
 
         # Only update if different from current state
         if (is.null(current_filter) ||
-          !identical(current_filter$code, new_filter$code) ||
-          !identical(current_filter$type, new_filter$type)) {
+              !identical(current_filter$code, new_filter$code) ||
+              !identical(current_filter$type, new_filter$type)) {
           state$plot_filter(new_filter)
         }
       } else if (!is.null(params$filter_code) || !is.null(params$filter_type)) {
@@ -575,14 +575,6 @@ server <- function(input, output, session) {
       # This ensures that when user navigates to another tab, that table's
       # pagination state is already restored from URL
       for (table_key in names(table_registry)) {
-        table_params_present <- any(vapply(
-          c("_start", "_length", "_order", "_search"),
-          function(suffix) {
-            !is.null(params[[paste0(table_key, suffix)]])
-          },
-          logical(1)
-        ))
-
         table_state_from_query <- url_manager$extract_table_state_from_query(table_key, params)
 
         if (is.null(table_state_from_query) || url_manager$is_default_table_state(table_key, table_state_from_query)) {
