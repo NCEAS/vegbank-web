@@ -71,60 +71,21 @@ build_stratum_method_details_view <- function(result) {
       htmltools::tags$tr(
         htmltools::tags$td(st$stratum_index %|||% ""),
         htmltools::tags$td(st$stratum_name %|||% ""),
-        htmltools::tags$td(
-          class = "stratum-type-description",
-          style = "display: none;",
-          st$stratum_description %|||% ""
-        )
+        htmltools::tags$td(st$stratum_description %|||% "")
       )
     })
 
     htmltools::tagList(
-      # JavaScript to handle toggle functionality
-      htmltools::tags$script(htmltools::HTML(
-        "(function() {",
-        "  function toggleStratumTypeDescription() {",
-        "    var descCells = document.querySelectorAll('.stratum-type-description, .stratum-type-description-header');",
-        "    descCells.forEach(function(cell) {",
-        "      cell.style.display = cell.style.display === 'none' ? '' : 'none';",
-        "    });",
-        "  }",
-        "  function initToggle() {",
-        "    var checkbox = document.getElementById('toggle_stratum_type_description');",
-        "    if (checkbox) {",
-        "      checkbox.addEventListener('click', toggleStratumTypeDescription);",
-        "    }",
-        "  }",
-        "  if (document.readyState !== 'loading') {",
-        "    initToggle();",
-        "  } else {",
-        "    document.addEventListener('DOMContentLoaded', initToggle);",
-        "  }",
-        "})();"
-      )),
-      # Toggle for description column
-      htmltools::tags$div(
-        style = "margin-bottom: 10px;",
-        htmltools::tags$label(style = "display: flex; align-items: center;",
-          htmltools::tags$input(
-            type = "checkbox",
-            id = "toggle_stratum_type_description",
-          ),
-          htmltools::tags$span(" Show Stratum Description Column", style = "margin-left: 5px;")
-        )
-      ),
+
+
       htmltools::tags$table(
         class = "table table-sm table-striped table-hover",
-        style = "width: 100%; table-layout: auto; word-break: break-word; white-space: normal;",
+        style = "width: 100%; table-layout: fixed; word-break: break-word; white-space: normal;",
         htmltools::tags$thead(
           htmltools::tags$tr(
-            htmltools::tags$th("Stratum Index"),
-            htmltools::tags$th("Stratum Name"),
-            htmltools::tags$th(
-              class = "stratum-type-description-header",
-              style = "display: none;",
-              "Stratum Description"
-            )
+            htmltools::tags$th(style = "width: 25%;", "Stratum Index"),
+            htmltools::tags$th(style = "width: 35%;", "Stratum Name"),
+            htmltools::tags$th(style = "width: 40%;", "Stratum Description")
           )
         ),
         htmltools::tags$tbody(rows)
