@@ -90,7 +90,7 @@ get_field_display_names <- function() {
 #' @param value The value to format (can be "Not recorded", NA, or actual value)
 #' @return The value with units appended if applicable, otherwise the original value
 #' @noRd
-apply_units <- function(field_name, value) {
+append_units <- function(field_name, value) {
   # Skip if value is "Not recorded" or NA
   if (is.null(value) || is.na(value) || identical(value, "Not recorded")) {
     return(value)
@@ -186,7 +186,7 @@ format_fields_for_detail_table <- function(fields, dataframe, skip_empty = FALSE
 
   # Apply units if requested
   if (apply_units) {
-    values <- mapply(apply_units, valid_fields, values, SIMPLIFY = FALSE, USE.NAMES = TRUE)
+    values <- mapply(append_units, valid_fields, values, SIMPLIFY = FALSE, USE.NAMES = TRUE)
   }
 
   if (length(values) == 0) {

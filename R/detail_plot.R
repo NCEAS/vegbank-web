@@ -185,11 +185,13 @@ build_plot_obs_details_view <- function(result) {
           )
         })
 
-        num_strata <- length((unique(sorted_taxa$stratum_label)))
+        num_strata <- length(unique(sorted_taxa$stratum_label))
 
         htmltools::div(
-          htmltools::tags$p(htmltools::tags$strong(plot_observation$taxon_count), " taxa observed across", 
-          htmltools::tags$strong(num_strata), " strata."),
+          htmltools::tags$p(
+            htmltools::tags$strong(plot_observation$taxon_count), " taxa observed across ",
+            htmltools::tags$strong(num_strata), " strata."
+          ),
           create_detail_table_with_headers(
             c("Name", "Stratum", "Cover"),
             rows,
@@ -244,7 +246,7 @@ build_plot_obs_details_view <- function(result) {
           htmltools::tags$p(format_date_range(plot_observation$obs_start_date, plot_observation$obs_end_date))
         },
         if (has_valid_field_value(plot_observation, "rf_code") &&
-              has_valid_field_value(plot_observation, "rf_label")) {
+          has_valid_field_value(plot_observation, "rf_label")) {
           htmltools::tags$p(
             htmltools::tags$span("Reference: "),
             create_detail_link("ref_link_click", plot_observation$rf_code, plot_observation$rf_label)
@@ -253,7 +255,11 @@ build_plot_obs_details_view <- function(result) {
         if (has_valid_field_value(plot_observation, "previous_ob_code")) {
           htmltools::tags$p(
             htmltools::tags$span("Previous Observation: "),
-            create_detail_link("obs_link_click", plot_observation$previous_ob_code, plot_observation$previous_ob_code)
+            create_detail_link(
+              "obs_link_click",
+              plot_observation$previous_ob_code,
+              plot_observation$previous_ob_code
+            )
           )
         }
       )
@@ -269,8 +275,10 @@ build_plot_obs_details_view <- function(result) {
       skip_empty = TRUE
     ),
     location_details = render_detail_table(
-      c("location_accuracy", "confidentiality_text", "latitude", "longitude", "author_location",
-        "location_narrative", "state_province", "country"),
+      c(
+        "location_accuracy", "confidentiality_text", "latitude", "longitude", "author_location",
+        "location_narrative", "state_province", "country"
+      ),
       plot_observation,
       skip_empty = TRUE,
       apply_units = TRUE
@@ -282,37 +290,45 @@ build_plot_obs_details_view <- function(result) {
       apply_units = TRUE
     ),
     environmental_details = render_detail_table(
-      c("landscape_narrative", "homogeneity",  "phenologic_aspect", "representativeness", "stand_maturity",
+      c(
+        "landscape_narrative", "homogeneity", "phenologic_aspect", "representativeness", "stand_maturity",
         "successional_status", "hydrologic_regime", "soil_moisture_regime", "soil_drainage", "water_salinity",
         "water_depth", "soil_depth", "organic_depth", "soil_taxon_src", "percent_bed_rock",
         "percent_rock_gravel", "percent_wood", "percent_litter", "percent_bare_soil", "percent_water",
         "percent_other", "name_other", "stand_size", "elevation", "elevation_accuracy", "elevation_range",
         "slope_aspect", "min_slope_aspect", "max_slope_aspect", "slope_gradient", "min_slope_gradient",
-        "max_slope_gradient", "topographic_position", "landform", "surficial_deposits", "rock_type"),
+        "max_slope_gradient", "topographic_position", "landform", "surficial_deposits", "rock_type"
+      ),
       plot_observation,
       skip_empty = TRUE,
       apply_units = TRUE
     ),
     methods_details = render_detail_table(
-      c("method_narrative", "placement_method", "cover_method_display", "cover_dispersion",
+      c(
+        "method_narrative", "placement_method", "cover_method_display", "cover_dispersion",
         "stratum_method_name", "stem_sample_method", "stem_observation_area", "stem_size_limit",
-        "taxon_observation_area", "auto_taxon_cover"),
+        "taxon_observation_area", "auto_taxon_cover"
+      ),
       plot_observation,
       skip_empty = TRUE,
       apply_units = TRUE
     ),
     plot_quality_details = render_detail_table(
-      c("plot_validation_level_descr", "effort_level", "floristic_quality", "bryophyte_quality",
-        "lichen_quality", "observation_narrative"),
+      c(
+        "plot_validation_level_descr", "effort_level", "floristic_quality", "bryophyte_quality",
+        "lichen_quality", "observation_narrative"
+      ),
       plot_observation,
       skip_empty = TRUE
     ),
     plot_vegetation_details = render_detail_table(
-      c("basal_area", "tree_ht", "shrub_ht", "herb_ht", "field_ht", "nonvascular_ht",
+      c(
+        "basal_area", "tree_ht", "shrub_ht", "herb_ht", "field_ht", "nonvascular_ht",
         "submerged_ht", "tree_cover", "shrub_cover", "field_cover", "nonvascular_cover", "floating_cover",
         "submerged_cover", "dominant_stratum", "stratum_assignment", "growthform_1_type",
         "growthform_1_cover", "growthform_2_type", "growthform_2_cover", "growthform_3_type",
-        "growthform_3_cover", "growthform_4_type", "growthform_4_cover", "total_cover"),
+        "growthform_3_cover", "growthform_4_type", "growthform_4_cover", "total_cover"
+      ),
       plot_observation,
       skip_empty = TRUE,
       apply_units = TRUE

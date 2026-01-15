@@ -4,7 +4,8 @@
 #' detail sections. Handles NULL or empty results gracefully by returning empty UI elements.
 #'
 #' @param result A dataframe containing cover method data from vegbankr::vb_get_cover_methods()
-#' @return A named list with two shiny.render.function elements: cover_method_header, cover_method_details
+#' @return A named list with three shiny.render.function elements:
+#'         cover_method_header, cover_method_details, and cover_method_indexes
 #' @noRd
 build_cover_method_details_view <- function(result) {
   if (is.null(result) || nrow(result) == 0) {
@@ -78,6 +79,28 @@ build_cover_method_details_view <- function(result) {
     })
 
     htmltools::tagList(
+      # JavaScript to handle toggle functionality
+      htmltools::tags$script(htmltools::HTML(
+        "(function() {",
+        "  function toggleCoverIndexDescription() {",
+        "    var descCells = document.querySelectorAll('.cover-index-description, .cover-index-description-header');",
+        "    descCells.forEach(function(cell) {",
+        "      cell.style.display = cell.style.display === 'none' ? '' : 'none';",
+        "    });",
+        "  }",
+        "  function initToggle() {",
+        "    var checkbox = document.getElementById('toggle_cover_index_description');",
+        "    if (checkbox) {",
+        "      checkbox.addEventListener('click', toggleCoverIndexDescription);",
+        "    }",
+        "  }",
+        "  if (document.readyState !== 'loading') {",
+        "    initToggle();",
+        "  } else {",
+        "    document.addEventListener('DOMContentLoaded', initToggle);",
+        "  }",
+        "})();"
+      )),
       # Toggle for description column
       htmltools::tags$div(
         style = "margin-bottom: 10px;",
@@ -85,12 +108,6 @@ build_cover_method_details_view <- function(result) {
           htmltools::tags$input(
             type = "checkbox",
             id = "toggle_cover_index_description",
-            onclick = "
-              var descCells = document.querySelectorAll('.cover-index-description, .cover-index-description-header');
-              descCells.forEach(function(cell) {
-                cell.style.display = cell.style.display === 'none' ? '' : 'none';
-              });
-            "
           ),
           htmltools::tags$span(" Show Index Description Column", style = "margin-left: 5px;")
         )
