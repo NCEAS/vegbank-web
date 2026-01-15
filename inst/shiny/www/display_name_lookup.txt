@@ -550,6 +550,7 @@ stratumindex,stratum_index,Stratum Index
 stratummethod_id,stratum_method_id,Stratum Method ID
 stratummethodaccessioncode,stratum_method_accession_code,Stratum Method Accession Code
 stratummethoddescription,stratum_method_description,Stratum Method Description
+stratummethoddisplay,stratum_method_display,Stratum Method
 stratummethodname,stratum_method_name,Stratum Method
 stratumname,stratum_name,Stratum Name
 stratumtype_id,stratum_type_id,Stratum Type ID
