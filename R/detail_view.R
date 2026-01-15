@@ -40,7 +40,9 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         "reference" =
           vegbankr::vb_get_references(vb_code, detail = "full"),
         "cover-method" =
-          vegbankr::vb_get_cover_methods(vb_code, detail = "full", with_nested = TRUE)
+          vegbankr::vb_get_cover_methods(vb_code, detail = "full", with_nested = TRUE),
+        "stratum-method" =
+          vegbankr::vb_get_stratum_methods(vb_code, detail = "full", with_nested = TRUE)
       )
 
       if (length(result) == 0) {
@@ -96,6 +98,9 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$cover_method_header <- shiny::renderUI(NULL)
       output$cover_method_details <- shiny::renderUI(NULL)
       output$cover_method_indexes <- shiny::renderUI(NULL)
+      output$stratum_method_header <- shiny::renderUI(NULL)
+      output$stratum_method_details <- shiny::renderUI(NULL)
+      output$stratum_types <- shiny::renderUI(NULL)
 
       shiny::incProgress(0.5, "Processing details")
 
@@ -160,6 +165,12 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           output$cover_method_header <- details$cover_method_header
           output$cover_method_details <- details$cover_method_details
           output$cover_method_indexes <- details$cover_method_indexes
+        },
+        "stratum-method" = {
+          details <- build_stratum_method_details_view(result)
+          output$stratum_method_header <- details$stratum_method_header
+          output$stratum_method_details <- details$stratum_method_details
+          output$stratum_types <- details$stratum_types
         }
       )
 
