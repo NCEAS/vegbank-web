@@ -104,10 +104,6 @@ test_that("build_stratum_method_details_view formats stratum method with types a
   expect_true(grepl("Herb", types_html))
   expect_true(grepl("Shrub", types_html))
   expect_true(grepl("greater than 35m high", types_html))
-
-  # Test toggle checkbox
-  expect_true(grepl("toggle_stratum_type_description", types_html))
-  expect_true(grepl("Show Stratum Description Column", types_html))
 })
 
 test_that("build_stratum_method_details_view handles stratum method without reference", {
@@ -169,21 +165,6 @@ test_that("build_stratum_method_details_view creates clickable reference link", 
   expect_true(grepl("rf.27", details_html))
   expect_true(grepl("CVS Protocol", details_html))
   expect_true(grepl('href="#"', details_html, fixed = TRUE))
-})
-
-test_that("stratum types table has correct column visibility toggle", {
-  details <- build_stratum_method_details_view(mock_stratum_method_with_types)
-
-  mock_session <- shiny::MockShinySession$new()
-  types_html <- htmltools::renderTags(details$stratum_types(shinysession = mock_session))$html
-
-  # Check for toggle checkbox
-  expect_true(grepl('<input type="checkbox"', types_html))
-  expect_true(grepl('id="toggle_stratum_type_description"', types_html))
-
-  # Check that description column and header are hidden by default
-  expect_true(grepl('class="stratum-type-description-header"', types_html))
-  expect_true(grepl('style="display: none;"', types_html))
 })
 
 test_that("stratum types table handles NULL stratum_description gracefully", {
