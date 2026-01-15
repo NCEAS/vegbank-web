@@ -17,8 +17,7 @@ PARTY_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 )
 
 PARTY_TABLE_DISPLAY_TEMPLATE <- build_display_template(
-  column_names = c("Actions", "Vegbank Code", "Party", "Organization", "Contributions", "Contact"),
-  column_types = list("Contributions" = integer())
+  column_names = c("Actions", "Vegbank Code", "Party", "Organization", "Contributions", "Contact")
 )
 
 create_party_column_defs <- function() {
@@ -67,12 +66,19 @@ process_party_data <- function(party_data) {
   obs_counts <- suppressWarnings(as.integer(party_data$obs_count))
   obs_counts[is.na(obs_counts)] <- 0L
 
+  # Create clickable obs_count links for cross-resource filtering
+  obs_count_links <- create_all_obs_count_links(
+    obs_counts,
+    py_codes,
+    party_labels
+  )
+
   data.frame(
     "Actions" = actions,
     "Vegbank Code" = vapply(py_codes, htmltools::htmlEscape, character(1)),
     "Party" = vapply(party_labels, htmltools::htmlEscape, character(1)),
     "Organization" = vapply(organizations, htmltools::htmlEscape, character(1)),
-    "Contributions" = obs_counts,
+    "Contributions" = obs_count_links,
     "Contact" = vapply(contact_info, htmltools::htmlEscape, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE

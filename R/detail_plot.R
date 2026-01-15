@@ -194,7 +194,7 @@ build_plot_obs_details_view <- function(result) {
     plot_header = shiny::renderUI({
       htmltools::div(
         htmltools::tags$h5(plot_observation$author_obs_code, style = "font-weight: 600; margin-bottom: 0px;"),
-        htmltools::tags$h5(plot_observation$ob_code, style = "color: #2c5443; font-weight: 600;"),
+        htmltools::tags$h5(plot_observation$ob_code, style = "color: var(--vb-green); font-weight: 600;"),
         if (has_valid_field_value(plot_observation, "project_name")) {
           htmltools::tags$p(
             htmltools::tags$span("Project: "),

@@ -478,6 +478,7 @@ ui <- function(req) {
         var btn = $(this);
         var inputId = btn.data('input-id');
         var value = btn.data('value');
+        var label = btn.data('label'); // For obs_count links
         var rowIndex = null;
         var row = btn.closest('tr');
         if (row && row.length) {
@@ -502,7 +503,12 @@ ui <- function(req) {
         }, {priority: 'event'});
 
         if (inputId && value) {
-          Shiny.setInputValue(inputId, value, {priority: 'event'});
+          // For obs_count links, send both code and label
+          if (label) {
+            Shiny.setInputValue(inputId, {code: value, label: label}, {priority: 'event'});
+          } else {
+            Shiny.setInputValue(inputId, value, {priority: 'event'});
+          }
         }
       });
 
@@ -917,11 +923,11 @@ ui <- function(req) {
 #'
 #' @noRd
 custom_theme <- bslib::bs_theme(
-  bg = "#FFFFFF",
-  fg = "#19201d",
-  info = "#2c5443",
-  primary = "#72b9a2",
-  secondary = "#72b9a2",
+  bg = "hsl(0, 0%, 100%)",
+  fg = "hsl(156, 12%, 11%)",
+  info = "hsl(160, 69%, 30%)",
+  primary = "hsl(160, 29%, 48%)",
+  secondary = "hsl(160, 34%, 59%)",
   base_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   "font-size-base" = "0.875rem"
@@ -932,6 +938,9 @@ custom_theme <- bslib::bs_add_rules(
     font-family: Inter, sans-serif !important;
     font-feature-settings: 'liga' 1, 'calt' 1;
     --bs-font-sans-serif: Inter, sans-serif !important;
+
+    /* Vegbank brand colors */
+    --vb-green: hsl(153, 31%, 25%);
 
     /* Status badge colors */
     --no-status-bg: hsl(204, 6%, 90%);
@@ -960,7 +969,7 @@ custom_theme <- bslib::bs_add_rules(
   }
 
   .card-header {
-    background-color: #2c5443;
+    background-color: var(--vb-green);
     color: #FFFFFF;
     font-weight: bold;
   }
@@ -985,7 +994,7 @@ custom_theme <- bslib::bs_add_rules(
       height: 100%;
   }
   .navbar-brand {
-      color: #2c5443 !important;
+      color: var(--vb-green) !important;
       font-weight: bold;
       padding: 0;
       display: flex;
@@ -1075,6 +1084,7 @@ build_navbar <- function() {
     bslib::nav_panel(
       title = "Plots",
       shiny::fluidPage(
+        shiny::uiOutput("plot_filter_alert"),
         DT::dataTableOutput("plot_table")
       )
     ),

@@ -26,7 +26,7 @@ build_reference_details_view <- function(result) {
         htmltools::tags$i(tools::toTitleCase(reference_type))
       },
       htmltools::tags$h5(label, style = "font-weight: 600; margin-bottom: 0px;"),
-      htmltools::tags$h5(vb_code, style = "color: #2c5443; font-weight: 600;"),
+      htmltools::tags$h5(vb_code, style = "color: var(--vb-green); font-weight: 600;"),
       if (has_valid_field_value(result, "publication_date")) {
         htmltools::tags$p(paste0("Published: ", (ref$publication_date)))
       }

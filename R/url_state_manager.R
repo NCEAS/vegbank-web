@@ -338,11 +338,13 @@ URLStateManager <- R6::R6Class(
     #' @param table_states List of table states
     #' @param highlight_table Table ID where selection occurred
     #' @param highlight_row Row index of selection
+    #' @param plot_filter Plot table filter (list with type, code, label) or NULL
     #' @return Query string (e.g., "?tab=Plots&detail=plot&code=123")
     build_query_string = function(tab = NULL, detail_type = NULL, detail_code = NULL,
                                   map_lat = NULL, map_lng = NULL, map_zoom = NULL,
                                   map_has_custom_state = FALSE, table_states = list(),
-                                  highlight_table = NULL, highlight_row = NULL) {
+                                  highlight_table = NULL, highlight_row = NULL,
+                                  plot_filter = NULL) {
       if (is.null(tab) || !nzchar(tab)) {
         tab <- "Overview"
       }
@@ -361,6 +363,19 @@ URLStateManager <- R6::R6Class(
         }
         if (!is.null(highlight_row) && !is.na(highlight_row)) {
           params$hl_row <- as.character(as.integer(highlight_row))
+        }
+      }
+
+      # Include plot filter parameters for cross-resource queries
+      if (!is.null(plot_filter) && is.list(plot_filter)) {
+        if (!is.null(plot_filter$code) && nzchar(plot_filter$code)) {
+          params$filter_code <- plot_filter$code
+        }
+        if (!is.null(plot_filter$type) && nzchar(plot_filter$type)) {
+          params$filter_type <- plot_filter$type
+        }
+        if (!is.null(plot_filter$label) && nzchar(plot_filter$label)) {
+          params$filter_label <- plot_filter$label
         }
       }
 

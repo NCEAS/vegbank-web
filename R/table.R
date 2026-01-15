@@ -152,6 +152,40 @@ create_action_buttons <- function(input_id, button_label = "Details", code_value
   }, character(1))
 }
 
+#' Create clickable obs_count links for cross-resource filtering for an
+#' entire vector of obs_counts
+#'
+#' @param obs_counts Integer vector of observation counts
+#' @param entity_codes Character vector of entity codes (e.g., "pj.340")
+#' @param entity_labels Character vector of entity display names
+#' @return Character vector of HTML for obs_count links
+#' @noRd
+create_all_obs_count_links <- function(obs_counts, entity_codes, entity_labels) {
+  vapply(seq_along(obs_counts), function(idx) {
+    count <- obs_counts[[idx]]
+    code <- entity_codes[[idx]]
+    label <- entity_labels[[idx]]
+
+    safe_count <- as.integer(count)
+    if (is.na(safe_count)) safe_count <- 0L
+
+    # Only make clickable if count > 0 and we have valid code and label
+    if (safe_count > 0 && !is.null(code) && !is.na(code) && nzchar(code) &&
+          !is.null(label) && !is.na(label) && nzchar(label)) {
+      safe_code <- htmltools::htmlEscape(as.character(code), attribute = TRUE)
+      safe_label <- htmltools::htmlEscape(as.character(label), attribute = TRUE)
+      sprintf(
+        '<a href="#" class="obs-count-link dt-shiny-action" data-input-id="obs_count_click" data-value="%s" data-label="%s">%d</a>',
+        safe_code,
+        safe_label,
+        safe_count
+      )
+    } else {
+      as.character(safe_count)
+    }
+  }, character(1))
+}
+
 #' Create a status badge for concept status
 #'
 #' @param status Logical or NA; TRUE for accepted, FALSE for not accepted, NA for unknown
@@ -471,6 +505,13 @@ build_remote_ajax_config <- function(session,
 
     # Build dynamic sort param if mapping is provided and DataTables requests sorting
     query_actual <- query
+    # Support reactive query by allowing query to be a function
+    if (is.function(query_actual)) {
+      query_actual <- query_actual()
+    }
+    if (is.null(query_actual)) {
+      query_actual <- list()
+    }
     if (!is.null(sort_field_map) && !is.null(params$order) && length(params$order) > 0) {
       ord <- params$order[[1]]
       col_idx <- as.integer(ord$column)
