@@ -1037,6 +1037,11 @@ server <- function(input, output, session) {
     open_detail("reference", vb_code)
   })
 
+  shiny::observeEvent(input$cover_method_link_click, {
+    vb_code <- input$cover_method_link_click
+    open_detail("cover-method", vb_code)
+  })
+
   # CROSS-RESOURCE FILTER OBSERVERS ----------------------------------------------------------------
 
   # Generic observer for all obs_count clicks - extracts entity type from vb_code prefix

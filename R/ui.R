@@ -870,11 +870,12 @@ ui <- function(req) {
       const partyCards = document.getElementById('party-details-cards');
       const plantConceptCards = document.getElementById('plant-concept-details-cards');
       const referenceCards = document.getElementById('reference-details-cards');
+      const coverMethodCards = document.getElementById('cover-method-details-cards');
 
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards &&
-          projectCards && partyCards && plantConceptCards && referenceCards) {
+          projectCards && partyCards && plantConceptCards && referenceCards && coverMethodCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
@@ -883,6 +884,7 @@ ui <- function(req) {
         partyCards.style.display = 'none';
         plantConceptCards.style.display = 'none';
         referenceCards.style.display = 'none';
+        coverMethodCards.style.display = 'none';
 
         // Show the requested type
         if (type === 'plot-observation') {
@@ -906,6 +908,9 @@ ui <- function(req) {
         } else if (type === 'reference') {
           console.log('Showing reference details');
           referenceCards.style.display = 'block';
+        } else if (type === 'cover-method') {
+          console.log('Showing cover method details');
+          coverMethodCards.style.display = 'block';
         }
       }
     });
@@ -1153,12 +1158,15 @@ build_detail_overlay <- function() {
           id = "plot-details-cards",
           class = "detail-section",
           bslib::card(bslib::card_header("Plot Observation"), shiny::uiOutput("plot_header")),
-          bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
+          bslib::card(bslib::card_header("Author Codes"), shiny::uiOutput("author_code_details")),
+          bslib::card(bslib::card_header("Dates"), shiny::uiOutput("date_details")),
           bslib::card(bslib::card_header("Location"), shiny::uiOutput("location_details")),
           bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
           bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),
           bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
           bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
+          bslib::card(bslib::card_header("Plot Vegetation"), shiny::uiOutput("plot_vegetation_details")),
+          bslib::card(bslib::card_header("Miscellaneous"), shiny::uiOutput("plot_misc_details")),
           bslib::card(bslib::card_header("Communities"), shiny::uiOutput("communities_details")),
           bslib::card(bslib::card_header("Taxa Observed"), shiny::uiOutput("taxa_details"))
         ),
@@ -1219,6 +1227,15 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Reference"), shiny::uiOutput("reference_header")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("reference_identifiers")),
           bslib::card(bslib::card_header("Publication"), shiny::uiOutput("reference_publication"))
+        ),
+
+        # Cover Method Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "cover-method-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Cover Method"), shiny::uiOutput("cover_method_header")),
+          bslib::card(bslib::card_header("Details"), shiny::uiOutput("cover_method_details")),
+          bslib::card(bslib::card_header("Cover Indexes"), shiny::uiOutput("cover_method_indexes"))
         )
       )
     )

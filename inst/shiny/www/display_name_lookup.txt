@@ -98,6 +98,7 @@ coverdispersion,cover_dispersion,Cover Dispersion
 coverestimationmethod,cover_estimation_method,Cover Estimation Method
 coverindex_id,cover_index_id,Cover Index ID
 covermethod_id,cover_method_id,Cover Method ID
+covermethod_name,cover_method_name,Cover Method Name
 covermethodaccessioncode,cover_method_accession_code,Cover Method Accession Code
 coverpercent,cover_percent,Cover Percent
 covertype,cover_type,Cover Type
@@ -549,7 +550,7 @@ stratumindex,stratum_index,Stratum Index
 stratummethod_id,stratum_method_id,Stratum Method ID
 stratummethodaccessioncode,stratum_method_accession_code,Stratum Method Accession Code
 stratummethoddescription,stratum_method_description,Stratum Method Description
-stratummethodname,stratum_method_name,Stratum Method Name
+stratummethodname,stratum_method_name,Stratum Method
 stratumname,stratum_name,Stratum Name
 stratumtype_id,stratum_type_id,Stratum Type ID
 submergedcover,submerged_cover,Submerged Cover
@@ -648,3 +649,9 @@ organizationname,organization_name,Organization
 contactinstructions,contact_instructions,Contact Instructions
 partyid,party_id,Party ID
 partyaccessioncode,party_accession_code,Party Accession Code
+observeddate,observed_date,Observed
+covermethoddisplay,cover_method_display,Cover Method
+taxoncount,taxon_count,Number of Taxa
+revisions,pl_revisions,Plot Revised
+notespublic,pl_notes_public,Plot Notes Public
+notesmgt,pl_notes_mgt,Plot Notes Management

@@ -1,9 +1,9 @@
 #' @noRd
 plot_detail_output_names <- c(
   "plot_header",
-  "plot_id_details", "location_details", "layout_details",
-  "environmental_details", "methods_details", "plot_quality_details",
-  "taxa_details", "communities_details"
+  "author_code_details", "date_details", "location_details", "layout_details",
+  "environmental_details", "methods_details", "plot_quality_details", "plot_vegetation_details",
+  "plot_misc_details", "taxa_details", "communities_details"
 )
 
 #' Normalize Plot Observation Result Payload
@@ -128,9 +128,41 @@ build_plot_obs_details_view <- function(result) {
 
   plot_observation <- normalized$plot_observation
 
-  # Format Elevation
-  if (!is.na(plot_observation$elevation)) {
-    plot_observation$elevation <- paste0(round(as.numeric(plot_observation$elevation)), " m")
+  ### Compute formatted fields for use in detail tables
+
+  # Date range for date_details card
+  plot_observation$observed_date <- format_date_range(
+    plot_observation$obs_start_date,
+    plot_observation$obs_end_date,
+    worded = FALSE
+  )
+  # Format entered date for date_details card
+  plot_observation$date_entered <- format_date(plot_observation$date_entered)
+
+  # Format lat and lng to 7 dec place for location_details card
+  if (has_valid_field_value(plot_observation, "latitude")) {
+    plot_observation$latitude <- formatC(plot_observation$latitude, format = "f", digits = 7)
+  }
+  if (has_valid_field_value(plot_observation, "longitude")) {
+    plot_observation$longitude <- formatC(plot_observation$longitude, format = "f", digits = 7)
+  }
+
+  # Elevation to two decimal places for environmental_details card
+  if (has_valid_field_value(plot_observation, "elevation")) {
+    plot_observation$elevation <- formatC(as.numeric(plot_observation$elevation), format = "f", digits = 2)
+  }
+
+  # Cover method display (link or fallback) for methods_details card
+  # Must use list() to wrap HTML tag objects for tibble compatibility
+  if (has_valid_field_value(plot_observation, "cm_code") &&
+        has_valid_field_value(plot_observation, "cover_method_name")) {
+    plot_observation$cover_method_display <- list(create_detail_link(
+      "cover_method_link_click",
+      plot_observation$cm_code,
+      plot_observation$cover_method_name
+    ))
+  } else {
+    plot_observation$cover_method_display <- NA_character_
   }
 
   taxa_details_ui <- shiny::renderUI({
@@ -153,11 +185,19 @@ build_plot_obs_details_view <- function(result) {
           )
         })
 
-        create_detail_table_with_headers(
-          c("Name", "Stratum", "Cover"),
-          rows,
-          table_style = "width: 100%; table-layout: fixed; word-break: break-word;",
-          header_styles = c("text-align: left;", "text-align: left;", "text-align: right;")
+        num_strata <- length(unique(sorted_taxa$stratum_label))
+
+        htmltools::div(
+          htmltools::tags$p(
+            htmltools::tags$strong(plot_observation$taxon_count), " taxa observed across ",
+            htmltools::tags$strong(num_strata), " strata."
+          ),
+          create_detail_table_with_headers(
+            c("Name", "Stratum", "Cover"),
+            rows,
+            table_style = "width: 100%; table-layout: fixed; word-break: break-word;",
+            header_styles = c("text-align: left;", "text-align: left;", "text-align: right;")
+          )
         )
       },
       error = function(e) {
@@ -204,35 +244,99 @@ build_plot_obs_details_view <- function(result) {
         },
         if (has_valid_field_value(plot_observation, "obs_start_date")) {
           htmltools::tags$p(format_date_range(plot_observation$obs_start_date, plot_observation$obs_end_date))
+        },
+        if (has_valid_field_value(plot_observation, "rf_code") &&
+          has_valid_field_value(plot_observation, "rf_label")) {
+          htmltools::tags$p(
+            htmltools::tags$span("Reference: "),
+            create_detail_link("ref_link_click", plot_observation$rf_code, plot_observation$rf_label)
+          )
+        },
+        if (has_valid_field_value(plot_observation, "previous_ob_code")) {
+          htmltools::tags$p(
+            htmltools::tags$span("Previous Observation: "),
+            create_detail_link(
+              "obs_link_click",
+              plot_observation$previous_ob_code,
+              plot_observation$previous_ob_code
+            )
+          )
         }
       )
     }),
-    plot_id_details = render_detail_table(
-      c("author_obs_code", "author_plot_code"),
-      plot_observation
+    author_code_details = render_detail_table(
+      c("author_obs_code", "author_plot_code", "author_datum"),
+      plot_observation,
+      skip_empty = TRUE
+    ),
+    date_details = render_detail_table(
+      c("observed_date", "date_entered", "date_accuracy"),
+      plot_observation,
+      skip_empty = TRUE
     ),
     location_details = render_detail_table(
-      c("confidentiality_text", "latitude", "longitude", "location_narrative", "state_province", "country"),
-      plot_observation
+      c(
+        "location_accuracy", "confidentiality_text", "latitude", "longitude", "author_location",
+        "location_narrative", "state_province", "country"
+      ),
+      plot_observation,
+      skip_empty = TRUE,
+      apply_units = TRUE
     ),
     layout_details = render_detail_table(
-      c("area", "permanence"),
-      plot_observation
+      c("azimuth", "shape", "area", "permanence", "layout_narrative"),
+      plot_observation,
+      skip_empty = TRUE,
+      apply_units = TRUE
     ),
     environmental_details = render_detail_table(
-      c("elevation", "slope_aspect", "slope_gradient"),
-      plot_observation
+      c(
+        "landscape_narrative", "homogeneity", "phenologic_aspect", "representativeness", "stand_maturity",
+        "successional_status", "hydrologic_regime", "soil_moisture_regime", "soil_drainage", "water_salinity",
+        "water_depth", "soil_depth", "organic_depth", "soil_taxon_src", "percent_bed_rock",
+        "percent_rock_gravel", "percent_wood", "percent_litter", "percent_bare_soil", "percent_water",
+        "percent_other", "name_other", "stand_size", "elevation", "elevation_accuracy", "elevation_range",
+        "slope_aspect", "min_slope_aspect", "max_slope_aspect", "slope_gradient", "min_slope_gradient",
+        "max_slope_gradient", "topographic_position", "landform", "surficial_deposits", "rock_type"
+      ),
+      plot_observation,
+      skip_empty = TRUE,
+      apply_units = TRUE
     ),
     methods_details = render_detail_table(
       c(
-        "project_name", "cover_type", "stratum_method_name", "stratum_method_description",
+        "method_narrative", "placement_method", "cover_method_display", "cover_dispersion",
+        "stratum_method_name", "stem_sample_method", "stem_observation_area", "stem_size_limit",
         "taxon_observation_area", "auto_taxon_cover"
       ),
-      plot_observation
+      plot_observation,
+      skip_empty = TRUE,
+      apply_units = TRUE
     ),
     plot_quality_details = render_detail_table(
-      "plot_validation_level_descr",
-      plot_observation
+      c(
+        "plot_validation_level_descr", "effort_level", "floristic_quality", "bryophyte_quality",
+        "lichen_quality", "observation_narrative"
+      ),
+      plot_observation,
+      skip_empty = TRUE
+    ),
+    plot_vegetation_details = render_detail_table(
+      c(
+        "basal_area", "tree_ht", "shrub_ht", "herb_ht", "field_ht", "nonvascular_ht",
+        "submerged_ht", "tree_cover", "shrub_cover", "field_cover", "nonvascular_cover", "floating_cover",
+        "submerged_cover", "dominant_stratum", "stratum_assignment", "growthform_1_type",
+        "growthform_1_cover", "growthform_2_type", "growthform_2_cover", "growthform_3_type",
+        "growthform_3_cover", "growthform_4_type", "growthform_4_cover", "total_cover"
+      ),
+      plot_observation,
+      skip_empty = TRUE,
+      apply_units = TRUE
+    ),
+    plot_misc_details = render_detail_table(
+      c("original_data", "parent_pl_code", "pl_revisions", "pl_notes_public", "pl_notes_mgt"),
+      plot_observation,
+      skip_empty = TRUE
     ),
     taxa_details = taxa_details_ui,
     communities_details = communities_details_ui
