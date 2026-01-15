@@ -269,11 +269,11 @@ create_marker_label_options <- function() {
     clickable = TRUE,
     direction = "bottom",
     style = list(
-      "color" = "#2c5443",
+      "color" = "black",
       "font-weight" = "bold",
       "padding" = "3px 8px",
       "background" = "white",
-      "border" = "1px solid #2c5443",
+      "border" = "1px solid black",
       "border-radius" = "3px"
     )
   )
