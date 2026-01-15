@@ -7,8 +7,9 @@ test_that("build_plot_obs_details_view handles NULL data gracefully", {
   # It should return a list with placeholder components (no plot_header for empty data)
   expect_type(result, "list")
   expect_named(result, c(
-    "plot_header", "author_code_details", "location_details", "layout_details",
+    "plot_header", "author_code_details", "date_details", "location_details", "layout_details",
     "environmental_details", "methods_details", "plot_quality_details",
+    "plot_vegetation_details", "plot_misc_details",
     "taxa_details", "communities_details"
   ))
 
@@ -22,8 +23,9 @@ test_that("build_plot_obs_details_view formats plot data correctly", {
   # Test structure and types (includes plot_header when data is present)
   expect_type(result, "list")
   expect_named(result, c(
-    "plot_header", "author_code_details", "location_details", "layout_details",
+    "plot_header", "author_code_details", "date_details", "location_details", "layout_details",
     "environmental_details", "methods_details", "plot_quality_details",
+    "plot_vegetation_details", "plot_misc_details",
     "taxa_details", "communities_details"
   ))
 
