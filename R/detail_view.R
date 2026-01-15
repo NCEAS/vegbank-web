@@ -61,6 +61,8 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$environmental_details <- shiny::renderUI(NULL)
       output$methods_details <- shiny::renderUI(NULL)
       output$plot_quality_details <- shiny::renderUI(NULL)
+      output$plot_vegetation_details <- shiny::renderUI(NULL)
+      output$plot_misc_details <- shiny::renderUI(NULL)
       output$taxa_details <- shiny::renderUI(NULL)
       output$communities_details <- shiny::renderUI(NULL)
       output$community_concept_header <- shiny::renderUI(NULL)
@@ -136,6 +138,8 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           output$environmental_details <- details$environmental_details
           output$methods_details <- details$methods_details
           output$plot_quality_details <- details$plot_quality_details
+          output$plot_vegetation_details <- details$plot_vegetation_details
+          output$plot_misc_details <- details$plot_misc_details
           output$taxa_details <- details$taxa_details
           output$communities_details <- details$communities_details
         },

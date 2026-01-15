@@ -1155,6 +1155,8 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),
           bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
           bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
+          bslib::card(bslib::card_header("Plot Vegetation"), shiny::uiOutput("plot_vegetation_details")),
+          bslib::card(bslib::card_header("Miscellaneous"), shiny::uiOutput("plot_misc_details")),
           bslib::card(bslib::card_header("Communities"), shiny::uiOutput("communities_details")),
           bslib::card(bslib::card_header("Taxa Observed"), shiny::uiOutput("taxa_details"))
         ),

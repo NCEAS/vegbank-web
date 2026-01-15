@@ -650,4 +650,8 @@ contactinstructions,contact_instructions,Contact Instructions
 partyid,party_id,Party ID
 partyaccessioncode,party_accession_code,Party Accession Code
 observeddate,observed_date,Observed
-covermethoddisplay,cover_method_display,Cover Method
+covermethoddisplay,cover_method_display,Cover 
+taxonCount,taxon_count,Number of Taxa,
+revisions,pl_revisions,Plot Revised
+notesPublic,pl_notes_public,Plot Notes Public
+notesMgt,pl_notes_mgt,Plot Notes Management
