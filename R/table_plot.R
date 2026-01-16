@@ -140,15 +140,21 @@ format_plot_action_buttons <- function(ob_codes, author_codes, latitudes, longit
     has_coords <- !is.na(lat) && !is.na(lng)
     # Details button
     detail_btn <- if (!is.null(detail_code) && nzchar(detail_code)) {
-      sprintf('<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" data-input-id="plot_link_click" data-value="%s">Details</button>', htmltools::htmlEscape(detail_code, attribute = TRUE))
+      sprintf(
+        '<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" data-input-id="plot_link_click" data-value="%s">Details</button>',
+        htmltools::htmlEscape(detail_code, attribute = TRUE))
     } else {
       '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Details</button>'
     }
     # Map button
     map_btn <- if (has_coords) {
       code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code, attribute = TRUE)) else ''
-      sprintf('<button type="button" class="btn btn-sm btn-outline-primary dt-map-action" data-lat="%s" data-lng="%s"%s>Map</button>',
-        htmltools::htmlEscape(lat, attribute = TRUE), htmltools::htmlEscape(lng, attribute = TRUE), code_attr)
+      sprintf(
+        '<button type="button" class="btn btn-sm btn-outline-primary dt-map-action" data-lat="%s" data-lng="%s"%s>Map</button>',
+        htmltools::htmlEscape(lat, attribute = TRUE),
+        htmltools::htmlEscape(lng, attribute = TRUE),
+        code_attr
+      )
     } else {
       '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Map</button>'
     }

@@ -165,6 +165,19 @@ build_plot_obs_details_view <- function(result) {
     plot_observation$cover_method_display <- NA_character_
   }
 
+  # Stratum method display (link or fallback) for methods_details card
+  # Must use list() to wrap HTML tag objects for tibble compatibility
+  if (has_valid_field_value(plot_observation, "sm_code") &&
+        has_valid_field_value(plot_observation, "stratum_method_name")) {
+    plot_observation$stratum_method_display <- list(create_detail_link(
+      "stratum_method_link_click",
+      plot_observation$sm_code,
+      plot_observation$stratum_method_name
+    ))
+  } else {
+    plot_observation$stratum_method_display <- NA_character_
+  }
+
   taxa_details_ui <- shiny::renderUI({
     tryCatch(
       {
@@ -246,7 +259,7 @@ build_plot_obs_details_view <- function(result) {
           htmltools::tags$p(format_date_range(plot_observation$obs_start_date, plot_observation$obs_end_date))
         },
         if (has_valid_field_value(plot_observation, "rf_code") &&
-          has_valid_field_value(plot_observation, "rf_label")) {
+              has_valid_field_value(plot_observation, "rf_label")) {
           htmltools::tags$p(
             htmltools::tags$span("Reference: "),
             create_detail_link("ref_link_click", plot_observation$rf_code, plot_observation$rf_label)
@@ -306,7 +319,7 @@ build_plot_obs_details_view <- function(result) {
     methods_details = render_detail_table(
       c(
         "method_narrative", "placement_method", "cover_method_display", "cover_dispersion",
-        "stratum_method_name", "stem_sample_method", "stem_observation_area", "stem_size_limit",
+        "stratum_method_display", "stem_sample_method", "stem_observation_area", "stem_size_limit",
         "taxon_observation_area", "auto_taxon_cover"
       ),
       plot_observation,

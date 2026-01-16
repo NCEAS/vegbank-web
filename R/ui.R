@@ -871,11 +871,13 @@ ui <- function(req) {
       const plantConceptCards = document.getElementById('plant-concept-details-cards');
       const referenceCards = document.getElementById('reference-details-cards');
       const coverMethodCards = document.getElementById('cover-method-details-cards');
+      const stratumMethodCards = document.getElementById('stratum-method-details-cards');
 
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards &&
-          projectCards && partyCards && plantConceptCards && referenceCards && coverMethodCards) {
+          projectCards && partyCards && plantConceptCards && referenceCards && coverMethodCards &&
+          stratumMethodCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
@@ -885,6 +887,7 @@ ui <- function(req) {
         plantConceptCards.style.display = 'none';
         referenceCards.style.display = 'none';
         coverMethodCards.style.display = 'none';
+        stratumMethodCards.style.display = 'none';
 
         // Show the requested type
         if (type === 'plot-observation') {
@@ -911,6 +914,9 @@ ui <- function(req) {
         } else if (type === 'cover-method') {
           console.log('Showing cover method details');
           coverMethodCards.style.display = 'block';
+        } else if (type === 'stratum-method') {
+          console.log('Showing stratum method details');
+          stratumMethodCards.style.display = 'block';
         }
       }
     });
@@ -1236,6 +1242,15 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Cover Method"), shiny::uiOutput("cover_method_header")),
           bslib::card(bslib::card_header("Details"), shiny::uiOutput("cover_method_details")),
           bslib::card(bslib::card_header("Cover Indexes"), shiny::uiOutput("cover_method_indexes"))
+        ),
+
+        # Stratum Method Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "stratum-method-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Stratum Method"), shiny::uiOutput("stratum_method_header")),
+          bslib::card(bslib::card_header("Details"), shiny::uiOutput("stratum_method_details")),
+          bslib::card(bslib::card_header("Stratum Types"), shiny::uiOutput("stratum_types"))
         )
       )
     )
