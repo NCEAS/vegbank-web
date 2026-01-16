@@ -888,7 +888,7 @@ ui <- function(req) {
         referenceCards.style.display = 'none';
         coverMethodCards.style.display = 'none';
         stratumMethodCards.style.display = 'none';
-        
+
         // Show the requested type
         if (type === 'plot-observation') {
           console.log('Showing plot details');

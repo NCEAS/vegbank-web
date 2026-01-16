@@ -76,8 +76,6 @@ build_stratum_method_details_view <- function(result) {
     })
 
     htmltools::tagList(
-
-
       htmltools::tags$table(
         class = "table table-sm table-striped table-hover",
         style = "width: 100%; table-layout: fixed; word-break: break-word; white-space: normal;",
