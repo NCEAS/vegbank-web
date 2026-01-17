@@ -907,6 +907,18 @@ server <- function(input, output, session) {
 
   # EVENT OBSERVERS --------------------------------------------------------------------------------
 
+  # Invalidatoing the map size is necessary when navigating to Map tab because the map fogets its size when
+  # hidden and needs to be recalculated to render properly. See https://github.com/NCEAS/vegbank-web/issues/28
+  shiny::observeEvent(input$page,
+    {
+      if (identical(input$page, "Map")) {
+        # Invalidate map size to ensure proper rendering after tab switches
+        session$sendCustomMessage("invalidateMapSize", list())
+      }
+    },
+    ignoreInit = TRUE
+  )
+
   # Hide loading screen when map is fully rendered and ready
   shiny::observeEvent(input$map_ready,
     {
@@ -1073,6 +1085,9 @@ server <- function(input, output, session) {
 
         map_req <- state$map_request()
         if (!is.null(map_req)) {
+          # Invalidatoing the map size is necessary when navigating to Map tab because the
+          # map fogets its size when hidden and needs to be recalculated to render properly.
+          # See https://github.com/NCEAS/vegbank-web/issues/28
           session$sendCustomMessage("invalidateMapSize", list())
           move_map_to_obs(
             session,
