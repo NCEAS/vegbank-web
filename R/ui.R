@@ -1342,12 +1342,17 @@ build_detail_overlay <- function() {
 build_map_loading_overlay <- function() {
   htmltools::tags$div(
     id = "map-loading-overlay",
-    style = "display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-             background: rgba(255, 255, 255, 0.98); z-index: 9999;
+    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 58px); left: 0; 
+             width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 58px));
+             background: rgba(255, 255, 255, 0.98); z-index: 900;
              justify-content: center; align-items: center; flex-direction: column;",
     htmltools::tags$div(
       class = "map-loading-content",
       style = "text-align: center;",
+      htmltools::tags$h2(
+        "Loading the Map for the first time can take a few seconds. It's busy:",
+        style = "font-size: 1rem; color: var(--no-status-text); font-weight: 500; margin-bottom: 1.5rem;"
+      ),
       htmltools::tags$div(
         class = "map-loading-spinner",
         style = "width: 80px; height: 80px; margin: 0 auto 2rem auto;
