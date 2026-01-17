@@ -1222,7 +1222,8 @@ build_navbar <- function() {
 build_detail_overlay <- function() {
   htmltools::tags$div(
     id = "detail-overlay",
-    style = "position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; overflow-y: auto;
+    style = "position: fixed; top: var(--bslib-navbar-height, 57px); right: -400px; width: 400px; 
+             height: calc(100vh - var(--bslib-navbar-height, 57px)); overflow-y: auto;
              background: #fff; border-left: 1px solid #ccc; z-index: 1050; padding:20px;
              transition: right 0.4s;",
     shiny::actionButton("close_overlay", "",
@@ -1344,7 +1345,7 @@ build_map_loading_overlay <- function() {
     id = "map-loading-overlay",
     style = "display: none; position: fixed; top: var(--bslib-navbar-height, 58px); left: 0; 
              width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 58px));
-             background: rgba(255, 255, 255, 0.98); z-index: 900;
+             background: rgba(255, 255, 255, 0.98); z-index: 1200;
              justify-content: center; align-items: center; flex-direction: column;",
     htmltools::tags$div(
       class = "map-loading-content",
