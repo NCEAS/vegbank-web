@@ -1009,6 +1009,8 @@ custom_theme <- bslib::bs_add_rules(
     font-feature-settings: 'liga' 1, 'calt' 1;
     --bs-font-sans-serif: Inter, sans-serif !important;
 
+    --bslib-navbar-height: 57px;
+
     /* Vegbank brand colors */
     --vb-green: hsl(153, 31%, 25%);
 
@@ -1403,16 +1405,16 @@ build_detail_overlay <- function() {
 build_map_loading_overlay <- function() {
   htmltools::tags$div(
     id = "map-loading-overlay",
-    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 58px); left: 0; 
-             width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 58px));
+    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 57px); left: 0; 
+             width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 57px));
              background: rgba(255, 255, 255, 0.98); z-index: 1200;
              justify-content: center; align-items: center; flex-direction: column;",
     htmltools::tags$div(
       class = "map-loading-content",
       style = "text-align: center; margin-top: -5rem;",
       htmltools::tags$h2(
-        "Loading the Map for the first time can take a few seconds. It's busy:",
-        style = "font-size: 1rem; color: var(--no-status-text); font-weight: 500; margin-bottom: 1.5rem;"
+        "Loading the map for the first time can take a few seconds. It's busy:",
+        style = "font-size: 0.875rem; color: var(--no-status-text); margin-bottom: 1.5rem;"
       ),
       htmltools::tags$div(
         class = "map-loading-ellipses",
@@ -1423,7 +1425,7 @@ build_map_loading_overlay <- function() {
       ),
       htmltools::tags$div(
         id = "map-loading-pun",
-        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500;"
+        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500;",
       )
     )
   )
