@@ -19,7 +19,7 @@ ui <- function(req) {
     htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css")
   )
 
-  navbar_with_search <- build_navbar()
+  navbar <- build_navbar()
   overlay <- build_detail_overlay()
   map_loading_overlay <- build_map_loading_overlay()
 
@@ -982,7 +982,7 @@ ui <- function(req) {
   "
   ))
 
-  htmltools::tagList(font_head, navbar_with_search, overlay, map_loading_overlay, script)
+  htmltools::tagList(font_head, navbar, overlay, map_loading_overlay, script)
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
