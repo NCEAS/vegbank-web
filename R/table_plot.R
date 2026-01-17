@@ -413,7 +413,7 @@ coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
 PLOT_TABLE_SPEC <- list(
   table_id = "plot_table",
   resource = "plot-observations",
-  remote_label = "plot observations",
+  loading_label = "plot observations",
   column_defs = create_plot_column_defs(),
   schema_fields = PLOT_TABLE_FIELDS,
   schema_template = PLOT_TABLE_SCHEMA_TEMPLATE,
