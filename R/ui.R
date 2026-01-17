@@ -21,6 +21,7 @@ ui <- function(req) {
 
   navbar_with_search <- build_navbar()
   overlay <- build_detail_overlay()
+  map_loading_overlay <- build_map_loading_overlay()
 
   script <- htmltools::tags$script(htmltools::HTML(
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
@@ -541,6 +542,64 @@ ui <- function(req) {
       setNavbarDisabled(disabled);
     });
 
+    // Map loading overlay management
+    var mapLoadingPuns = [
+      'Planting seeds...',
+      'Branching out...',
+      'Rooting through the database...',
+      'Monitoring mycelial networks...',
+      'Disturbing the substrate...',
+      'Planning successful succession...',
+      'Last bud not leaf...'
+    ];
+    var mapLoadingPunIndex = 0;
+    var mapLoadingPunInterval = null;
+
+    function rotatePlantPun() {
+      var punElement = document.getElementById('map-loading-pun');
+      if (punElement) {
+        punElement.textContent = mapLoadingPuns[mapLoadingPunIndex];
+        mapLoadingPunIndex = (mapLoadingPunIndex + 1) % mapLoadingPuns.length;
+      }
+    }
+
+    Shiny.addCustomMessageHandler('showMapLoading', function(message) {
+      var overlay = document.getElementById('map-loading-overlay');
+      if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.classList.remove('fade-out');
+        mapLoadingPunIndex = 0;
+        rotatePlantPun();
+        if (mapLoadingPunInterval) {
+          clearInterval(mapLoadingPunInterval);
+        }
+        mapLoadingPunInterval = setInterval(rotatePlantPun, 2500);
+      }
+    });
+
+    Shiny.addCustomMessageHandler('hideMapLoading', function(message) {
+      var overlay = document.getElementById('map-loading-overlay');
+      var punElement = document.getElementById('map-loading-pun');
+      
+      if (mapLoadingPunInterval) {
+        clearInterval(mapLoadingPunInterval);
+        mapLoadingPunInterval = null;
+      }
+      
+      if (overlay && punElement) {
+        punElement.textContent = 'Go fir launch!';
+        
+        setTimeout(function() {
+          // Allow interaction immediately by removing pointer events
+          overlay.style.pointerEvents = 'none';
+          overlay.classList.add('fade-out');
+          setTimeout(function() {
+            overlay.style.display = 'none';
+          }, 500);
+        }, 500);
+      }
+    });
+
     function getDataTableApi(tableId, settings) {
       if (settings && $.fn && $.fn.dataTable) {
         try {
@@ -923,7 +982,7 @@ ui <- function(req) {
   "
   ))
 
-  htmltools::tagList(font_head, navbar_with_search, overlay, script)
+  htmltools::tagList(font_head, navbar_with_search, overlay, map_loading_overlay, script)
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
@@ -1053,6 +1112,21 @@ custom_theme <- bslib::bs_add_rules(
   table.dataTable tbody tr.selected-entity:hover,
   .table tbody tr.selected-entity:hover {
       background-color: rgba(114, 185, 162, 0.25) !important;
+  }
+  
+  /* Map loading overlay animations */
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  
+  #map-loading-overlay.fade-out {
+    animation: fadeOut 0.5s ease-out forwards;
   }
 "
 )
@@ -1252,6 +1326,39 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Details"), shiny::uiOutput("stratum_method_details")),
           bslib::card(bslib::card_header("Stratum Types"), shiny::uiOutput("stratum_types"))
         )
+      )
+    )
+  )
+}
+
+#' Build Map Loading Overlay for Vegbank UI
+#'
+#' Constructs a full-screen loading overlay for initial map loading with animated
+#' spinner and rotating plant puns.
+#'
+#' @return A Shiny tag representing the map loading overlay.
+#'
+#' @noRd
+build_map_loading_overlay <- function() {
+  htmltools::tags$div(
+    id = "map-loading-overlay",
+    style = "display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+             background: rgba(255, 255, 255, 0.98); z-index: 9999;
+             justify-content: center; align-items: center; flex-direction: column;",
+    htmltools::tags$div(
+      class = "map-loading-content",
+      style = "text-align: center;",
+      htmltools::tags$div(
+        class = "map-loading-spinner",
+        style = "width: 80px; height: 80px; margin: 0 auto 2rem auto;
+                 border: 8px solid rgba(114, 185, 162, 0.2);
+                 border-top-color: #72B9A2;
+                 border-radius: 50%;
+                 animation: spin 1s linear infinite;"
+      ),
+      htmltools::tags$div(
+        id = "map-loading-pun",
+        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500; min-height: 2rem;"
       )
     )
   )

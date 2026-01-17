@@ -72,6 +72,7 @@ server <- function(input, output, session) {
   # Map data state: observations for the leaflet map and fetch status flag
   map_observations <- shiny::reactiveVal(NULL)
   map_fetch_in_progress <- shiny::reactiveVal(FALSE)
+  map_initialized <- shiny::reactiveVal(FALSE)
 
   # Initialize URL State Manager with defaults and table registry
   url_manager <- URLStateManager$new(
@@ -131,6 +132,13 @@ server <- function(input, output, session) {
         return()
       }
 
+      # Check if map has been initialized before
+      if (!isTRUE(map_initialized())) {
+        # First time loading - show loading screen and lock nav
+        session$sendCustomMessage("showMapLoading", list())
+        session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
+      }
+
       # Fetch data
       map_fetch_in_progress(TRUE)
       observations <- fetch_plot_map_data()
@@ -138,6 +146,12 @@ server <- function(input, output, session) {
 
       if (!is.null(observations)) {
         map_observations(observations)
+        # Note: map_initialized flag and loading screen will be hidden
+        # by the onRender callback in output$map after map fully renders
+      } else {
+        # If data fetch failed, still unlock nav and hide loading screen
+        session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+        session$sendCustomMessage("hideMapLoading", list())
       }
     },
     ignoreInit = TRUE
@@ -806,16 +820,104 @@ server <- function(input, output, session) {
     # Wait for map data to be available (fetched when Map tab is visited)
     shiny::req(map_observations())
 
-    process_map_data(
+    map <- process_map_data(
       map_data = map_observations(),
       center_lng = DEFAULT_MAP_LNG,
       center_lat = DEFAULT_MAP_LAT,
       zoom = DEFAULT_MAP_ZOOM
     )
+    
+    # Add callback to hide loading screen once map is fully rendered
+    # Use isolate() to prevent creating a reactive dependency on map_initialized()
+    if (!isTRUE(shiny::isolate(map_initialized()))) {
+      map <- htmlwidgets::onRender(map, "
+        function(el, x) {
+          var map = this;
+          var signaled = false;
+          
+          function signalMapReady() {
+            if (!signaled) {
+              signaled = true;
+              Shiny.setInputValue('map_ready', true, {priority: 'event'});
+            }
+          }
+          
+          // Check if all visible tile images have full opacity
+          function allTilesFullOpacity() {
+            var tiles = el.querySelectorAll('.leaflet-tile-loaded');
+            if (tiles.length === 0) return false;
+            
+            for (var i = 0; i < tiles.length; i++) {
+              var style = window.getComputedStyle(tiles[i]);
+              var opacity = parseFloat(style.opacity);
+              if (opacity < 0.99) {
+                return false;
+              }
+            }
+            return true;
+          }
+          
+          // Check if map container is NOT recalculating (Shiny output state)
+          function isNotRecalculating() {
+            return !el.classList.contains('recalculating');
+          }
+          
+          // Check if clusters are rendered
+          function hasClusters() {
+            var clusters = el.querySelectorAll('.marker-cluster');
+            var markers = el.querySelectorAll('.leaflet-marker-icon');
+            return clusters.length > 0 || markers.length > 0;
+          }
+          
+          // Main readiness check - polls until all conditions are met
+          function checkFullyReady() {
+            if (signaled) return;
+            
+            var notRecalculating = isNotRecalculating();
+            var tilesReady = allTilesFullOpacity();
+            var clustersPresent = hasClusters();
+            
+            if (notRecalculating && tilesReady && clustersPresent) {
+              signalMapReady();
+            } else {
+              // Keep checking every 50ms
+              setTimeout(checkFullyReady, 50);
+            }
+          }
+          
+          // Start checking after initial render
+          map.whenReady(function() {
+            // Give Leaflet a moment to start tile loading
+            setTimeout(checkFullyReady, 100);
+          });
+          
+          // Fallback timeout
+          setTimeout(function() {
+            if (!signaled) {
+              signalMapReady();
+            }
+          }, 15000);
+        }
+      ")
+    }
+    
+    map
   })
 
 
   # EVENT OBSERVERS --------------------------------------------------------------------------------
+
+  # Hide loading screen when map is fully rendered and ready
+  shiny::observeEvent(input$map_ready,
+    {
+      if (!isTRUE(map_initialized())) {
+        map_initialized(TRUE)
+        session$sendCustomMessage("hideMapLoading", list())
+        session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+      }
+    },
+    ignoreInit = TRUE
+  )
 
   # Track map state changes without triggering redraws
   shiny::observeEvent(input$map_zoom,
