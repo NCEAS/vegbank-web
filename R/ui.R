@@ -1114,6 +1114,19 @@ custom_theme <- bslib::bs_add_rules(
       background-color: rgba(114, 185, 162, 0.25) !important;
   }
   
+  /* DataTables loading indicator customization */
+  .dataTables_processing {
+      z-index: 1000 !important;
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+  }
+  
+  /* Target the nested divs that create the loading animation */
+  .dataTables_processing > div > div {
+      background-color: #72B9A2 !important;
+  }
+  
   /* Map loading overlay animations */
   @keyframes spin {
     0% { transform: rotate(0deg); }
