@@ -1127,10 +1127,57 @@ custom_theme <- bslib::bs_add_rules(
       background-color: #72B9A2 !important;
   }
   
-  /* Map loading overlay animations */
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  /* Map loading ellipses animation */
+  .map-loading-ellipses {
+      display: inline-block;
+      position: relative;
+      margin-bottom: 1rem;
+      width: 9.375rem;
+      height: 1.5rem;
+  }
+  
+  .map-loading-ellipses > div {
+      position: absolute;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: #72B9A2;
+      animation-timing-function: cubic-bezier(0, 1, 1, 0);
+  }
+  
+  .map-loading-ellipses > div:nth-child(1) {
+      left: 0.75rem;
+      animation: mapEllipses1 0.6s infinite;
+  }
+  
+  .map-loading-ellipses > div:nth-child(2) {
+      left: 0.75rem;
+      animation: mapEllipses2 0.6s infinite;
+  }
+  
+  .map-loading-ellipses > div:nth-child(3) {
+      left: 3.75rem;
+      animation: mapEllipses2 0.6s infinite;
+  }
+  
+  .map-loading-ellipses > div:nth-child(4) {
+      left: 6.75rem;
+      animation: mapEllipses3 0.6s infinite;
+  }
+  
+  @keyframes mapEllipses1 {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
+  }
+  
+  @keyframes mapEllipses2 {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(3rem, 0); }
+  }
+  
+  @keyframes mapEllipses3 {
+    0% { transform: scale(1); }
+    100% { transform: scale(0); }
   }
   
   @keyframes fadeOut {
@@ -1362,22 +1409,21 @@ build_map_loading_overlay <- function() {
              justify-content: center; align-items: center; flex-direction: column;",
     htmltools::tags$div(
       class = "map-loading-content",
-      style = "text-align: center;",
+      style = "text-align: center; margin-top: -5rem;",
       htmltools::tags$h2(
         "Loading the Map for the first time can take a few seconds. It's busy:",
         style = "font-size: 1rem; color: var(--no-status-text); font-weight: 500; margin-bottom: 1.5rem;"
       ),
       htmltools::tags$div(
-        class = "map-loading-spinner",
-        style = "width: 80px; height: 80px; margin: 0 auto 2rem auto;
-                 border: 8px solid rgba(114, 185, 162, 0.2);
-                 border-top-color: #72B9A2;
-                 border-radius: 50%;
-                 animation: spin 1s linear infinite;"
+        class = "map-loading-ellipses",
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div())
       ),
       htmltools::tags$div(
         id = "map-loading-pun",
-        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500; min-height: 2rem;"
+        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500;"
       )
     )
   )
