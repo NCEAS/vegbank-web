@@ -33,7 +33,7 @@ test_that("project table spec wires AJAX data source", {
   expect_true(is.function(spec$normalize_fn))
   expect_true(is.function(spec$display_fn))
   expect_equal(colnames(spec$empty_factory()), PROJECT_TABLE_FIELDS)
-  expect_match(config$options$language$processing, "project records", ignore.case = TRUE)
+  expect_match(config$options$language$processing, "projects", ignore.case = TRUE)
 })
 
 test_that("process_project_data formats normalized data", {
