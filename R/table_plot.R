@@ -78,10 +78,18 @@ build_plot_table_with_filter <- function(vb_code = NULL) {
   spec$data_source <- utils::modifyList(spec$data_source, list())
   spec$data_source$query <- as.list(spec$data_source$query)
 
+  # Determine if filter is active
+  has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
+
   # Add vb_code to query if filtering is active
-  if (!is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)) {
+  if (has_filter) {
     spec$data_source$query$vb_code <- vb_code
   }
+
+  spec$options <- utils::modifyList(spec$options, list())
+
+  # Adjust table height based on whether filter alert is shown so we don't overflow viewport
+  spec$options$scrollY <- if (has_filter) "calc(100vh - 315px)" else "calc(100vh - 235px)"
 
   build_table_from_spec(spec)
 }
@@ -405,7 +413,7 @@ coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
 PLOT_TABLE_SPEC <- list(
   table_id = "plot_table",
   resource = "plot-observations",
-  remote_label = "plot observations",
+  loading_label = "plot observations",
   column_defs = create_plot_column_defs(),
   schema_fields = PLOT_TABLE_FIELDS,
   schema_template = PLOT_TABLE_SCHEMA_TEMPLATE,
@@ -423,7 +431,9 @@ PLOT_TABLE_SPEC <- list(
     )
   ),
   page_length = NULL,
-  options = list(),
+  options = list(
+    scrollY = "calc(100vh - 235px)"
+  ),
   datatable_args = list(),
   initial_display = PLOT_TABLE_DISPLAY_TEMPLATE
 )

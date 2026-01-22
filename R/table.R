@@ -360,7 +360,7 @@ extract_reported_total <- function(details) {
 #' @param table_id Output ID of the DT widget
 #' @param resource VegBank (or other API) resource type used for remote data
 #' @param data_key Name of the data source entry used inside processing helpers
-#' @param remote_label Friendly label for progress/loading messages
+#' @param loading_label Friendly label for progress/loading messages
 #' @param fields Character vector describing the canonical data schema
 #' @param extra Named list merged into the base entry for module-specific values
 #' @returns A list entry that can be stored inside a table config map
@@ -369,7 +369,7 @@ build_table_module_config <- function(type,
                                       table_id,
                                       resource,
                                       data_key,
-                                      remote_label,
+                                      loading_label,
                                       fields,
                                       extra = list()) {
   base <- list(
@@ -377,7 +377,7 @@ build_table_module_config <- function(type,
     table_id = table_id,
     resource = resource,
     data_key = data_key,
-    remote_label = remote_label,
+    loading_label = loading_label,
     fields = fields
   )
 
@@ -580,7 +580,7 @@ build_remote_ajax_config <- function(session,
 #'   `page_length`, `coerce_fn`, `normalize_fn`, `display_fn`, `empty_factory`,
 #'   `detail`, `parquet`, `clean_names`, `search_normalizer`, `clean_rows_fn`,
 #'   `count_*` overrides, `query`, `count_query`, or a custom `ajax_factory`.
-#' @param remote_label Human-friendly label used in progress/processing messages
+#' @param loading_label Human-friendly label used in progress/processing messages
 #' @param page_length Page length override (defaults to TABLE_PAGE_LENGTH)
 #' @param options Additional DataTables option overrides merged onto the remote
 #'   defaults (`serverSide`, `lengthChange`, etc.)
@@ -591,7 +591,7 @@ build_remote_ajax_config <- function(session,
 build_remote_table_config <- function(column_defs,
                                       initial_data,
                                       data_source_spec,
-                                      remote_label = NULL,
+                                      loading_label = NULL,
                                       page_length = NULL,
                                       options = list(),
                                       datatable_args = list()) {
@@ -605,12 +605,12 @@ build_remote_table_config <- function(column_defs,
     stop("data_source_spec$resource is required")
   }
 
-  remote_label <- remote_label %||% data_source_spec$label %||% "data"
+  loading_label <- loading_label %||% data_source_spec$label %||% "data"
   effective_page_length <- page_length %||% data_source_spec$page_length %||% TABLE_PAGE_LENGTH
   data_source_spec$page_length <- effective_page_length
 
-  processing_label <- if (!is.null(remote_label)) {
-    paste0("Loading ", remote_label, "...")
+  processing_label <- if (!is.null(loading_label)) {
+    paste0("Loading ", loading_label, "...")
   } else {
     "Loading data..."
   }
@@ -636,7 +636,7 @@ build_remote_table_config <- function(column_defs,
     column_defs = column_defs,
     page_length = effective_page_length,
     use_progress = FALSE,
-    progress_message = paste0("Processing ", remote_label, " table data"),
+    progress_message = paste0("Processing ", loading_label, " table data"),
     initial_data = initial_data %||% data.frame(),
     options = utils::modifyList(remote_defaults, options),
     datatable_args = datatable_args,
@@ -733,7 +733,7 @@ build_display_template <- function(column_names, column_types = NULL) {
 #' @noRd
 build_table_config_from_spec <- function(spec) {
   required_fields <- c(
-    "table_id", "resource", "remote_label", "column_defs",
+    "table_id", "resource", "loading_label", "column_defs",
     "schema_fields", "coerce_fn", "normalize_fn", "display_fn"
   )
   missing <- required_fields[vapply(required_fields, function(field) is.null(spec[[field]]), logical(1))]
@@ -754,7 +754,7 @@ build_table_config_from_spec <- function(spec) {
       coerce_fn = spec$coerce_fn,
       normalize_fn = spec$normalize_fn,
       display_fn = spec$display_fn,
-      label = spec$remote_label,
+      label = spec$loading_label,
       schema_fields = spec$schema_fields,
       empty_factory = function() schema_template
     ),
@@ -767,7 +767,7 @@ build_table_config_from_spec <- function(spec) {
     column_defs = spec$column_defs,
     initial_data = initial_display,
     data_source_spec = data_source_spec,
-    remote_label = spec$remote_label,
+    loading_label = spec$loading_label,
     page_length = spec$page_length,
     options = spec$options %||% list(),
     datatable_args = spec$datatable_args

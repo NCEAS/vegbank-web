@@ -19,8 +19,9 @@ ui <- function(req) {
     htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css")
   )
 
-  navbar_with_search <- build_navbar()
+  navbar <- build_navbar()
   overlay <- build_detail_overlay()
+  map_loading_overlay <- build_map_loading_overlay()
 
   script <- htmltools::tags$script(htmltools::HTML(
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
@@ -541,6 +542,64 @@ ui <- function(req) {
       setNavbarDisabled(disabled);
     });
 
+    // Map loading overlay management
+    var mapLoadingPuns = [
+      'Planting seeds...',
+      'Branching out...',
+      'Rooting through the database...',
+      'Monitoring mycelial networks...',
+      'Disturbing the substrate...',
+      'Planning successful succession...',
+      'Last bud not leaf...'
+    ];
+    var mapLoadingPunIndex = 0;
+    var mapLoadingPunInterval = null;
+
+    function rotatePlantPun() {
+      var punElement = document.getElementById('map-loading-pun');
+      if (punElement) {
+        punElement.textContent = mapLoadingPuns[mapLoadingPunIndex];
+        mapLoadingPunIndex = (mapLoadingPunIndex + 1) % mapLoadingPuns.length;
+      }
+    }
+
+    Shiny.addCustomMessageHandler('showMapLoading', function(message) {
+      var overlay = document.getElementById('map-loading-overlay');
+      if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.classList.remove('fade-out');
+        mapLoadingPunIndex = 0;
+        rotatePlantPun();
+        if (mapLoadingPunInterval) {
+          clearInterval(mapLoadingPunInterval);
+        }
+        mapLoadingPunInterval = setInterval(rotatePlantPun, 2500);
+      }
+    });
+
+    Shiny.addCustomMessageHandler('hideMapLoading', function(message) {
+      var overlay = document.getElementById('map-loading-overlay');
+      var punElement = document.getElementById('map-loading-pun');
+      
+      if (mapLoadingPunInterval) {
+        clearInterval(mapLoadingPunInterval);
+        mapLoadingPunInterval = null;
+      }
+      
+      if (overlay && punElement) {
+        punElement.textContent = 'Go fir launch!';
+        
+        setTimeout(function() {
+          // Allow interaction immediately by removing pointer events
+          overlay.style.pointerEvents = 'none';
+          overlay.classList.add('fade-out');
+          setTimeout(function() {
+            overlay.style.display = 'none';
+          }, 500);
+        }, 500);
+      }
+    });
+
     function getDataTableApi(tableId, settings) {
       if (settings && $.fn && $.fn.dataTable) {
         try {
@@ -923,7 +982,7 @@ ui <- function(req) {
   "
   ))
 
-  htmltools::tagList(font_head, navbar_with_search, overlay, script)
+  htmltools::tagList(font_head, navbar, overlay, map_loading_overlay, script)
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
@@ -949,6 +1008,8 @@ custom_theme <- bslib::bs_add_rules(
     font-family: Inter, sans-serif !important;
     font-feature-settings: 'liga' 1, 'calt' 1;
     --bs-font-sans-serif: Inter, sans-serif !important;
+
+    --bslib-navbar-height: 57px;
 
     /* Vegbank brand colors */
     --vb-green: hsl(153, 31%, 25%);
@@ -1054,6 +1115,81 @@ custom_theme <- bslib::bs_add_rules(
   .table tbody tr.selected-entity:hover {
       background-color: rgba(114, 185, 162, 0.25) !important;
   }
+  
+  /* DataTables loading indicator customization */
+  .dataTables_processing {
+      z-index: 1000 !important;
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+  }
+  
+  /* Target the nested divs that create the loading animation */
+  .dataTables_processing > div > div {
+      background-color: #72B9A2 !important;
+  }
+  
+  /* Map loading ellipses animation */
+  .map-loading-ellipses {
+      display: inline-block;
+      position: relative;
+      margin-bottom: 1rem;
+      width: 9.375rem;
+      height: 1.5rem;
+  }
+  
+  .map-loading-ellipses > div {
+      position: absolute;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: #72B9A2;
+      animation-timing-function: cubic-bezier(0, 1, 1, 0);
+  }
+  
+  .map-loading-ellipses > div:nth-child(1) {
+      left: 0.75rem;
+      animation: mapEllipses1 0.6s infinite;
+  }
+  
+  .map-loading-ellipses > div:nth-child(2) {
+      left: 0.75rem;
+      animation: mapEllipses2 0.6s infinite;
+  }
+  
+  .map-loading-ellipses > div:nth-child(3) {
+      left: 3.75rem;
+      animation: mapEllipses2 0.6s infinite;
+  }
+  
+  .map-loading-ellipses > div:nth-child(4) {
+      left: 6.75rem;
+      animation: mapEllipses3 0.6s infinite;
+  }
+  
+  @keyframes mapEllipses1 {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
+  }
+  
+  @keyframes mapEllipses2 {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(3rem, 0); }
+  }
+  
+  @keyframes mapEllipses3 {
+    0% { transform: scale(1); }
+    100% { transform: scale(0); }
+  }
+  
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  
+  #map-loading-overlay.fade-out {
+    animation: fadeOut 0.5s ease-out forwards;
+  }
 "
 )
 
@@ -1148,7 +1284,8 @@ build_navbar <- function() {
 build_detail_overlay <- function() {
   htmltools::tags$div(
     id = "detail-overlay",
-    style = "position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; overflow-y: auto;
+    style = "position: fixed; top: var(--bslib-navbar-height, 57px); right: -400px; width: 400px; 
+             height: calc(100vh - var(--bslib-navbar-height, 57px)); overflow-y: auto;
              background: #fff; border-left: 1px solid #ccc; z-index: 1050; padding:20px;
              transition: right 0.4s;",
     shiny::actionButton("close_overlay", "",
@@ -1252,6 +1389,43 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Details"), shiny::uiOutput("stratum_method_details")),
           bslib::card(bslib::card_header("Stratum Types"), shiny::uiOutput("stratum_types"))
         )
+      )
+    )
+  )
+}
+
+#' Build Map Loading Overlay for Vegbank UI
+#'
+#' Constructs a full-screen loading overlay for initial map loading with animated
+#' spinner and rotating plant puns.
+#'
+#' @return A Shiny tag representing the map loading overlay.
+#'
+#' @noRd
+build_map_loading_overlay <- function() {
+  htmltools::tags$div(
+    id = "map-loading-overlay",
+    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 57px); left: 0; 
+             width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 57px));
+             background: rgba(255, 255, 255, 0.98); z-index: 1200;
+             justify-content: center; align-items: center; flex-direction: column;",
+    htmltools::tags$div(
+      class = "map-loading-content",
+      style = "text-align: center; margin-top: -5rem;",
+      htmltools::tags$h2(
+        "Loading the map for the first time can take a few seconds. It's busy:",
+        style = "font-size: 0.875rem; color: var(--no-status-text); margin-bottom: 1.5rem;"
+      ),
+      htmltools::tags$div(
+        class = "map-loading-ellipses",
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div())
+      ),
+      htmltools::tags$div(
+        id = "map-loading-pun",
+        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500;",
       )
     )
   )

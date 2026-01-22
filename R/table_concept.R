@@ -8,7 +8,7 @@ CONCEPT_CONFIG <- list(
     table_id = "plant_table",
     resource = "plant-concepts",
     data_key = "plant_data",
-    remote_label = "plant concepts",
+    loading_label = "plant concepts",
     fields = c(
       "pc_code",
       "plant_name",
@@ -33,7 +33,7 @@ CONCEPT_CONFIG <- list(
     table_id = "comm_table",
     resource = "community-concepts",
     data_key = "community_data",
-    remote_label = "community concepts",
+    loading_label = "community concepts",
     fields = c(
       "cc_code",
       "comm_name",
@@ -237,7 +237,7 @@ CONCEPT_TABLE_SPECS <- local({
     list(
       table_id = config$table_id,
       resource = config$resource,
-      remote_label = config$remote_label,
+      loading_label = config$loading_label,
       column_defs = create_concept_column_defs(link_input_id),
       schema_fields = config$fields,
       schema_template = schema_template,

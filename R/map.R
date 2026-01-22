@@ -18,41 +18,39 @@ MAP_DATA_FETCH_LIMIT <- 1000000L
 #' @return Data frame of plot observations or NULL on failure
 #' @noRd
 fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
-  shiny::withProgress(message = "Loading map data...", value = 0.2, {
-    error_occurred <- FALSE
+  error_occurred <- FALSE
 
-    data <- tryCatch(
-      vegbankr::vb_get_plot_observations(
-        limit = limit,
-        detail = detail,
-        with_nested = FALSE
-      ),
-      error = function(err) {
-        error_occurred <<- TRUE
-        shiny::showNotification(
-          paste("Failed to load map data:", conditionMessage(err)),
-          type = "error"
-        )
-        NULL
-      }
-    )
-
-    shiny::incProgress(1)
-
-    if (isTRUE(error_occurred)) {
-      return(NULL)
-    }
-
-    if (is.null(data) || nrow(data) == 0) {
+  data <- tryCatch(
+    vegbankr::vb_get_plot_observations(
+      limit = limit,
+      detail = detail,
+      with_nested = FALSE
+    ),
+    error = function(err) {
+      error_occurred <<- TRUE
       shiny::showNotification(
-        "Map data is currently unavailable. Please try again later.",
-        type = "warning"
+        paste("Failed to load map data:", conditionMessage(err)),
+        type = "error",
+        duration = NULL
       )
-      return(NULL)
+      NULL
     }
+  )
 
-    as.data.frame(data)
-  })
+  if (isTRUE(error_occurred)) {
+    return(NULL)
+  }
+
+  if (is.null(data) || nrow(data) == 0) {
+    shiny::showNotification(
+      "Map data is currently unavailable. Please try again later.",
+      type = "warning",
+      duration = NULL
+    )
+    return(NULL)
+  }
+
+  as.data.frame(data)
 }
 
 # ---- Data Validation ----
@@ -155,17 +153,9 @@ process_map_data <- function(map_data, center_lng, center_lat, zoom, map_options
     return(create_empty_map(map_defaults, center_lng, center_lat, zoom))
   }
 
-  # Step 2: Build map with progress indicator
-  shiny::withProgress(message = "Building map...", value = 0, {
-    shiny::incProgress(0.3, detail = "Grouping plots by location...")
-    data_grouped <- group_map_points(validation$data)
-
-    shiny::incProgress(0.5, detail = "Rendering map...")
-    result <- build_leaflet_map(data_grouped, map_defaults, center_lng, center_lat, zoom)
-
-    shiny::incProgress(0.2)
-    result
-  })
+  # Step 2: Build map (progress is shown via custom loading screen)
+  data_grouped <- group_map_points(validation$data)
+  build_leaflet_map(data_grouped, map_defaults, center_lng, center_lat, zoom)
 }
 
 #' Move the map and show a popup at a given location
