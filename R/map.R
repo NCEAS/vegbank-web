@@ -126,7 +126,7 @@ show_map_validation_error <- function(reason) {
 #' on validation failure and returns an empty map as fallback.
 #'
 #' @param map_data Data frame with map points. Must contain latitude, longitude,
-#'                author_obs_code and ob_code columns.
+#'                 and ob_code columns.
 #' @param center_lng Longitude for map center (numeric)
 #' @param center_lat Latitude for map center (numeric)
 #' @param zoom Initial zoom level (integer)

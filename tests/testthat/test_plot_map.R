@@ -14,41 +14,29 @@ test_that("get_map_defaults returns expected structure", {
 
 test_that("create_marker_popup creates correct HTML", {
   # Single observation
-  single_popup <- create_marker_popup("Plot1", "ACC1", 1)
+  single_popup <- create_marker_popup("ob.13455", 1)
   expect_true(grepl("<strong>1 Observation</strong>", single_popup))
   # Single quotes are safe within double-quoted attributes
-  expect_true(grepl("onclick=\"Shiny.setInputValue\\('plot_link_click',\\s*'ACC1'", single_popup))
-  expect_true(grepl(">Plot1</a>", single_popup))
+  expect_true(grepl("onclick=\"Shiny.setInputValue\\('plot_link_click',\\s*'ob.13455'", single_popup))
+  expect_true(grepl(">ob.13455</a>", single_popup))
 
   # Multiple observations
   multi_popup <- create_marker_popup(
-    c("Plot1", "Plot2"),
-    c("ACC1", "ACC2"),
+    c("ob.13455", "ob.45436"),
     2
   )
   expect_true(grepl("<strong>2 Observations</strong>", multi_popup))
-  expect_true(grepl(">Plot1</a>", multi_popup))
-  expect_true(grepl(">Plot2</a>", multi_popup))
+  expect_true(grepl(">ob.13455</a>", multi_popup))
+  expect_true(grepl(">ob.45436</a>", multi_popup))
   expect_true(grepl("<br>", multi_popup))
 })
 
 # ---- XSS Prevention tests ----
 
-test_that("create_marker_popup prevents XSS in author_obs_code", {
-  # Test HTML injection in display text
-  xss_obs <- "<script>alert('xss')</script>"
-  popup <- create_marker_popup(xss_obs, "ACC1", 1)
-
-  # Should NOT contain raw script tag
-  expect_false(grepl("<script>", popup, fixed = TRUE))
-  # Should contain escaped version
-  expect_true(grepl("&lt;script&gt;", popup, fixed = TRUE))
-})
-
 test_that("create_marker_popup prevents XSS in ob_code", {
   # Test JS injection in onclick handler
-  xss_acc <- "'); alert('xss'); //"
-  popup <- create_marker_popup("Plot1", xss_acc, 1)
+  xss_code <- "'); alert('xss'); //"
+  popup <- create_marker_popup(xss_code, 1)
 
   # Should NOT contain unescaped single quote followed by closing paren
   # that could break out of the JS string (the raw pattern "');")
@@ -59,16 +47,12 @@ test_that("create_marker_popup prevents XSS in ob_code", {
 
 test_that("create_marker_popup handles special characters safely", {
   # Test various edge cases
-  special_obs <- "Plot's \"Name\" <test> & more"
-  special_acc <- "ob.123/456"
+  special_code <- "ob.123/456"
 
-  popup <- create_marker_popup(special_obs, special_acc, 1)
+  popup <- create_marker_popup(special_code, 1)
 
   # Display text should be HTML escaped for text content
   # Note: htmlEscape() without attribute=TRUE doesn't escape quotes/apostrophes in text nodes (they're safe there)
-  expect_true(grepl("&lt;test&gt;", popup)) # escaped angle brackets
-  expect_true(grepl("&amp;", popup)) # escaped ampersand
-
   # JS string value is HTML escaped - forward slashes are safe and not escaped
   expect_true(grepl("ob.123/456", popup, fixed = TRUE))
 })
@@ -98,7 +82,6 @@ test_that("validate_map_data returns invalid when all coordinates are NA", {
   bad_coords <- data.frame(
     latitude = NA,
     longitude = NA,
-    author_obs_code = "CODE",
     ob_code = "ob.1"
   )
   result <- validate_map_data(bad_coords)
@@ -110,7 +93,6 @@ test_that("validate_map_data returns valid with good data", {
   good_data <- data.frame(
     latitude = 40.7128,
     longitude = -74.0060,
-    author_obs_code = "NYC",
     ob_code = "ob.2948"
   )
   result <- validate_map_data(good_data)
@@ -122,13 +104,12 @@ test_that("validate_map_data filters out NA coordinates", {
   mixed_data <- data.frame(
     latitude = c(40.7128, NA, 34.0522),
     longitude = c(-74.0060, -100, NA),
-    author_obs_code = c("NYC", "BAD1", "BAD2"),
     ob_code = c("ob.1", "ob.2", "ob.3")
   )
   result <- validate_map_data(mixed_data)
   expect_true(result$valid)
   expect_equal(nrow(result$data), 1)
-  expect_equal(result$data$author_obs_code, "NYC")
+  expect_equal(result$data$ob_code, "ob.1")
 })
 
 # ---- process_map_data tests ----
@@ -154,7 +135,6 @@ test_that("process_map_data creates a map with markers", {
   test_data <- data.frame(
     latitude = c(40.7128, 34.0522),
     longitude = c(-74.0060, -118.2437),
-    author_obs_code = c("NYC", "LA"),
     ob_code = c("ob.2948", "ob.2949"),
     stringsAsFactors = FALSE
   )
@@ -172,7 +152,6 @@ test_that("process_map_data handles custom center and zoom", {
   test_data <- data.frame(
     latitude = c(40.7128),
     longitude = c(-74.0060),
-    author_obs_code = c("NYC"),
     ob_code = c("ob.2948"),
     stringsAsFactors = FALSE
   )
@@ -188,7 +167,6 @@ test_that("fetch_plot_map_data returns data when API succeeds", {
   fake_data <- data.frame(
     latitude = 10,
     longitude = 20,
-    author_obs_code = "CODE",
     ob_code = "ob.1"
   )
 
