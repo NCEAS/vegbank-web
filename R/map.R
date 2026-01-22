@@ -88,7 +88,7 @@ validate_map_data <- function(map_data) {
 is_invalid_map_data <- function(map_data) {
   is.null(map_data) ||
     nrow(map_data) == 0 ||
-    !all(c("latitude", "longitude", "author_obs_code", "ob_code") %in% colnames(map_data))
+    !all(c("latitude", "longitude", "ob_code") %in% colnames(map_data))
 }
 
 #' Filter map data to only include points with valid coordinates
@@ -198,12 +198,11 @@ update_map_view <- function(map_proxy, lng, lat, label, zoom = NULL) {
 #' @noRd
 group_map_points <- function(valid_points) {
   valid_points |>
-    dplyr::arrange(.data$author_obs_code) |>
+    dplyr::arrange(.data$ob_code) |>
     dplyr::group_by(.data$latitude, .data$longitude) |>
     dplyr::summarize(
       obs_count = dplyr::n(),
-      author_obs_code_label = create_marker_popup(
-        .data$author_obs_code,
+      obs_code_label = create_marker_popup(
         .data$ob_code,
         dplyr::n()
       ),
@@ -241,7 +240,7 @@ build_leaflet_map <- function(data_grouped, map_defaults, center_lng, center_lat
       lng = ~longitude,
       lat = ~latitude,
       layerId = ~ paste(latitude, longitude, sep = ", "),
-      label = ~ author_obs_code_label |> lapply(htmltools::HTML),
+      label = ~ obs_code_label |> lapply(htmltools::HTML),
       labelOptions = create_marker_label_options(),
       clusterOptions = leaflet::markerClusterOptions(disableClusteringAtZoom = 17)
     ) |>
@@ -305,30 +304,28 @@ create_empty_map <- function(map_defaults = NULL, center_lng = NULL, center_lat 
 
 #' Create a marker popup HTML for a group of observations
 #'
-#' @param author_obs_codes Character vector of author observation codes
 #' @param ob_codes Character vector of plot observation VegBank codes
 #' @param count Integer, number of observations for that plot
 #' @return A string containing HTML for the popup label
 #' @noRd
-create_marker_popup <- function(author_obs_codes, ob_codes, count) {
+create_marker_popup <- function(ob_codes, count) {
   header <- ifelse(count == 1, "1 Observation", paste(count, "Observations"))
 
   links <- mapply(
-    function(author_obs_code, ob_code) {
+    function(ob_code) {
       # Not using create_detail_link here bc direct string manipulation is slightly faster
       safe_ob <- htmltools::htmlEscape(ob_code, attribute = TRUE)
-      safe_author <- htmltools::htmlEscape(author_obs_code)
       sprintf(
         "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click', '%s', {priority: 'event'}); return false;\">%s</a>",
-        safe_ob, safe_author
+        safe_ob, safe_ob
       )
     },
-    author_obs_codes, ob_codes
+    ob_codes
   )
 
   paste0(
     "<strong>", header, "</strong>",
-    "<div style='max-height: 15.5rem; overflow-y: auto;' onwheel='event.stopPropagation()'",
+    "<div style='max-height: 8rem; overflow-y: auto;' onwheel='event.stopPropagation()'",
     " onmousewheel='event.stopPropagation()' onDOMMouseScroll='event.stopPropagation()'>",
     paste(links, collapse = "<br>"),
     "</div>"

@@ -114,7 +114,7 @@ process_plot_data <- function(plot_data) {
   elevations <- suppressWarnings(as.numeric(plot_data$elevation))
 
   locations <- format_location_column(plot_data, latitudes, longitudes, elevations)
-  actions_html <- format_plot_action_buttons(ob_codes, author_codes, latitudes, longitudes)
+  actions_html <- format_plot_action_buttons(ob_codes, latitudes, longitudes)
   top_taxa_html <- format_plot_taxa_list(plot_data$top_taxon_observations, plot_data$taxon_count)
   communities_html <- format_plot_community_list(plot_data$top_classifications)
 
@@ -133,30 +133,28 @@ process_plot_data <- function(plot_data) {
 #' Format HTML for plot table action buttons (Details + Map)
 #'
 #' @param ob_codes Character vector of plot observation codes
-#' @param author_codes Character vector of author observation codes
 #' @param latitudes Numeric vector of latitudes
 #' @param longitudes Numeric vector of longitudes
 #' @return Character vector of HTML for action buttons
 #' @noRd
-format_plot_action_buttons <- function(ob_codes, author_codes, latitudes, longitudes) {
+format_plot_action_buttons <- function(ob_codes, latitudes, longitudes) {
   row_count <- length(ob_codes)
   vapply(seq_len(row_count), function(idx) {
-    detail_code <- ob_codes[[idx]]
+    ob_code <- ob_codes[[idx]]
     lat <- latitudes[[idx]]
     lng <- longitudes[[idx]]
-    code <- author_codes[[idx]]
     has_coords <- !is.na(lat) && !is.na(lng)
     # Details button
-    detail_btn <- if (!is.null(detail_code) && nzchar(detail_code)) {
+    detail_btn <- if (!is.null(ob_code) && nzchar(ob_code)) {
       sprintf(
         '<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" data-input-id="plot_link_click" data-value="%s">Details</button>',
-        htmltools::htmlEscape(detail_code, attribute = TRUE))
+        htmltools::htmlEscape(ob_code, attribute = TRUE))
     } else {
       '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Details</button>'
     }
     # Map button
     map_btn <- if (has_coords) {
-      code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code, attribute = TRUE)) else ''
+      code_attr <- if (!is.null(ob_code) && nzchar(ob_code)) sprintf(' data-code="%s"', htmltools::htmlEscape(ob_code, attribute = TRUE)) else ''
       sprintf(
         '<button type="button" class="btn btn-sm btn-outline-primary dt-map-action" data-lat="%s" data-lng="%s"%s>Map</button>',
         htmltools::htmlEscape(lat, attribute = TRUE),

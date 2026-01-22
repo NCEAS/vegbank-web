@@ -1093,7 +1093,7 @@ server <- function(input, output, session) {
             session,
             map_req$lat,
             map_req$lng,
-            paste("Plot", map_req$code, "is here!")
+            paste(map_req$code, "is here!")
           )
           state$map_request(NULL)
 
