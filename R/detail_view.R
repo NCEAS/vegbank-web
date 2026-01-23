@@ -135,6 +135,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         },
         "plot-observation" = {
           details <- build_plot_obs_details_view(result)
+          output$plot_notification <- details$plot_notification
           output$plot_header <- details$plot_header
           output$author_code_details <- details$author_code_details
           output$date_details <- details$date_details
@@ -144,9 +145,11 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           output$methods_details <- details$methods_details
           output$plot_quality_details <- details$plot_quality_details
           output$plot_vegetation_details <- details$plot_vegetation_details
-          output$plot_misc_details <- details$plot_misc_details
           output$taxa_details <- details$taxa_details
           output$communities_details <- details$communities_details
+          output$disturbances_details <- details$disturbances_details
+          output$soils_details <- details$soils_details
+          output$plot_misc_details <- details$plot_misc_details
         },
         "plant-concept" = {
           details <- build_plant_concept_details_view(result)

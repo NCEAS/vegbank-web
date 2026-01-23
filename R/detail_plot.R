@@ -1,9 +1,9 @@
 #' @noRd
 plot_detail_output_names <- c(
-  "plot_header",
+  "plot_notification", "plot_header",
   "author_code_details", "date_details", "location_details", "layout_details",
   "environmental_details", "methods_details", "plot_quality_details", "plot_vegetation_details",
-  "plot_misc_details", "taxa_details", "communities_details"
+  "communities_details", "taxa_details", "disturbances_details", "soils_details", "plot_misc_details"
 )
 
 #' Normalize Plot Observation Result Payload
@@ -41,8 +41,13 @@ normalize_plot_obs_result <- function(result) {
   plot_observation <- result[1, , drop = FALSE]
   taxa <- extract_nested_table(plot_observation, "top_taxon_observations")
   communities <- extract_nested_table(plot_observation, "top_classifications")
+  disturbances <- extract_nested_table(plot_observation, "disturbances")
+  soils <- extract_nested_table(plot_observation, "soils")
 
-  nested_cols <- intersect(c("top_taxon_observations", "top_classifications"), names(plot_observation))
+  nested_cols <- intersect(
+    c("top_taxon_observations", "top_classifications", "disturbances", "soils"), names(plot_observation)
+  )
+
   if (length(nested_cols) > 0) {
     plot_observation[nested_cols] <- NULL
   }
@@ -51,6 +56,8 @@ normalize_plot_obs_result <- function(result) {
     plot_observation = plot_observation,
     top_taxon_observations = taxa,
     communities = communities,
+    disturbances = disturbances,
+    soils = soils,
     has_data = TRUE
   )
 }
@@ -155,7 +162,7 @@ build_plot_obs_details_view <- function(result) {
   # Cover method display (link or fallback) for methods_details card
   # Must use list() to wrap HTML tag objects for tibble compatibility
   if (has_valid_field_value(plot_observation, "cm_code") &&
-        has_valid_field_value(plot_observation, "cover_method_name")) {
+    has_valid_field_value(plot_observation, "cover_method_name")) {
     plot_observation$cover_method_display <- list(create_detail_link(
       "cover_method_link_click",
       plot_observation$cm_code,
@@ -168,7 +175,7 @@ build_plot_obs_details_view <- function(result) {
   # Stratum method display (link or fallback) for methods_details card
   # Must use list() to wrap HTML tag objects for tibble compatibility
   if (has_valid_field_value(plot_observation, "sm_code") &&
-        has_valid_field_value(plot_observation, "stratum_method_name")) {
+    has_valid_field_value(plot_observation, "stratum_method_name")) {
     plot_observation$stratum_method_display <- list(create_detail_link(
       "stratum_method_link_click",
       plot_observation$sm_code,
@@ -244,6 +251,24 @@ build_plot_obs_details_view <- function(result) {
   })
 
   list(
+    plot_notification = shiny::renderUI({
+      # Show notification if observation has been replaced
+      if (isTRUE(plot_observation$has_observation_synonym) &&
+            has_valid_field_value(plot_observation, "replaced_by_ob_code")) {
+        return(htmltools::tags$div(
+          class = "alert alert-warning",
+          style = "padding: 0.5rem; margin-bottom: 0.75rem; font-size: 0.875rem;",
+          htmltools::tags$b("This observation has been updated."),
+          htmltools::tags$br(),
+          create_detail_link(
+            "plot_link_click",
+            plot_observation$replaced_by_ob_code,
+            "View the newer version."
+          )
+        ))
+      }
+      return(NULL)
+    }),
     plot_header = shiny::renderUI({
       htmltools::div(
         htmltools::tags$h5(plot_observation$author_obs_code, style = "font-weight: 600; margin-bottom: 0px;"),
@@ -259,7 +284,7 @@ build_plot_obs_details_view <- function(result) {
           htmltools::tags$p(format_date_range(plot_observation$obs_start_date, plot_observation$obs_end_date))
         },
         if (has_valid_field_value(plot_observation, "rf_code") &&
-              has_valid_field_value(plot_observation, "rf_label")) {
+          has_valid_field_value(plot_observation, "rf_label")) {
           htmltools::tags$p(
             htmltools::tags$span("Reference: "),
             create_detail_link("ref_link_click", plot_observation$rf_code, plot_observation$rf_label)
@@ -316,6 +341,81 @@ build_plot_obs_details_view <- function(result) {
       skip_empty = TRUE,
       apply_units = TRUE
     ),
+    disturbances_details = shiny::renderUI({
+      tryCatch(
+        {
+          disturbances <- normalized$disturbances
+
+          if (is.null(disturbances) || nrow(disturbances) == 0) {
+            return(htmltools::tags$p("No disturbances recorded"))
+          }
+
+          rows <- lapply(seq_len(nrow(disturbances)), function(i) {
+            row <- disturbances[i, , drop = FALSE]
+
+            type_val <- row$type %|||% "Not recorded"
+            intensity_val <- row$intensity %|||% "Not recorded"
+            comment_val <- row$comment %|||% "Not recorded"
+
+            htmltools::tags$tr(
+              htmltools::tags$td(type_val),
+              htmltools::tags$td(intensity_val),
+              htmltools::tags$td(comment_val)
+            )
+          })
+
+          create_detail_table_with_headers(
+            c("Type", "Intensity", "Comment"),
+            rows,
+            table_style = "width: 100%; table-layout: fixed; word-break: break-word;"
+          )
+        },
+        error = function(e) {
+          message("Error in disturbances_details: ", e$message)
+          htmltools::tags$p(paste("Error processing disturbances:", e$message))
+        }
+      )
+    }),
+    soils_details = shiny::renderUI({
+      tryCatch(
+        {
+          soils <- normalized$soils
+
+          if (is.null(soils) || nrow(soils) == 0) {
+            return(htmltools::tags$p("No soil data recorded"))
+          }
+
+          soil_sections <- lapply(seq_len(nrow(soils)), function(i) {
+            soil <- soils[i, , drop = FALSE]
+            horizon_label <- soil$horizon %|||% "Unknown"
+
+            # Get all non-null fields for this soil
+            fields_to_show <- c(
+              "description", "depth_top", "depth_bottom", "texture", "color",
+              "ph", "organic", "sand", "silt", "clay", "coarse",
+              "exchange_capacity", "base_saturation"
+            )
+
+            htmltools::div(
+              style = "margin-bottom: 1rem;",
+              create_section_header(paste("Horizon:", horizon_label)),
+              format_fields_for_detail_table(
+                fields_to_show,
+                soil,
+                skip_empty = TRUE,
+                apply_units = TRUE
+              )
+            )
+          })
+
+          htmltools::div(soil_sections)
+        },
+        error = function(e) {
+          message("Error in soils_details: ", e$message)
+          htmltools::tags$p(paste("Error processing soils:", e$message))
+        }
+      )
+    }),
     methods_details = render_detail_table(
       c(
         "method_narrative", "placement_method", "cover_method_display", "cover_dispersion",

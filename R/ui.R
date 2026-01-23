@@ -1300,6 +1300,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "plot-details-cards",
           class = "detail-section",
+          shiny::uiOutput("plot_notification"),
           bslib::card(bslib::card_header("Plot Observation"), shiny::uiOutput("plot_header")),
           bslib::card(bslib::card_header("Author Codes"), shiny::uiOutput("author_code_details")),
           bslib::card(bslib::card_header("Dates"), shiny::uiOutput("date_details")),
@@ -1309,9 +1310,11 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
           bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
           bslib::card(bslib::card_header("Plot Vegetation"), shiny::uiOutput("plot_vegetation_details")),
-          bslib::card(bslib::card_header("Miscellaneous"), shiny::uiOutput("plot_misc_details")),
           bslib::card(bslib::card_header("Communities"), shiny::uiOutput("communities_details")),
-          bslib::card(bslib::card_header("Taxa Observed"), shiny::uiOutput("taxa_details"))
+          bslib::card(bslib::card_header("Taxa Observed"), shiny::uiOutput("taxa_details")),
+          bslib::card(bslib::card_header("Disturbances"), shiny::uiOutput("disturbances_details")),
+          bslib::card(bslib::card_header("Soils"), shiny::uiOutput("soils_details")),
+          bslib::card(bslib::card_header("Miscellaneous"), shiny::uiOutput("plot_misc_details"))
         ),
 
         # Community Concept Details Cards - wrapped in a div with class for toggling visibility
