@@ -216,7 +216,9 @@ build_plot_obs_details_view <- function(result) {
             c("Name", "Stratum", "Cover"),
             rows,
             table_style = "width: 100%; table-layout: fixed; word-break: break-word;",
-            header_styles = c("text-align: left;", "text-align: left;", "text-align: right;")
+            header_styles = c("width: 40%; text-align: left;",
+                              "width: 35%; text-align: left;",
+                              "width: 25%; text-align: right;")
           )
         )
       },
@@ -276,7 +278,8 @@ build_plot_obs_details_view <- function(result) {
         create_detail_table_with_headers(
           c("Type", "Intensity", "Comment"),
           rows,
-          table_style = "width: 100%; table-layout: fixed; word-break: break-word;"
+          table_style = "width: 100%; table-layout: fixed; word-break: break-word;",
+          header_styles = c("width: 30%;", "width: 30%;", "width: 40%;")
         )
       },
       error = function(e) {
