@@ -162,7 +162,7 @@ build_plot_obs_details_view <- function(result) {
   # Cover method display (link or fallback) for methods_details card
   # Must use list() to wrap HTML tag objects for tibble compatibility
   if (has_valid_field_value(plot_observation, "cm_code") &&
-    has_valid_field_value(plot_observation, "cover_method_name")) {
+        has_valid_field_value(plot_observation, "cover_method_name")) {
     plot_observation$cover_method_display <- list(create_detail_link(
       "cover_method_link_click",
       plot_observation$cm_code,
@@ -175,7 +175,7 @@ build_plot_obs_details_view <- function(result) {
   # Stratum method display (link or fallback) for methods_details card
   # Must use list() to wrap HTML tag objects for tibble compatibility
   if (has_valid_field_value(plot_observation, "sm_code") &&
-    has_valid_field_value(plot_observation, "stratum_method_name")) {
+        has_valid_field_value(plot_observation, "stratum_method_name")) {
     plot_observation$stratum_method_display <- list(create_detail_link(
       "stratum_method_link_click",
       plot_observation$sm_code,
@@ -250,6 +250,83 @@ build_plot_obs_details_view <- function(result) {
     )
   })
 
+  disturbances_details_ui <- shiny::renderUI({
+    tryCatch(
+      {
+        disturbances <- normalized$disturbances
+
+        if (is.null(disturbances) || nrow(disturbances) == 0) {
+          return(htmltools::tags$p("No disturbances recorded"))
+        }
+
+        rows <- lapply(seq_len(nrow(disturbances)), function(i) {
+          row <- disturbances[i, , drop = FALSE]
+
+          type_val <- row$type %|||% "Not recorded"
+          intensity_val <- row$intensity %|||% "Not recorded"
+          comment_val <- row$comment %|||% "Not recorded"
+
+          htmltools::tags$tr(
+            htmltools::tags$td(type_val),
+            htmltools::tags$td(intensity_val),
+            htmltools::tags$td(comment_val)
+          )
+        })
+
+        create_detail_table_with_headers(
+          c("Type", "Intensity", "Comment"),
+          rows,
+          table_style = "width: 100%; table-layout: fixed; word-break: break-word;"
+        )
+      },
+      error = function(e) {
+        message("Error in disturbances_details: ", e$message)
+        htmltools::tags$p(paste("Error processing disturbances:", e$message))
+      }
+    )
+  })
+
+  soils_details_ui <- shiny::renderUI({
+    tryCatch(
+      {
+        soils <- normalized$soils
+
+        if (is.null(soils) || nrow(soils) == 0) {
+          return(htmltools::tags$p("No soil data recorded"))
+        }
+
+        soil_sections <- lapply(seq_len(nrow(soils)), function(i) {
+          soil <- soils[i, , drop = FALSE]
+          horizon_label <- soil$horizon %|||% "Unknown"
+
+          # Get all non-null fields for this soil
+          fields_to_show <- c(
+            "description", "depth_top", "depth_bottom", "texture", "color",
+            "ph", "organic", "sand", "silt", "clay", "coarse",
+            "exchange_capacity", "base_saturation"
+          )
+
+          htmltools::div(
+            style = "margin-bottom: 1rem;",
+            create_section_header(paste("Horizon:", horizon_label)),
+            format_fields_for_detail_table(
+              fields_to_show,
+              soil,
+              skip_empty = TRUE,
+              apply_units = TRUE
+            )
+          )
+        })
+
+        htmltools::div(soil_sections)
+      },
+      error = function(e) {
+        message("Error in soils_details: ", e$message)
+        htmltools::tags$p(paste("Error processing soils:", e$message))
+      }
+    )
+  })
+
   list(
     plot_notification = shiny::renderUI({
       # Show notification if observation has been replaced
@@ -284,7 +361,7 @@ build_plot_obs_details_view <- function(result) {
           htmltools::tags$p(format_date_range(plot_observation$obs_start_date, plot_observation$obs_end_date))
         },
         if (has_valid_field_value(plot_observation, "rf_code") &&
-          has_valid_field_value(plot_observation, "rf_label")) {
+              has_valid_field_value(plot_observation, "rf_label")) {
           htmltools::tags$p(
             htmltools::tags$span("Reference: "),
             create_detail_link("ref_link_click", plot_observation$rf_code, plot_observation$rf_label)
@@ -341,81 +418,6 @@ build_plot_obs_details_view <- function(result) {
       skip_empty = TRUE,
       apply_units = TRUE
     ),
-    disturbances_details = shiny::renderUI({
-      tryCatch(
-        {
-          disturbances <- normalized$disturbances
-
-          if (is.null(disturbances) || nrow(disturbances) == 0) {
-            return(htmltools::tags$p("No disturbances recorded"))
-          }
-
-          rows <- lapply(seq_len(nrow(disturbances)), function(i) {
-            row <- disturbances[i, , drop = FALSE]
-
-            type_val <- row$type %|||% "Not recorded"
-            intensity_val <- row$intensity %|||% "Not recorded"
-            comment_val <- row$comment %|||% "Not recorded"
-
-            htmltools::tags$tr(
-              htmltools::tags$td(type_val),
-              htmltools::tags$td(intensity_val),
-              htmltools::tags$td(comment_val)
-            )
-          })
-
-          create_detail_table_with_headers(
-            c("Type", "Intensity", "Comment"),
-            rows,
-            table_style = "width: 100%; table-layout: fixed; word-break: break-word;"
-          )
-        },
-        error = function(e) {
-          message("Error in disturbances_details: ", e$message)
-          htmltools::tags$p(paste("Error processing disturbances:", e$message))
-        }
-      )
-    }),
-    soils_details = shiny::renderUI({
-      tryCatch(
-        {
-          soils <- normalized$soils
-
-          if (is.null(soils) || nrow(soils) == 0) {
-            return(htmltools::tags$p("No soil data recorded"))
-          }
-
-          soil_sections <- lapply(seq_len(nrow(soils)), function(i) {
-            soil <- soils[i, , drop = FALSE]
-            horizon_label <- soil$horizon %|||% "Unknown"
-
-            # Get all non-null fields for this soil
-            fields_to_show <- c(
-              "description", "depth_top", "depth_bottom", "texture", "color",
-              "ph", "organic", "sand", "silt", "clay", "coarse",
-              "exchange_capacity", "base_saturation"
-            )
-
-            htmltools::div(
-              style = "margin-bottom: 1rem;",
-              create_section_header(paste("Horizon:", horizon_label)),
-              format_fields_for_detail_table(
-                fields_to_show,
-                soil,
-                skip_empty = TRUE,
-                apply_units = TRUE
-              )
-            )
-          })
-
-          htmltools::div(soil_sections)
-        },
-        error = function(e) {
-          message("Error in soils_details: ", e$message)
-          htmltools::tags$p(paste("Error processing soils:", e$message))
-        }
-      )
-    }),
     methods_details = render_detail_table(
       c(
         "method_narrative", "placement_method", "cover_method_display", "cover_dispersion",
@@ -446,12 +448,14 @@ build_plot_obs_details_view <- function(result) {
       skip_empty = TRUE,
       apply_units = TRUE
     ),
+    communities_details = communities_details_ui,
+    taxa_details = taxa_details_ui,
+    disturbances_details = disturbances_details_ui,
+    soils_details = soils_details_ui,
     plot_misc_details = render_detail_table(
       c("original_data", "parent_pl_code", "pl_revisions", "pl_notes_public", "pl_notes_mgt"),
       plot_observation,
       skip_empty = TRUE
-    ),
-    taxa_details = taxa_details_ui,
-    communities_details = communities_details_ui
+    )
   )
 }

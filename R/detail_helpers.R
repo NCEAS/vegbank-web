@@ -146,7 +146,7 @@ append_units <- function(field_name, value) {
     clay = " %",
     coarse = " %",
     organic = " %",
-    base_saturation = " %",
+    base_saturation = " %"
   )
 
   if (field_name %in% names(unit_map)) {
