@@ -33,7 +33,9 @@ ui <- function(req) {
     Shiny.addCustomMessageHandler('closeOverlay', function(message) {
       var overlay = document.getElementById('detail-overlay');
       if (overlay) {
-        overlay.style.right = '-400px';
+        // Use responsive close position based on screen width
+        var closePosition = window.innerWidth < 768 ? '-100vw' : '-420px';
+        overlay.style.right = closePosition;
       }
     });
 
@@ -1190,6 +1192,35 @@ custom_theme <- bslib::bs_add_rules(
   #map-loading-overlay.fade-out {
     animation: fadeOut 0.5s ease-out forwards;
   }
+  
+  /* Detail overlay responsive width */
+  #detail-overlay {
+    position: fixed;
+    top: var(--bslib-navbar-height, 57px);
+    height: calc(100vh - var(--bslib-navbar-height, 57px));
+    overflow-y: auto;
+    background: #fff;
+    border-left: 1px solid #ccc;
+    z-index: 1050;
+    padding: 20px;
+    transition: right 0.4s;
+  }
+  
+  /* Mobile: full width */
+  @media (max-width: 767px) {
+    #detail-overlay {
+      right: -100vw;
+      width: 100vw;
+    }
+  }
+  
+  /* Desktop: 420px width */
+  @media (min-width: 768px) {
+    #detail-overlay {
+      right: -420px;
+      width: 420px;
+    }
+  }
 "
 )
 
@@ -1284,13 +1315,11 @@ build_navbar <- function() {
 build_detail_overlay <- function() {
   htmltools::tags$div(
     id = "detail-overlay",
-    style = "position: fixed; top: var(--bslib-navbar-height, 57px); right: -400px; width: 400px; 
-             height: calc(100vh - var(--bslib-navbar-height, 57px)); overflow-y: auto;
-             background: #fff; border-left: 1px solid #ccc; z-index: 1050; padding:20px;
-             transition: right 0.4s;",
     shiny::actionButton("close_overlay", "",
-      onclick = "document.getElementById('detail-overlay').style.right='-400px';
-                            Shiny.setInputValue('close_details', true, {priority:'event'});",
+      onclick = "var overlay = document.getElementById('detail-overlay');
+                 var closePos = window.innerWidth < 768 ? '-100vw' : '-420px';
+                 overlay.style.right = closePos;
+                 Shiny.setInputValue('close_details', true, {priority:'event'});",
       class = "btn-close", style = "float:right; margin-bottom:10px;"
     ),
     shiny::fluidRow(
