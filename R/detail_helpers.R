@@ -140,7 +140,13 @@ append_units <- function(field_name, value) {
     growthform_2_cover = " %",
     growthform_3_cover = " %",
     growthform_4_cover = " %",
-    total_cover = " %"
+    total_cover = " %",
+    sand = " %",
+    silt = " %",
+    clay = " %",
+    coarse = " %",
+    organic = " %",
+    base_saturation = " %"
   )
 
   if (field_name %in% names(unit_map)) {

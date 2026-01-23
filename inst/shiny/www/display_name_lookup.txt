@@ -656,3 +656,17 @@ taxoncount,taxon_count,Number of Taxa
 revisions,pl_revisions,Plot Revised
 notespublic,pl_notes_public,Plot Notes Public
 notesmgt,pl_notes_mgt,Plot Notes Management
+horizon,horizon,Horizon
+ph,ph,pH
+organic,organic,Organic Matter
+sand,sand,Sand
+silt,silt,Silt
+clay,clay,Clay
+coarse,coarse,Coarse Fragments
+texture,texture,Texture
+color,color,Color
+depth_top,depth_top,Depth Top
+depth_bottom,depth_bottom,Depth Bottom
+description,description,Description
+exchange_capacity,exchange_capacity,Exchange Capacity
+base_saturation,base_saturation,Base Saturation
