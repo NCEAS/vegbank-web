@@ -651,21 +651,33 @@ server <- function(input, output, session) {
   output$dataSummary <- shiny::renderUI({
     htmltools::tagList(
       htmltools::tags$div(
-        htmltools::tags$strong("Welcome to VegBank Beta!"),
-        htmltools::p(
-          " VegBank is the vegetation plot database of the Ecological Society of America's ",
-          "Panel on Vegetation Classification, operated in cooperation with the ",
-          "National Center for Ecological Analysis and Synthesis (NCEAS)."
+        htmltools::strong(
+          "Now with some filtering, some sorting, additional plot details, and a more manageable map!"
+        ),
+        htmltools::tags$p(
+          " More features are coming soon and this page will change. This is still a beta release; please ",
+          htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here.")
         )
       ),
       htmltools::tags$br(),
       htmltools::tags$h5("Getting Started"),
       htmltools::tags$ul(
         htmltools::tags$li(
+          htmltools::tags$strong("Map:"),
+          " View plot locations on an interactive map. Click markers to zoom to plot clusters and ",
+          "the links on location labels to see plot observation details. Some location labels have ",
+          "many plot observations because of repeated sampling or location fuzzing for privacy."
+        ),
+        htmltools::tags$li(
           htmltools::tags$strong("Plots:"),
           " Browse vegetation plot observations. Each row represents a single plot observation ",
-          "with location, date, and ecological data. Use the search box to filter by plant species, ",
-          "community type, author code, or location."
+          "with location, date, and ecological data. Use the search box to find plots with a specific ",
+          " plant species, community type, author code, or location (eg: ",
+          htmltools::tags$code("Sibbaldiopsis tridentata"), ", ",
+          htmltools::tags$code("CEGL001833"), ", ",
+          htmltools::tags$code("Eleocharis palustris Marsh"), ", ",
+          htmltools::tags$code("BADL.126"), ", or ",
+          htmltools::tags$code("California"), ")."
         ),
         htmltools::tags$li(
           htmltools::tags$strong("Plants:"),
@@ -684,12 +696,6 @@ server <- function(input, output, session) {
         htmltools::tags$li(
           htmltools::tags$strong("Projects:"),
           " Explore research projects that have contributed data to VegBank."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Map:"),
-          " View plot locations on an interactive map. Click markers to zoom to plot clusters and ",
-          "the links on location labels to plot details. It will take a while to load. Please don't ",
-          "click elsewhere until it finishes loading."
         )
       ),
       htmltools::tags$h5("Using the App"),
@@ -706,7 +712,7 @@ server <- function(input, output, session) {
         ),
         htmltools::tags$li(
           "Use the ", htmltools::tags$strong("search box"),
-          " in the top-right of each table to filter results.",
+          " in the top-right of each table to find matching results.",
           htmltools::tags$ul(
             htmltools::tags$li(
               htmltools::tags$i("Quotes:"),
@@ -726,8 +732,16 @@ server <- function(input, output, session) {
           )
         ),
         htmltools::tags$li(
-          htmltools::tags$strong("Sorting"), " is currently unsupported, but soon you'll be able to click",
-          " column headers to sort table data."
+          htmltools::tags$strong("Filter"), " the plot table by plant, community, party or project ",
+          "by clicking the numerical observation, contribution, or plot count links for that entity. That ",
+          "will bring you to the plots table and show only plots associated with that entity. Use the ",
+          "'Clear filter' button above the plot table to remove the filter."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Sorting"), " is now supported for any table column that has ",
+          "arrows in its header. You can click that header to sort by that column in ascending or ",
+          "descending order, and you can hold shift and click multiple column headers to sort by ",
+          "multiple columns."
         ),
         htmltools::tags$li(
           "Your ", htmltools::tags$strong("URL updates"),
@@ -788,7 +802,7 @@ server <- function(input, output, session) {
         type = "button",
         class = "btn btn-sm btn-outline-info ms-3",
         onclick = "Shiny.setInputValue('clear_plot_filter', Math.random());",
-        "Clear Filter"
+        "Clear filter"
       )
     )
   })

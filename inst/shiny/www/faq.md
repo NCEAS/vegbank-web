@@ -25,7 +25,7 @@ Please select from the following questions, or browse through this file:
 
 ##### What is VegBank? {#whatisvegbank}
 
-> VegBank is the vegetation plot database of the Ecological Society of America's Panel on Vegetation Classification. VegBank stores data about vegetation plots and necessary supplemental data, such as a plant taxon database and community type database. VegBank's purpose is to allow plant ecologists to submit and share data to allow permanent documentation of plot data, which will provide a permanent record of plots which define communities.
+> VegBank is the vegetation plot database of the Ecological Society of America's [Panel on Vegetation Classification](https://esa.org/vegpanel/). VegBank stores data about vegetation plots and necessary supplemental data, such as a plant taxon database and community type database. VegBank's purpose is to allow plant ecologists to submit and share data to allow permanent documentation of plot data, which will provide a permanent record of plots which define communities.
 
 [back to top...](#topoffaq)
 
@@ -33,7 +33,7 @@ Please select from the following questions, or browse through this file:
 
 ##### Who runs VegBank? {#whoruns}
 
-> VegBank is operated by the [National Center for Ecological Analysis and Synthesis](http://www.nceas.ucsb.edu/) in cooperation with the Ecological Society of America's [Vegetation Panel](http://vegbank.org/vegdocs/panel/panel.html).
+> VegBank is operated by the [National Center for Ecological Analysis and Synthesis](http://www.nceas.ucsb.edu/) in cooperation with the Ecological Society of America's [Vegetation Panel](https://esa.org/vegpanel/).
 
 [back to top...](#topoffaq)
 
