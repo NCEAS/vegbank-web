@@ -328,7 +328,7 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
 
   paste0(
     "<strong>", header, "</strong>",
-    "<div style='max-height: 15.5rem; overflow-y: auto;' onwheel='event.stopPropagation()'",
+    "<div style='max-height: 8rem; overflow-y: auto;' onwheel='event.stopPropagation()'",
     " onmousewheel='event.stopPropagation()' onDOMMouseScroll='event.stopPropagation()'>",
     paste(links, collapse = "<br>"),
     "</div>"
