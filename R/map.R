@@ -18,41 +18,39 @@ MAP_DATA_FETCH_LIMIT <- 1000000L
 #' @return Data frame of plot observations or NULL on failure
 #' @noRd
 fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
-  shiny::withProgress(message = "Loading map data...", value = 0.2, {
-    error_occurred <- FALSE
+  error_occurred <- FALSE
 
-    data <- tryCatch(
-      vegbankr::vb_get_plot_observations(
-        limit = limit,
-        detail = detail,
-        with_nested = FALSE
-      ),
-      error = function(err) {
-        error_occurred <<- TRUE
-        shiny::showNotification(
-          paste("Failed to load map data:", conditionMessage(err)),
-          type = "error"
-        )
-        NULL
-      }
-    )
-
-    shiny::incProgress(1)
-
-    if (isTRUE(error_occurred)) {
-      return(NULL)
-    }
-
-    if (is.null(data) || nrow(data) == 0) {
+  data <- tryCatch(
+    vegbankr::vb_get_plot_observations(
+      limit = limit,
+      detail = detail,
+      with_nested = FALSE
+    ),
+    error = function(err) {
+      error_occurred <<- TRUE
       shiny::showNotification(
-        "Map data is currently unavailable. Please try again later.",
-        type = "warning"
+        paste("Failed to load map data:", conditionMessage(err)),
+        type = "error",
+        duration = NULL
       )
-      return(NULL)
+      NULL
     }
+  )
 
-    as.data.frame(data)
-  })
+  if (isTRUE(error_occurred)) {
+    return(NULL)
+  }
+
+  if (is.null(data) || nrow(data) == 0) {
+    shiny::showNotification(
+      "Map data is currently unavailable. Please try again later.",
+      type = "warning",
+      duration = NULL
+    )
+    return(NULL)
+  }
+
+  as.data.frame(data)
 }
 
 # ---- Data Validation ----
@@ -100,9 +98,9 @@ is_invalid_map_data <- function(map_data) {
 #' @noRd
 filter_valid_map_points <- function(map_data) {
   subset(map_data, !is.na(map_data$latitude) &
-    !is.na(map_data$longitude) &
-    is.numeric(map_data$latitude) &
-    is.numeric(map_data$longitude))
+           !is.na(map_data$longitude) &
+           is.numeric(map_data$latitude) &
+           is.numeric(map_data$longitude))
 }
 
 # ---- Error Notifications ----
@@ -155,17 +153,9 @@ process_map_data <- function(map_data, center_lng, center_lat, zoom, map_options
     return(create_empty_map(map_defaults, center_lng, center_lat, zoom))
   }
 
-  # Step 2: Build map with progress indicator
-  shiny::withProgress(message = "Building map...", value = 0, {
-    shiny::incProgress(0.3, detail = "Grouping plots by location...")
-    data_grouped <- group_map_points(validation$data)
-
-    shiny::incProgress(0.5, detail = "Rendering map...")
-    result <- build_leaflet_map(data_grouped, map_defaults, center_lng, center_lat, zoom)
-
-    shiny::incProgress(0.2)
-    result
-  })
+  # Step 2: Build map (progress is shown via custom loading screen)
+  data_grouped <- group_map_points(validation$data)
+  build_leaflet_map(data_grouped, map_defaults, center_lng, center_lat, zoom)
 }
 
 #' Move the map and show a popup at a given location
@@ -269,11 +259,11 @@ create_marker_label_options <- function() {
     clickable = TRUE,
     direction = "bottom",
     style = list(
-      "color" = "#2c5443",
+      "color" = "black",
       "font-weight" = "bold",
       "padding" = "3px 8px",
       "background" = "white",
-      "border" = "1px solid #2c5443",
+      "border" = "1px solid black",
       "border-radius" = "3px"
     )
   )
@@ -325,9 +315,9 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
 
   links <- mapply(
     function(author_obs_code, ob_code) {
-      # Escape for XSS prevention
-      safe_ob <- escape_js_string(ob_code)
-      safe_author <- escape_html(author_obs_code)
+      # Not using create_detail_link here bc direct string manipulation is slightly faster
+      safe_ob <- htmltools::htmlEscape(ob_code, attribute = TRUE)
+      safe_author <- htmltools::htmlEscape(author_obs_code)
       sprintf(
         "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click', '%s', {priority: 'event'}); return false;\">%s</a>",
         safe_ob, safe_author
@@ -338,7 +328,7 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
 
   paste0(
     "<strong>", header, "</strong>",
-    "<div style='max-height: 15.5rem; overflow-y: auto;' onwheel='event.stopPropagation()'",
+    "<div style='max-height: 8rem; overflow-y: auto;' onwheel='event.stopPropagation()'",
     " onmousewheel='event.stopPropagation()' onDOMMouseScroll='event.stopPropagation()'>",
     paste(links, collapse = "<br>"),
     "</div>"

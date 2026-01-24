@@ -19,8 +19,9 @@ ui <- function(req) {
     htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css")
   )
 
-  navbar_with_search <- build_navbar()
+  navbar <- build_navbar()
   overlay <- build_detail_overlay()
+  map_loading_overlay <- build_map_loading_overlay()
 
   script <- htmltools::tags$script(htmltools::HTML(
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
@@ -32,7 +33,9 @@ ui <- function(req) {
     Shiny.addCustomMessageHandler('closeOverlay', function(message) {
       var overlay = document.getElementById('detail-overlay');
       if (overlay) {
-        overlay.style.right = '-400px';
+        // Use responsive close position based on screen width
+        var closePosition = window.innerWidth < 768 ? '-100vw' : '-420px';
+        overlay.style.right = closePosition;
       }
     });
 
@@ -85,7 +88,7 @@ ui <- function(req) {
       'plot_table': 'plots',
       'plant_table': 'plants',
       'comm_table': 'communities',
-      'party_table': 'people',
+      'party_table': 'parties',
       'proj_table': 'projects'
     };
 
@@ -478,6 +481,7 @@ ui <- function(req) {
         var btn = $(this);
         var inputId = btn.data('input-id');
         var value = btn.data('value');
+        var label = btn.data('label'); // For obs_count links
         var rowIndex = null;
         var row = btn.closest('tr');
         if (row && row.length) {
@@ -502,7 +506,12 @@ ui <- function(req) {
         }, {priority: 'event'});
 
         if (inputId && value) {
-          Shiny.setInputValue(inputId, value, {priority: 'event'});
+          // For obs_count links, send both code and label
+          if (label) {
+            Shiny.setInputValue(inputId, {code: value, label: label}, {priority: 'event'});
+          } else {
+            Shiny.setInputValue(inputId, value, {priority: 'event'});
+          }
         }
       });
 
@@ -533,6 +542,64 @@ ui <- function(req) {
     Shiny.addCustomMessageHandler('setNavInteractivity', function(message) {
       var disabled = Boolean(message && message.disabled);
       setNavbarDisabled(disabled);
+    });
+
+    // Map loading overlay management
+    var mapLoadingPuns = [
+      'Planting seeds...',
+      'Branching out...',
+      'Rooting through the database...',
+      'Monitoring mycelial networks...',
+      'Disturbing the substrate...',
+      'Planning successful succession...',
+      'Last bud not leaf...'
+    ];
+    var mapLoadingPunIndex = 0;
+    var mapLoadingPunInterval = null;
+
+    function rotatePlantPun() {
+      var punElement = document.getElementById('map-loading-pun');
+      if (punElement) {
+        punElement.textContent = mapLoadingPuns[mapLoadingPunIndex];
+        mapLoadingPunIndex = (mapLoadingPunIndex + 1) % mapLoadingPuns.length;
+      }
+    }
+
+    Shiny.addCustomMessageHandler('showMapLoading', function(message) {
+      var overlay = document.getElementById('map-loading-overlay');
+      if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.classList.remove('fade-out');
+        mapLoadingPunIndex = 0;
+        rotatePlantPun();
+        if (mapLoadingPunInterval) {
+          clearInterval(mapLoadingPunInterval);
+        }
+        mapLoadingPunInterval = setInterval(rotatePlantPun, 2500);
+      }
+    });
+
+    Shiny.addCustomMessageHandler('hideMapLoading', function(message) {
+      var overlay = document.getElementById('map-loading-overlay');
+      var punElement = document.getElementById('map-loading-pun');
+      
+      if (mapLoadingPunInterval) {
+        clearInterval(mapLoadingPunInterval);
+        mapLoadingPunInterval = null;
+      }
+      
+      if (overlay && punElement) {
+        punElement.textContent = 'Go fir launch!';
+        
+        setTimeout(function() {
+          // Allow interaction immediately by removing pointer events
+          overlay.style.pointerEvents = 'none';
+          overlay.classList.add('fade-out');
+          setTimeout(function() {
+            overlay.style.display = 'none';
+          }, 500);
+        }, 500);
+      }
     });
 
     function getDataTableApi(tableId, settings) {
@@ -864,11 +931,14 @@ ui <- function(req) {
       const partyCards = document.getElementById('party-details-cards');
       const plantConceptCards = document.getElementById('plant-concept-details-cards');
       const referenceCards = document.getElementById('reference-details-cards');
+      const coverMethodCards = document.getElementById('cover-method-details-cards');
+      const stratumMethodCards = document.getElementById('stratum-method-details-cards');
 
       console.log('Updating detail type to:', type);
 
       if (plotCards && communityConceptCards && communityClassificationCards &&
-          projectCards && partyCards && plantConceptCards && referenceCards) {
+          projectCards && partyCards && plantConceptCards && referenceCards && coverMethodCards &&
+          stratumMethodCards) {
         // Hide all card types first
         plotCards.style.display = 'none';
         communityConceptCards.style.display = 'none';
@@ -877,6 +947,8 @@ ui <- function(req) {
         partyCards.style.display = 'none';
         plantConceptCards.style.display = 'none';
         referenceCards.style.display = 'none';
+        coverMethodCards.style.display = 'none';
+        stratumMethodCards.style.display = 'none';
 
         // Show the requested type
         if (type === 'plot-observation') {
@@ -900,13 +972,19 @@ ui <- function(req) {
         } else if (type === 'reference') {
           console.log('Showing reference details');
           referenceCards.style.display = 'block';
+        } else if (type === 'cover-method') {
+          console.log('Showing cover method details');
+          coverMethodCards.style.display = 'block';
+        } else if (type === 'stratum-method') {
+          console.log('Showing stratum method details');
+          stratumMethodCards.style.display = 'block';
         }
       }
     });
   "
   ))
 
-  htmltools::tagList(font_head, navbar_with_search, overlay, script)
+  htmltools::tagList(font_head, navbar, overlay, map_loading_overlay, script)
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
@@ -917,11 +995,11 @@ ui <- function(req) {
 #'
 #' @noRd
 custom_theme <- bslib::bs_theme(
-  bg = "#FFFFFF",
-  fg = "#19201d",
-  info = "#2c5443",
-  primary = "#72b9a2",
-  secondary = "#72b9a2",
+  bg = "hsl(0, 0%, 100%)",
+  fg = "hsl(156, 12%, 11%)",
+  info = "hsl(160, 69%, 30%)",
+  primary = "hsl(160, 29%, 48%)",
+  secondary = "hsl(160, 34%, 59%)",
   base_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   "font-size-base" = "0.875rem"
@@ -932,6 +1010,11 @@ custom_theme <- bslib::bs_add_rules(
     font-family: Inter, sans-serif !important;
     font-feature-settings: 'liga' 1, 'calt' 1;
     --bs-font-sans-serif: Inter, sans-serif !important;
+
+    --bslib-navbar-height: 57px;
+
+    /* Vegbank brand colors */
+    --vb-green: hsl(153, 31%, 25%);
 
     /* Status badge colors */
     --no-status-bg: hsl(204, 6%, 90%);
@@ -960,7 +1043,7 @@ custom_theme <- bslib::bs_add_rules(
   }
 
   .card-header {
-    background-color: #2c5443;
+    background-color: var(--vb-green);
     color: #FFFFFF;
     font-weight: bold;
   }
@@ -985,7 +1068,7 @@ custom_theme <- bslib::bs_add_rules(
       height: 100%;
   }
   .navbar-brand {
-      color: #2c5443 !important;
+      color: var(--vb-green) !important;
       font-weight: bold;
       padding: 0;
       display: flex;
@@ -1034,6 +1117,110 @@ custom_theme <- bslib::bs_add_rules(
   .table tbody tr.selected-entity:hover {
       background-color: rgba(114, 185, 162, 0.25) !important;
   }
+  
+  /* DataTables loading indicator customization */
+  .dataTables_processing {
+      z-index: 1000 !important;
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+  }
+  
+  /* Target the nested divs that create the loading animation */
+  .dataTables_processing > div > div {
+      background-color: #72B9A2 !important;
+  }
+  
+  /* Map loading ellipses animation */
+  .map-loading-ellipses {
+      display: inline-block;
+      position: relative;
+      margin-bottom: 1rem;
+      width: 9.375rem;
+      height: 1.5rem;
+  }
+  
+  .map-loading-ellipses > div {
+      position: absolute;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: #72B9A2;
+      animation-timing-function: cubic-bezier(0, 1, 1, 0);
+  }
+  
+  .map-loading-ellipses > div:nth-child(1) {
+      left: 0.75rem;
+      animation: mapEllipses1 0.6s infinite;
+  }
+  
+  .map-loading-ellipses > div:nth-child(2) {
+      left: 0.75rem;
+      animation: mapEllipses2 0.6s infinite;
+  }
+  
+  .map-loading-ellipses > div:nth-child(3) {
+      left: 3.75rem;
+      animation: mapEllipses2 0.6s infinite;
+  }
+  
+  .map-loading-ellipses > div:nth-child(4) {
+      left: 6.75rem;
+      animation: mapEllipses3 0.6s infinite;
+  }
+  
+  @keyframes mapEllipses1 {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
+  }
+  
+  @keyframes mapEllipses2 {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(3rem, 0); }
+  }
+  
+  @keyframes mapEllipses3 {
+    0% { transform: scale(1); }
+    100% { transform: scale(0); }
+  }
+  
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  
+  #map-loading-overlay.fade-out {
+    animation: fadeOut 0.5s ease-out forwards;
+  }
+  
+  /* Detail overlay responsive width */
+  #detail-overlay {
+    position: fixed;
+    top: var(--bslib-navbar-height, 57px);
+    height: calc(100vh - var(--bslib-navbar-height, 57px));
+    overflow-y: auto;
+    background: #fff;
+    border-left: 1px solid #ccc;
+    z-index: 1050;
+    padding: 20px;
+    transition: right 0.4s;
+  }
+  
+  /* Mobile: full width */
+  @media (max-width: 767px) {
+    #detail-overlay {
+      right: -100vw;
+      width: 100vw;
+    }
+  }
+  
+  /* Desktop: 420px width */
+  @media (min-width: 768px) {
+    #detail-overlay {
+      right: -420px;
+      width: 420px;
+    }
+  }
 "
 )
 
@@ -1061,7 +1248,7 @@ build_navbar <- function() {
           shiny::column(
             12,
             bslib::card(
-              bslib::card_header("Overview"),
+              bslib::card_header("Vegbank Beta 0.2.0"),
               bslib::card_body(shiny::uiOutput("dataSummary"))
             )
           )
@@ -1075,6 +1262,7 @@ build_navbar <- function() {
     bslib::nav_panel(
       title = "Plots",
       shiny::fluidPage(
+        shiny::uiOutput("plot_filter_alert"),
         DT::dataTableOutput("plot_table")
       )
     ),
@@ -1091,7 +1279,7 @@ build_navbar <- function() {
       )
     ),
     bslib::nav_panel(
-      title = "People",
+      title = "Parties",
       shiny::fluidPage(
         DT::dataTableOutput("party_table")
       )
@@ -1127,12 +1315,11 @@ build_navbar <- function() {
 build_detail_overlay <- function() {
   htmltools::tags$div(
     id = "detail-overlay",
-    style = "position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; overflow-y: auto;
-             background: #fff; border-left: 1px solid #ccc; z-index: 1050; padding:20px;
-             transition: right 0.4s;",
     shiny::actionButton("close_overlay", "",
-      onclick = "document.getElementById('detail-overlay').style.right='-400px';
-                            Shiny.setInputValue('close_details', true, {priority:'event'});",
+      onclick = "var overlay = document.getElementById('detail-overlay');
+                 var closePos = window.innerWidth < 768 ? '-100vw' : '-420px';
+                 overlay.style.right = closePos;
+                 Shiny.setInputValue('close_details', true, {priority:'event'});",
       class = "btn-close", style = "float:right; margin-bottom:10px;"
     ),
     shiny::fluidRow(
@@ -1142,15 +1329,21 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "plot-details-cards",
           class = "detail-section",
+          shiny::uiOutput("plot_notification"),
           bslib::card(bslib::card_header("Plot Observation"), shiny::uiOutput("plot_header")),
-          bslib::card(bslib::card_header("Plot IDs"), shiny::uiOutput("plot_id_details")),
+          bslib::card(bslib::card_header("Author Codes"), shiny::uiOutput("author_code_details")),
+          bslib::card(bslib::card_header("Dates"), shiny::uiOutput("date_details")),
           bslib::card(bslib::card_header("Location"), shiny::uiOutput("location_details")),
           bslib::card(bslib::card_header("Layout"), shiny::uiOutput("layout_details")),
           bslib::card(bslib::card_header("Environment"), shiny::uiOutput("environmental_details")),
           bslib::card(bslib::card_header("Methods"), shiny::uiOutput("methods_details")),
           bslib::card(bslib::card_header("Plot Quality"), shiny::uiOutput("plot_quality_details")),
+          bslib::card(bslib::card_header("Plot Vegetation"), shiny::uiOutput("plot_vegetation_details")),
           bslib::card(bslib::card_header("Communities"), shiny::uiOutput("communities_details")),
-          bslib::card(bslib::card_header("Taxa Observed"), shiny::uiOutput("taxa_details"))
+          bslib::card(bslib::card_header("Taxa Observed"), shiny::uiOutput("taxa_details")),
+          bslib::card(bslib::card_header("Disturbances"), shiny::uiOutput("disturbances_details")),
+          bslib::card(bslib::card_header("Soils"), shiny::uiOutput("soils_details")),
+          bslib::card(bslib::card_header("Miscellaneous"), shiny::uiOutput("plot_misc_details"))
         ),
 
         # Community Concept Details Cards - wrapped in a div with class for toggling visibility
@@ -1209,7 +1402,62 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Reference"), shiny::uiOutput("reference_header")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("reference_identifiers")),
           bslib::card(bslib::card_header("Publication"), shiny::uiOutput("reference_publication"))
+        ),
+
+        # Cover Method Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "cover-method-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Cover Method"), shiny::uiOutput("cover_method_header")),
+          bslib::card(bslib::card_header("Details"), shiny::uiOutput("cover_method_details")),
+          bslib::card(bslib::card_header("Cover Indexes"), shiny::uiOutput("cover_method_indexes"))
+        ),
+
+        # Stratum Method Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "stratum-method-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Stratum Method"), shiny::uiOutput("stratum_method_header")),
+          bslib::card(bslib::card_header("Details"), shiny::uiOutput("stratum_method_details")),
+          bslib::card(bslib::card_header("Stratum Types"), shiny::uiOutput("stratum_types"))
         )
+      )
+    )
+  )
+}
+
+#' Build Map Loading Overlay for Vegbank UI
+#'
+#' Constructs a full-screen loading overlay for initial map loading with animated
+#' spinner and rotating plant puns.
+#'
+#' @return A Shiny tag representing the map loading overlay.
+#'
+#' @noRd
+build_map_loading_overlay <- function() {
+  htmltools::tags$div(
+    id = "map-loading-overlay",
+    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 57px); left: 0; 
+             width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 57px));
+             background: rgba(255, 255, 255, 0.98); z-index: 1200;
+             justify-content: center; align-items: center; flex-direction: column;",
+    htmltools::tags$div(
+      class = "map-loading-content",
+      style = "text-align: center; margin-top: -5rem;",
+      htmltools::tags$h2(
+        "Loading the map for the first time can take a few seconds. It's busy:",
+        style = "font-size: 0.875rem; color: var(--no-status-text); margin-bottom: 1.5rem;"
+      ),
+      htmltools::tags$div(
+        class = "map-loading-ellipses",
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div())
+      ),
+      htmltools::tags$div(
+        id = "map-loading-pun",
+        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500;",
       )
     )
   )

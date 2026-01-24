@@ -35,6 +35,7 @@ create_table <- function(table_config = list()) {
     scrollCollapse = table_config$scroll_collapse %||% FALSE,
     deferRender = table_config$defer_render %||% TRUE,
     processing = table_config$processing %||% TRUE,
+    order = table_config$order %||% list(list(1, "asc")), # Default sort by second column (vb code) ascending
     columnDefs = column_defs
   )
 
@@ -53,8 +54,10 @@ create_table <- function(table_config = list()) {
   datatable_args <- list(
     data = display_data,
     rownames = table_config$rownames %||% FALSE,
-    escape = table_config$escape %||% FALSE,
     selection = table_config$selection %||% "none",
+    # Note: DT's `escape` argument only applies to data passed directly to datatable();
+    # when using server-side processing via `ajax`, any HTML must be pre-escaped in R
+    escape = table_config$escape %||% TRUE,
     options = options
   )
 
@@ -120,39 +123,82 @@ clean_column_dates <- function(data, column_name, default_value = "Not provided"
   )
 }
 
-# TODO: Soon to be deprecated by JS renderer
-#' Create generic action buttons for each row
+
+#' Create action buttons for each row (R version)
 #'
-#' @param data Data frame
-#' @param actions List of action definitions, each with id, label, and class
-#' @returns A character vector of HTML strings for action buttons
+#' @param input_id The Shiny input ID for the button click event
+#' @param button_label The label text for the button (default: "Details")
+#' @param code_values A character vector of values to send to the input (e.g., concept codes)
+#' @return A character vector of HTML strings for action buttons
 #' @noRd
-create_action_buttons <- function(data, actions) {
-  vapply(seq_len(nrow(data)), function(i) {
-    buttons <- vapply(actions, function(action) {
-      # Get value (row index or column value)
-      value <- if (!is.null(action$input_value) && action$input_value %in% names(data)) {
-        as.character(data[[action$input_value]][i])
-      } else {
-        as.character(i)
-      }
-
-      # Create button with data attributes instead of onclick
-      sprintf(
-        '<button class="btn btn-sm %s" onclick="Shiny.setInputValue(\'%s\', \'%s\', {priority: \'event\'})">
-        %s</button>',
-        action$class %||% "btn-outline-primary",
-        action$input_id,
-        htmltools::htmlEscape(value),
-        action$label
-      )
-    }, character(1))
-
-    sprintf(
-      '<div class="btn-group btn-group-sm">%s</div>',
-      paste(buttons, collapse = "")
-    )
+create_action_buttons <- function(input_id, button_label = "Details", code_values) {
+  vapply(code_values, function(code) {
+    safe_code <- htmltools::htmlEscape(as.character(code))
+    safe_label <- htmltools::htmlEscape(as.character(button_label))
+    if (!is.null(code) && !is.na(code) && nzchar(code)) {
+      as.character(htmltools::tags$div(
+        class = "btn-group btn-group-sm", role = "group",
+        htmltools::tags$button(
+          type = "button",
+          class = "btn btn-sm btn-outline-primary dt-shiny-action",
+          `data-input-id` = input_id,
+          `data-value` = safe_code,
+          safe_label
+        )
+      ))
+    } else {
+      '<span class="text-muted">No Data</span>'
+    }
   }, character(1))
+}
+
+#' Create clickable obs_count links for cross-resource filtering for an
+#' entire vector of obs_counts
+#'
+#' @param obs_counts Integer vector of observation counts
+#' @param entity_codes Character vector of entity codes (e.g., "pj.340")
+#' @param entity_labels Character vector of entity display names
+#' @return Character vector of HTML for obs_count links
+#' @noRd
+create_all_obs_count_links <- function(obs_counts, entity_codes, entity_labels) {
+  vapply(seq_along(obs_counts), function(idx) {
+    count <- obs_counts[[idx]]
+    code <- entity_codes[[idx]]
+    label <- entity_labels[[idx]]
+
+    safe_count <- as.integer(count)
+    if (is.na(safe_count)) safe_count <- 0L
+
+    # Only make clickable if count > 0 and we have valid code and label
+    if (safe_count > 0 && !is.null(code) && !is.na(code) && nzchar(code) &&
+          !is.null(label) && !is.na(label) && nzchar(label)) {
+      safe_code <- htmltools::htmlEscape(as.character(code), attribute = TRUE)
+      safe_label <- htmltools::htmlEscape(as.character(label), attribute = TRUE)
+      sprintf(
+        '<a href="#" class="obs-count-link dt-shiny-action" data-input-id="obs_count_click" data-value="%s" data-label="%s">%d</a>',
+        safe_code,
+        safe_label,
+        safe_count
+      )
+    } else {
+      as.character(safe_count)
+    }
+  }, character(1))
+}
+
+#' Create a status badge for concept status
+#'
+#' @param status Logical or NA; TRUE for accepted, FALSE for not accepted, NA for unknown
+#' @return HTML string for the badge
+#' @noRd
+create_status_badge <- function(status) {
+  if (is.null(status) || identical(status, "") || is.na(status)) {
+    '<span class="badge rounded-pill" style="background-color: var(--no-status-bg); color: var(--no-status-text);">No Status</span>'
+  } else if (isTRUE(status) || identical(status, "true") || identical(status, "TRUE")) {
+    '<span class="badge rounded-pill" style="background-color: var(--accepted-bg); color: var(--accepted-text);">Accepted</span>'
+  } else {
+    '<span class="badge rounded-pill" style="background-color: var(--not-current-bg); color: var(--not-current-text);">Not Current</span>'
+  }
 }
 
 # Utility function for NULL coalescing
@@ -160,16 +206,11 @@ create_action_buttons <- function(data, actions) {
   if (is.null(x)) y else x
 }
 
-# Safely increment progress when a progress bar is active
-safe_inc_progress <- function(amount, detail = NULL) {
-  try(shiny::incProgress(amount, detail = detail), silent = TRUE)
-}
-
 # -------------------- PAGINATED API TABLE HELPERS --------------------
 
 #' Fetch a paginated VegBank resource page
 #'
-#' Provides a shared wrapper around vegbankr:::vb_get with consistent
+#' Provides a shared wrapper around vegbankr::vb_get with consistent
 #' error handling and optional data coercion.
 #'
 #' @param resource VegBank resource type (e.g., "plant-concepts")
@@ -216,14 +257,14 @@ fetch_remote_page <- function(resource,
   }
 
   vb_result <- try(
-    suppressWarnings(do.call(vegbankr:::vb_get, args)),
+    suppressWarnings(do.call(vegbankr::vb_get, args)),
     silent = TRUE
   )
 
   if (inherits(vb_result, "try-error")) {
     vb_error <- attr(vb_result, "condition")
     warning(
-      "vegbankr:::vb_get failed for ", resource, ": ",
+      "vegbankr::vb_get failed for ", resource, ": ",
       if (!is.null(vb_error)) conditionMessage(vb_error) else "unknown error"
     )
     data <- if (!is.null(empty_factory)) empty_factory() else NULL
@@ -244,7 +285,7 @@ fetch_remote_page <- function(resource,
 
 #' Fetch total record count for a VegBank resource
 #'
-#' Convenience wrapper around `vegbankr:::vb_count` to fetch the total record count
+#' Convenience wrapper around `vegbankr::vb_count` to fetch the total record count
 #' for a given VegBank resource, avoiding redundant implementations across tables.
 #'
 #' @param resource VegBank resource type (e.g., "plant-concepts")
@@ -271,14 +312,14 @@ fetch_total_count <- function(resource,
   )
 
   vb_result <- try(
-    suppressWarnings(do.call(vegbankr:::vb_count, args)),
+    suppressWarnings(do.call(vegbankr::vb_count, args)),
     silent = TRUE
   )
 
   if (inherits(vb_result, "try-error")) {
     vb_error <- attr(vb_result, "condition")
     warning(
-      "vegbankr:::vb_count failed for ", resource, ": ",
+      "vegbankr::vb_count failed for ", resource, ": ",
       if (!is.null(vb_error)) conditionMessage(vb_error) else "unknown error"
     )
     return(NA_integer_)
@@ -319,7 +360,7 @@ extract_reported_total <- function(details) {
 #' @param table_id Output ID of the DT widget
 #' @param resource VegBank (or other API) resource type used for remote data
 #' @param data_key Name of the data source entry used inside processing helpers
-#' @param remote_label Friendly label for progress/loading messages
+#' @param loading_label Friendly label for progress/loading messages
 #' @param fields Character vector describing the canonical data schema
 #' @param extra Named list merged into the base entry for module-specific values
 #' @returns A list entry that can be stored inside a table config map
@@ -328,7 +369,7 @@ build_table_module_config <- function(type,
                                       table_id,
                                       resource,
                                       data_key,
-                                      remote_label,
+                                      loading_label,
                                       fields,
                                       extra = list()) {
   base <- list(
@@ -336,7 +377,7 @@ build_table_module_config <- function(type,
     table_id = table_id,
     resource = resource,
     data_key = data_key,
-    remote_label = remote_label,
+    loading_label = loading_label,
     fields = fields
   )
 
@@ -443,6 +484,7 @@ build_remote_ajax_config <- function(session,
   search_normalizer <- data_source_spec$search_normalizer %||% normalize_search_term
   clean_rows_fn <- data_source_spec$clean_rows_fn %||% identity
   query <- data_source_spec$query %||% list()
+  sort_field_map <- data_source_spec$sort_field_map %||% NULL
 
   if (!is.function(display_fn)) {
     stop("data_source_spec$display_fn must be a function")
@@ -461,6 +503,24 @@ build_remote_ajax_config <- function(session,
       search_term <- search_normalizer(params$search$value)
     }
 
+    # Build dynamic sort param if mapping is provided and DataTables requests sorting
+    query_actual <- query
+    # Support reactive query by allowing query to be a function
+    if (is.function(query_actual)) {
+      query_actual <- query_actual()
+    }
+    if (is.null(query_actual)) {
+      query_actual <- list()
+    }
+    if (!is.null(sort_field_map) && !is.null(params$order) && length(params$order) > 0) {
+      ord <- params$order[[1]]
+      col_idx <- as.integer(ord$column)
+      dir <- ord$dir
+      field <- sort_field_map[[as.character(col_idx)]]
+      if (!is.null(field)) {
+        query_actual$sort <- if (dir == "desc") paste0("-", field) else field
+      }
+    }
     page <- fetch_remote_page(
       resource = resource,
       limit = page_length,
@@ -471,7 +531,7 @@ build_remote_ajax_config <- function(session,
       search = search_term,
       coerce_fn = coerce_fn,
       empty_factory = empty_factory,
-      query = query
+      query = query_actual
     )
 
     normalized <- normalize_fn(page$data)
@@ -520,7 +580,7 @@ build_remote_ajax_config <- function(session,
 #'   `page_length`, `coerce_fn`, `normalize_fn`, `display_fn`, `empty_factory`,
 #'   `detail`, `parquet`, `clean_names`, `search_normalizer`, `clean_rows_fn`,
 #'   `count_*` overrides, `query`, `count_query`, or a custom `ajax_factory`.
-#' @param remote_label Human-friendly label used in progress/processing messages
+#' @param loading_label Human-friendly label used in progress/processing messages
 #' @param page_length Page length override (defaults to TABLE_PAGE_LENGTH)
 #' @param options Additional DataTables option overrides merged onto the remote
 #'   defaults (`serverSide`, `lengthChange`, etc.)
@@ -531,7 +591,7 @@ build_remote_ajax_config <- function(session,
 build_remote_table_config <- function(column_defs,
                                       initial_data,
                                       data_source_spec,
-                                      remote_label = NULL,
+                                      loading_label = NULL,
                                       page_length = NULL,
                                       options = list(),
                                       datatable_args = list()) {
@@ -545,12 +605,12 @@ build_remote_table_config <- function(column_defs,
     stop("data_source_spec$resource is required")
   }
 
-  remote_label <- remote_label %||% data_source_spec$label %||% "data"
+  loading_label <- loading_label %||% data_source_spec$label %||% "data"
   effective_page_length <- page_length %||% data_source_spec$page_length %||% TABLE_PAGE_LENGTH
   data_source_spec$page_length <- effective_page_length
 
-  processing_label <- if (!is.null(remote_label)) {
-    paste0("Loading ", remote_label, "...")
+  processing_label <- if (!is.null(loading_label)) {
+    paste0("Loading ", loading_label, "...")
   } else {
     "Loading data..."
   }
@@ -558,7 +618,7 @@ build_remote_table_config <- function(column_defs,
   remote_defaults <- list(
     serverSide = TRUE,
     lengthChange = FALSE,
-    ordering = FALSE,
+    ordering = TRUE,
     searching = TRUE,
     language = list(processing = processing_label)
   )
@@ -576,7 +636,7 @@ build_remote_table_config <- function(column_defs,
     column_defs = column_defs,
     page_length = effective_page_length,
     use_progress = FALSE,
-    progress_message = paste0("Processing ", remote_label, " table data"),
+    progress_message = paste0("Processing ", loading_label, " table data"),
     initial_data = initial_data %||% data.frame(),
     options = utils::modifyList(remote_defaults, options),
     datatable_args = datatable_args,
@@ -673,7 +733,7 @@ build_display_template <- function(column_names, column_types = NULL) {
 #' @noRd
 build_table_config_from_spec <- function(spec) {
   required_fields <- c(
-    "table_id", "resource", "remote_label", "column_defs",
+    "table_id", "resource", "loading_label", "column_defs",
     "schema_fields", "coerce_fn", "normalize_fn", "display_fn"
   )
   missing <- required_fields[vapply(required_fields, function(field) is.null(spec[[field]]), logical(1))]
@@ -694,7 +754,7 @@ build_table_config_from_spec <- function(spec) {
       coerce_fn = spec$coerce_fn,
       normalize_fn = spec$normalize_fn,
       display_fn = spec$display_fn,
-      label = spec$remote_label,
+      label = spec$loading_label,
       schema_fields = spec$schema_fields,
       empty_factory = function() schema_template
     ),
@@ -707,7 +767,7 @@ build_table_config_from_spec <- function(spec) {
     column_defs = spec$column_defs,
     initial_data = initial_display,
     data_source_spec = data_source_spec,
-    remote_label = spec$remote_label,
+    loading_label = spec$loading_label,
     page_length = spec$page_length,
     options = spec$options %||% list(),
     datatable_args = spec$datatable_args
@@ -736,6 +796,8 @@ build_table_from_spec <- function(spec) {
 #'
 #' @param value The raw search value from DataTables params
 #' @returns A trimmed search string, or NULL if empty
+#'
+#' @importFrom httpuv decodeURIComponent
 #' @noRd
 normalize_search_term <- function(value) {
   term <- value %||% ""

@@ -19,49 +19,6 @@
   a
 }
 
-# ---- XSS Prevention Helpers ----
-
-#' Escape a string for safe inclusion in HTML content
-#'
-#' Converts HTML special characters to their entity equivalents to prevent XSS.
-#'
-#' @param text Character string to escape
-#' @return HTML-escaped string safe for inclusion in HTML content
-#' @noRd
-escape_html <- function(text) {
-  if (is.null(text) || is.na(text)) {
-    return("")
-  }
-  text <- gsub("&", "&amp;", text, fixed = TRUE)
-  text <- gsub("<", "&lt;", text, fixed = TRUE)
-  text <- gsub(">", "&gt;", text, fixed = TRUE)
-  text <- gsub('"', "&quot;", text, fixed = TRUE)
-  text <- gsub("'", "&#39;", text, fixed = TRUE)
-  text
-}
-
-#' Escape a string for safe inclusion in a JavaScript string literal
-#'
-#' Escapes characters that could break out of a JS string context.
-#'
-#' @param text Character string to escape
-#' @return String safe for inclusion inside JS single-quoted string literals
-#' @noRd
-escape_js_string <- function(text) {
-  if (is.null(text) || is.na(text)) {
-    return("")
-  }
-  # Escape backslashes first, then other special chars
-  text <- gsub("\\", "\\\\", text, fixed = TRUE)
-  text <- gsub("'", "\\'", text, fixed = TRUE)
-  text <- gsub('"', '\\"', text, fixed = TRUE)
-  text <- gsub("\n", "\\n", text, fixed = TRUE)
-  text <- gsub("\r", "\\r", text, fixed = TRUE)
-  # Prevent </script> injection
-  text <- gsub("/", "\\/", text, fixed = TRUE)
-  text
-}
-
 #' Safe Date Parser for GMT Format Strings
 #' Parses date strings that may be in GMT format or other standard formats.
 #' @param date_string The date string to parse
@@ -124,6 +81,81 @@ get_field_display_names <- function() {
   }
 }
 
+#' Apply Units to Field Value
+#'
+#' Applies appropriate units to field values based on a lookup map of field names to unit strings.
+#' Only appends units to non-empty, non-"Not recorded" values.
+#'
+#' @param field_name The name of the field
+#' @param value The value to format (can be "Not recorded", NA, or actual value)
+#' @return The value with units appended if applicable, otherwise the original value
+#' @noRd
+append_units <- function(field_name, value) {
+  # Skip if value is "Not recorded" or NA
+  if (is.null(value) || is.na(value) || identical(value, "Not recorded")) {
+    return(value)
+  }
+
+  unit_map <- c(
+    elevation = " m",
+    elevation_accuracy = " m",
+    elevation_range = " m",
+    location_accuracy = " m",
+    tree_ht = " m",
+    shrub_ht = " m",
+    herb_ht = " m",
+    field_ht = " m",
+    nonvascular_ht = " m",
+    submerged_ht = " m",
+    area = " m\u00B2",
+    taxon_observation_area = " m\u00B2",
+    stem_observation_area = " m\u00B2",
+    azimuth = "\u00B0",
+    slope_aspect = "\u00B0",
+    min_slope_aspect = "\u00B0",
+    max_slope_aspect = "\u00B0",
+    slope_gradient = "\u00B0",
+    min_slope_gradient = "\u00B0",
+    max_slope_gradient = "\u00B0",
+    latitude = "\u00B0",
+    longitude = "\u00B0",
+    stem_size_limit = " cm",
+    water_depth = " m",
+    soil_depth = " m",
+    organic_depth = " cm",
+    percent_bed_rock = " %",
+    percent_rock_gravel = " %",
+    percent_wood = " %",
+    percent_litter = " %",
+    percent_bare_soil = " %",
+    percent_water = " %",
+    percent_other = " %",
+    tree_cover = " %",
+    shrub_cover = " %",
+    field_cover = " %",
+    nonvascular_cover = " %",
+    floating_cover = " %",
+    submerged_cover = " %",
+    growthform_1_cover = " %",
+    growthform_2_cover = " %",
+    growthform_3_cover = " %",
+    growthform_4_cover = " %",
+    total_cover = " %",
+    sand = " %",
+    silt = " %",
+    clay = " %",
+    coarse = " %",
+    organic = " %",
+    base_saturation = " %"
+  )
+
+  if (field_name %in% names(unit_map)) {
+    paste0(value, unit_map[[field_name]])
+  } else {
+    value
+  }
+}
+
 #' Format Dataframe Fields as Detail Table HTML
 #'
 #' Extracts and formats field values from a dataframe for display in a detail table.
@@ -131,9 +163,11 @@ get_field_display_names <- function() {
 #'
 #' @param fields A character vector of field names to display from the dataframe
 #' @param dataframe A dataframe containing the data to display
+#' @param skip_empty Logical indicating whether to skip fields with no recorded values (default: FALSE)
+#' @param apply_units Logical indicating whether to apply units to numeric fields (default: TRUE)
 #' @return An HTML table element or a paragraph tag if no data is available
 #' @noRd
-format_fields_for_detail_table <- function(fields, dataframe) {
+format_fields_for_detail_table <- function(fields, dataframe, skip_empty = FALSE, apply_units = TRUE) {
   display_names <- get_field_display_names()
   valid_fields <- fields[fields %in% colnames(dataframe)]
 
@@ -149,6 +183,22 @@ format_fields_for_detail_table <- function(fields, dataframe) {
     if (is.logical(x)) ifelse(x, "Yes", "No") else x
   })
 
+  # Skip empty fields if requested
+  if (skip_empty) {
+    non_empty <- sapply(values, function(x) !identical(x, "Not recorded"))
+    values <- values[non_empty]
+    valid_fields <- valid_fields[non_empty]
+  }
+
+  # Apply units if requested
+  if (apply_units) {
+    values <- mapply(append_units, valid_fields, values, SIMPLIFY = FALSE, USE.NAMES = TRUE)
+  }
+
+  if (length(values) == 0) {
+    return(htmltools::tags$p("No data available for this section"))
+  }
+
   create_detail_table(values, col_names = display_names)
 }
 
@@ -159,11 +209,13 @@ format_fields_for_detail_table <- function(fields, dataframe) {
 #'
 #' @param fields A character vector of field names to display from the dataframe
 #' @param dataframe A dataframe containing the data to display
+#' @param skip_empty Logical indicating whether to skip fields with no recorded values (default: FALSE)
+#' @param apply_units Logical indicating whether to apply units to numeric fields (default: TRUE)
 #' @return A shiny.render.function that renders the detail table
 #' @noRd
-render_detail_table <- function(fields, dataframe) {
+render_detail_table <- function(fields, dataframe, skip_empty = FALSE, apply_units = TRUE) {
   shiny::renderUI({
-    format_fields_for_detail_table(fields, dataframe)
+    format_fields_for_detail_table(fields, dataframe, skip_empty = skip_empty, apply_units = apply_units)
   })
 }
 
@@ -273,7 +325,7 @@ create_section_header <- function(title, margin_bottom = "8px") {
   htmltools::tags$div(
     title,
     style = sprintf(
-      "font-weight: bold; width: 100%%; border-bottom: 1px solid #2c5443; margin-bottom: %s;",
+      "font-weight: bold; width: 100%%; border-bottom: 1px solid var(--vb-green); margin-bottom: %s;",
       margin_bottom
     )
   )
@@ -294,8 +346,8 @@ create_section_header <- function(title, margin_bottom = "8px") {
 #' @noRd
 create_detail_link <- function(input_id, code_value, display_text) {
   # Escape for XSS prevention
-  safe_code <- escape_js_string(as.character(code_value))
-  safe_display <- escape_html(as.character(display_text))
+  safe_code <- htmltools::htmlEscape(as.character(code_value))
+  safe_display <- htmltools::htmlEscape(as.character(display_text))
 
   htmltools::tags$a(
     href = "#",
@@ -306,6 +358,32 @@ create_detail_link <- function(input_id, code_value, display_text) {
     ),
     htmltools::HTML(safe_display)
   )
+}
+
+#' Creates a clickable link for observation counts that triggers
+#' a Shiny input event for cross-resource filtering.
+#'
+#' @param obs_count An observation count (integer or numeric)
+#' @param entity_code A vegbank entity code (e.g., "pj.340")
+#' @param entity_label An entity's display name (e.g. Acadia National Park)
+#' @return An htmltools tag representing the observation count link or a span with "0"
+#' @noRd
+create_obs_count_link <- function(obs_count, entity_code, entity_label) {
+  obs_count <- suppressWarnings(as.integer(obs_count))
+  if (is.na(obs_count)) obs_count <- 0L
+
+  if (obs_count > 0 && !is.null(entity_code) && !is.null(entity_label)) {
+    htmltools::tags$a(
+      href = "#",
+      class = "obs-count-link dt-shiny-action",
+      `data-input-id` = "obs_count_click",
+      `data-value` = htmltools::htmlEscape(entity_code, attribute = TRUE),
+      `data-label` = htmltools::htmlEscape(entity_label, attribute = TRUE),
+      as.character(obs_count)
+    )
+  } else {
+    htmltools::tags$span("0")
+  }
 }
 
 #' Check if Field Has Valid Value
@@ -340,22 +418,40 @@ has_valid_field_value <- function(data, field) {
 #' @param start_date Start date (as string or Date object)
 #' @param stop_date Stop date (as string or Date object)
 #' @param format_string Date format string for output (default: "%Y-%m-%d")
-#' @return Formatted date range string (e.g., "From 2020-01-01 to 2023-12-31")
+#' @param worded Logical indicating whether to use words like "From", "to", "Until" (TRUE, default)
+#'               or just an en dash separator (FALSE)
+#' @return Formatted date range string (e.g., "From 2020-01-01 to 2023-12-31" or "2020-01-01 – 2023-12-31")
 #' @noRd
-format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d") {
+format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d", worded = TRUE) {
   start_parsed <- safe_parse_date(start_date)
   stop_parsed <- safe_parse_date(stop_date)
 
   if (!is.na(start_parsed) && !is.na(stop_parsed)) {
     if (start_parsed == stop_parsed) {
-      paste0("From ", format(start_parsed, format_string))
+      if (worded) {
+        paste0("From ", format(start_parsed, format_string))
+      } else {
+        format(start_parsed, format_string)
+      }
     } else {
-      paste0("From ", format(start_parsed, format_string), " to ", format(stop_parsed, format_string))
+      if (worded) {
+        paste0("From ", format(start_parsed, format_string), " to ", format(stop_parsed, format_string))
+      } else {
+        paste0(format(start_parsed, format_string), " \u2013 ", format(stop_parsed, format_string))
+      }
     }
   } else if (!is.na(start_parsed)) {
-    paste0("From ", format(start_parsed, format_string))
+    if (worded) {
+      paste0("From ", format(start_parsed, format_string))
+    } else {
+      format(start_parsed, format_string)
+    }
   } else if (!is.na(stop_parsed)) {
-    paste0("Until ", format(stop_parsed, format_string))
+    if (worded) {
+      paste0("Until ", format(stop_parsed, format_string))
+    } else {
+      format(stop_parsed, format_string)
+    }
   } else {
     "Date not recorded"
   }

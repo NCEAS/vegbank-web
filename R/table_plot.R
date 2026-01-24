@@ -5,7 +5,6 @@
 
 PLOT_TABLE_FIELDS <- c(
   "ob_code",
-  "pl_code",
   "author_obs_code",
   "state_province",
   "country",
@@ -29,7 +28,8 @@ PLOT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 
 PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
   "Actions",
-  "Observation Code",
+  "Vegbank Code",
+  "Author Code",
   "Location",
   "Top Taxa",
   "Communities",
@@ -44,28 +44,13 @@ PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
 #' @noRd
 create_plot_column_defs <- function() {
   list(
-    list(
-      targets = 0,
-      orderable = FALSE,
-      searchable = FALSE,
-      width = "10%",
-      render = create_plot_action_renderer()
-    ),
-    list(targets = 1, width = "10%"), # Author Plot Code
-    list(targets = 2, width = "20%"), # Location
-    list(
-      targets = 3,
-      width = "25%",
-      orderable = FALSE,
-      render = create_taxon_list_renderer()
-    ),
-    list(
-      targets = 4,
-      width = "25%",
-      orderable = FALSE,
-      render = create_community_list_renderer()
-    ),
-    list(targets = 5, width = "10%") # Year
+    list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
+    list(targets = 1, width = "10%", orderable = TRUE), # Vegbank Code
+    list(targets = 2, width = "10%", orderable = TRUE), # Author Code
+    list(targets = 3, width = "15%", orderable = FALSE), # Location
+    list(targets = 4, width = "25%", orderable = FALSE), # Top Taxa
+    list(targets = 5, width = "20%", orderable = FALSE), # Communities
+    list(targets = 6, width = "10%", orderable = FALSE) # Year
   )
 }
 
@@ -79,11 +64,36 @@ build_plot_table <- function() {
   build_table_from_spec(PLOT_TABLE_SPEC)
 }
 
-#' Transform normalized plot data into display rows
+#' Build Plot Table with optional cross-resource filter
 #'
-#' @param plot_data Data frame with normalized plot columns including nested lists
-#' @return Data frame formatted for DataTables consumption
+#' Configures the plot table with an optional vb_code parameter for
+#' cross-resource queries (e.g., showing plots for a specific project).
+#'
+#' @param vb_code Optional VegBank code for cross-resource filtering (e.g., "pj.340")
+#' @return A DT::datatable object
 #' @noRd
+build_plot_table_with_filter <- function(vb_code = NULL) {
+  # Deep copy to avoid mutating the shared PLOT_TABLE_SPEC
+  spec <- PLOT_TABLE_SPEC
+  spec$data_source <- utils::modifyList(spec$data_source, list())
+  spec$data_source$query <- as.list(spec$data_source$query)
+
+  # Determine if filter is active
+  has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
+
+  # Add vb_code to query if filtering is active
+  if (has_filter) {
+    spec$data_source$query$vb_code <- vb_code
+  }
+
+  spec$options <- utils::modifyList(spec$options, list())
+
+  # Adjust table height based on whether filter alert is shown so we don't overflow viewport
+  spec$options$scrollY <- if (has_filter) "calc(100vh - 315px)" else "calc(100vh - 235px)"
+
+  build_table_from_spec(spec)
+}
+
 process_plot_data <- function(plot_data) {
   if (is.null(plot_data)) {
     plot_data <- PLOT_TABLE_SCHEMA_TEMPLATE
@@ -95,91 +105,142 @@ process_plot_data <- function(plot_data) {
   }
 
   ob_codes <- plot_data$ob_code
-
-  # Clean text columns
   author_codes <- clean_column_data(plot_data, "author_obs_code")
   years <- clean_column_data(plot_data, "year")
 
-  # Format code column with author code and ob_code in green below
-  formatted_codes <- format_code_column(author_codes, ob_codes)
-
   # Format numeric columns
-  latitudes <-   suppressWarnings(as.numeric(plot_data$latitude))
+  latitudes <- suppressWarnings(as.numeric(plot_data$latitude))
   longitudes <- suppressWarnings(as.numeric(plot_data$longitude))
   elevations <- suppressWarnings(as.numeric(plot_data$elevation))
 
   locations <- format_location_column(plot_data, latitudes, longitudes, elevations)
-
-
-  # Serialize nested list columns as JSON strings for the renderer
-  top_taxa_json <- vapply(seq_len(row_count), function(idx) {
-    serialize_taxa_payload(
-      plot_data$top_taxon_observations[[idx]],
-      plot_data$taxon_count[[idx]]
-    )
-  }, character(1))
-  communities_json <- serialize_nested_column(plot_data$top_classifications)
-
-  # Encode both button actions (details + map) as a JSON payload for the renderer
-  action_payloads <- vapply(seq_len(row_count), function(idx) {
-    payload <- list(
-      detail_code = ob_codes[[idx]],
-      map = list(
-        lat = if (is.na(latitudes[[idx]])) NULL else latitudes[[idx]],
-        lng = if (is.na(longitudes[[idx]])) NULL else longitudes[[idx]],
-        code = author_codes[[idx]]
-      )
-    )
-
-    jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", na = "null", digits = NA)
-  }, character(1))
+  actions_html <- format_plot_action_buttons(ob_codes, author_codes, latitudes, longitudes)
+  top_taxa_html <- format_plot_taxa_list(plot_data$top_taxon_observations, plot_data$taxon_count)
+  communities_html <- format_plot_community_list(plot_data$top_classifications)
 
   data.frame(
-    "Actions" = action_payloads,
-    "Observation Code" = formatted_codes,
+    "Actions" = actions_html,
+    "Vegbank Code" = vapply(ob_codes, htmltools::htmlEscape, character(1)),
+    "Author Code" = vapply(author_codes, htmltools::htmlEscape, character(1)),
     "Location" = locations,
-    "Top Taxa" = top_taxa_json,
-    "Communities" = communities_json,
-    # TODO: Make this a date not just a year
-    "Survey Year" = years,
+    "Top Taxa" = top_taxa_html,
+    "Communities" = communities_html,
+    "Survey Year" = vapply(years, htmltools::htmlEscape, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
 }
-
-#' Build HTML-friendly code string with author code and ob_code
+#' Format HTML for plot table action buttons (Details + Map)
 #'
-#' Creates multi-line HTML code strings with author_obs_code on top and
-#' ob_code in green below.
-#'
+#' @param ob_codes Character vector of plot observation codes
 #' @param author_codes Character vector of author observation codes
-#' @param ob_codes Character vector of VegBank observation codes
-#' @return Character vector of HTML-formatted code strings
+#' @param latitudes Numeric vector of latitudes
+#' @param longitudes Numeric vector of longitudes
+#' @return Character vector of HTML for action buttons
 #' @noRd
-format_code_column <- function(author_codes, ob_codes) {
-  vapply(seq_along(author_codes), function(idx) {
-    author_code <- author_codes[[idx]]
-    ob_code <- ob_codes[[idx]]
-
-    lines <- character(0)
-
-    if (!is.null(author_code) && !is.na(author_code) && nzchar(author_code)) {
-      lines <- c(lines, as.character(htmltools::htmlEscape(author_code)))
+format_plot_action_buttons <- function(ob_codes, author_codes, latitudes, longitudes) {
+  row_count <- length(ob_codes)
+  vapply(seq_len(row_count), function(idx) {
+    detail_code <- ob_codes[[idx]]
+    lat <- latitudes[[idx]]
+    lng <- longitudes[[idx]]
+    code <- author_codes[[idx]]
+    has_coords <- !is.na(lat) && !is.na(lng)
+    # Details button
+    detail_btn <- if (!is.null(detail_code) && nzchar(detail_code)) {
+      sprintf(
+        '<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" data-input-id="plot_link_click" data-value="%s">Details</button>',
+        htmltools::htmlEscape(detail_code, attribute = TRUE))
     } else {
-      lines <- c(lines, "Not provided")
+      '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Details</button>'
     }
-
-    if (!is.null(ob_code) && !is.na(ob_code) && nzchar(ob_code)) {
-      ob_code_line <- sprintf(
-        '<span style="color: #2c5443; font-size: small;">%s</span>',
-        as.character(htmltools::htmlEscape(ob_code))
+    # Map button
+    map_btn <- if (has_coords) {
+      code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code, attribute = TRUE)) else ''
+      sprintf(
+        '<button type="button" class="btn btn-sm btn-outline-primary dt-map-action" data-lat="%s" data-lng="%s"%s>Map</button>',
+        htmltools::htmlEscape(lat, attribute = TRUE),
+        htmltools::htmlEscape(lng, attribute = TRUE),
+        code_attr
       )
-      lines <- c(lines, ob_code_line)
+    } else {
+      '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Map</button>'
     }
-
-    paste(lines, collapse = "<br>")
-  }, character(1), USE.NAMES = FALSE)
+    sprintf('<div class="btn-group btn-group-sm" role="group">%s%s</div>', detail_btn, map_btn)
+  }, character(1))
 }
+
+#' Format HTML for plot table top taxa list
+#'
+#' @param taxa_list List of data.frames for top_taxon_observations
+#' @param taxon_counts Integer vector of total taxon counts
+#' @return Character vector of HTML for taxa list
+#' @noRd
+format_plot_taxa_list <- function(taxa_list, taxon_counts) {
+  row_count <- length(taxa_list)
+  vapply(seq_len(row_count), function(idx) {
+    taxa <- taxa_list[[idx]]
+    total <- suppressWarnings(as.integer(taxon_counts[[idx]]))
+    if (is.null(taxa) || !is.data.frame(taxa) || nrow(taxa) == 0) {
+      return('<span class="text-muted">Not provided</span>')
+    }
+    links <- vapply(seq_len(nrow(taxa)), function(j) {
+      name <- taxa[j, "name", drop = TRUE]
+      pc_code <- taxa[j, "pc_code", drop = TRUE]
+      max_cover <- taxa[j, "max_cover", drop = TRUE]
+      safe_name <- htmltools::htmlEscape(name)
+      name_link <- if (!is.null(pc_code) && nzchar(pc_code)) {
+        sprintf('<a href="#" class="dt-shiny-action" data-input-id="plant_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(pc_code, attribute = TRUE), safe_name)
+      } else {
+        sprintf('<span>%s</span>', safe_name)
+      }
+      if (!is.null(max_cover) && !is.na(max_cover)) {
+        cover_text <- sprintf('(%0.1f%%)', as.numeric(max_cover))
+        sprintf('<div style="display: flex; justify-content: space-between;"><span>%s</span><span style="margin-left: 8px;">%s</span></div>', name_link, htmltools::htmlEscape(cover_text, attribute = TRUE))
+      } else {
+        sprintf('<div>%s</div>', name_link)
+      }
+    }, character(1))
+    html <- paste(links, collapse = '')
+    if (!is.null(total) && !is.na(total) && total > length(links)) {
+      remainder <- total - length(links)
+      html <- paste0(html, sprintf('<div class="text-muted small">+%d other taxa</div>', remainder))
+    }
+    html
+  }, character(1))
+}
+
+#' Format HTML for plot table community list
+#'
+#' @param comm_list List of data.frames for top_classifications
+#' @return Character vector of HTML for community list
+#' @noRd
+format_plot_community_list <- function(comm_list) {
+  row_count <- length(comm_list)
+  vapply(seq_len(row_count), function(idx) {
+    comms <- comm_list[[idx]]
+    if (is.null(comms) || !is.data.frame(comms) || nrow(comms) == 0) {
+      return('<span class="text-muted">Not provided</span>')
+    }
+    links <- vapply(seq_len(nrow(comms)), function(j) {
+      comm_name <- comms[j, "comm_name", drop = TRUE]
+      cl_code <- comms[j, "cl_code", drop = TRUE]
+      comm_code <- comms[j, "comm_code", drop = TRUE]
+      safe_name <- htmltools::htmlEscape(comm_name)
+      entry <- if (!is.null(cl_code) && nzchar(cl_code)) {
+        sprintf('<a href="#" class="dt-shiny-action" data-input-id="comm_class_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(cl_code, attribute = TRUE), safe_name)
+      } else {
+        sprintf('<span>%s</span>', safe_name)
+      }
+      if (!is.null(comm_code) && nzchar(comm_code) && grepl('^CEGL', comm_code, ignore.case = TRUE)) {
+        entry <- paste0(entry, sprintf('<br><span class="text-muted small">%s</span>', htmltools::htmlEscape(comm_code, attribute = TRUE)))
+      }
+      entry
+    }, character(1))
+    paste(links, collapse = '<br>')
+  }, character(1))
+}
+
 
 #' Build HTML-friendly location string from components
 #'
@@ -201,52 +262,44 @@ format_location_column <- function(data, latitudes = NULL, longitudes = NULL, el
   state <- clean_column_data(data, "state_province", default_value = "")
   country <- clean_column_data(data, "country", default_value = "")
 
-  build_coord_line <- function(lat, lng) {
-    if (is.na(lat) || is.na(lng)) {
-      return(NULL)
-    }
-    sprintf("%.4f, %.4f", lat, lng)
-  }
-
-  build_elev_line <- function(elev) {
-    if (is.na(elev)) {
-      return(NULL)
-    }
-    paste0(round(elev), "m")
-  }
-
   vapply(seq_len(row_total), function(idx) {
     lines <- character(0)
 
+    # Add state if provided
     if (nzchar(state[[idx]])) {
-      lines <- c(lines, as.character(htmltools::htmlEscape(state[[idx]])))
+      lines <- c(lines, htmltools::htmlEscape(state[[idx]]))
     }
+
+    # Add country in muted text if provided
     if (nzchar(country[[idx]])) {
-      country_line <- sprintf(
+      lines <- c(lines, sprintf(
         '<span class="text-muted small">%s</span>',
-        as.character(htmltools::htmlEscape(country[[idx]]))
-      )
-      lines <- c(lines, country_line)
+        htmltools::htmlEscape(country[[idx]])
+      ))
     }
+
+    # Default if no location provided
     if (!length(lines)) {
       lines <- "Not provided"
     }
 
-    coord_line <- build_coord_line(latitudes[[idx]], longitudes[[idx]])
-    elev_line <- build_elev_line(elevations[[idx]])
-
-    detail_parts <- c()
-    if (!is.null(coord_line)) {
-      detail_parts <- c(detail_parts, coord_line)
+    # Add coordinates in muted text if available
+    lat <- latitudes[[idx]]
+    lng <- longitudes[[idx]]
+    if (!is.na(lat) && !is.na(lng)) {
+      lines <- c(lines, sprintf(
+        '<span class="text-muted small">%.4f, %.4f</span>',
+        lat, lng
+      ))
     }
-    if (!is.null(elev_line)) {
-      detail_parts <- c(detail_parts, elev_line)
-    }
 
-    if (length(detail_parts)) {
-      detail_line <- paste(detail_parts, collapse = " &bull; ")
-      detail_line <- sprintf('<span class="text-muted small">%s</span>', detail_line)
-      lines <- c(lines, detail_line)
+    # Add elevation in muted text if available
+    elev <- elevations[[idx]]
+    if (!is.na(elev)) {
+      lines <- c(lines, sprintf(
+        '<span class="text-muted small">Elevation: %dm</span>',
+        round(elev)
+      ))
     }
 
     paste(lines, collapse = "<br>")
@@ -257,6 +310,8 @@ format_location_column <- function(data, latitudes = NULL, longitudes = NULL, el
 #'
 #' @param list_col Column containing nested data frames/lists
 #' @returns Character vector of JSON strings expected by JS renderers
+#'
+#' @importFrom jsonlite toJSON
 #' @noRd
 serialize_nested_column <- function(list_col) {
   if (is.null(list_col)) {
@@ -290,6 +345,8 @@ serialize_nested_column <- function(list_col) {
 #' @param items Data frame (or coercible object) of top taxa rows
 #' @param total_count Total taxon count reported by the API
 #' @returns JSON string containing `items` array and `total` metadata
+#'
+#' @importFrom jsonlite toJSON
 #' @noRd
 serialize_taxa_payload <- function(items, total_count) {
   normalized_items <- normalize_taxa_items(items)
@@ -316,6 +373,8 @@ serialize_taxa_payload <- function(items, total_count) {
 #'
 #' @param items Taxa data as data frame, JSON string, or coercible object
 #' @return Data frame of taxa items, or empty data frame if input is invalid
+#'
+#' @importFrom jsonlite toJSON
 #' @noRd
 normalize_taxa_items <- function(items) {
   if (is.null(items)) {
@@ -351,219 +410,10 @@ normalize_plot_data <- create_normalizer(
 #' Coerce VegBank plot response to a data frame
 #' @noRd
 coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
-
-#' Create JS renderer for plot action buttons (Details + Map)
-#' @noRd
-create_plot_action_renderer <- function() {
-  js_code <- "function(data, type, row, meta) {
-    if (type === 'display') {
-      if (!data || data === '') {
-        return '<span class=\"text-muted\">Unavailable</span>';
-      }
-
-      var payload;
-      try {
-        payload = JSON.parse(data);
-      } catch (err) {
-        console.error('Failed to parse plot action payload:', err);
-        return '<span class=\"text-muted\">Unavailable</span>';
-      }
-
-        var detailCode = payload && payload.detail_code ? String(payload.detail_code) : '';
-        var mapPayload = payload && payload.map ? payload.map : null;
-        var hasCoords = Boolean(mapPayload && mapPayload.lat !== null && mapPayload.lat !== undefined &&
-          mapPayload.lng !== null && mapPayload.lng !== undefined &&
-          !Number.isNaN(mapPayload.lat) && !Number.isNaN(mapPayload.lng));
-        var mapCode = mapPayload && mapPayload.code ? String(mapPayload.code) : detailCode;
-
-        var escapeAttr = function(value) {
-          return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/\"/g, '&quot;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/'/g, '&#39;');
-        };
-
-        var detailButton;
-        if (detailCode) {
-          detailButton = '<button type=\"button\" class=\"btn btn-sm btn-outline-primary dt-shiny-action\" ' +
-            'data-input-id=\"plot_link_click\" data-value=\"' + escapeAttr(detailCode) + '\">Details</button>';
-        } else {
-          detailButton = '<button type=\"button\" class=\"btn btn-sm btn-outline-primary\" disabled>Details</button>';
-        }
-
-        var mapButton;
-        if (hasCoords) {
-          var latAttr = escapeAttr(mapPayload.lat);
-          var lngAttr = escapeAttr(mapPayload.lng);
-          var codeAttr = mapCode ? ' data-code=\"' + escapeAttr(mapCode) + '\"' : '';
-          mapButton = '<button type=\"button\" class=\"btn btn-sm btn-outline-secondary dt-map-action\" ' +
-            'data-lat=\"' + latAttr + '\" data-lng=\"' + lngAttr + '\"' + codeAttr + '>Map</button>';
-        } else {
-          mapButton = '<button type=\"button\" class=\"btn btn-sm btn-outline-secondary\" disabled>Map</button>';
-        }
-
-        return '<div class=\"btn-group btn-group-sm\" role=\"group\">' + detailButton + mapButton + '</div>';
-    }
-    return data;
-  }"
-
-  DT::JS(js_code)
-}
-
-#' Create JS renderer for taxon list with links
-#' @noRd
-create_taxon_list_renderer <- function() {
-  js_code <- "function(data, type, row, meta) {
-    if (type === 'display') {
-      if (!data || data === '') {
-        return '<span class=\"text-muted\">Not provided</span>';
-      }
-
-      try {
-        var payload = JSON.parse(data);
-        var taxa = [];
-        var total = null;
-
-        var escapeHtml = function(value) {
-          return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-        };
-
-        var escapeText = function(value) {
-          return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-        };
-
-        if (Array.isArray(payload)) {
-          taxa = payload;
-        } else if (payload && typeof payload === 'object') {
-          if (Array.isArray(payload.items)) {
-            taxa = payload.items;
-          }
-          if (payload.total !== null && payload.total !== undefined) {
-            var parsedTotal = Number(payload.total);
-            if (!Number.isNaN(parsedTotal)) {
-              total = parsedTotal;
-            }
-          }
-        }
-
-        if (!Array.isArray(taxa) || taxa.length === 0) {
-          return '<span class=\"text-muted\">Not provided</span>';
-        }
-
-        var links = taxa.map(function(taxon) {
-          var name = taxon.name || 'Unknown';
-          var pcCode = taxon.pc_code || '';
-          var maxCover = taxon.max_cover;
-          var safeName = escapeText(name);
-
-          var nameLink;
-          if (pcCode) {
-            nameLink = '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"plant_link_click\" data-value=\"' +
-                   escapeHtml(pcCode) + '\">' + safeName + '</a>';
-          } else {
-            nameLink = '<span>' + safeName + '</span>';
-          }
-
-          if (maxCover !== null && maxCover !== undefined) {
-            var coverText = '(' + Number(maxCover).toFixed(1) + '%)';
-            return '<div style=\"display: flex; justify-content: space-between;\"><span>' +
-                   nameLink + '</span><span style=\"margin-left: 8px;\">' + escapeText(coverText) + '</span></div>';
-          }
-
-          return '<div>' + nameLink + '</div>';
-        });
-
-        var html = links.join('');
-        if (links.length && total !== null && !Number.isNaN(total)) {
-          var remainder = Math.floor(total) - links.length;
-          if (remainder > 0) {
-            html += '<div class=\"text-muted small\">+' + remainder + ' other taxa</div>';
-          }
-        }
-
-        return html;
-      } catch(e) {
-        console.error('Error parsing taxon data:', e);
-        return '<span class=\"text-muted\">Error</span>';
-      }
-    }
-    return data;
-  }"
-
-  DT::JS(js_code)
-}
-
-#' Create JS renderer for community classification list with links
-#' @noRd
-create_community_list_renderer <- function() {
-  js_code <- "function(data, type, row, meta) {
-    if (type === 'display') {
-      if (!data || data === '[]' || data === '') {
-        return '<span class=\"text-muted\">Not provided</span>';
-      }
-
-      try {
-        var communities = JSON.parse(data);
-        if (!Array.isArray(communities) || communities.length === 0) {
-          return '<span class=\"text-muted\">Not provided</span>';
-        }
-
-        var escapeHtml = function(value) {
-          return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-        };
-
-        var links = communities.map(function(comm) {
-          var commName = comm.comm_name || 'Unknown';
-          var clCode = comm.cl_code || '';
-          var commCode = comm.comm_code || '';
-          var entry;
-          var safeName = escapeHtml(commName);
-
-          if (clCode) {
-            entry = '<a href=\"#\" class=\"dt-shiny-action\" data-input-id=\"comm_class_link_click\" data-value=\"' +
-                   escapeHtml(clCode) + '\">' + safeName + '</a>';
-          } else {
-            entry = '<span>' + safeName + '</span>';
-          }
-
-          if (commCode && commCode.toUpperCase().indexOf('CEGL') === 0) {
-            entry += '<br><span class=\"text-muted small\">' + escapeHtml(commCode) + '</span>';
-          }
-
-          return entry;
-        });
-
-        return links.join('<br>');
-      } catch(e) {
-        console.error('Error parsing community data:', e);
-        return '<span class=\"text-muted\">Error</span>';
-      }
-    }
-    return data;
-  }"
-
-  DT::JS(js_code)
-}
-
 PLOT_TABLE_SPEC <- list(
   table_id = "plot_table",
   resource = "plot-observations",
-  remote_label = "plot observations",
+  loading_label = "plot observations",
   column_defs = create_plot_column_defs(),
   schema_fields = PLOT_TABLE_FIELDS,
   schema_template = PLOT_TABLE_SCHEMA_TEMPLATE,
@@ -574,10 +424,16 @@ PLOT_TABLE_SPEC <- list(
     detail = "minimal",
     clean_names = FALSE,
     clean_rows_fn = sanitize_dt_rows,
-    query = list(with_nested = "TRUE")
+    query = list(with_nested = "TRUE"),
+    sort_field_map = list(
+      "1" = "default", # Vegbank Code
+      "2" = "author_obs_code"
+    )
   ),
   page_length = NULL,
-  options = list(),
+  options = list(
+    scrollY = "calc(100vh - 235px)"
+  ),
   datatable_args = list(),
   initial_display = PLOT_TABLE_DISPLAY_TEMPLATE
 )

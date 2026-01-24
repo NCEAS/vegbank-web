@@ -38,7 +38,11 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         "plant-concept" =
           vegbankr::vb_get_plant_concepts(vb_code, detail = "full", with_nested = TRUE),
         "reference" =
-          vegbankr::vb_get_references(vb_code, detail = "full")
+          vegbankr::vb_get_references(vb_code, detail = "full"),
+        "cover-method" =
+          vegbankr::vb_get_cover_methods(vb_code, detail = "full", with_nested = TRUE),
+        "stratum-method" =
+          vegbankr::vb_get_stratum_methods(vb_code, detail = "full", with_nested = TRUE)
       )
 
       if (length(result) == 0) {
@@ -52,12 +56,15 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
 
       # Clear all output slots - names must stay aligned with ui.R definitions
       output$plot_header <- shiny::renderUI(NULL)
-      output$plot_id_details <- shiny::renderUI(NULL)
+      output$author_code_details <- shiny::renderUI(NULL)
+      output$date_details <- shiny::renderUI(NULL)
       output$location_details <- shiny::renderUI(NULL)
       output$layout_details <- shiny::renderUI(NULL)
       output$environmental_details <- shiny::renderUI(NULL)
       output$methods_details <- shiny::renderUI(NULL)
       output$plot_quality_details <- shiny::renderUI(NULL)
+      output$plot_vegetation_details <- shiny::renderUI(NULL)
+      output$plot_misc_details <- shiny::renderUI(NULL)
       output$taxa_details <- shiny::renderUI(NULL)
       output$communities_details <- shiny::renderUI(NULL)
       output$community_concept_header <- shiny::renderUI(NULL)
@@ -88,6 +95,12 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$reference_header <- shiny::renderUI(NULL)
       output$reference_identifiers <- shiny::renderUI(NULL)
       output$reference_publication <- shiny::renderUI(NULL)
+      output$cover_method_header <- shiny::renderUI(NULL)
+      output$cover_method_details <- shiny::renderUI(NULL)
+      output$cover_method_indexes <- shiny::renderUI(NULL)
+      output$stratum_method_header <- shiny::renderUI(NULL)
+      output$stratum_method_details <- shiny::renderUI(NULL)
+      output$stratum_types <- shiny::renderUI(NULL)
 
       shiny::incProgress(0.5, "Processing details")
 
@@ -122,15 +135,21 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         },
         "plot-observation" = {
           details <- build_plot_obs_details_view(result)
+          output$plot_notification <- details$plot_notification
           output$plot_header <- details$plot_header
-          output$plot_id_details <- details$plot_id_details
+          output$author_code_details <- details$author_code_details
+          output$date_details <- details$date_details
           output$location_details <- details$location_details
           output$layout_details <- details$layout_details
           output$environmental_details <- details$environmental_details
           output$methods_details <- details$methods_details
           output$plot_quality_details <- details$plot_quality_details
+          output$plot_vegetation_details <- details$plot_vegetation_details
           output$taxa_details <- details$taxa_details
           output$communities_details <- details$communities_details
+          output$disturbances_details <- details$disturbances_details
+          output$soils_details <- details$soils_details
+          output$plot_misc_details <- details$plot_misc_details
         },
         "plant-concept" = {
           details <- build_plant_concept_details_view(result)
@@ -143,6 +162,18 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           output$reference_header <- details$reference_header
           output$reference_identifiers <- details$reference_identifiers
           output$reference_publication <- details$reference_publication
+        },
+        "cover-method" = {
+          details <- build_cover_method_details_view(result)
+          output$cover_method_header <- details$cover_method_header
+          output$cover_method_details <- details$cover_method_details
+          output$cover_method_indexes <- details$cover_method_indexes
+        },
+        "stratum-method" = {
+          details <- build_stratum_method_details_view(result)
+          output$stratum_method_header <- details$stratum_method_header
+          output$stratum_method_details <- details$stratum_method_details
+          output$stratum_types <- details$stratum_types
         }
       )
 

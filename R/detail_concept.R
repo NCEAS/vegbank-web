@@ -29,7 +29,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
       htmltools::tags$i(tools::toTitleCase(as.character(result[[level_field]])) %|||% "Unspecified level"),
       htmltools::tags$h5(result[[name_field]], style = "font-weight: 600; margin-bottom: 0px;"),
       if (!is.na(result[[code_field]])) htmltools::tags$p(paste0("(", result[[code_field]], ")"), style = "margin-bottom: 0px;"),
-      htmltools::tags$h5(result[[id_field]], style = "color: #2c5443; font-weight: 600;")
+      htmltools::tags$h5(result[[id_field]], style = "color: var(--vb-green); font-weight: 600;")
     )
   })
 
@@ -51,7 +51,14 @@ build_concept_details_view <- function(result, concept_type = "plant") {
           ),
           htmltools::tags$tr(
             htmltools::tags$td("Observation Count"),
-            htmltools::tags$td(class = "text-end", result$obs_count %|||% "0")
+            htmltools::tags$td(
+              class = "text-end",
+              create_obs_count_link(
+                result$obs_count,
+                result[[id_field]],
+                result[[name_field]]
+              )
+            )
           )
         )
       ),
@@ -61,7 +68,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
           create_section_header("Description", "10px"),
           htmltools::tags$div(
             id = "concept-description",
-            htmltools::HTML(result[[description_field]] %|||% "No description available")
+            htmltools::htmlEscape(result[[description_field]] %|||% "No description available")
           )
         )
       }

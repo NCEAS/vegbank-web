@@ -20,7 +20,7 @@ test_that("server table_registry is correct", {
     expect_true("plots" %in% names(table_registry))
     expect_true("plants" %in% names(table_registry))
     expect_true("communities" %in% names(table_registry))
-    expect_true("people" %in% names(table_registry))
+    expect_true("parties" %in% names(table_registry))
     expect_true("projects" %in% names(table_registry))
     expect_equal(table_registry$plots$table_id, "plot_table")
   })
