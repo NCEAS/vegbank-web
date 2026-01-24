@@ -1248,7 +1248,7 @@ build_navbar <- function() {
           shiny::column(
             12,
             bslib::card(
-              bslib::card_header("Overview"),
+              bslib::card_header("Vegbank Beta 0.2.0"),
               bslib::card_body(shiny::uiOutput("dataSummary"))
             )
           )
