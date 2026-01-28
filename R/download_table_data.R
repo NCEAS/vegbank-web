@@ -62,7 +62,7 @@ get_table_filter_state <- function(table_id, input, state) {
 
   list(
     search = search_term,
-    filter = filter_info  # Now returns full list(type, code, label) or NULL
+    filter = filter_info # Now returns full list(type, code, label) or NULL
   )
 }
 
@@ -77,9 +77,9 @@ has_table_filters <- function(table_id, input, state) {
   filter_state <- get_table_filter_state(table_id, input, state)
 
   has_search <- !is.null(filter_state$search) && nzchar(trimws(filter_state$search))
-  has_filter <- !is.null(filter_state$filter) && 
-                !is.null(filter_state$filter$type) && 
-                !is.null(filter_state$filter$code)
+  has_filter <- !is.null(filter_state$filter) &&
+    !is.null(filter_state$filter$type) &&
+    !is.null(filter_state$filter$code)
 
   has_search || has_filter
 }
@@ -91,16 +91,16 @@ has_table_filters <- function(table_id, input, state) {
 #' @return Integer count or NA on error
 #' @noRd
 fetch_filtered_count <- function(config, filter_state) {
-  query_params <- list()
+  query_params <- list(limit = 0) # Only want count, but cross-resource not implemented in vb_count()
 
   if (!is.null(filter_state$search) && nzchar(trimws(filter_state$search))) {
     query_params$search <- trimws(filter_state$search)
   }
 
   # Use vb_code parameter for cross-resource filtering (vegbankr infers type from code prefix)
-  if (!is.null(filter_state$filter) && 
-      !is.null(filter_state$filter$type) && 
-      !is.null(filter_state$filter$code)) {
+  if (!is.null(filter_state$filter) &&
+        !is.null(filter_state$filter$type) &&
+        !is.null(filter_state$filter$code)) {
     query_params$vb_code <- filter_state$filter$code
   }
 
@@ -115,9 +115,13 @@ fetch_filtered_count <- function(config, filter_state) {
         list(resource = config$resource),
         query_params
       )
-      message("  Calling vb_count with: resource='", config$resource, "', ", 
-              paste(names(query_params), "='", query_params, "'", sep = "", collapse = ", "))
-      count <- do.call(vegbankr::vb_count, args)
+      message(
+        "  Calling vb_get with: resource='", config$resource, "', ",
+        paste(names(query_params), "='", query_params, "'", sep = "", collapse = ", ")
+      )
+      resp <- do.call(vegbankr::vb_get, args)
+      details <- vegbankr::get_page_details(resp)
+      count <- extract_reported_total(details)
       message("  Count result: ", count)
       as.integer(count)
     },
@@ -142,9 +146,9 @@ fetch_filtered_data <- function(config, filter_state) {
   }
 
   # Use vb_code parameter for cross-resource filtering (vegbankr infers type from code prefix)
-  if (!is.null(filter_state$filter) && 
-      !is.null(filter_state$filter$type) && 
-      !is.null(filter_state$filter$code)) {
+  if (!is.null(filter_state$filter) &&
+    !is.null(filter_state$filter$type) &&
+    !is.null(filter_state$filter$code)) {
     query_params$vb_code <- filter_state$filter$code
   }
 
@@ -173,7 +177,7 @@ fetch_filtered_data <- function(config, filter_state) {
 #' @param primary_key Name of the primary key column (e.g., "ob_code")
 #' @return Data frame with foreign key added, or empty data frame
 #' @noRd
-extract_nested_table <- function(data, nested_col, primary_key) {
+extract_nested_table_with_fk <- function(data, nested_col, primary_key) {
   if (!nested_col %in% names(data)) {
     return(data.frame())
   }
@@ -246,7 +250,7 @@ prepare_csv_tables <- function(data, config) {
       field_name <- config$nested_fields[[i]]
       label <- config$nested_labels[[i]]
 
-      nested_df <- extract_nested_table(data, field_name, config$primary_key)
+      nested_df <- extract_nested_table_with_fk(data, field_name, config$primary_key)
 
       if (nrow(nested_df) > 0) {
         # Move foreign key to first column
@@ -261,7 +265,7 @@ prepare_csv_tables <- function(data, config) {
 
   # Create main table with ALL list columns removed (not just configured nested fields)
   main_df <- data
-  
+
   # Remove all list columns to ensure CSV compatibility
   list_cols <- sapply(main_df, is.list)
   if (any(list_cols)) {
@@ -285,9 +289,9 @@ prepare_csv_tables <- function(data, config) {
 #' @noRd
 create_download_readme <- function(config, filter_state, record_count) {
   has_search <- !is.null(filter_state$search) && nzchar(trimws(filter_state$search))
-  has_filter <- !is.null(filter_state$filter) && 
-                !is.null(filter_state$filter$type) && 
-                !is.null(filter_state$filter$code)
+  has_filter <- !is.null(filter_state$filter) &&
+    !is.null(filter_state$filter$type) &&
+    !is.null(filter_state$filter$code)
 
   paste0(
     "VegBank Data Download\n",
@@ -296,9 +300,19 @@ create_download_readme <- function(config, filter_state, record_count) {
     "Source: https://vegbank.org\n",
     "Records: ", record_count, "\n\n",
     if (has_search) paste0("Search Filter: ", filter_state$search, "\n") else "",
-    if (has_filter) paste0("Resource Filter: ", filter_state$filter$type, " = ", filter_state$filter$code, 
-                           if (!is.null(filter_state$filter$label)) paste0(" (", filter_state$filter$label, ")") else "", 
-                           "\n") else "",
+    if (has_filter) {
+      paste0(
+        "Resource Filter: ", filter_state$filter$type, " = ", filter_state$filter$code,
+        if (!is.null(filter_state$filter$label)) {
+          paste0(" (", filter_state$filter$label, ")")
+        } else {
+          ""
+        },
+        "\n"
+      )
+    } else {
+      ""
+    },
     "\n",
     "File Structure\n",
     "--------------\n\n",
@@ -332,7 +346,7 @@ create_download_readme <- function(config, filter_state, record_count) {
     "--------\n",
     "Peet, R.K., M.T. Lee, M.D. Jennings, D. Faber-Langendoen (eds). 2013.\n",
     "VegBank: The vegetation plot archive of the Ecological Society of America.\n",
-    "http://vegbank.org\n"
+    "http://vegbank.org, searched on ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), "\n"
   )
 }
 
@@ -421,45 +435,45 @@ create_table_download_handler <- function(table_id, input, state) {
       filter_state <- get_table_filter_state(table_id, input, state)
 
       # Check count first (DOES VB SUPPORT COUNT WITH CROSS-RESOURCE FILTERS?)
-      # count <- fetch_filtered_count(config, filter_state)
+      count <- fetch_filtered_count(config, filter_state)
 
-      # if (is.na(count)) {
-      #   shiny::showNotification(
-      #     "Unable to determine record count. Please try again.",
-      #     type = "error",
-      #     duration = 5
-      #   )
-      #   return(NULL)
-      # }
+      if (is.na(count)) {
+        shiny::showNotification(
+          "Unable to determine record count. Please try again.",
+          type = "error",
+          duration = 5
+        )
+        return(NULL)
+      }
 
-      # if (count > DOWNLOAD_MAX_RECORDS) {
-      #   shiny::showNotification(
-      #     paste0(
-      #       "Download limit exceeded. Your filters match ", count, " records, ",
-      #       "but the maximum allowed is ", DOWNLOAD_MAX_RECORDS, ". ",
-      #       "Please refine your search or filters."
-      #     ),
-      #     type = "warning",
-      #     duration = 10
-      #   )
-      #   return(NULL)
-      # }
+      if (count > DOWNLOAD_MAX_RECORDS) {
+        shiny::showNotification(
+          paste0(
+            "Download limit exceeded. Your filters match ", count, " records, ",
+            "but the maximum allowed is ", DOWNLOAD_MAX_RECORDS, ". ",
+            "Please refine your search or filters."
+          ),
+          type = "warning",
+          duration = 10
+        )
+        return(NULL)
+      }
 
-      # if (count == 0) {
-      #   shiny::showNotification(
-      #     "No records match your current filters.",
-      #     type = "warning",
-      #     duration = 5
-      #   )
-      #   return(NULL)
-      # }
+      if (count == 0) {
+        shiny::showNotification(
+          "No records match your current filters.",
+          type = "warning",
+          duration = 5
+        )
+        return(NULL)
+      }
 
       # Show progress
       progress <- shiny::Progress$new()
       progress$set(message = "Preparing download", value = 0)
       on.exit(progress$close(), add = TRUE)
 
-      progress$set(detail = paste0("Fetching records..."), value = 0.2)
+      progress$set(detail = paste0("Fetching ", count, " records..."), value = 0.2)
 
       # Fetch data
       data <- fetch_filtered_data(config, filter_state)
@@ -498,7 +512,7 @@ create_table_download_handler <- function(table_id, input, state) {
       file.copy(zip_path, file, overwrite = TRUE)
 
       shiny::showNotification(
-        paste0("Downloaded records with related data."),
+        paste0("Downloaded ", count, " records with related data."),
         type = "message",
         duration = 5
       )
