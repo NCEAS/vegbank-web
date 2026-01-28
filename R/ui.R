@@ -474,7 +474,7 @@ ui <- function(req) {
 
     document.addEventListener('DOMContentLoaded', function() {
       setNavbarDisabled(true);
-      
+
       // Delegated event handlers for DataTable action buttons
       $(document).on('click', '.dt-shiny-action', function(e) {
         e.preventDefault();
@@ -487,7 +487,7 @@ ui <- function(req) {
         if (row && row.length) {
           rowIndex = row.index();
         }
-        
+
         // Immediately highlight the clicked row
         $('table tbody tr').removeClass('selected-entity');
         row.addClass('selected-entity');
@@ -582,15 +582,15 @@ ui <- function(req) {
     Shiny.addCustomMessageHandler('hideMapLoading', function(message) {
       var overlay = document.getElementById('map-loading-overlay');
       var punElement = document.getElementById('map-loading-pun');
-      
+
       if (mapLoadingPunInterval) {
         clearInterval(mapLoadingPunInterval);
         mapLoadingPunInterval = null;
       }
-      
+
       if (overlay && punElement) {
         punElement.textContent = 'Go fir launch!';
-        
+
         setTimeout(function() {
           // Allow interaction immediately by removing pointer events
           overlay.style.pointerEvents = 'none';
@@ -984,7 +984,14 @@ ui <- function(req) {
   "
   ))
 
-  htmltools::tagList(font_head, navbar, overlay, map_loading_overlay, script)
+  htmltools::tagList(
+    shinyjs::useShinyjs(), # Initialize shinyjs
+    font_head,
+    navbar,
+    overlay,
+    map_loading_overlay,
+    script
+  )
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
@@ -1117,7 +1124,16 @@ custom_theme <- bslib::bs_add_rules(
   .table tbody tr.selected-entity:hover {
       background-color: rgba(114, 185, 162, 0.25) !important;
   }
-  
+
+  /* Download button styling */
+  #download_plot_table {
+      margin-bottom: 0.5rem;
+  }
+  #download_plot_table:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+  }
+
   /* DataTables loading indicator customization */
   .dataTables_processing {
       z-index: 1000 !important;
@@ -1125,12 +1141,12 @@ custom_theme <- bslib::bs_add_rules(
       top: 50% !important;
       left: 50% !important;
   }
-  
+
   /* Target the nested divs that create the loading animation */
   .dataTables_processing > div > div {
       background-color: #72B9A2 !important;
   }
-  
+
   /* Map loading ellipses animation */
   .map-loading-ellipses {
       display: inline-block;
@@ -1139,7 +1155,7 @@ custom_theme <- bslib::bs_add_rules(
       width: 9.375rem;
       height: 1.5rem;
   }
-  
+
   .map-loading-ellipses > div {
       position: absolute;
       width: 1.5rem;
@@ -1148,51 +1164,51 @@ custom_theme <- bslib::bs_add_rules(
       background: #72B9A2;
       animation-timing-function: cubic-bezier(0, 1, 1, 0);
   }
-  
+
   .map-loading-ellipses > div:nth-child(1) {
       left: 0.75rem;
       animation: mapEllipses1 0.6s infinite;
   }
-  
+
   .map-loading-ellipses > div:nth-child(2) {
       left: 0.75rem;
       animation: mapEllipses2 0.6s infinite;
   }
-  
+
   .map-loading-ellipses > div:nth-child(3) {
       left: 3.75rem;
       animation: mapEllipses2 0.6s infinite;
   }
-  
+
   .map-loading-ellipses > div:nth-child(4) {
       left: 6.75rem;
       animation: mapEllipses3 0.6s infinite;
   }
-  
+
   @keyframes mapEllipses1 {
     0% { transform: scale(0); }
     100% { transform: scale(1); }
   }
-  
+
   @keyframes mapEllipses2 {
     0% { transform: translate(0, 0); }
     100% { transform: translate(3rem, 0); }
   }
-  
+
   @keyframes mapEllipses3 {
     0% { transform: scale(1); }
     100% { transform: scale(0); }
   }
-  
+
   @keyframes fadeOut {
     from { opacity: 1; }
     to { opacity: 0; }
   }
-  
+
   #map-loading-overlay.fade-out {
     animation: fadeOut 0.5s ease-out forwards;
   }
-  
+
   /* Detail overlay responsive width */
   #detail-overlay {
     position: fixed;
@@ -1205,7 +1221,7 @@ custom_theme <- bslib::bs_add_rules(
     padding: 20px;
     transition: right 0.4s;
   }
-  
+
   /* Mobile: full width */
   @media (max-width: 767px) {
     #detail-overlay {
@@ -1213,7 +1229,7 @@ custom_theme <- bslib::bs_add_rules(
       width: 100vw;
     }
   }
-  
+
   /* Desktop: 420px width */
   @media (min-width: 768px) {
     #detail-overlay {
@@ -1263,6 +1279,16 @@ build_navbar <- function() {
       title = "Plots",
       shiny::fluidPage(
         shiny::uiOutput("plot_filter_alert"),
+        htmltools::tags$div(
+          class = "d-flex justify-content-end mb-2",
+          style = "position: relative; top: 0; right: 0;",
+          shiny::downloadButton(
+            "download_plot_table",
+            "Download filtered table",
+            class = "btn-sm btn-primary",
+            icon = shiny::icon("download")
+          )
+        ),
         DT::dataTableOutput("plot_table")
       )
     ),
@@ -1437,7 +1463,7 @@ build_detail_overlay <- function() {
 build_map_loading_overlay <- function() {
   htmltools::tags$div(
     id = "map-loading-overlay",
-    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 57px); left: 0; 
+    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 57px); left: 0;
              width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 57px));
              background: rgba(255, 255, 255, 0.98); z-index: 1200;
              justify-content: center; align-items: center; flex-direction: column;",

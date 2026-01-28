@@ -15,7 +15,8 @@
 #' @importFrom DT renderDataTable datatable dataTableProxy
 #' @importFrom htmltools tags
 #' @importFrom leaflet renderLeaflet leafletProxy
-#' @importFrom utils head
+#' @importFrom utils head write.csv
+#' @importFrom shinyjs enable disable
 #' @import vegbankr
 #'
 #' @noRd
@@ -508,8 +509,8 @@ server <- function(input, output, session) {
 
         # Only update if different from current state
         if (is.null(current_filter) ||
-              !identical(current_filter$code, new_filter$code) ||
-              !identical(current_filter$type, new_filter$type)) {
+          !identical(current_filter$code, new_filter$code) ||
+          !identical(current_filter$type, new_filter$type)) {
           state$plot_filter(new_filter)
         }
       } else if (!is.null(params$filter_code) || !is.null(params$filter_type)) {
@@ -814,6 +815,27 @@ server <- function(input, output, session) {
     build_plot_table_with_filter(vb_code)
   })
 
+  # Enable/disable download button based on filter state
+  # Must explicitly read reactive values to create dependencies
+  shiny::observe({
+    # Read the reactive values to create dependencies
+    search_term <- input$plot_table_search
+    plot_filter <- state$plot_filter()
+
+    # Check if we have any active filters
+    has_search <- !is.null(search_term) && nzchar(trimws(search_term))
+    has_filter <- !is.null(plot_filter) && !is.null(plot_filter$code) && nzchar(plot_filter$code)
+
+    if (has_search || has_filter) {
+      shinyjs::enable("download_plot_table")
+    } else {
+      shinyjs::disable("download_plot_table")
+    }
+  })
+
+  # Download handler for plot table
+  output$download_plot_table <- create_table_download_handler("plot_table", input, state)
+
   output$comm_table <- DT::renderDataTable({
     build_community_table()
   })
@@ -840,7 +862,7 @@ server <- function(input, output, session) {
       center_lat = DEFAULT_MAP_LAT,
       zoom = DEFAULT_MAP_ZOOM
     )
-    
+
     # Add callback to hide loading screen once map is fully rendered
     # Use isolate() to prevent creating a reactive dependency on map_initialized()
     if (!isTRUE(shiny::isolate(map_initialized()))) {
@@ -848,19 +870,19 @@ server <- function(input, output, session) {
         function(el, x) {
           var map = this;
           var signaled = false;
-          
+
           function signalMapReady() {
             if (!signaled) {
               signaled = true;
               Shiny.setInputValue('map_ready', true, {priority: 'event'});
             }
           }
-          
+
           // Check if all visible tile images have full opacity
           function allTilesFullOpacity() {
             var tiles = el.querySelectorAll('.leaflet-tile-loaded');
             if (tiles.length === 0) return false;
-            
+
             for (var i = 0; i < tiles.length; i++) {
               var style = window.getComputedStyle(tiles[i]);
               var opacity = parseFloat(style.opacity);
@@ -870,27 +892,27 @@ server <- function(input, output, session) {
             }
             return true;
           }
-          
+
           // Check if map container is NOT recalculating (Shiny output state)
           function isNotRecalculating() {
             return !el.classList.contains('recalculating');
           }
-          
+
           // Check if clusters are rendered
           function hasClusters() {
             var clusters = el.querySelectorAll('.marker-cluster');
             var markers = el.querySelectorAll('.leaflet-marker-icon');
             return clusters.length > 0 || markers.length > 0;
           }
-          
+
           // Main readiness check - polls until all conditions are met
           function checkFullyReady() {
             if (signaled) return;
-            
+
             var notRecalculating = isNotRecalculating();
             var tilesReady = allTilesFullOpacity();
             var clustersPresent = hasClusters();
-            
+
             if (notRecalculating && tilesReady && clustersPresent) {
               signalMapReady();
             } else {
@@ -898,13 +920,13 @@ server <- function(input, output, session) {
               setTimeout(checkFullyReady, 50);
             }
           }
-          
+
           // Start checking after initial render
           map.whenReady(function() {
             // Give Leaflet a moment to start tile loading
             setTimeout(checkFullyReady, 100);
           });
-          
+
           // Fallback timeout
           setTimeout(function() {
             if (!signaled) {
@@ -914,7 +936,7 @@ server <- function(input, output, session) {
         }
       ")
     }
-    
+
     map
   })
 

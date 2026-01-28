@@ -19,6 +19,7 @@ Imports:
     markdown (>= 2.0),
     R6 (>= 2.6.1),
     shiny (>= 1.11.1),
+    shinyjs (>= 2.1.0),
     vegbankr
 Encoding: UTF-8
 LazyData: true
