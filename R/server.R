@@ -815,20 +815,24 @@ server <- function(input, output, session) {
     build_plot_table_with_filter(vb_code)
   })
 
-  # Enable/disable DT download button based on filter state
-  # Also reacts to plot_table_ready to set state after table re-renders
+  # Enable/disable DT download button based on filtered record count
+  # Button is only enabled when records <= 20,000 (DOWNLOAD_MAX_RECORDS)
   shiny::observe({
     # React to table ready signal (fires after table init/re-render)
     input$plot_table_ready
 
-    search_term <- input$plot_table_search
-    plot_filter <- state$plot_filter()
+    # Get the filtered record count from the DataTable AJAX response
+    filtered_count <- input$plot_table_filtered_count
 
-    has_search <- !is.null(search_term) && nzchar(trimws(search_term))
-    has_filter <- !is.null(plot_filter) && !is.null(plot_filter$code) && nzchar(plot_filter$code)
+    # Enable button only if we have a count and it's within the limit
+    # Initial state (NULL count) keeps button disabled
+    can_download <- !is.null(filtered_count) &&
+      is.numeric(filtered_count) &&
+      filtered_count > 0 &&
+      filtered_count <= DOWNLOAD_MAX_RECORDS
 
     # Enable/disable via custom message handler
-    session$sendCustomMessage("setDownloadButtonState", list(enabled = (has_search || has_filter)))
+    session$sendCustomMessage("setDownloadButtonState", list(enabled = can_download))
   })
 
   # When DT button is clicked, trigger the download

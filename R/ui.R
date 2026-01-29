@@ -799,6 +799,11 @@ ui <- function(req) {
       var widgetId = resolveWidgetId(settings.sTableId);
       console.log('DataTable xhr event for:', widgetId, '- data received, records:', json && json.recordsTotal);
 
+      // Send filtered record count to Shiny for download button state
+      if (widgetId === 'plot_table' && json && typeof json.recordsFiltered === 'number') {
+        Shiny.setInputValue('plot_table_filtered_count', json.recordsFiltered, {priority: 'event'});
+      }
+
       // After AJAX data is received, retry pending highlight with a small delay
       // Use requestAnimationFrame + setTimeout to ensure DOM has been updated
       if (pendingHighlight && pendingHighlight.tableId === widgetId) {
