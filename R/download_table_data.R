@@ -17,8 +17,6 @@ TABLE_DOWNLOAD_CONFIG <- list(
     resource = "plot-observations",
     filename_prefix = "vegbank_plots",
     has_nested = TRUE,
-    nested_fields = c("top_taxon_observations", "top_classifications", "disturbances", "soils"),
-    nested_labels = c("taxa", "communities", "disturbances", "soils"),
     api_params = list(
       with_nested = "TRUE",
       detail = "full",
@@ -99,8 +97,8 @@ fetch_filtered_count <- function(config, filter_state) {
 
   # Use vb_code parameter for cross-resource filtering (vegbankr infers type from code prefix)
   if (!is.null(filter_state$filter) &&
-        !is.null(filter_state$filter$type) &&
-        !is.null(filter_state$filter$code)) {
+    !is.null(filter_state$filter$type) &&
+    !is.null(filter_state$filter$code)) {
     query_params$vb_code <- filter_state$filter$code
   }
 
@@ -157,7 +155,7 @@ fetch_filtered_data <- function(config, filter_state) {
       args <- c(
         list(
           resource = config$resource,
-          limit = NULL # Fetch all matching records
+          limit = 1000000 # Fetch all matching records
         ),
         query_params
       )
@@ -170,52 +168,74 @@ fetch_filtered_data <- function(config, filter_state) {
   )
 }
 
+#' Auto-detect nested data frame columns
+#'
+#' Identifies columns that contain lists of data frames.
+#'
+#' @param data Data frame to check
+#' @return Character vector of nested column names
+#' @noRd
+detect_nested_columns <- function(data) {
+  if (is.null(data) || nrow(data) == 0) {
+    return(character(0))
+  }
+
+  nested_cols <- names(data)[vapply(data, function(col) {
+    # Check if it's a list and contains at least one data frame
+    if (!is.list(col) || length(col) == 0) {
+      return(FALSE)
+    }
+    # Check first non-NULL element
+    first_non_null <- Find(Negate(is.null), col)
+    !is.null(first_non_null) && is.data.frame(first_non_null)
+  }, logical(1))]
+
+  nested_cols
+}
+
 #' Extract nested dataframe into separate table with foreign key
+#'
+#' Uses tidyr::unnest() for robust extraction of nested data frames.
 #'
 #' @param data Main data frame containing nested columns
 #' @param nested_col Name of the nested column
 #' @param primary_key Name of the primary key column (e.g., "ob_code")
 #' @return Data frame with foreign key added, or empty data frame
+#'
+#' @importFrom tidyr unnest all_of
 #' @noRd
 extract_nested_table_with_fk <- function(data, nested_col, primary_key) {
   if (!nested_col %in% names(data)) {
     return(data.frame())
   }
 
-  nested_list <- data[[nested_col]]
-  pk_values <- data[[primary_key]]
-
-  if (!is.list(nested_list) || length(nested_list) == 0) {
-    return(data.frame())
-  }
-
-  # Extract each nested dataframe and add foreign key
-  extracted_rows <- list()
-
-  for (i in seq_along(nested_list)) {
-    nested_df <- nested_list[[i]]
-    pk_value <- pk_values[[i]]
-
-    if (is.null(nested_df) || !is.data.frame(nested_df) || nrow(nested_df) == 0) {
-      next
-    }
-
-    # Add foreign key column
-    nested_df[[primary_key]] <- pk_value
-    extracted_rows[[length(extracted_rows) + 1]] <- nested_df
-  }
-
-  if (length(extracted_rows) == 0) {
-    return(data.frame())
-  }
-
-  # Combine all rows
   tryCatch(
     {
-      do.call(rbind, extracted_rows)
+      # Select only the primary key and nested column
+      subset_data <- data[, c(primary_key, nested_col), drop = FALSE]
+
+      # Unnest using tidyr - handles empty/NULL values gracefully
+      unnested <- tidyr::unnest(
+        subset_data,
+        cols = tidyr::all_of(nested_col),
+        keep_empty = FALSE # Drop rows where nested column is empty
+      )
+
+      # Return empty data frame if no rows resulted
+      if (nrow(unnested) == 0) {
+        return(data.frame())
+      }
+
+      # Reorder to put foreign key first
+      if (primary_key %in% names(unnested)) {
+        col_order <- c(primary_key, setdiff(names(unnested), primary_key))
+        unnested <- unnested[, col_order, drop = FALSE]
+      }
+
+      return(as.data.frame(unnested))
     },
     error = function(e) {
-      warning("Error combining nested rows: ", e$message)
+      warning("Error extracting nested column '", nested_col, "': ", e$message)
       data.frame()
     }
   )
@@ -223,8 +243,8 @@ extract_nested_table_with_fk <- function(data, nested_col, primary_key) {
 
 #' Prepare data for CSV export
 #'
-#' Splits nested dataframes into separate tables and removes nested columns
-#' from main table.
+#' Auto-detects and splits nested dataframes into separate tables,
+#' removing all list columns from main table.
 #'
 #' @param data Raw data from API with nested columns
 #' @param config Table download configuration
@@ -235,39 +255,31 @@ prepare_csv_tables <- function(data, config) {
     return(list())
   }
 
-  # Debug: Check for list columns
-  list_cols <- sapply(data, is.list)
-  message("DEBUG prepare_csv_tables:")
-  message("  Total columns: ", ncol(data))
-  message("  List columns found: ", paste(names(data)[list_cols], collapse = ", "))
-  message("  Configured nested_fields: ", paste(config$nested_fields, collapse = ", "))
-
   result <- list()
 
-  # Extract nested tables if configured
-  if (config$has_nested && !is.null(config$nested_fields)) {
-    for (i in seq_along(config$nested_fields)) {
-      field_name <- config$nested_fields[[i]]
-      label <- config$nested_labels[[i]]
+  # Auto-detect nested columns if table has nested data
+  if (config$has_nested) {
+    nested_cols <- detect_nested_columns(data)
 
-      nested_df <- extract_nested_table_with_fk(data, field_name, config$primary_key)
+    message("DEBUG prepare_csv_tables:")
+    message("  Total columns: ", ncol(data))
+    message("  Auto-detected nested columns: ", paste(nested_cols, collapse = ", "))
+
+    # Extract each nested column into its own table
+    for (nested_col in nested_cols) {
+      nested_df <- extract_nested_table_with_fk(data, nested_col, config$primary_key)
 
       if (nrow(nested_df) > 0) {
-        # Move foreign key to first column
-        if (config$primary_key %in% names(nested_df)) {
-          col_order <- c(config$primary_key, setdiff(names(nested_df), config$primary_key))
-          nested_df <- nested_df[, col_order, drop = FALSE]
-        }
-        result[[label]] <- nested_df
+        # Use column name as table name (already has FK reordered)
+        result[[nested_col]] <- nested_df
       }
     }
   }
 
-  # Create main table with ALL list columns removed (not just configured nested fields)
+  # Create main table with ALL list columns removed
   main_df <- data
-
-  # Remove all list columns to ensure CSV compatibility
   list_cols <- sapply(main_df, is.list)
+
   if (any(list_cols)) {
     cols_to_remove <- names(main_df)[list_cols]
     message("  Removing all list columns from main table: ", paste(cols_to_remove, collapse = ", "))
@@ -285,13 +297,21 @@ prepare_csv_tables <- function(data, config) {
 #' @param config Table download configuration
 #' @param filter_state Filter state used for download
 #' @param record_count Number of records downloaded
+#' @param csv_tables Named list of data frames representing the CSV tables
 #' @return Character string with README content
 #' @noRd
-create_download_readme <- function(config, filter_state, record_count) {
+create_download_readme <- function(config, filter_state, record_count, csv_tables = NULL) {
   has_search <- !is.null(filter_state$search) && nzchar(trimws(filter_state$search))
   has_filter <- !is.null(filter_state$filter) &&
     !is.null(filter_state$filter$type) &&
     !is.null(filter_state$filter$code)
+
+  # Get list of nested tables (exclude 'main')
+  nested_tables <- if (!is.null(csv_tables)) {
+    setdiff(names(csv_tables), "main")
+  } else {
+    character(0)
+  }
 
   paste0(
     "VegBank Data Download\n",
@@ -318,10 +338,10 @@ create_download_readme <- function(config, filter_state, record_count) {
     "--------------\n\n",
     "This download contains multiple related CSV files:\n\n",
     "- main.csv: Primary ", config$resource, " data\n",
-    if (config$has_nested) {
+    if (length(nested_tables) > 0) {
       paste0(
-        paste0("- ", config$nested_labels, ".csv: ",
-          tools::toTitleCase(gsub("_", " ", config$nested_labels)),
+        paste0("- ", nested_tables, ".csv: ",
+          tools::toTitleCase(gsub("_", " ", nested_tables)),
           " (linked by ", config$primary_key, ")\n",
           collapse = ""
         ),
@@ -331,16 +351,18 @@ create_download_readme <- function(config, filter_state, record_count) {
       ""
     },
     "The '", config$primary_key, "' column serves as the primary key in main.csv\n",
-    "and as a foreign key in the related tables, allowing you to join the data.\n\n",
-    "Example (R):\n",
-    "  main <- read.csv('main.csv')\n",
-    if (config$has_nested && length(config$nested_labels) > 0) {
+    if (length(nested_tables) > 0) {
       paste0(
-        "  ", config$nested_labels[[1]], " <- read.csv('", config$nested_labels[[1]], ".csv')\n",
-        "  merged <- merge(main, ", config$nested_labels[[1]], ", by = '", config$primary_key, "')\n\n"
+        "and as a foreign key in the related tables, allowing you to join the data.\n\n",
+        "Example (R):\n",
+        "  main <- read.csv('main.csv')\n",
+        paste0(
+          "  ", nested_tables[[1]], " <- read.csv('", nested_tables[[1]], ".csv')\n",
+          "  merged <- merge(main, ", nested_tables[[1]], ", by = '", config$primary_key, "')\n\n"
+        )
       )
     } else {
-      ""
+      "\n"
     },
     "Citation\n",
     "--------\n",
@@ -378,7 +400,7 @@ create_download_zip <- function(csv_tables, config, filter_state) {
   # Write README
   readme_path <- file.path(temp_dir, "README.txt")
   record_count <- if (!is.null(csv_tables$main)) nrow(csv_tables$main) else 0
-  readme_content <- create_download_readme(config, filter_state, record_count)
+  readme_content <- create_download_readme(config, filter_state, record_count, csv_tables)
   writeLines(readme_content, readme_path)
   csv_files <- c(csv_files, readme_path)
 
