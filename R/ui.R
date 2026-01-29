@@ -981,6 +981,41 @@ ui <- function(req) {
         }
       }
     });
+
+    // Trigger download by using the Shiny download link
+    Shiny.addCustomMessageHandler('triggerDownload', function(message) {
+      var link = document.getElementById('download_plot_table');
+      if (link && link.href) {
+        // Create a temporary visible link and click it
+        // This works around browser security restrictions on clicking hidden elements
+        var tempLink = document.createElement('a');
+        tempLink.href = link.href;
+        tempLink.download = '';
+        tempLink.style.display = 'none';
+        document.body.appendChild(tempLink);
+        tempLink.click();
+        document.body.removeChild(tempLink);
+      }
+    });
+
+    // Enable/disable the DT download button
+    Shiny.addCustomMessageHandler('setDownloadButtonState', function(message) {
+      try {
+        var wrapper = document.getElementById('plot_table');
+        if (wrapper) {
+          var table = $(wrapper).find('table').DataTable();
+          if (table && table.buttons) {
+            if (message.enabled) {
+              table.buttons(0).enable();
+            } else {
+              table.buttons(0).disable();
+            }
+          }
+        }
+      } catch(e) {
+        console.log('Button state error:', e);
+      }
+    });
   "
   ))
 
@@ -1123,15 +1158,6 @@ custom_theme <- bslib::bs_add_rules(
   table.dataTable tbody tr.selected-entity:hover,
   .table tbody tr.selected-entity:hover {
       background-color: rgba(114, 185, 162, 0.25) !important;
-  }
-
-  /* Download button styling */
-  #download_plot_table {
-      margin-bottom: 0.5rem;
-  }
-  #download_plot_table:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
   }
 
   /* DataTables loading indicator customization */
@@ -1279,15 +1305,12 @@ build_navbar <- function() {
       title = "Plots",
       shiny::fluidPage(
         shiny::uiOutput("plot_filter_alert"),
+        # Hidden download button triggered by DT button click
+        # Use position absolute and move off-screen instead of display:none
+        # so Shiny properly initializes the href attribute
         htmltools::tags$div(
-          class = "d-flex justify-content-end mb-2",
-          style = "position: relative; top: 0; right: 0;",
-          shiny::downloadButton(
-            "download_plot_table",
-            "Download filtered table",
-            class = "btn-sm btn-primary",
-            icon = shiny::icon("download")
-          )
+          style = "position: absolute; left: -9999px; top: -9999px;",
+          shiny::downloadButton("download_plot_table", "Download")
         ),
         DT::dataTableOutput("plot_table")
       )

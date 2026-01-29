@@ -432,8 +432,25 @@ PLOT_TABLE_SPEC <- list(
   ),
   page_length = NULL,
   options = list(
-    scrollY = "calc(100vh - 235px)"
+    scrollY = "calc(100vh - 235px)",
+    dom = "Bfrtip",
+    buttons = I(list(
+      list(
+        extend = "collection",
+        text = "Download CSV (up to 20,000 entries)",
+        className = "btn btn-sm btn-primary",
+        action = DT::JS("function(e, dt, node, config) { Shiny.setInputValue('plot_download_trigger', Math.random()); }")
+      )
+    )),
+    initComplete = DT::JS(
+      "function(settings, json) {
+        // Signal that table is ready so server can set button state
+        Shiny.setInputValue('plot_table_ready', Math.random());
+      }"
+    )
   ),
-  datatable_args = list(),
+  datatable_args = list(
+    extensions = "Buttons"
+  ),
   initial_display = PLOT_TABLE_DISPLAY_TEMPLATE
 )

@@ -815,22 +815,25 @@ server <- function(input, output, session) {
     build_plot_table_with_filter(vb_code)
   })
 
-  # Enable/disable download button based on filter state
-  # Must explicitly read reactive values to create dependencies
+  # Enable/disable DT download button based on filter state
+  # Also reacts to plot_table_ready to set state after table re-renders
   shiny::observe({
-    # Read the reactive values to create dependencies
+    # React to table ready signal (fires after table init/re-render)
+    input$plot_table_ready
+
     search_term <- input$plot_table_search
     plot_filter <- state$plot_filter()
 
-    # Check if we have any active filters
     has_search <- !is.null(search_term) && nzchar(trimws(search_term))
     has_filter <- !is.null(plot_filter) && !is.null(plot_filter$code) && nzchar(plot_filter$code)
 
-    if (has_search || has_filter) {
-      shinyjs::enable("download_plot_table")
-    } else {
-      shinyjs::disable("download_plot_table")
-    }
+    # Enable/disable via custom message handler
+    session$sendCustomMessage("setDownloadButtonState", list(enabled = (has_search || has_filter)))
+  })
+
+  # When DT button is clicked, trigger the download
+  shiny::observeEvent(input$plot_download_trigger, {
+    session$sendCustomMessage("triggerDownload", list())
   })
 
   # Download handler for plot table
