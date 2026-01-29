@@ -226,6 +226,12 @@ prepare_csv_tables <- function(data, config) {
     main_df <- main_df[, !list_cols, drop = FALSE]
   }
 
+  # Reorder main table to put primary key first
+  if (config$primary_key %in% names(main_df)) {
+    col_order <- c(config$primary_key, setdiff(names(main_df), config$primary_key))
+    main_df <- main_df[, col_order, drop = FALSE]
+  }
+
   # Add main table first
   result <- c(list(main = main_df), result)
 
