@@ -20,7 +20,8 @@ TABLE_DOWNLOAD_CONFIG <- list(
     api_params = list(
       with_nested = "TRUE",
       detail = "full",
-      max_taxa = 100000L # Get all taxa, not just top 5
+      num_taxa = 1000000L, # Get all taxa, not just top 5
+      num_comms = 1000000L # Get all communities, not just top 5
     ),
     primary_key = "ob_code"
   )
@@ -82,54 +83,6 @@ has_table_filters <- function(table_id, input, state) {
   has_search || has_filter
 }
 
-#' Fetch filtered record count from API
-#'
-#' @param config Table download configuration
-#' @param filter_state List with search and filter parameters
-#' @return Integer count or NA on error
-#' @noRd
-fetch_filtered_count <- function(config, filter_state) {
-  query_params <- list(limit = 0) # Only want count, but cross-resource not implemented in vb_count()
-
-  if (!is.null(filter_state$search) && nzchar(trimws(filter_state$search))) {
-    query_params$search <- trimws(filter_state$search)
-  }
-
-  # Use vb_code parameter for cross-resource filtering (vegbankr infers type from code prefix)
-  if (!is.null(filter_state$filter) &&
-    !is.null(filter_state$filter$type) &&
-    !is.null(filter_state$filter$code)) {
-    query_params$vb_code <- filter_state$filter$code
-  }
-
-  # Debug output
-  message("DEBUG fetch_filtered_count:")
-  message("  filter_state$filter: ", paste(capture.output(str(filter_state$filter)), collapse = "\n"))
-  message("  query_params: ", paste(names(query_params), "=", query_params, collapse = ", "))
-
-  tryCatch(
-    {
-      args <- c(
-        list(resource = config$resource),
-        query_params
-      )
-      message(
-        "  Calling vb_get with: resource='", config$resource, "', ",
-        paste(names(query_params), "='", query_params, "'", sep = "", collapse = ", ")
-      )
-      resp <- do.call(vegbankr::vb_get, args)
-      details <- vegbankr::get_page_details(resp)
-      count <- extract_reported_total(details)
-      message("  Count result: ", count)
-      as.integer(count)
-    },
-    error = function(e) {
-      warning("Failed to fetch count: ", e$message)
-      NA_integer_
-    }
-  )
-}
-
 #' Fetch filtered data from API
 #'
 #' @param config Table download configuration
@@ -145,8 +98,8 @@ fetch_filtered_data <- function(config, filter_state) {
 
   # Use vb_code parameter for cross-resource filtering (vegbankr infers type from code prefix)
   if (!is.null(filter_state$filter) &&
-    !is.null(filter_state$filter$type) &&
-    !is.null(filter_state$filter$code)) {
+        !is.null(filter_state$filter$type) &&
+        !is.null(filter_state$filter$code)) {
     query_params$vb_code <- filter_state$filter$code
   }
 
@@ -270,8 +223,13 @@ prepare_csv_tables <- function(data, config) {
       nested_df <- extract_nested_table_with_fk(data, nested_col, config$primary_key)
 
       if (nrow(nested_df) > 0) {
-        # Use column name as table name (already has FK reordered)
-        result[[nested_col]] <- nested_df
+        # Map API column names to user-friendly CSV file names
+        table_name <- switch(nested_col,
+          "top_taxon_observations" = "taxon_observations",
+          "top_classifications" = "community_classifications",
+          nested_col # fallback to original name
+        )
+        result[[table_name]] <- nested_df
       }
     }
   }
@@ -456,10 +414,14 @@ create_table_download_handler <- function(table_id, input, state) {
       # Get current filter state
       filter_state <- get_table_filter_state(table_id, input, state)
 
-      # Check count first (DOES VB SUPPORT COUNT WITH CROSS-RESOURCE FILTERS?)
-      count <- fetch_filtered_count(config, filter_state)
+      # Use client-provided filtered count (from DataTable AJAX response)
+      # This is more efficient than fetching again and ensures consistency
+      # with the count used to enable/disable the download button
+      count_input_id <- paste0(table_id, "_filtered_count")
+      count <- input[[count_input_id]]
 
-      if (is.na(count)) {
+      # Validate count
+      if (is.null(count) || !is.numeric(count) || is.na(count)) {
         shiny::showNotification(
           "Unable to determine record count. Please try again.",
           type = "error",
@@ -468,6 +430,8 @@ create_table_download_handler <- function(table_id, input, state) {
         return(NULL)
       }
 
+      # Server-side validation: ensure count is within limits
+      # This defends against client manipulation
       if (count > DOWNLOAD_MAX_RECORDS) {
         shiny::showNotification(
           paste0(
