@@ -353,8 +353,16 @@ ui <- function(req) {
         return null;
       }
 
-      var urlState = getInitialUrlState(tableId);
+      // Always read CURRENT URL state, not cached initial state
+      // This ensures table re-renders (e.g., after filter changes) use current URL
+      var urlState = getUrlTableState(tableId);
       console.log('vegbankLoadTableState: urlState for', tableId, '=', JSON.stringify(urlState));
+      
+      // Update expected start for highlight tracking
+      if (urlState && typeof urlState.start === 'number') {
+        expectedStartByTable[tableId] = urlState.start;
+      }
+      
       if (!urlState) {
         tableStateLoadComplete[tableId] = true;
         console.log('vegbankLoadTableState: no urlState, returning null');

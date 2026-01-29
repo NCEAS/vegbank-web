@@ -1234,6 +1234,10 @@ server <- function(input, output, session) {
       label = label %||% vb_code
     ))
 
+    # Clear plots table state (including search) when applying cross-resource filter
+    # This prevents old search terms from being carried over to the filtered view
+    state$table_states[["plots"]] <- NULL
+
     # Navigate to Plots tab and update URL
     state$current_tab("Plots")
     shiny::updateNavbarPage(session, "page", selected = "Plots")
@@ -1242,6 +1246,9 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$clear_plot_filter, {
     state$plot_filter(NULL)
+    # Clear plots table state (including search) when clearing filter
+    # This ensures we start fresh without any stale search terms
+    state$table_states[["plots"]] <- NULL
     # Update URL to remove filter parameters
     update_app_query(mode = "push", tab = state$current_tab())
   })
