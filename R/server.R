@@ -136,7 +136,7 @@ server <- function(input, output, session) {
       # Check if map has been initialized before
       if (!isTRUE(map_initialized())) {
         # First time loading - show loading screen and lock nav
-        session$sendCustomMessage("showMapLoading", list())
+        session$sendCustomMessage("showLoadingOverlay", list(type = "map"))
         session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
       }
 
@@ -152,7 +152,7 @@ server <- function(input, output, session) {
       } else {
         # If data fetch failed, still unlock nav and hide loading screen
         session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
-        session$sendCustomMessage("hideMapLoading", list())
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
       }
     },
     ignoreInit = TRUE
@@ -837,11 +837,16 @@ server <- function(input, output, session) {
 
   # When DT button is clicked, trigger the download
   shiny::observeEvent(input$plot_download_trigger, {
+    # Show loading overlay immediately when download is initiated
+    session$sendCustomMessage("showLoadingOverlay", list(
+      type = "download",
+      detail = "Preparing your download..."
+    ))
     session$sendCustomMessage("triggerDownload", list())
   })
 
   # Download handler for plot table
-  output$download_plot_table <- create_table_download_handler("plot_table", input, state)
+  output$download_plot_table <- create_table_download_handler("plot_table", input, state, session)
 
   output$comm_table <- DT::renderDataTable({
     build_community_table()
@@ -967,7 +972,7 @@ server <- function(input, output, session) {
     {
       if (!isTRUE(map_initialized())) {
         map_initialized(TRUE)
-        session$sendCustomMessage("hideMapLoading", list())
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
         session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
       }
     },

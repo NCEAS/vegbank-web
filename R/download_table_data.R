@@ -397,9 +397,10 @@ create_download_zip <- function(csv_tables, config, filter_state) {
 #' @param table_id The DataTable ID (e.g., "plot_table")
 #' @param input Shiny input object
 #' @param state App state reactive values
+#' @param session Shiny session object (for sending custom messages)
 #' @return A Shiny downloadHandler
 #' @noRd
-create_table_download_handler <- function(table_id, input, state) {
+create_table_download_handler <- function(table_id, input, state, session) {
   config <- TABLE_DOWNLOAD_CONFIG[[table_id]]
 
   if (is.null(config)) {
@@ -422,6 +423,7 @@ create_table_download_handler <- function(table_id, input, state) {
 
       # Validate count
       if (is.null(count) || !is.numeric(count) || is.na(count)) {
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "download"))
         shiny::showNotification(
           "Unable to determine record count. Please try again.",
           type = "error",
@@ -433,10 +435,11 @@ create_table_download_handler <- function(table_id, input, state) {
       # Server-side validation: ensure count is within limits
       # This defends against client manipulation
       if (count > DOWNLOAD_MAX_RECORDS) {
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "download"))
         shiny::showNotification(
           paste0(
-            "Download limit exceeded. Your filters match ", count, " records, ",
-            "but the maximum allowed is ", DOWNLOAD_MAX_RECORDS, ". ",
+            "Download limit exceeded. Your filters match ", format(count, big.mark = ","), " records, ",
+            "but the maximum allowed is ", format(DOWNLOAD_MAX_RECORDS, big.mark = ","), ". ",
             "Please refine your search or filters."
           ),
           type = "warning",
@@ -446,6 +449,7 @@ create_table_download_handler <- function(table_id, input, state) {
       }
 
       if (count == 0) {
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "download"))
         shiny::showNotification(
           "No records match your current filters.",
           type = "warning",
@@ -454,17 +458,17 @@ create_table_download_handler <- function(table_id, input, state) {
         return(NULL)
       }
 
-      # Show progress
-      progress <- shiny::Progress$new()
-      progress$set(message = "Preparing download", value = 0)
-      on.exit(progress$close(), add = TRUE)
-
-      progress$set(detail = paste0("Fetching ", count, " records..."), value = 0.2)
+      # Show loading overlay with count
+      session$sendCustomMessage("showLoadingOverlay", list(
+        type = "download",
+        detail = paste0("Fetching ", format(count, big.mark = ","), " records...")
+      ))
 
       # Fetch data
       data <- fetch_filtered_data(config, filter_state)
 
       if (is.null(data) || nrow(data) == 0) {
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "download"))
         shiny::showNotification(
           "Failed to fetch data. Please try again.",
           type = "error",
@@ -473,12 +477,16 @@ create_table_download_handler <- function(table_id, input, state) {
         return(NULL)
       }
 
-      progress$set(detail = "Processing nested data...", value = 0.5)
+      session$sendCustomMessage("updateLoadingOverlay", list(
+        type = "download",
+        detail = "Untangling nested data..."
+      ))
 
       # Prepare CSV tables
       csv_tables <- prepare_csv_tables(data, config)
 
       if (length(csv_tables) == 0) {
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "download"))
         shiny::showNotification(
           "No data to export.",
           type = "warning",
@@ -487,21 +495,24 @@ create_table_download_handler <- function(table_id, input, state) {
         return(NULL)
       }
 
-      progress$set(detail = "Creating ZIP file...", value = 0.8)
+      session$sendCustomMessage("updateLoadingOverlay", list(
+        type = "download",
+        detail = "Zipping up your backpack..."
+      ))
 
       # Create ZIP
       zip_path <- create_download_zip(csv_tables, config, filter_state)
 
-      progress$set(detail = "Download ready!", value = 1.0)
-
       # Copy to output file
       file.copy(zip_path, file, overwrite = TRUE)
 
-      shiny::showNotification(
-        paste0("Downloaded ", count, " records with related data."),
-        type = "message",
-        duration = 5
-      )
+      # Hide overlay with success message
+      session$sendCustomMessage("hideLoadingOverlay", list(
+        type = "download",
+        message = paste0(
+          "Downloaded ", format(count, big.mark = ","), " records with related data."
+        )
+      ))
     }
   )
 }
