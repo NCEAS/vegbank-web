@@ -1073,6 +1073,43 @@ ui <- function(req) {
 
     // Trigger download by using the Shiny download link
     Shiny.addCustomMessageHandler('triggerDownload', function(message) {
+      // Client-side validation: check filtered count before initiating download
+      // This prevents the browser from recording a failed download attempt
+      var filteredCount = Shiny.shinyapp.$inputValues['plot_table_filtered_count'];
+      
+      if (filteredCount === null || filteredCount === undefined) {
+        console.error('Cannot determine filtered record count');
+        hideLoadingOverlay('download');
+        Shiny.notifications.show({
+          html: 'Unable to determine record count. Please try again.',
+          type: 'error',
+          duration: 5000
+        });
+        return;
+      }
+      
+      if (filteredCount === 0) {
+        hideLoadingOverlay('download');
+        Shiny.notifications.show({
+          html: 'No records match your current filters.',
+          type: 'warning',
+          duration: 5000
+        });
+        return;
+      }
+      
+      if (filteredCount > 20000) {
+        var formattedCount = filteredCount.toLocaleString();
+        hideLoadingOverlay('download');
+        Shiny.notifications.show({
+          html: 'Download limit exceeded. Your filters match ' + formattedCount + ' records, but the maximum allowed is 20,000. Please refine your search or filters.',
+          type: 'warning',
+          duration: 10000
+        });
+        return;
+      }
+      
+      // All validations passed - proceed with download
       var link = document.getElementById('download_plot_table');
       if (link && link.href) {
         // Create a temporary visible link and click it
