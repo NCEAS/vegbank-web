@@ -65,24 +65,6 @@ get_table_filter_state <- function(table_id, input, state) {
   )
 }
 
-#' Check if table has active filters
-#'
-#' @param table_id The DataTable ID
-#' @param input Shiny input object
-#' @param state App state reactive values
-#' @return TRUE if table has search or filter applied
-#' @noRd
-has_table_filters <- function(table_id, input, state) {
-  filter_state <- get_table_filter_state(table_id, input, state)
-
-  has_search <- !is.null(filter_state$search) && nzchar(trimws(filter_state$search))
-  has_filter <- !is.null(filter_state$filter) &&
-    !is.null(filter_state$filter$type) &&
-    !is.null(filter_state$filter$code)
-
-  has_search || has_filter
-}
-
 #' Fetch filtered data from API
 #'
 #' @param config Table download configuration
