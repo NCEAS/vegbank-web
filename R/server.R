@@ -16,7 +16,6 @@
 #' @importFrom htmltools tags
 #' @importFrom leaflet renderLeaflet leafletProxy
 #' @importFrom utils head write.csv
-#' @importFrom shinyjs enable disable
 #' @import vegbankr
 #'
 #' @noRd

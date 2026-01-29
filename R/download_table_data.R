@@ -318,7 +318,9 @@ create_download_readme <- function(config, filter_state, record_count, csv_table
 #' @param config Table download configuration
 #' @param filter_state Filter state for README
 #' @return Path to temporary ZIP file
+#'
 #' @importFrom utils write.csv
+#' @importFrom zip zip
 #' @noRd
 create_download_zip <- function(csv_tables, config, filter_state) {
   # Create temporary directory
@@ -347,26 +349,12 @@ create_download_zip <- function(csv_tables, config, filter_state) {
   # Create ZIP
   zip_path <- tempfile(fileext = ".zip")
 
-  # Use zip::zip if available, otherwise fall back to utils::zip
-  if (requireNamespace("zip", quietly = TRUE)) {
-    zip::zip(
-      zipfile = zip_path,
-      files = basename(csv_files),
-      root = temp_dir,
-      mode = "cherry-pick"
-    )
-  } else {
-    # Fall back to utils::zip
-    current_wd <- getwd()
-    setwd(temp_dir)
-    on.exit(setwd(current_wd), add = TRUE)
-
-    utils::zip(
-      zipfile = zip_path,
-      files = basename(csv_files),
-      flags = "-q"
-    )
-  }
+  zip::zip(
+    zipfile = zip_path,
+    files = basename(csv_files),
+    root = temp_dir,
+    mode = "cherry-pick"
+  )
 
   zip_path
 }

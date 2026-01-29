@@ -1109,7 +1109,6 @@ ui <- function(req) {
   ))
 
   htmltools::tagList(
-    shinyjs::useShinyjs(), # Initialize shinyjs
     font_head,
     navbar,
     overlay,
