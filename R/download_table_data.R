@@ -533,6 +533,7 @@ create_table_download_handler <- function(table_id, input, state, session) {
         }
       )
       if (!isTRUE(zip_result$success)) {
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "download"))
         # Ensure the user is notified of the error
         shiny::showNotification(
           paste("Failed to prepare download:", conditionMessage(zip_result$error)),

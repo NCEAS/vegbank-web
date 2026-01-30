@@ -615,6 +615,7 @@ ui <- function(req) {
       overlay.style.display = 'flex';
       overlay.style.pointerEvents = 'auto';
       overlay.classList.remove('fade-out');
+      overlay.setAttribute('aria-busy', 'true');
 
       // Start rotating messages
       config.messageIndex = 0;
@@ -665,6 +666,7 @@ ui <- function(req) {
         setTimeout(function() {
           overlay.style.pointerEvents = 'none';
           overlay.classList.add('fade-out');
+          overlay.setAttribute('aria-busy', 'false');
           setTimeout(function() {
             overlay.style.display = 'none';
             overlay.classList.remove('fade-out');
