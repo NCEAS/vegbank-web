@@ -436,8 +436,8 @@ PLOT_TABLE_SPEC <- list(
     dom = "Bfrtip",
     buttons = I(list(
       list(
-        extend = "collection",
-        text = "Download CSV (up to 20,000 entries)",
+        extend = "csv",
+        text = paste0("Download CSV (up to ", format(DOWNLOAD_MAX_RECORDS, big.mark = ","), " entries)"),
         className = "btn btn-sm btn-primary",
         action = DT::JS("function(e, dt, node, config) { Shiny.setInputValue('plot_download_trigger', Math.random()); }")
       )

@@ -24,7 +24,9 @@ ui <- function(req) {
   map_loading_overlay <- build_map_loading_overlay()
   download_loading_overlay <- build_download_loading_overlay()
 
-  script <- htmltools::tags$script(htmltools::HTML(
+  script <- htmltools::tags$script(htmltools::HTML(paste0(
+    "// Application constants - single source of truth from R\n",
+    "const DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n\n",
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
       if (document.getElementById('detail-overlay')) {
         document.getElementById('detail-overlay').style.right = '0px';
@@ -1098,18 +1100,23 @@ ui <- function(req) {
         return;
       }
       
-      if (filteredCount > 20000) {
+      if (filteredCount > DOWNLOAD_MAX_RECORDS) {
         var formattedCount = filteredCount.toLocaleString();
+        var formattedMax = DOWNLOAD_MAX_RECORDS.toLocaleString();
         hideLoadingOverlay('download');
         Shiny.notifications.show({
-          html: 'Download limit exceeded. Your filters match ' + formattedCount + ' records, but the maximum allowed is 20,000. Please refine your search or filters.',
+          html: 'Download limit exceeded. Your filters match ' + formattedCount + ' records, but the maximum allowed is ' + formattedMax + '. Please refine your search or filters.',
           type: 'warning',
           duration: 10000
         });
         return;
       }
       
-      // All validations passed - proceed with download
+      // All validations passed - show loading overlay and proceed with download
+      showLoadingOverlay('download', {
+        detail: 'Preparing your download...'
+      });
+      
       var link = document.getElementById('download_plot_table');
       if (link && link.href) {
         // Create a temporary visible link and click it
@@ -1143,7 +1150,7 @@ ui <- function(req) {
       }
     });
   "
-  ))
+  )))
 
   htmltools::tagList(
     font_head,
@@ -1704,6 +1711,9 @@ build_loading_overlay <- function(overlay_type, default_title, messages, complet
   htmltools::tags$div(
     id = overlay_id,
     class = "loading-overlay",
+    role = "alert",
+    `aria-live` = "polite",
+    `aria-busy` = "true",
     `data-messages` = jsonlite::toJSON(messages, auto_unbox = TRUE),
     `data-completion-message` = completion_message,
     style = "display: none; position: fixed; top: var(--bslib-navbar-height, 57px); left: 0;
