@@ -90,7 +90,7 @@ fetch_filtered_data <- function(config, filter_state) {
       args <- c(
         list(
           resource = config$resource,
-          limit = 1000000 # Fetch all matching records
+          limit = DOWNLOAD_MAX_RECORDS
         ),
         query_params
       )
@@ -318,6 +318,45 @@ create_download_readme <- function(config, filter_state, record_count, csv_table
   )
 }
 
+#' Sanitize data frame to prevent CSV injection attacks
+#'
+#' Protects against CSV/Excel formula injection by prefixing values that start
+#' with formula trigger characters (=, +, -, @, |, %) with a tab character.
+#' This forces Excel and other spreadsheet applications to treat them as plain text.
+#'
+#' @param df Data frame to sanitize
+#' @return Sanitized data frame with the same structure
+#' @noRd
+sanitize_csv_injection <- function(df) {
+  if (is.null(df) || nrow(df) == 0) {
+    return(df)
+  }
+
+  # Formula trigger characters that Excel/LibreOffice interpret as formulas
+  # = (formula), + (formula), - (formula), @ (formula in newer Excel)
+  # | (pipe, can be used in commands), % (can be used in some contexts)
+  dangerous_pattern <- "^[=+@|%-]"
+
+  # Process each column
+  for (col_name in names(df)) {
+    col <- df[[col_name]]
+
+    # Only sanitize character columns (formulas only work in text)
+    if (is.character(col)) {
+      # Find cells that start with dangerous characters
+      needs_sanitizing <- grepl(dangerous_pattern, col, perl = TRUE)
+
+      if (any(needs_sanitizing, na.rm = TRUE)) {
+        # Prefix dangerous values with tab character
+        # Tab is invisible but forces Excel to treat the cell as text
+        df[[col_name]][needs_sanitizing] <- paste0("\t", col[needs_sanitizing])
+      }
+    }
+  }
+
+  df
+}
+
 #' Create ZIP file with CSV tables
 #'
 #' @param csv_tables Named list of data frames
@@ -339,6 +378,9 @@ create_download_zip <- function(csv_tables, config, filter_state) {
   for (name in names(csv_tables)) {
     df <- csv_tables[[name]]
     if (nrow(df) > 0) {
+      # Sanitize data to prevent CSV injection attacks
+      df <- sanitize_csv_injection(df)
+
       filepath <- file.path(temp_dir, paste0(name, ".csv"))
       write.csv(df, filepath, row.names = FALSE)
       csv_files <- c(csv_files, filepath)
@@ -403,7 +445,7 @@ create_table_download_handler <- function(table_id, input, state, session) {
         shiny::showNotification(
           "Unable to determine record count. Please try again.",
           type = "error",
-          duration = 5
+          duration = NULL
         )
         return(NULL)
       }
@@ -448,7 +490,7 @@ create_table_download_handler <- function(table_id, input, state, session) {
         shiny::showNotification(
           "Failed to fetch data. Please try again.",
           type = "error",
-          duration = 5
+          duration = NULL
         )
         return(NULL)
       }
@@ -476,19 +518,30 @@ create_table_download_handler <- function(table_id, input, state, session) {
         detail = "Zipping up your backpack..."
       ))
 
-      # Create ZIP
-      zip_path <- create_download_zip(csv_tables, config, filter_state)
-
-      # Copy to output file
-      file.copy(zip_path, file, overwrite = TRUE)
-
-      # Hide overlay with success message
-      session$sendCustomMessage("hideLoadingOverlay", list(
-        type = "download",
-        message = paste0(
-          "Downloaded ", format(count, big.mark = ","), " records with related data."
+      # Create ZIP and copy to output file with error handling
+      zip_result <- tryCatch(
+        {
+          zip_path <- create_download_zip(csv_tables, config, filter_state)
+          # Copy to output file; treat a FALSE return as an error
+          if (!isTRUE(file.copy(zip_path, file, overwrite = TRUE))) {
+            stop("Failed to copy ZIP file to download location.")
+          }
+          list(success = TRUE)
+        },
+        error = function(e) {
+          list(success = FALSE, error = e)
+        }
+      )
+      if (!isTRUE(zip_result$success)) {
+        # Ensure the user is notified of the error
+        shiny::showNotification(
+          paste("Failed to prepare download:", conditionMessage(zip_result$error)),
+          type = "error",
+          duration = NULL
         )
-      ))
+        invisible(NULL)
+      }
+      session$sendCustomMessage("hideLoadingOverlay", list(type = "download"))
     }
   )
 }

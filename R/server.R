@@ -836,11 +836,7 @@ server <- function(input, output, session) {
 
   # When DT button is clicked, trigger the download
   shiny::observeEvent(input$plot_download_trigger, {
-    # Show loading overlay immediately when download is initiated
-    session$sendCustomMessage("showLoadingOverlay", list(
-      type = "download",
-      detail = "Preparing your download..."
-    ))
+    # Client-side validation will show loading overlay after checks pass
     session$sendCustomMessage("triggerDownload", list())
   })
 
