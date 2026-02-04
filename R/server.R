@@ -15,7 +15,7 @@
 #' @importFrom DT renderDataTable datatable dataTableProxy
 #' @importFrom htmltools tags
 #' @importFrom leaflet renderLeaflet leafletProxy
-#' @importFrom utils head
+#' @importFrom utils head write.csv
 #' @import vegbankr
 #'
 #' @noRd
@@ -135,7 +135,7 @@ server <- function(input, output, session) {
       # Check if map has been initialized before
       if (!isTRUE(map_initialized())) {
         # First time loading - show loading screen and lock nav
-        session$sendCustomMessage("showMapLoading", list())
+        session$sendCustomMessage("showLoadingOverlay", list(type = "map"))
         session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
       }
 
@@ -151,7 +151,7 @@ server <- function(input, output, session) {
       } else {
         # If data fetch failed, still unlock nav and hide loading screen
         session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
-        session$sendCustomMessage("hideMapLoading", list())
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
       }
     },
     ignoreInit = TRUE
@@ -508,8 +508,8 @@ server <- function(input, output, session) {
 
         # Only update if different from current state
         if (is.null(current_filter) ||
-              !identical(current_filter$code, new_filter$code) ||
-              !identical(current_filter$type, new_filter$type)) {
+          !identical(current_filter$code, new_filter$code) ||
+          !identical(current_filter$type, new_filter$type)) {
           state$plot_filter(new_filter)
         }
       } else if (!is.null(params$filter_code) || !is.null(params$filter_type)) {
@@ -814,6 +814,35 @@ server <- function(input, output, session) {
     build_plot_table_with_filter(vb_code)
   })
 
+  # Enable/disable DT download button based on filtered record count
+  # Button is only enabled when records <= 20,000 (DOWNLOAD_MAX_RECORDS)
+  shiny::observe({
+    # React to table ready signal (fires after table init/re-render)
+    input$plot_table_ready
+
+    # Get the filtered record count from the DataTable AJAX response
+    filtered_count <- input$plot_table_filtered_count
+
+    # Enable button only if we have a count and it's within the limit
+    # Initial state (NULL count) keeps button disabled
+    can_download <- !is.null(filtered_count) &&
+      is.numeric(filtered_count) &&
+      filtered_count > 0 &&
+      filtered_count <= DOWNLOAD_MAX_RECORDS
+
+    # Enable/disable via custom message handler
+    session$sendCustomMessage("setDownloadButtonState", list(enabled = can_download))
+  })
+
+  # When DT button is clicked, trigger the download
+  shiny::observeEvent(input$plot_download_trigger, {
+    # Client-side validation will show loading overlay after checks pass
+    session$sendCustomMessage("triggerDownload", list())
+  })
+
+  # Download handler for plot table
+  output$download_plot_table <- create_table_download_handler("plot_table", input, state, session)
+
   output$comm_table <- DT::renderDataTable({
     build_community_table()
   })
@@ -840,7 +869,7 @@ server <- function(input, output, session) {
       center_lat = DEFAULT_MAP_LAT,
       zoom = DEFAULT_MAP_ZOOM
     )
-    
+
     # Add callback to hide loading screen once map is fully rendered
     # Use isolate() to prevent creating a reactive dependency on map_initialized()
     if (!isTRUE(shiny::isolate(map_initialized()))) {
@@ -848,19 +877,19 @@ server <- function(input, output, session) {
         function(el, x) {
           var map = this;
           var signaled = false;
-          
+
           function signalMapReady() {
             if (!signaled) {
               signaled = true;
               Shiny.setInputValue('map_ready', true, {priority: 'event'});
             }
           }
-          
+
           // Check if all visible tile images have full opacity
           function allTilesFullOpacity() {
             var tiles = el.querySelectorAll('.leaflet-tile-loaded');
             if (tiles.length === 0) return false;
-            
+
             for (var i = 0; i < tiles.length; i++) {
               var style = window.getComputedStyle(tiles[i]);
               var opacity = parseFloat(style.opacity);
@@ -870,27 +899,27 @@ server <- function(input, output, session) {
             }
             return true;
           }
-          
+
           // Check if map container is NOT recalculating (Shiny output state)
           function isNotRecalculating() {
             return !el.classList.contains('recalculating');
           }
-          
+
           // Check if clusters are rendered
           function hasClusters() {
             var clusters = el.querySelectorAll('.marker-cluster');
             var markers = el.querySelectorAll('.leaflet-marker-icon');
             return clusters.length > 0 || markers.length > 0;
           }
-          
+
           // Main readiness check - polls until all conditions are met
           function checkFullyReady() {
             if (signaled) return;
-            
+
             var notRecalculating = isNotRecalculating();
             var tilesReady = allTilesFullOpacity();
             var clustersPresent = hasClusters();
-            
+
             if (notRecalculating && tilesReady && clustersPresent) {
               signalMapReady();
             } else {
@@ -898,13 +927,13 @@ server <- function(input, output, session) {
               setTimeout(checkFullyReady, 50);
             }
           }
-          
+
           // Start checking after initial render
           map.whenReady(function() {
             // Give Leaflet a moment to start tile loading
             setTimeout(checkFullyReady, 100);
           });
-          
+
           // Fallback timeout
           setTimeout(function() {
             if (!signaled) {
@@ -914,7 +943,7 @@ server <- function(input, output, session) {
         }
       ")
     }
-    
+
     map
   })
 
@@ -938,7 +967,7 @@ server <- function(input, output, session) {
     {
       if (!isTRUE(map_initialized())) {
         map_initialized(TRUE)
-        session$sendCustomMessage("hideMapLoading", list())
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
         session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
       }
     },
@@ -1209,6 +1238,10 @@ server <- function(input, output, session) {
       label = label %||% vb_code
     ))
 
+    # Clear plots table state (including search) when applying cross-resource filter
+    # This prevents old search terms from being carried over to the filtered view
+    state$table_states[["plots"]] <- NULL
+
     # Navigate to Plots tab and update URL
     state$current_tab("Plots")
     shiny::updateNavbarPage(session, "page", selected = "Plots")
@@ -1217,6 +1250,9 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$clear_plot_filter, {
     state$plot_filter(NULL)
+    # Clear plots table state (including search) when clearing filter
+    # This ensures we start fresh without any stale search terms
+    state$table_states[["plots"]] <- NULL
     # Update URL to remove filter parameters
     update_app_query(mode = "push", tab = state$current_tab())
   })

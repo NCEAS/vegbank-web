@@ -22,8 +22,11 @@ ui <- function(req) {
   navbar <- build_navbar()
   overlay <- build_detail_overlay()
   map_loading_overlay <- build_map_loading_overlay()
+  download_loading_overlay <- build_download_loading_overlay()
 
-  script <- htmltools::tags$script(htmltools::HTML(
+  script <- htmltools::tags$script(htmltools::HTML(paste0(
+    "// Application constants - single source of truth from R\n",
+    "const DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n\n",
     "Shiny.addCustomMessageHandler('openOverlay', function(message) {
       if (document.getElementById('detail-overlay')) {
         document.getElementById('detail-overlay').style.right = '0px';
@@ -353,8 +356,16 @@ ui <- function(req) {
         return null;
       }
 
-      var urlState = getInitialUrlState(tableId);
+      // Always read CURRENT URL state, not cached initial state
+      // This ensures table re-renders (e.g., after filter changes) use current URL
+      var urlState = getUrlTableState(tableId);
       console.log('vegbankLoadTableState: urlState for', tableId, '=', JSON.stringify(urlState));
+      
+      // Update expected start for highlight tracking
+      if (urlState && typeof urlState.start === 'number') {
+        expectedStartByTable[tableId] = urlState.start;
+      }
+      
       if (!urlState) {
         tableStateLoadComplete[tableId] = true;
         console.log('vegbankLoadTableState: no urlState, returning null');
@@ -474,7 +485,7 @@ ui <- function(req) {
 
     document.addEventListener('DOMContentLoaded', function() {
       setNavbarDisabled(true);
-      
+
       // Delegated event handlers for DataTable action buttons
       $(document).on('click', '.dt-shiny-action', function(e) {
         e.preventDefault();
@@ -487,7 +498,7 @@ ui <- function(req) {
         if (row && row.length) {
           rowIndex = row.index();
         }
-        
+
         // Immediately highlight the clicked row
         $('table tbody tr').removeClass('selected-entity');
         row.addClass('selected-entity');
@@ -544,63 +555,140 @@ ui <- function(req) {
       setNavbarDisabled(disabled);
     });
 
-    // Map loading overlay management
-    var mapLoadingPuns = [
-      'Planting seeds...',
-      'Branching out...',
-      'Rooting through the database...',
-      'Monitoring mycelial networks...',
-      'Disturbing the substrate...',
-      'Planning successful succession...',
-      'Last bud not leaf...'
-    ];
-    var mapLoadingPunIndex = 0;
-    var mapLoadingPunInterval = null;
+    // ==================== GENERALIZED LOADING OVERLAY SYSTEM ====================
+    // Reusable loading overlay with rotating messages and fade-out animation.
+    // Supports multiple overlay types (map, download, etc.) with custom configurations.
+    // Messages and completion text are defined in R and passed via data attributes.
 
-    function rotatePlantPun() {
-      var punElement = document.getElementById('map-loading-pun');
+    var loadingOverlays = {};
+
+    function rotateLoadingMessage(overlayType) {
+      var config = loadingOverlays[overlayType];
+      if (!config) return;
+
+      var punElement = document.getElementById(overlayType + '-loading-pun');
       if (punElement) {
-        punElement.textContent = mapLoadingPuns[mapLoadingPunIndex];
-        mapLoadingPunIndex = (mapLoadingPunIndex + 1) % mapLoadingPuns.length;
+        punElement.textContent = config.messages[config.messageIndex];
+        config.messageIndex = (config.messageIndex + 1) % config.messages.length;
       }
     }
 
-    Shiny.addCustomMessageHandler('showMapLoading', function(message) {
-      var overlay = document.getElementById('map-loading-overlay');
-      if (overlay) {
-        overlay.style.display = 'flex';
-        overlay.classList.remove('fade-out');
-        mapLoadingPunIndex = 0;
-        rotatePlantPun();
-        if (mapLoadingPunInterval) {
-          clearInterval(mapLoadingPunInterval);
-        }
-        mapLoadingPunInterval = setInterval(rotatePlantPun, 2500);
-      }
-    });
+    function showLoadingOverlay(overlayType, options) {
+      var overlay = document.getElementById(overlayType + '-loading-overlay');
+      if (!overlay) return;
 
-    Shiny.addCustomMessageHandler('hideMapLoading', function(message) {
-      var overlay = document.getElementById('map-loading-overlay');
-      var punElement = document.getElementById('map-loading-pun');
-      
-      if (mapLoadingPunInterval) {
-        clearInterval(mapLoadingPunInterval);
-        mapLoadingPunInterval = null;
+      // Initialize config from data attributes if not already loaded
+      if (!loadingOverlays[overlayType]) {
+        var messagesJson = overlay.getAttribute('data-messages');
+        var completionMsg = overlay.getAttribute('data-completion-message');
+        if (messagesJson) {
+          loadingOverlays[overlayType] = {
+            messages: JSON.parse(messagesJson),
+            completionMessage: completionMsg || 'Done!',
+            interval: null,
+            messageIndex: 0
+          };
+        } else {
+          return; // No config available
+        }
       }
-      
+
+      var config = loadingOverlays[overlayType];
+      var titleElement = document.getElementById(overlayType + '-loading-title');
+      var punElement = document.getElementById(overlayType + '-loading-pun');
+
+      // Update title if provided
+      if (options && options.title && titleElement) {
+        titleElement.textContent = options.title;
+      }
+
+      // Update detail/count if provided
+      if (options && options.detail) {
+        var detailElement = document.getElementById(overlayType + '-loading-detail');
+        if (detailElement) {
+          detailElement.textContent = ' ' + options.detail;
+          detailElement.style.display = 'inline';
+        }
+      }
+
+      // Show overlay
+      overlay.style.display = 'flex';
+      overlay.style.pointerEvents = 'auto';
+      overlay.classList.remove('fade-out');
+      overlay.setAttribute('aria-busy', 'true');
+
+      // Start rotating messages
+      config.messageIndex = 0;
+      rotateLoadingMessage(overlayType);
+      if (config.interval) {
+        clearInterval(config.interval);
+      }
+      config.interval = setInterval(function() {
+        rotateLoadingMessage(overlayType);
+      }, 2500);
+    }
+
+    function updateLoadingOverlay(overlayType, options) {
+      if (!options) return;
+
+      if (options.detail) {
+        var detailElement = document.getElementById(overlayType + '-loading-detail');
+        if (detailElement) {
+          detailElement.textContent = ' ' + options.detail;
+        }
+      }
+
+      if (options.title) {
+        var titleElement = document.getElementById(overlayType + '-loading-title');
+        if (titleElement) {
+          titleElement.textContent = options.title;
+        }
+      }
+    }
+
+    function hideLoadingOverlay(overlayType, options) {
+      var config = loadingOverlays[overlayType];
+      if (!config) return;
+
+      var overlay = document.getElementById(overlayType + '-loading-overlay');
+      var punElement = document.getElementById(overlayType + '-loading-pun');
+
+      if (config.interval) {
+        clearInterval(config.interval);
+        config.interval = null;
+      }
+
       if (overlay && punElement) {
-        punElement.textContent = 'Go fir launch!';
-        
+        // Show completion message
+        var completionMsg = (options && options.message) || config.completionMessage;
+        punElement.textContent = completionMsg;
+
         setTimeout(function() {
-          // Allow interaction immediately by removing pointer events
           overlay.style.pointerEvents = 'none';
           overlay.classList.add('fade-out');
+          overlay.setAttribute('aria-busy', 'false');
           setTimeout(function() {
             overlay.style.display = 'none';
+            overlay.classList.remove('fade-out');
           }, 500);
         }, 500);
       }
+    }
+
+    // Shiny message handlers for loading overlays
+    Shiny.addCustomMessageHandler('showLoadingOverlay', function(message) {
+      showLoadingOverlay(message.type, message);
     });
+
+    Shiny.addCustomMessageHandler('updateLoadingOverlay', function(message) {
+      updateLoadingOverlay(message.type, message);
+    });
+
+    Shiny.addCustomMessageHandler('hideLoadingOverlay', function(message) {
+      hideLoadingOverlay(message.type, message);
+    });
+
+    // ==================== END LOADING OVERLAY SYSTEM ====================
 
     function getDataTableApi(tableId, settings) {
       if (settings && $.fn && $.fn.dataTable) {
@@ -790,6 +878,11 @@ ui <- function(req) {
     $(document).on('xhr.dt', function(e, settings, json, xhr) {
       var widgetId = resolveWidgetId(settings.sTableId);
       console.log('DataTable xhr event for:', widgetId, '- data received, records:', json && json.recordsTotal);
+
+      // Send filtered record count to Shiny for download button state
+      if (widgetId === 'plot_table' && json && typeof json.recordsFiltered === 'number') {
+        Shiny.setInputValue('plot_table_filtered_count', json.recordsFiltered, {priority: 'event'});
+      }
 
       // After AJAX data is received, retry pending highlight with a small delay
       // Use requestAnimationFrame + setTimeout to ensure DOM has been updated
@@ -981,10 +1074,94 @@ ui <- function(req) {
         }
       }
     });
-  "
-  ))
 
-  htmltools::tagList(font_head, navbar, overlay, map_loading_overlay, script)
+    // Trigger download by using the Shiny download link
+    Shiny.addCustomMessageHandler('triggerDownload', function(message) {
+      // Client-side validation: check filtered count before initiating download
+      // This prevents the browser from recording a failed download attempt
+      var filteredCount = Shiny.shinyapp.$inputValues['plot_table_filtered_count'];
+      
+      if (filteredCount === null || filteredCount === undefined) {
+        console.error('Cannot determine filtered record count');
+        hideLoadingOverlay('download');
+        Shiny.notifications.show({
+          html: 'Unable to determine record count. Please try again.',
+          type: 'error',
+          duration: 5000
+        });
+        return;
+      }
+      
+      if (filteredCount === 0) {
+        hideLoadingOverlay('download');
+        Shiny.notifications.show({
+          html: 'No records match your current filters.',
+          type: 'warning',
+          duration: 5000
+        });
+        return;
+      }
+      
+      if (filteredCount > DOWNLOAD_MAX_RECORDS) {
+        var formattedCount = filteredCount.toLocaleString();
+        var formattedMax = DOWNLOAD_MAX_RECORDS.toLocaleString();
+        hideLoadingOverlay('download');
+        Shiny.notifications.show({
+          html: 'Download limit exceeded. Your filters match ' + formattedCount + ' records, but the maximum allowed is ' + formattedMax + '. Please refine your search or filters.',
+          type: 'warning',
+          duration: 10000
+        });
+        return;
+      }
+      
+      // All validations passed - show loading overlay and proceed with download
+      showLoadingOverlay('download', {
+        detail: 'Preparing your download...'
+      });
+      
+      var link = document.getElementById('download_plot_table');
+      if (link && link.href) {
+        // Create a temporary visible link and click it
+        // This works around browser security restrictions on clicking hidden elements
+        var tempLink = document.createElement('a');
+        tempLink.href = link.href;
+        tempLink.download = '';
+        tempLink.style.display = 'none';
+        document.body.appendChild(tempLink);
+        tempLink.click();
+        document.body.removeChild(tempLink);
+      }
+    });
+
+    // Enable/disable the DT download button
+    Shiny.addCustomMessageHandler('setDownloadButtonState', function(message) {
+      try {
+        var wrapper = document.getElementById('plot_table');
+        if (wrapper) {
+          var table = $(wrapper).find('table').DataTable();
+          if (table && table.buttons) {
+            if (message.enabled) {
+              table.buttons(0).enable();
+            } else {
+              table.buttons(0).disable();
+            }
+          }
+        }
+      } catch(e) {
+        console.log('Button state error:', e);
+      }
+    });
+  "
+  )))
+
+  htmltools::tagList(
+    font_head,
+    navbar,
+    overlay,
+    map_loading_overlay,
+    download_loading_overlay,
+    script
+  )
 }
 
 #' Custom Bootstrap Theme for Vegbank Web Application
@@ -1117,7 +1294,7 @@ custom_theme <- bslib::bs_add_rules(
   .table tbody tr.selected-entity:hover {
       background-color: rgba(114, 185, 162, 0.25) !important;
   }
-  
+
   /* DataTables loading indicator customization */
   .dataTables_processing {
       z-index: 1000 !important;
@@ -1125,12 +1302,12 @@ custom_theme <- bslib::bs_add_rules(
       top: 50% !important;
       left: 50% !important;
   }
-  
+
   /* Target the nested divs that create the loading animation */
   .dataTables_processing > div > div {
       background-color: #72B9A2 !important;
   }
-  
+
   /* Map loading ellipses animation */
   .map-loading-ellipses {
       display: inline-block;
@@ -1139,7 +1316,7 @@ custom_theme <- bslib::bs_add_rules(
       width: 9.375rem;
       height: 1.5rem;
   }
-  
+
   .map-loading-ellipses > div {
       position: absolute;
       width: 1.5rem;
@@ -1148,51 +1325,128 @@ custom_theme <- bslib::bs_add_rules(
       background: #72B9A2;
       animation-timing-function: cubic-bezier(0, 1, 1, 0);
   }
-  
+
   .map-loading-ellipses > div:nth-child(1) {
       left: 0.75rem;
       animation: mapEllipses1 0.6s infinite;
   }
-  
+
   .map-loading-ellipses > div:nth-child(2) {
       left: 0.75rem;
       animation: mapEllipses2 0.6s infinite;
   }
-  
+
   .map-loading-ellipses > div:nth-child(3) {
       left: 3.75rem;
       animation: mapEllipses2 0.6s infinite;
   }
-  
+
   .map-loading-ellipses > div:nth-child(4) {
       left: 6.75rem;
       animation: mapEllipses3 0.6s infinite;
   }
-  
+
   @keyframes mapEllipses1 {
     0% { transform: scale(0); }
     100% { transform: scale(1); }
   }
-  
+
   @keyframes mapEllipses2 {
     0% { transform: translate(0, 0); }
     100% { transform: translate(3rem, 0); }
   }
-  
+
   @keyframes mapEllipses3 {
     0% { transform: scale(1); }
     100% { transform: scale(0); }
   }
-  
+
   @keyframes fadeOut {
     from { opacity: 1; }
     to { opacity: 0; }
   }
-  
+
   #map-loading-overlay.fade-out {
     animation: fadeOut 0.5s ease-out forwards;
   }
-  
+
+  /* Download loading overlay */
+  #download-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+
+  .download-loading-ellipses {
+      display: inline-block;
+      position: relative;
+      margin-bottom: 1rem;
+      width: 9.375rem;
+      height: 1.5rem;
+  }
+
+  .download-loading-ellipses > div {
+      position: absolute;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: #72B9A2;
+      animation-timing-function: cubic-bezier(0, 1, 1, 0);
+  }
+
+  .download-loading-ellipses > div:nth-child(1) {
+      left: 0.75rem;
+      animation: downloadEllipses1 0.6s infinite;
+  }
+
+  .download-loading-ellipses > div:nth-child(2) {
+      left: 0.75rem;
+      animation: downloadEllipses2 0.6s infinite;
+  }
+
+  .download-loading-ellipses > div:nth-child(3) {
+      left: 3.75rem;
+      animation: downloadEllipses2 0.6s infinite;
+  }
+
+  .download-loading-ellipses > div:nth-child(4) {
+      left: 6.75rem;
+      animation: downloadEllipses3 0.6s infinite;
+  }
+
+  @keyframes downloadEllipses1 {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes downloadEllipses2 {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(3rem, 0); }
+  }
+
+  @keyframes downloadEllipses3 {
+    0% { transform: scale(1); }
+    100% { transform: scale(0); }
+  }
+
+  #download-loading-overlay.fade-out {
+    animation: fadeOut 0.5s ease-out forwards;
+  }
+
+  #download-loading-detail {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+  }
+
   /* Detail overlay responsive width */
   #detail-overlay {
     position: fixed;
@@ -1205,7 +1459,7 @@ custom_theme <- bslib::bs_add_rules(
     padding: 20px;
     transition: right 0.4s;
   }
-  
+
   /* Mobile: full width */
   @media (max-width: 767px) {
     #detail-overlay {
@@ -1213,7 +1467,7 @@ custom_theme <- bslib::bs_add_rules(
       width: 100vw;
     }
   }
-  
+
   /* Desktop: 420px width */
   @media (min-width: 768px) {
     #detail-overlay {
@@ -1263,6 +1517,13 @@ build_navbar <- function() {
       title = "Plots",
       shiny::fluidPage(
         shiny::uiOutput("plot_filter_alert"),
+        # Hidden download button triggered by DT button click
+        # Use position absolute and move off-screen instead of display:none
+        # so Shiny properly initializes the href attribute
+        htmltools::tags$div(
+          style = "position: absolute; left: -9999px; top: -9999px;",
+          shiny::downloadButton("download_plot_table", "Download")
+        ),
         DT::dataTableOutput("plot_table")
       )
     ),
@@ -1426,6 +1687,70 @@ build_detail_overlay <- function() {
   )
 }
 
+#' Build Loading Overlay for Vegbank UI
+#'
+#' Constructs a full-screen loading overlay with animated spinner and rotating messages.
+#' This is a generalized component that can be used for map loading, downloads, or other
+#' long-running operations.
+#'
+#' @param overlay_type A string identifier for this overlay (e.g., "map", "download").
+#'   Used to generate unique element IDs.
+#' @param default_title The default title text shown at the top of the overlay.
+#' @param messages Character vector of messages to rotate through while loading.
+#' @param completion_message Message to display when loading completes.
+#' @param show_detail If TRUE, includes a detail line for showing counts or progress.
+#'
+#' @return A Shiny tag representing the loading overlay.
+#'
+#' @noRd
+build_loading_overlay <- function(overlay_type, default_title, messages, completion_message, show_detail = FALSE) {
+  overlay_id <- paste0(overlay_type, "-loading-overlay")
+  title_id <- paste0(overlay_type, "-loading-title")
+  detail_id <- paste0(overlay_type, "-loading-detail")
+  pun_id <- paste0(overlay_type, "-loading-pun")
+  ellipses_class <- paste0(overlay_type, "-loading-ellipses")
+
+  htmltools::tags$div(
+    id = overlay_id,
+    class = "loading-overlay",
+    role = "alert",
+    `aria-live` = "polite",
+    `aria-busy` = "true",
+    `data-messages` = jsonlite::toJSON(messages, auto_unbox = TRUE),
+    `data-completion-message` = completion_message,
+    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 57px); left: 0;
+             width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 57px));
+             background: rgba(255, 255, 255, 0.98); z-index: 1200;
+             justify-content: center; align-items: center; flex-direction: column;",
+    htmltools::tags$div(
+      class = "loading-content",
+      style = "text-align: center; margin-top: -5rem;",
+      htmltools::tags$h2(
+        id = title_id,
+        style = "font-size: 0.875rem; color: var(--no-status-text); margin-bottom: 1.5rem;",
+        default_title,
+        if (show_detail) {
+          htmltools::tags$span(
+            id = detail_id,
+            style = "font-size: 0.875rem; color: var(--no-status-text); margin-bottom: 1.5rem; display: none;"
+          )
+        }
+      ),
+      htmltools::tags$div(
+        class = ellipses_class,
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div()),
+        htmltools::tags$div(htmltools::tags$div())
+      ),
+      htmltools::tags$div(
+        id = pun_id,
+        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500;"
+      )
+    )
+  )
+}
+
 #' Build Map Loading Overlay for Vegbank UI
 #'
 #' Constructs a full-screen loading overlay for initial map loading with animated
@@ -1435,30 +1760,42 @@ build_detail_overlay <- function() {
 #'
 #' @noRd
 build_map_loading_overlay <- function() {
-  htmltools::tags$div(
-    id = "map-loading-overlay",
-    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 57px); left: 0; 
-             width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 57px));
-             background: rgba(255, 255, 255, 0.98); z-index: 1200;
-             justify-content: center; align-items: center; flex-direction: column;",
-    htmltools::tags$div(
-      class = "map-loading-content",
-      style = "text-align: center; margin-top: -5rem;",
-      htmltools::tags$h2(
-        "Loading the map for the first time can take a few seconds. It's busy:",
-        style = "font-size: 0.875rem; color: var(--no-status-text); margin-bottom: 1.5rem;"
-      ),
-      htmltools::tags$div(
-        class = "map-loading-ellipses",
-        htmltools::tags$div(htmltools::tags$div()),
-        htmltools::tags$div(htmltools::tags$div()),
-        htmltools::tags$div(htmltools::tags$div()),
-        htmltools::tags$div(htmltools::tags$div())
-      ),
-      htmltools::tags$div(
-        id = "map-loading-pun",
-        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500;",
-      )
-    )
+  build_loading_overlay(
+    overlay_type = "map",
+    default_title = "Loading the map for the first time can take a few seconds. It's busy:",
+    messages = c(
+      "Planting seeds...",
+      "Branching out...",
+      "Rooting through the database...",
+      "Monitoring mycelial networks...",
+      "Disturbing the substrate...",
+      "Planning successful succession...",
+      "Last bud not leaf..."
+    ),
+    completion_message = "Go fir launch!"
+  )
+}
+
+#' Build Download Loading Overlay for Vegbank UI
+#'
+#' Constructs a full-screen loading overlay for data downloads with animated
+#' spinner and rotating messages.
+#'
+#' @return A Shiny tag representing the download loading overlay.
+#'
+#' @noRd
+build_download_loading_overlay <- function() {
+  build_loading_overlay(
+    overlay_type = "download",
+    default_title = "Preparing your download:",
+    messages = c(
+      "Gathering plot observations...",
+      "Untangling nested data...",
+      "Pressing specimens into CSVs...",
+      "Bundling the herbarium...",
+      "Zipping up the collection..."
+    ),
+    completion_message = "Your data is ready!",
+    show_detail = TRUE
   )
 }
