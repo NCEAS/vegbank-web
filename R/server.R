@@ -113,6 +113,7 @@ server <- function(input, output, session) {
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
     plot_filter = shiny::reactiveVal(NULL), # Cross-resource filter: list(type, code, label) or NULL
+    community_filter = shiny::reactiveVal(NULL), # Citation filter for community concepts
     table_states = shiny::reactiveValues(),
     table_sync_pending = shiny::reactiveValues(),
     table_sync_completed_at = shiny::reactiveValues()
@@ -488,8 +489,8 @@ server <- function(input, output, session) {
   # of session$clientData$url_search.
   #
   # For single entities (plot observations, concepts, etc.):
-  #   Navigates to the appropriate tab, opens the detail overlay, and
-  #   updates the URL to ?tab=X&detail=Y&code=Z.
+  #   Shows only the cited entity in its table (filtered view), highlights it,
+  #   opens the detail overlay, and updates the URL to ?tab=X&detail=Y&code=Z&cite=...
   #
   # For datasets:
   #   Navigates to the Plots tab with a cross-resource filter applied,
@@ -527,14 +528,35 @@ server <- function(input, output, session) {
           shiny::updateNavbarPage(session, "page", selected = "Plots")
           update_app_query(mode = "replace", tab = "Plots")
         } else {
-          # Single entity: navigate to appropriate tab and open detail overlay
+          # Single entity citation: Show only the cited entity in the table
+          # Apply a citation filter that limits table to just this entity
+          filter_info <- list(
+            type = "citation",
+            code = citation$vb_code,
+            label = paste("Citation", accession_code),
+            resource_type = citation$detail_type # Store detail type for filtering
+          )
+          
+          # Apply filter based on which tab/table this entity belongs to
+          if (citation$tab == "Plots") {
+            state$plot_filter(filter_info)
+          } else if (citation$tab == "Communities") {
+            state$community_filter(filter_info)
+          }
+          # For other resource types (Plants, Parties, Projects),
+          # we can add similar filter state as needed.
+          
           state$current_tab(citation$tab)
           shiny::updateNavbarPage(session, "page", selected = citation$tab)
+          
+          # Open detail overlay with highlighting
           open_detail(
             detail_type = citation$detail_type,
             vb_code = citation$vb_code,
-            push_history = FALSE
+            push_history = FALSE,
+            skip_highlight = FALSE
           )
+          
           update_app_query(
             mode = "replace",
             tab = citation$tab,
@@ -930,27 +952,48 @@ server <- function(input, output, session) {
     )
   })
 
-  output$plot_filter_alert <- shiny::renderUI({
-    filter <- state$plot_filter()
+  # Helper function to create filter alert UI
+  create_filter_alert <- function(filter, resource_singular, resource_plural, clear_input_id) {
     if (is.null(filter)) {
       return(NULL)
+    }
+
+    # Customize message based on filter type
+    message <- if (filter$type == "citation") {
+      sprintf("Showing cited %s: %s (%s)", resource_singular, filter$code, filter$label)
+    } else {
+      sprintf("Showing %s related to %s: %s (%s)", 
+              resource_plural, filter$type, filter$code, filter$label)
     }
 
     htmltools::tags$div(
       class = "alert alert-info alert-dismissible show d-flex align-items-center justify-content-between",
       role = "alert",
-      htmltools::tags$strong(
-        sprintf(
-          "Showing plot observations related to %s: %s (%s)",
-          filter$type, filter$code, filter$label
-        )
-      ),
+      htmltools::tags$strong(message),
       htmltools::tags$button(
         type = "button",
         class = "btn btn-sm btn-outline-info ms-3",
-        onclick = "Shiny.setInputValue('clear_plot_filter', Math.random());",
+        onclick = sprintf("Shiny.setInputValue('%s', Math.random());", clear_input_id),
         "Clear filter"
       )
+    )
+  }
+
+  output$plot_filter_alert <- shiny::renderUI({
+    create_filter_alert(
+      state$plot_filter(),
+      resource_singular = "plot observation",
+      resource_plural = "plot observations",
+      clear_input_id = "clear_plot_filter"
+    )
+  })
+
+  output$comm_filter_alert <- shiny::renderUI({
+    create_filter_alert(
+      state$community_filter(),
+      resource_singular = "community concept",
+      resource_plural = "community concepts",
+      clear_input_id = "clear_comm_filter"
     )
   })
 
@@ -958,7 +1001,8 @@ server <- function(input, output, session) {
     # Rebuild table when filter changes to pass vb_code for cross-resource queries
     filter <- state$plot_filter()
     vb_code <- if (!is.null(filter)) filter$code else NULL
-    build_plot_table_with_filter(vb_code)
+    filter_type <- if (!is.null(filter)) filter$type else NULL
+    build_plot_table_with_filter(vb_code, filter_type)
   })
 
   # Enable/disable DT download button based on filtered record count
@@ -991,7 +1035,11 @@ server <- function(input, output, session) {
   output$download_plot_table <- create_table_download_handler("plot_table", input, state, session)
 
   output$comm_table <- DT::renderDataTable({
-    build_community_table()
+    # Rebuild table when filter changes for citation filtering
+    filter <- state$community_filter()
+    vb_code <- if (!is.null(filter)) filter$code else NULL
+    filter_type <- if (!is.null(filter)) filter$type else NULL
+    build_concept_table_with_filter(concept_type = "community", vb_code = vb_code, filter_type = filter_type)
   })
 
   output$proj_table <- DT::renderDataTable({
@@ -1400,6 +1448,14 @@ server <- function(input, output, session) {
     # Clear plots table state (including search) when clearing filter
     # This ensures we start fresh without any stale search terms
     state$table_states[["plots"]] <- NULL
+    # Update URL to remove filter parameters
+    update_app_query(mode = "push", tab = state$current_tab())
+  })
+
+  shiny::observeEvent(input$clear_comm_filter, {
+    state$community_filter(NULL)
+    # Clear communities table state when clearing filter
+    state$table_states[["communities"]] <- NULL
     # Update URL to remove filter parameters
     update_app_query(mode = "push", tab = state$current_tab())
   })

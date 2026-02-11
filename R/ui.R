@@ -1558,6 +1558,7 @@ build_navbar <- function() {
     bslib::nav_panel(
       title = "Communities",
       shiny::fluidPage(
+        shiny::uiOutput("comm_filter_alert"),
         DT::dataTableOutput("comm_table")
       )
     ),

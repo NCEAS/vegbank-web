@@ -68,11 +68,13 @@ build_plot_table <- function() {
 #'
 #' Configures the plot table with an optional vb_code parameter for
 #' cross-resource queries (e.g., showing plots for a specific project).
+#' For citation filters, directly fetches and displays the single cited entity.
 #'
-#' @param vb_code Optional VegBank code for cross-resource filtering (e.g., "pj.340")
+#' @param vb_code Optional VegBank code for cross-resource filtering (e.g., "pj.340", "ob.2948")
+#' @param filter_type Optional filter type ("user-dataset", "project", "party", "citation")
 #' @return A DT::datatable object
 #' @noRd
-build_plot_table_with_filter <- function(vb_code = NULL) {
+build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL) {
   # Deep copy to avoid mutating the shared PLOT_TABLE_SPEC
   spec <- PLOT_TABLE_SPEC
   spec$data_source <- utils::modifyList(spec$data_source, list())
@@ -81,8 +83,66 @@ build_plot_table_with_filter <- function(vb_code = NULL) {
   # Determine if filter is active
   has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
 
-  # Add vb_code to query if filtering is active
-  if (has_filter) {
+  # For citation filters, fetch the specific plot observation directly
+  if (has_filter && !is.null(filter_type) && filter_type == "citation") {
+    tryCatch(
+      {
+        # Fetch the single plot observation using the same parameters as the AJAX table
+        # Use detail="minimal" with nested data to match the table's expected structure
+        # Limit to top 5 taxa and communities like the regular table
+        plot_data <- vegbankr::vb_get_plot_observations(
+          vb_code,
+          detail = "minimal",
+          with_nested = TRUE,
+          num_taxa = 5L,
+          num_comms = 5L
+        )
+
+        if (!is.null(plot_data) && nrow(plot_data) > 0) {
+          # Coerce and normalize the data through the same pipeline as AJAX
+          coerced <- coerce_plot_page(plot_data)
+          normalized <- normalize_plot_data(coerced)
+          display_data <- process_plot_data(normalized)
+
+          # Build static table (no AJAX) with the single row
+          # Create a minimal table config without ajax to display static data
+          static_config <- list(
+            initial_data = display_data,
+            column_defs = spec$column_defs,
+            page_length = 1L,
+            options = utils::modifyList(
+              spec$options %||% list(),
+              list(
+                scrollY = "calc(100vh - 315px)",  # Accommodate citation alert notification
+                serverSide = FALSE,  # Disable server-side processing
+                searching = FALSE,    # No need to search a single row
+                paging = FALSE        # No pagination for single row
+              )
+            ),
+            datatable_args = spec$datatable_args,
+            escape = FALSE  # Allow HTML in cells (already escaped by process functions)
+          )
+
+          return(create_table(static_config))
+        } else {
+          shiny::showNotification(
+            paste("Could not load cited plot observation:", vb_code),
+            type = "warning"
+          )
+        }
+      },
+      error = function(e) {
+        shiny::showNotification(
+          paste("Error loading cited plot:", conditionMessage(e)),
+          type = "error"
+        )
+      }
+    )
+    # Fall through to normal AJAX table if fetch fails
+  }
+
+  # Add vb_code to query if filtering is active (cross-resource filter)
+  if (has_filter && (is.null(filter_type) || filter_type != "citation")) {
     spec$data_source$query$vb_code <- vb_code
   }
 
@@ -150,13 +210,14 @@ format_plot_action_buttons <- function(ob_codes, author_codes, latitudes, longit
     detail_btn <- if (!is.null(detail_code) && nzchar(detail_code)) {
       sprintf(
         '<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" data-input-id="plot_link_click" data-value="%s">Details</button>',
-        htmltools::htmlEscape(detail_code, attribute = TRUE))
+        htmltools::htmlEscape(detail_code, attribute = TRUE)
+      )
     } else {
       '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Details</button>'
     }
     # Map button
     map_btn <- if (has_coords) {
-      code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code, attribute = TRUE)) else ''
+      code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code, attribute = TRUE)) else ""
       sprintf(
         '<button type="button" class="btn btn-sm btn-outline-primary dt-map-action" data-lat="%s" data-lng="%s"%s>Map</button>',
         htmltools::htmlEscape(lat, attribute = TRUE),
@@ -192,16 +253,16 @@ format_plot_taxa_list <- function(taxa_list, taxon_counts) {
       name_link <- if (!is.null(pc_code) && nzchar(pc_code)) {
         sprintf('<a href="#" class="dt-shiny-action" data-input-id="plant_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(pc_code, attribute = TRUE), safe_name)
       } else {
-        sprintf('<span>%s</span>', safe_name)
+        sprintf("<span>%s</span>", safe_name)
       }
       if (!is.null(max_cover) && !is.na(max_cover)) {
-        cover_text <- sprintf('(%0.1f%%)', as.numeric(max_cover))
+        cover_text <- sprintf("(%0.1f%%)", as.numeric(max_cover))
         sprintf('<div style="display: flex; justify-content: space-between;"><span>%s</span><span style="margin-left: 8px;">%s</span></div>', name_link, htmltools::htmlEscape(cover_text, attribute = TRUE))
       } else {
-        sprintf('<div>%s</div>', name_link)
+        sprintf("<div>%s</div>", name_link)
       }
     }, character(1))
-    html <- paste(links, collapse = '')
+    html <- paste(links, collapse = "")
     if (!is.null(total) && !is.na(total) && total > length(links)) {
       remainder <- total - length(links)
       html <- paste0(html, sprintf('<div class="text-muted small">+%d other taxa</div>', remainder))
@@ -230,14 +291,14 @@ format_plot_community_list <- function(comm_list) {
       entry <- if (!is.null(cl_code) && nzchar(cl_code)) {
         sprintf('<a href="#" class="dt-shiny-action" data-input-id="comm_class_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(cl_code, attribute = TRUE), safe_name)
       } else {
-        sprintf('<span>%s</span>', safe_name)
+        sprintf("<span>%s</span>", safe_name)
       }
-      if (!is.null(comm_code) && nzchar(comm_code) && grepl('^CEGL', comm_code, ignore.case = TRUE)) {
+      if (!is.null(comm_code) && nzchar(comm_code) && grepl("^CEGL", comm_code, ignore.case = TRUE)) {
         entry <- paste0(entry, sprintf('<br><span class="text-muted small">%s</span>', htmltools::htmlEscape(comm_code, attribute = TRUE)))
       }
       entry
     }, character(1))
-    paste(links, collapse = '<br>')
+    paste(links, collapse = "<br>")
   }, character(1))
 }
 
