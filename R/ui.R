@@ -11,6 +11,28 @@
 #'
 #' @noRd
 ui <- function(req) {
+  # Handle legacy citation URLs: /cite/ACCESSION_CODE → ?cite=ACCESSION_CODE
+  # Old VegBank had citation URLs like http://vegbank.org/cite/VB.Ob.22743.INW32086
+  # This redirect converts path-based citations to query parameter form for server processing.
+  # NOTE: This only works if the web server routes /cite/ paths to the Shiny app.
+  # For production deployments behind nginx/Apache, add a rewrite rule as well:
+  #   rewrite ^/cite/(.+)$ /?cite=$1 redirect;
+  path_info <- req$PATH_INFO %||% ""
+  if (grepl("/cite/", path_info, fixed = TRUE)) {
+    accession_code <- sub("^.*/cite/", "", path_info)
+    if (nzchar(accession_code)) {
+      redirect_url <- paste0("?cite=", utils::URLencode(accession_code, reserved = TRUE))
+      return(list(
+        status = 302L,
+        headers = list(
+          Location = redirect_url,
+          `Content-Type` = "text/html"
+        ),
+        body = ""
+      ))
+    }
+  }
+
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
   # Ensure Inter font loads from CDN before any CSS

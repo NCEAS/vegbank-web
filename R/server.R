@@ -19,6 +19,69 @@
 #' @import vegbankr
 #'
 #' @noRd
+# ================= CITATION RESOLUTION ============================================================
+
+#' Maps vegbankr API resource types (from vb_resolve) to app navigation targets
+#'
+#' Used to route legacy citation URLs (e.g., /cite/VB.Ob.22743.INW32086) to the correct
+#' tab and detail view. The vb_resource_type field returned by vb_resolve() uses plural
+#' API resource names; the app's detail views use singular hyphenated forms.
+#'
+#' @noRd
+CITATION_RESOURCE_MAP <- list(
+  "plot-observations" = list(tab = "Plots", detail_type = "plot-observation"),
+  "community-concepts" = list(tab = "Communities", detail_type = "community-concept"),
+  "plant-concepts" = list(tab = "Plants", detail_type = "plant-concept"),
+  "projects" = list(tab = "Projects", detail_type = "project"),
+  "parties" = list(tab = "Parties", detail_type = "party"),
+  "user-datasets" = list(tab = "Plots", is_dataset = TRUE)
+)
+
+#' Resolve citation accession code to app navigation parameters
+#'
+#' Calls vegbankr::vb_resolve() to look up the resource type and VegBank code
+#' for a legacy accession code, then maps the result to app navigation targets
+#' using CITATION_RESOURCE_MAP.
+#'
+#' @param accession_code Character string, the accession code to resolve
+#'   (e.g., "VB.Ob.2948.ACAD143")
+#' @return A list with components:
+#'   \describe{
+#'     \item{vb_code}{The resolved VegBank code (e.g., "ob.2948")}
+#'     \item{tab}{The app tab to navigate to (e.g., "Plots")}
+#'     \item{detail_type}{The detail view type (e.g., "plot-observation"), or NULL for datasets}
+#'     \item{is_dataset}{TRUE if the resolved resource is a dataset}
+#'     \item{accession_code}{The original accession code (for labeling)}
+#'   }
+#'   Returns NULL if resolution fails or the resource type is unsupported.
+#' @noRd
+resolve_citation <- function(accession_code) {
+  result <- tryCatch(
+    vegbankr::vb_resolve(accession_code),
+    error = function(e) {
+      warning("Citation resolution failed for '", accession_code, "': ", conditionMessage(e))
+      NULL
+    }
+  )
+
+  if (is.null(result) || is.null(result$vb_resource_type) || is.null(result$vb_code)) {
+    return(NULL)
+  }
+
+  resource_info <- CITATION_RESOURCE_MAP[[result$vb_resource_type]]
+  if (is.null(resource_info)) {
+    return(NULL)
+  }
+
+  list(
+    vb_code = result$vb_code,
+    tab = resource_info$tab,
+    detail_type = resource_info$detail_type %||% NULL,
+    is_dataset = isTRUE(resource_info$is_dataset),
+    accession_code = accession_code
+  )
+}
+
 # ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
   vegbankr::vb_debug()
@@ -414,6 +477,75 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  # --- Citation Resolution -----
+
+  # Resolve a legacy citation URL and navigate to the appropriate view.
+  # Called from the URL observer when a ?cite= query parameter is detected.
+  # Delegates to resolve_citation() for API lookup, then directly applies
+  # the navigation using existing server-side functions (open_detail, state
+  # mutations, tab switching) rather than relying on a URL round-trip, since
+  # shiny::updateQueryString("replace") does not trigger a reactive re-fire
+  # of session$clientData$url_search.
+  #
+  # For single entities (plot observations, concepts, etc.):
+  #   Navigates to the appropriate tab, opens the detail overlay, and
+  #   updates the URL to ?tab=X&detail=Y&code=Z.
+  #
+  # For datasets:
+  #   Navigates to the Plots tab with a cross-resource filter applied,
+  #   and updates the URL to ?tab=Plots&filter_code=Z&filter_type=...
+  resolve_and_redirect_citation <- function(accession_code) {
+    shiny::withProgress(
+      message = paste0("Resolving citation: ", accession_code),
+      value = 0.3,
+      expr = {
+        citation <- resolve_citation(accession_code)
+
+        shiny::incProgress(0.4)
+
+        if (is.null(citation)) {
+          shiny::showNotification(
+            paste0("Could not resolve citation: ", accession_code),
+            type = "error"
+          )
+          # Fall through to Overview
+          state$current_tab("Overview")
+          shiny::updateNavbarPage(session, "page", selected = "Overview")
+          url_manager$update_query_string("?tab=Overview", mode = "replace")
+          return()
+        }
+
+        if (citation$is_dataset) {
+          # Dataset: navigate to Plots tab with cross-resource filter
+          filter_info <- list(
+            type = "user-dataset",
+            code = citation$vb_code,
+            label = paste("Dataset", accession_code)
+          )
+          state$plot_filter(filter_info)
+          state$current_tab("Plots")
+          shiny::updateNavbarPage(session, "page", selected = "Plots")
+          update_app_query(mode = "replace", tab = "Plots")
+        } else {
+          # Single entity: navigate to appropriate tab and open detail overlay
+          state$current_tab(citation$tab)
+          shiny::updateNavbarPage(session, "page", selected = citation$tab)
+          open_detail(
+            detail_type = citation$detail_type,
+            vb_code = citation$vb_code,
+            push_history = FALSE
+          )
+          update_app_query(
+            mode = "replace",
+            tab = citation$tab,
+            detail_type = citation$detail_type,
+            detail_code = citation$vb_code
+          )
+        }
+      }
+    )
+  }
+
   # URL/HISTORY SYNCHRONIZATION OBSERVER -----------------------------------------------------------
   # This observer runs whenever the browser URL changes (back/forward, refresh, direct link).
   # It parses query parameters and restores tab, detail overlay, map view, and table state.
@@ -434,6 +566,21 @@ server <- function(input, output, session) {
         },
         add = TRUE
       )
+
+      # Handle citation resolution: ?cite=ACCESSION_CODE
+      # Legacy VegBank citation URLs (e.g., /cite/VB.Ob.22743.INW32086) are converted to
+      # ?cite=ACCESSION_CODE by the UI function or web server rewrite rules.
+      # We resolve the accession code via the vegbankr API and redirect to the appropriate
+      # internal URL. The observer will re-fire with the resolved params on the next cycle.
+      cite_param <- url_manager$first_param(params$cite)
+      if (url_manager$is_valid_param(cite_param)) {
+        # Strip surrounding quotes that may appear from URL encoding (%22)
+        cite_param <- gsub('^["\']|["\']$', "", cite_param)
+        if (nzchar(cite_param)) {
+          resolve_and_redirect_citation(cite_param)
+          return()
+        }
+      }
 
       # Parse and apply requested tab
       requested_tab <- url_manager$first_param(params$tab)
