@@ -419,8 +419,10 @@ server <- function(input, output, session) {
   }
 
   # --- Citation Resolution -----
-
-  # Resolve a legacy citation URL and navigate to the appropriate view.
+  # Legacy citation URL handling must be done by the web server (Apache) to
+  # rewrite /cite/IDENTIFIER to /?cite=IDENTIFIER before reaching Shiny.
+  # This resolves a ?cite=IDENTIFIER URL and navigate to the appropriate view.
+  #
   # Called from the URL observer when a ?cite= query parameter is detected.
   # Delegates to resolve_citation() for API lookup, then directly applies
   # the navigation using existing server-side functions (open_detail, state
@@ -428,13 +430,18 @@ server <- function(input, output, session) {
   # shiny::updateQueryString("replace") does not trigger a reactive re-fire
   # of session$clientData$url_search.
   #
-  # For single entities (plot observations, concepts, etc.):
+  # This function handles both single-entity citations and dataset citations.
+  #
+  # For single entities (only plot observations & concepts right now):
   #   Shows only the cited entity in its table (filtered view), highlights it,
-  #   opens the detail overlay, and updates the URL to ?tab=X&detail=Y&code=Z&cite=...
+  #   opens the detail overlay, and updates the URL persist that state.
   #
   # For datasets:
-  #   Navigates to the Plots tab with a cross-resource filter applied,
-  #   and updates the URL to ?tab=Plots&filter_code=Z&filter_type=...
+  #   Navigates to the Plots tab with a cross-resource dataset filter applied,
+  #   and updates the URL to persist that state.
+  #
+  # Parameters:
+  #   identifier - The citation identifier (accession code, doi, vb code) to resolve.
   resolve_and_redirect_citation <- function(identifier) {
     # Show full-screen loading overlay and lock navigation during resolution
     session$sendCustomMessage("showLoadingOverlay", list(
@@ -539,7 +546,7 @@ server <- function(input, output, session) {
 
       # Handle citation resolution: ?cite=IDENTIFIER
       # Legacy VegBank citation URLs (e.g., /cite/VB.Ob.22743.INW32086) are converted to
-      # ?cite=IDENTIFIER by the UI function or web server rewrite rules.
+      # ?cite=IDENTIFIER by Apache rewrite rules.
       # We resolve the identifier via the vegbankr API and redirect to the appropriate
       # internal URL. The observer will re-fire with the resolved params on the next cycle.
       cite_param <- url_manager$first_param(params$cite)
