@@ -1,0 +1,187 @@
+#' VegBank Resource Registry
+#'
+#' Centralized registry containing all metadata about VegBank resource types.
+#' This registry serves as the single source of truth for resource information
+#' used throughout the application.
+#'
+#' @description
+#' The RESOURCE_REGISTRY consolidates:
+#' - API type mappings (for citation resolution and data fetching)
+#' - Detail type identifiers (for detail overlay views)
+#' - VegBank code prefixes (for cross-resource navigation)
+#' - Tab navigation targets
+#' - Display names (singular/plural for UI text)
+#' - Resource flags (e.g., is_dataset for special handling)
+#'
+#' @format A named list where each entry contains:
+#' \describe{
+#'   \item{api_type}{API resource name used by vegbankr (e.g., "plot-observations")}
+#'   \item{detail_type}{Detail view identifier (e.g., "plot-observation")}
+#'   \item{vb_prefix}{VegBank code prefix (e.g., "ob" for observation codes like "ob.2948")}
+#'   \item{tab}{Navbar tab name to navigate to (e.g., "Plots")}
+#'   \item{singular}{Singular display name (e.g., "plot observation")}
+#'   \item{plural}{Plural display name (e.g., "plot observations")}
+#'   \item{is_dataset}{Logical flag indicating if this is a dataset resource}
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Get plot observation resource info
+#' plot_info <- RESOURCE_REGISTRY[["plot-observations"]]
+#'
+#' # Get resource by prefix
+#' project_info <- get_resource_by_prefix("pj")
+#'
+#' # Get resource by detail type
+#' party_info <- get_resource_by_detail_type("party")
+#' }
+#'
+#' @noRd
+RESOURCE_REGISTRY <- list(
+  "plot-observations" = list(
+    api_type = "plot-observations",
+    detail_type = "plot-observation",
+    vb_prefix = "ob",
+    tab = "Plots",
+    singular = "plot observation",
+    plural = "plot observations",
+    is_dataset = FALSE
+  ),
+  "community-classifications" = list(
+    api_type = "community-classifications",
+    detail_type = "community-classification",
+    vb_prefix = "ct",
+    tab = "Communities",
+    singular = "community classification",
+    plural = "community classifications",
+    is_dataset = FALSE
+  ),
+  "community-concepts" = list(
+    api_type = "community-concepts",
+    detail_type = "community-concept",
+    vb_prefix = "cc",
+    tab = "Communities",
+    singular = "community concept",
+    plural = "community concepts",
+    is_dataset = FALSE
+  ),
+  "plant-concepts" = list(
+    api_type = "plant-concepts",
+    detail_type = "plant-concept",
+    vb_prefix = "pc",
+    tab = "Plants",
+    singular = "plant concept",
+    plural = "plant concepts",
+    is_dataset = FALSE
+  ),
+  "projects" = list(
+    api_type = "projects",
+    detail_type = "project",
+    vb_prefix = "pj",
+    tab = "Projects",
+    singular = "project",
+    plural = "projects",
+    is_dataset = FALSE
+  ),
+  "parties" = list(
+    api_type = "parties",
+    detail_type = "party",
+    vb_prefix = "py",
+    tab = "Parties",
+    singular = "party",
+    plural = "parties",
+    is_dataset = FALSE
+  ),
+  "references" = list(
+    api_type = "references",
+    detail_type = "reference",
+    vb_prefix = "rf",
+    tab = "References",
+    singular = "reference",
+    plural = "references",
+    is_dataset = FALSE
+  ),
+  "user-datasets" = list(
+    api_type = "user-datasets",
+    detail_type = "dataset",
+    vb_prefix = "ds",
+    tab = "Plots",
+    singular = "dataset",
+    plural = "datasets",
+    is_dataset = TRUE
+  )
+)
+
+#' Get Resource Info by VegBank Code Prefix
+#'
+#' Looks up resource metadata from RESOURCE_REGISTRY using the VB code prefix.
+#' VegBank codes follow the pattern prefix.id (e.g., "ob.2948", "pj.340").
+#'
+#' @param prefix Character string, the VB code prefix (e.g., "ob", "pj", "cc")
+#' @return Resource info list from RESOURCE_REGISTRY, or NULL if not found
+#'
+#' @examples
+#' \dontrun{
+#' # Get project resource info from code "pj.340"
+#' resource <- get_resource_by_prefix("pj")
+#' resource$singular  # "project"
+#' resource$tab       # "Projects"
+#' }
+#'
+#' @noRd
+get_resource_by_prefix <- function(prefix) {
+  prefix_lower <- tolower(prefix)
+  for (resource_info in RESOURCE_REGISTRY) {
+    if (!is.null(resource_info$vb_prefix) && resource_info$vb_prefix == prefix_lower) {
+      return(resource_info)
+    }
+  }
+  NULL
+}
+
+#' Get Resource Info by Detail Type
+#'
+#' Looks up resource metadata from RESOURCE_REGISTRY using the detail_type.
+#' Detail types are used in detail overlay views and URL parameters.
+#'
+#' @param detail_type Character string, the detail type (e.g., "plot-observation", "party")
+#' @return Resource info list from RESOURCE_REGISTRY, or NULL if not found
+#'
+#' @examples
+#' \dontrun{
+#' # Get resource info for plot observation detail view
+#' resource <- get_resource_by_detail_type("plot-observation")
+#' resource$singular  # "plot observation"
+#' resource$vb_prefix # "ob"
+#' }
+#'
+#' @noRd
+get_resource_by_detail_type <- function(detail_type) {
+  for (resource_info in RESOURCE_REGISTRY) {
+    if (!is.null(resource_info$detail_type) && resource_info$detail_type == detail_type) {
+      return(resource_info)
+    }
+  }
+  NULL
+}
+
+#' Get Resource Info by API Type
+#'
+#' Looks up resource metadata from RESOURCE_REGISTRY using the API type name.
+#' API types are returned by vegbankr::vb_resolve() for citation resolution.
+#'
+#' @param api_type Character string, the API resource type (e.g., "plot-observations", "projects")
+#' @return Resource info list from RESOURCE_REGISTRY, or NULL if not found
+#'
+#' @examples
+#' \dontrun{
+#' # Get resource info from vb_resolve result
+#' result <- vb_resolve("VB.Ob.2948.ACAD143")
+#' resource <- get_resource_by_api_type(result$vb_resource_type)
+#' resource$tab  # "Plots"
+#' }
+#'
+#' @noRd
+get_resource_by_api_type <- function(api_type) {
+  RESOURCE_REGISTRY[[api_type]]
+}

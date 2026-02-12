@@ -19,111 +19,7 @@
 #' @import vegbankr
 #'
 #' @noRd
-# ================= CITATION RESOLUTION ============================================================
 
-#' Resource registry containing all metadata about VegBank resource types
-#'
-#' Centralizes information about each resource type including display names,
-#' navigation targets, and API mappings. Used for citation resolution, filter
-#' alerts, and cross-resource navigation.
-#'
-#' @noRd
-RESOURCE_REGISTRY <- list(
-  "plot-observations" = list(
-    api_type = "plot-observations",
-    detail_type = "plot-observation",
-    tab = "Plots",
-    singular = "plot observation",
-    plural = "plot observations",
-    is_dataset = FALSE
-  ),
-  "community-concepts" = list(
-    api_type = "community-concepts",
-    detail_type = "community-concept",
-    tab = "Communities",
-    singular = "community concept",
-    plural = "community concepts",
-    is_dataset = FALSE
-  ),
-  "plant-concepts" = list(
-    api_type = "plant-concepts",
-    detail_type = "plant-concept",
-    tab = "Plants",
-    singular = "plant concept",
-    plural = "plant concepts",
-    is_dataset = FALSE
-  ),
-  "projects" = list(
-    api_type = "projects",
-    detail_type = "project",
-    tab = "Projects",
-    singular = "project",
-    plural = "projects",
-    is_dataset = FALSE
-  ),
-  "parties" = list(
-    api_type = "parties",
-    detail_type = "party",
-    tab = "Parties",
-    singular = "party",
-    plural = "parties",
-    is_dataset = FALSE
-  ),
-  "user-datasets" = list(
-    api_type = "user-datasets",
-    detail_type = "dataset",
-    tab = "Plots",
-    singular = "dataset",
-    plural = "datasets",
-    is_dataset = TRUE
-  )
-)
-
-#' Resolve citation identifier to app navigation parameters
-#'
-#' Calls vegbankr::vb_resolve() to look up the resource type and VegBank code
-#' for a legacy identifier, then maps the result to app navigation targets
-#' using RESOURCE_REGISTRY.
-#'
-#' @param identifier Character string, the identifier (identifier or DOI) to resolve
-#'   (e.g., "VB.Ob.2948.ACAD143")
-#' @return A list with components:
-#'   \describe{
-#'     \item{vb_code}{The resolved VegBank code (e.g., "ob.2948")}
-#'     \item{tab}{The app tab to navigate to (e.g., "Plots")}
-#'     \item{detail_type}{The detail view type (e.g., "plot-observation")}
-#'     \item{is_dataset}{TRUE if the resolved resource is a dataset}
-#'     \item{identifier}{The original identifier (for labeling)}
-#'   }
-#'   Returns NULL if resolution fails or the resource type is unsupported.
-#' @noRd
-resolve_citation <- function(identifier) {
-  result <- tryCatch(
-    vegbankr::vb_resolve(identifier),
-    error = function(e) {
-      warning("Citation resolution failed for '", identifier, "': ", conditionMessage(e))
-      NULL
-    }
-  )
-
-  if (is.null(result) || is.null(result$vb_resource_type) || is.null(result$vb_code)) {
-    return(NULL)
-  }
-
-  resource_info <- RESOURCE_REGISTRY[[result$vb_resource_type]]
-  if (is.null(resource_info)) {
-    return(NULL)
-  }
-
-  list(
-    vb_code = result$vb_code,
-    tab = resource_info$tab,
-    detail_type = resource_info$detail_type,
-    is_dataset = resource_info$is_dataset,
-    resource_info = resource_info,  # Include full resource info for display names
-    identifier = identifier
-  )
-}
 
 # ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
@@ -1045,11 +941,11 @@ server <- function(input, output, session) {
   output$comm_filter_alert <- shiny::renderUI({
     filter <- state$community_filter()
     if (is.null(filter)) return(NULL)
-    
+
     # Get display names from resource_info if available, otherwise use defaults
     resource_singular <- filter$resource_info$singular %||% "community concept"
     resource_plural <- filter$resource_info$plural %||% "community concepts"
-    
+
     create_filter_alert(
       filter,
       resource_singular = resource_singular,
@@ -1522,6 +1418,54 @@ server <- function(input, output, session) {
   })
 }
 
+# ================= CITATION RESOLUTION ============================================================
+# Note: RESOURCE_REGISTRY and helper functions are defined in R/resource_registry.R
+
+#' Resolve citation identifier to app navigation parameters
+#'
+#' Calls vegbankr::vb_resolve() to look up the resource type and VegBank code
+#' for a legacy identifier, then maps the result to app navigation targets
+#' using RESOURCE_REGISTRY.
+#'
+#' @param identifier Character string, the identifier (identifier or DOI) to resolve
+#'   (e.g., "VB.Ob.2948.ACAD143")
+#' @return A list with components:
+#'   \describe{
+#'     \item{vb_code}{The resolved VegBank code (e.g., "ob.2948")}
+#'     \item{tab}{The app tab to navigate to (e.g., "Plots")}
+#'     \item{detail_type}{The detail view type (e.g., "plot-observation")}
+#'     \item{is_dataset}{TRUE if the resolved resource is a dataset}
+#'     \item{identifier}{The original identifier (for labeling)}
+#'   }
+#'   Returns NULL if resolution fails or the resource type is unsupported.
+#' @noRd
+resolve_citation <- function(identifier) {
+  result <- tryCatch(
+    vegbankr::vb_resolve(identifier),
+    error = function(e) {
+      warning("Citation resolution failed for '", identifier, "': ", conditionMessage(e))
+      NULL
+    }
+  )
+
+  if (is.null(result) || is.null(result$vb_resource_type) || is.null(result$vb_code)) {
+    return(NULL)
+  }
+
+  resource_info <- get_resource_by_api_type(result$vb_resource_type)
+  if (is.null(resource_info)) {
+    return(NULL)
+  }
+
+  list(
+    vb_code = result$vb_code,
+    tab = resource_info$tab,
+    detail_type = resource_info$detail_type,
+    is_dataset = resource_info$is_dataset,
+    resource_info = resource_info,  # Include full resource info for display names
+    identifier = identifier
+  )
+}
 
 # ================= OTHER FUNCTIONS ===========================================================
 
@@ -1572,7 +1516,8 @@ is_valid_vb_code <- function(vb_code) {
 #' Extract entity type from VegBank code prefix
 #'
 #' VegBank codes follow the pattern: prefix.id (e.g., pj.340, py.123, pc.456)
-#' This function extracts the prefix and maps it to the human-readable entity type.
+#' This function extracts the prefix and looks up the resource info from
+#' RESOURCE_REGISTRY to get the singular entity type name.
 #'
 #' @param vb_code The VegBank code (e.g., "pj.340")
 #' @return Character string of entity type (e.g., "project"), or NULL if unknown
@@ -1589,24 +1534,13 @@ extract_entity_type_from_code <- function(vb_code) {
   }
 
   prefix <- tolower(parts[1])
+  resource_info <- get_resource_by_prefix(prefix)
 
-  # Map VegBank prefixes to entity types
-  prefix_map <- c(
-    "pj" = "project",
-    "py" = "party",
-    "pc" = "plant concept",
-    "cc" = "community concept",
-    "ct" = "community classification",
-    "ob" = "plot observation",
-    "rf" = "reference"
-  )
-
-  entity_type <- prefix_map[[prefix]]
-  if (is.null(entity_type)) {
+  if (is.null(resource_info)) {
     return(NULL)
   }
 
-  entity_type
+  resource_info$singular
 }
 
 #' Move the map to the specified latitude and longitude with a popup message
