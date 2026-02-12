@@ -11,7 +11,7 @@
 #'
 #' @noRd
 ui <- function(req) {
-  # Handle legacy citation URLs: /cite/ACCESSION_CODE → ?cite=ACCESSION_CODE
+  # Handle legacy citation URLs: /cite/IDENTIFIER → ?cite=IDENTIFIER
   # Old VegBank had citation URLs like http://vegbank.org/cite/VB.Ob.22743.INW32086
   # This redirect converts path-based citations to query parameter form for server processing.
   # NOTE: This only works if the web server routes /cite/ paths to the Shiny app.
@@ -19,9 +19,9 @@ ui <- function(req) {
   #   rewrite ^/cite/(.+)$ /?cite=$1 redirect;
   path_info <- req$PATH_INFO %||% ""
   if (grepl("/cite/", path_info, fixed = TRUE)) {
-    accession_code <- sub("^.*/cite/", "", path_info)
-    if (nzchar(accession_code)) {
-      redirect_url <- paste0("?cite=", utils::URLencode(accession_code, reserved = TRUE))
+    identifier <- sub("^.*/cite/", "", path_info)
+    if (nzchar(identifier)) {
+      redirect_url <- paste0("?cite=", utils::URLencode(identifier, reserved = TRUE))
       return(list(
         status = 302L,
         headers = list(
@@ -1790,7 +1790,7 @@ build_citation_loading_overlay <- function() {
     overlay_type = "citation",
     default_title = "Resolving citation...",
     messages = c(
-      "Looking up accession code...",
+      "Looking up identifier...",
       "Consulting the archives...",
       "Following the paper trail...",
       "Tracking down that reference...",

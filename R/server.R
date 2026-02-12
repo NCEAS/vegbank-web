@@ -79,29 +79,29 @@ RESOURCE_REGISTRY <- list(
   )
 )
 
-#' Resolve citation accession code to app navigation parameters
+#' Resolve citation identifier to app navigation parameters
 #'
 #' Calls vegbankr::vb_resolve() to look up the resource type and VegBank code
-#' for a legacy accession code, then maps the result to app navigation targets
-#' using CITATION_RESOURCE_MAP.
+#' for a legacy identifier, then maps the result to app navigation targets
+#' using RESOURCE_REGISTRY.
 #'
-#' @param accession_code Character string, the accession code to resolve
+#' @param identifier Character string, the identifier (identifier or DOI) to resolve
 #'   (e.g., "VB.Ob.2948.ACAD143")
 #' @return A list with components:
 #'   \describe{
 #'     \item{vb_code}{The resolved VegBank code (e.g., "ob.2948")}
 #'     \item{tab}{The app tab to navigate to (e.g., "Plots")}
-#'     \item{detail_type}{The detail view type (e.g., "plot-observation"), or NULL for datasets}
+#'     \item{detail_type}{The detail view type (e.g., "plot-observation")}
 #'     \item{is_dataset}{TRUE if the resolved resource is a dataset}
-#'     \item{accession_code}{The original accession code (for labeling)}
+#'     \item{identifier}{The original identifier (for labeling)}
 #'   }
 #'   Returns NULL if resolution fails or the resource type is unsupported.
 #' @noRd
-resolve_citation <- function(accession_code) {
+resolve_citation <- function(identifier) {
   result <- tryCatch(
-    vegbankr::vb_resolve(accession_code),
+    vegbankr::vb_resolve(identifier),
     error = function(e) {
-      warning("Citation resolution failed for '", accession_code, "': ", conditionMessage(e))
+      warning("Citation resolution failed for '", identifier, "': ", conditionMessage(e))
       NULL
     }
   )
@@ -121,7 +121,7 @@ resolve_citation <- function(accession_code) {
     detail_type = resource_info$detail_type,
     is_dataset = resource_info$is_dataset,
     resource_info = resource_info,  # Include full resource info for display names
-    accession_code = accession_code
+    identifier = identifier
   )
 }
 
@@ -538,15 +538,15 @@ server <- function(input, output, session) {
   # For datasets:
   #   Navigates to the Plots tab with a cross-resource filter applied,
   #   and updates the URL to ?tab=Plots&filter_code=Z&filter_type=...
-  resolve_and_redirect_citation <- function(accession_code) {
+  resolve_and_redirect_citation <- function(identifier) {
     # Show full-screen loading overlay and lock navigation during resolution
     session$sendCustomMessage("showLoadingOverlay", list(
       type = "citation",
-      title = paste0("Resolving citation: ", accession_code)
+      title = paste0("Resolving citation: ", identifier)
     ))
     session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
 
-    citation <- resolve_citation(accession_code)
+    citation <- resolve_citation(identifier)
 
     if (is.null(citation)) {
       # Hide loading overlay and unlock navigation
@@ -554,7 +554,7 @@ server <- function(input, output, session) {
       session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
 
       shiny::showNotification(
-        paste0("Could not resolve citation: ", accession_code),
+        paste0("Could not resolve citation: ", identifier),
         type = "error"
       )
       # Fall through to Overview
@@ -568,7 +568,7 @@ server <- function(input, output, session) {
     filter_info <- list(
       type = "citation",
       code = citation$vb_code,
-      label = paste("Citation", accession_code),
+      label = paste("Citation identifier:", identifier),
       resource_type = citation$detail_type,
       is_dataset = citation$is_dataset,
       resource_info = citation$resource_info  # Include full resource metadata
@@ -636,10 +636,10 @@ server <- function(input, output, session) {
         add = TRUE
       )
 
-      # Handle citation resolution: ?cite=ACCESSION_CODE
+      # Handle citation resolution: ?cite=IDENTIFIER
       # Legacy VegBank citation URLs (e.g., /cite/VB.Ob.22743.INW32086) are converted to
-      # ?cite=ACCESSION_CODE by the UI function or web server rewrite rules.
-      # We resolve the accession code via the vegbankr API and redirect to the appropriate
+      # ?cite=IDENTIFIER by the UI function or web server rewrite rules.
+      # We resolve the identifier via the vegbankr API and redirect to the appropriate
       # internal URL. The observer will re-fire with the resolved params on the next cycle.
       cite_param <- url_manager$first_param(params$cite)
       if (url_manager$is_valid_param(cite_param)) {

@@ -84,7 +84,7 @@ test_that("resolve_citation returns correct structure for plot observation", {
       expect_equal(result$tab, "Plots")
       expect_equal(result$detail_type, "plot-observation")
       expect_false(result$is_dataset)
-      expect_equal(result$accession_code, "VB.Ob.2948.ACAD143")
+      expect_equal(result$identifier, "VB.Ob.2948.ACAD143")
     }
   )
 })
@@ -165,7 +165,7 @@ test_that("resolve_citation returns correct structure for user dataset", {
       expect_equal(result$tab, "Plots")
       expect_null(result$detail_type)
       expect_true(result$is_dataset)
-      expect_equal(result$accession_code, "VB.DS.50.TEST")
+      expect_equal(result$identifier, "VB.DS.50.TEST")
     }
   )
 })
@@ -246,7 +246,7 @@ test_that("resolve_citation preserves original accession code in result", {
     .package = "vegbankr",
     {
       result <- resolve_citation("VB.Ob.2948.ACAD143")
-      expect_equal(result$accession_code, "VB.Ob.2948.ACAD143")
+      expect_equal(result$identifier, "VB.Ob.2948.ACAD143")
     }
   )
 })
