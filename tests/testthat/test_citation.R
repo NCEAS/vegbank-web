@@ -277,3 +277,93 @@ test_that("resolve_citation passes accession code to vb_resolve", {
     }
   )
 })
+
+
+# ==== UI Citation URL Redirect ====
+
+test_that("ui() redirects /cite/ paths to query parameter format", {
+  # Mock request object for /cite/VB.Ob.2948.ACAD143
+  req <- list(PATH_INFO = "/cite/VB.Ob.2948.ACAD143")
+
+  result <- ui(req)
+
+  # Should return HTML with JavaScript redirect
+  expect_s3_class(result, "shiny.tag")
+  expect_equal(result$name, "html")
+
+  # Extract JavaScript from head
+  script_tag <- result$children[[1]]$children[[1]]
+  expect_equal(script_tag$name, "script")
+
+  js_code <- as.character(script_tag$children[[1]])
+  expect_true(grepl("window\\.location\\.replace", js_code))
+  expect_true(grepl("/\\?cite=VB\\.Ob\\.2948\\.ACAD143", js_code))
+})
+
+test_that("ui() correctly URL-encodes special characters in citation identifier", {
+  # Test with identifier containing spaces and special chars
+  req <- list(PATH_INFO = "/cite/VB.Test 123+Special")
+
+  result <- ui(req)
+
+  # Extract JavaScript
+  script_tag <- result$children[[1]]$children[[1]]
+  js_code <- as.character(script_tag$children[[1]])
+
+  # Should encode space as %20 and + as %2B
+  expect_true(grepl("VB\\.Test%20123%2BSpecial", js_code))
+})
+
+test_that("ui() handles simple plot observation citation path", {
+  req <- list(PATH_INFO = "/cite/VB.Ob.22743.INW32086")
+
+  result <- ui(req)
+
+  script_tag <- result$children[[1]]$children[[1]]
+  js_code <- as.character(script_tag$children[[1]])
+
+  expect_true(grepl("/\\?cite=VB\\.Ob\\.22743\\.INW32086", js_code))
+})
+
+test_that("ui() handles community concept citation path", {
+  req <- list(PATH_INFO = "/cite/VB.CC.1234.EXAMPLE")
+
+  result <- ui(req)
+
+  script_tag <- result$children[[1]]$children[[1]]
+  js_code <- as.character(script_tag$children[[1]])
+
+  expect_true(grepl("/\\?cite=VB\\.CC\\.1234\\.EXAMPLE", js_code))
+})
+
+test_that("ui() handles dataset citation path", {
+  req <- list(PATH_INFO = "/cite/VB.DS.50.TESTDATA")
+
+  result <- ui(req)
+
+  script_tag <- result$children[[1]]$children[[1]]
+  js_code <- as.character(script_tag$children[[1]])
+
+  expect_true(grepl("/\\?cite=VB\\.DS\\.50\\.TESTDATA", js_code))
+})
+
+test_that("ui() does not redirect non-citation paths", {
+  # Regular path should return normal UI
+  req <- list(PATH_INFO = "/")
+
+  result <- ui(req)
+
+  # Should return full UI, not just redirect HTML
+  # The full UI contains many nested tags, not just html > head > script
+  expect_true(length(result) > 1 || (length(result) == 1 && length(result[[1]]$children) > 1))
+})
+
+test_that("ui() does not redirect paths that start with /cite but aren't citation URLs", {
+  # Path like /citation-info should not trigger redirect
+  req <- list(PATH_INFO = "/citation-info")
+
+  result <- ui(req)
+
+  # Should return full UI, not redirect
+  expect_true(length(result) > 1 || (length(result) == 1 && length(result[[1]]$children) > 1))
+})

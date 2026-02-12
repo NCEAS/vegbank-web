@@ -417,9 +417,9 @@ server <- function(input, output, session) {
   }
 
   # --- Citation Resolution -----
-  # Legacy citation URL handling must be done by the web server (Apache) to
-  # rewrite /cite/IDENTIFIER to /?cite=IDENTIFIER before reaching Shiny.
-  # This resolves a ?cite=IDENTIFIER URL and navigate to the appropriate view.
+  # Legacy citation URL handling is done in UI.R with a client-side redirect
+  # from /cite/IDENTIFIER to /?cite=IDENTIFIER. This server-side function
+  # resolves a ?cite=IDENTIFIER URL and navigates to the appropriate view.
   #
   # Called from the URL observer when a ?cite= query parameter is detected.
   # Delegates to resolve_citation() for API lookup, then directly applies
@@ -565,8 +565,8 @@ server <- function(input, output, session) {
 
       # Handle citation resolution: ?cite=IDENTIFIER
       # Legacy VegBank citation URLs (e.g., /cite/VB.Ob.22743.INW32086) are converted to
-      # ?cite=IDENTIFIER by Apache rewrite rules.
-      # We resolve the identifier via the vegbankr API and redirect to the appropriate
+      # ?cite=IDENTIFIER by ui.R on the client side before reaching this observer.
+      # Here we resolve the identifier via the vegbankr API and redirect to the appropriate
       # internal URL. The observer will re-fire with the resolved params on the next cycle.
       cite_param <- url_manager$first_param(params$cite)
       if (url_manager$is_valid_param(cite_param)) {

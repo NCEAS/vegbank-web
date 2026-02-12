@@ -7,6 +7,26 @@
 #'
 #' @noRd
 ui <- function(req) {
+  # Handle legacy citation URLs: /cite/IDENTIFIER → ?cite=IDENTIFIER
+  # Old VegBank had citation URLs like http://vegbank.org/cite/VB.Ob.22743.INW32086
+  # This redirect converts path-based citations to query parameter form for server processing.
+  path_info <- req$PATH_INFO
+
+  if (!is.null(path_info) && length(path_info) > 0 && grepl("^/cite/", path_info)) {
+    identifier <- sub("^/cite/", "", path_info)
+    redirect_url <- paste0("/?cite=", utils::URLencode(identifier, reserved = TRUE))
+
+    # Return JavaScript redirect that executes immediately
+    return(shiny::tags$html(
+      shiny::tags$head(
+        shiny::tags$script(shiny::HTML(sprintf(
+          'window.location.replace("%s");',
+          redirect_url
+        )))
+      )
+    ))
+  }
+
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
   # Ensure Inter font loads from CDN before any CSS
