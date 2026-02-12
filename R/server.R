@@ -963,7 +963,8 @@ server <- function(input, output, session) {
     filter <- state$plot_filter()
     vb_code <- if (!is.null(filter)) filter$code else NULL
     filter_type <- if (!is.null(filter)) filter$type else NULL
-    build_plot_table_with_filter(vb_code, filter_type)
+    is_dataset <- if (!is.null(filter)) filter$is_dataset else FALSE
+    build_plot_table_with_filter(vb_code, filter_type, is_dataset)
   })
 
   # Enable/disable DT download button based on filtered record count
