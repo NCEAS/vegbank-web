@@ -451,7 +451,8 @@ server <- function(input, output, session) {
 
       shiny::showNotification(
         paste0("Could not resolve citation: ", identifier),
-        type = "error"
+        type = "error",
+        duration = NULL
       )
       # Fall through to Overview
       state$current_tab("Overview")
@@ -1488,7 +1489,7 @@ open_code_details <- function(
     skip_highlight = FALSE) {
   if (!is_valid_vb_code(vb_code)) {
     error_msg <- error_message %||% paste0("No VegBank code found for that ", gsub("-", " ", detail_type))
-    shiny::showNotification(error_msg, type = "error")
+    shiny::showNotification(error_msg, type = "error", duration = NULL)
     return(FALSE)
   }
 

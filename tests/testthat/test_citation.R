@@ -1,54 +1,61 @@
 # Tests for citation resolution (legacy /cite/ URLs)
-# Tests CITATION_RESOURCE_MAP, resolve_citation(), and UI path redirect
+# Tests RESOURCE_REGISTRY, resolve_citation(), and UI path redirect
 
-# ==== CITATION_RESOURCE_MAP ====
+# ==== RESOURCE_REGISTRY ====
 
-test_that("CITATION_RESOURCE_MAP covers all expected resource types", {
-  expect_true("plot-observations" %in% names(CITATION_RESOURCE_MAP))
-  expect_true("community-concepts" %in% names(CITATION_RESOURCE_MAP))
-  expect_true("plant-concepts" %in% names(CITATION_RESOURCE_MAP))
-  expect_true("projects" %in% names(CITATION_RESOURCE_MAP))
-  expect_true("parties" %in% names(CITATION_RESOURCE_MAP))
-  expect_true("user-datasets" %in% names(CITATION_RESOURCE_MAP))
+test_that("RESOURCE_REGISTRY covers all expected resource types", {
+  expect_true("plot-observations" %in% names(RESOURCE_REGISTRY))
+  expect_true("community-concepts" %in% names(RESOURCE_REGISTRY))
+  expect_true("plant-concepts" %in% names(RESOURCE_REGISTRY))
+  expect_true("projects" %in% names(RESOURCE_REGISTRY))
+  expect_true("parties" %in% names(RESOURCE_REGISTRY))
+  expect_true("user-datasets" %in% names(RESOURCE_REGISTRY))
 })
 
-test_that("CITATION_RESOURCE_MAP entries have correct structure for single entities", {
+test_that("RESOURCE_REGISTRY entries have correct structure for single entities", {
   single_types <- c("plot-observations", "community-concepts", "plant-concepts", "projects", "parties")
   for (type in single_types) {
-    info <- CITATION_RESOURCE_MAP[[type]]
+    info <- RESOURCE_REGISTRY[[type]]
     expect_true(!is.null(info$tab), info = paste("Missing tab for", type))
     expect_true(!is.null(info$detail_type), info = paste("Missing detail_type for", type))
     expect_true(nzchar(info$tab), info = paste("Empty tab for", type))
     expect_true(nzchar(info$detail_type), info = paste("Empty detail_type for", type))
-    # Single entities should not have is_dataset
-    expect_null(info$is_dataset, info = paste("Unexpected is_dataset for", type))
+    # Single entities should have is_dataset = FALSE
+    expect_false(info$is_dataset, info = paste("Expected is_dataset=FALSE for", type))
   }
 })
 
-test_that("CITATION_RESOURCE_MAP dataset entry has correct structure", {
-  info <- CITATION_RESOURCE_MAP[["user-datasets"]]
+test_that("RESOURCE_REGISTRY dataset entry has correct structure", {
+  info <- RESOURCE_REGISTRY[["user-datasets"]]
   expect_equal(info$tab, "Plots")
   expect_true(isTRUE(info$is_dataset))
-  # Datasets don't have a detail_type (they use filter instead)
-  expect_null(info$detail_type)
+  # Datasets have detail_type = "dataset"
+  expect_equal(info$detail_type, "dataset")
 })
 
-test_that("CITATION_RESOURCE_MAP maps to valid app tabs", {
+test_that("RESOURCE_REGISTRY maps to valid app tabs", {
   valid_tabs <- c("Overview", "Map", "Plots", "Plants", "Communities", "Parties", "Projects", "FAQ", "Cite")
-  for (type in names(CITATION_RESOURCE_MAP)) {
-    tab <- CITATION_RESOURCE_MAP[[type]]$tab
+  for (type in names(RESOURCE_REGISTRY)) {
+    tab <- RESOURCE_REGISTRY[[type]]$tab
+    # References don't have a navbar tab, they only appear in detail overlays
+    # The tab field is set to "References" for consistency but is not validated
+    if (type == "references" || type == "cover-methods" || type == "stratum-methods"
+        || type == "datasets" || type == "community-classifications") {
+      next
+    }
     expect_true(tab %in% valid_tabs, info = paste("Invalid tab", tab, "for", type))
   }
 })
 
-test_that("CITATION_RESOURCE_MAP detail types match show_detail_view switch cases", {
+test_that("RESOURCE_REGISTRY detail types match show_detail_view switch cases", {
   # These are the resource_type values accepted by show_detail_view() in detail_view.R
   valid_detail_types <- c(
     "community-classification", "community-concept", "plot-observation",
-    "project", "party", "plant-concept", "reference", "cover-method", "stratum-method"
+    "project", "party", "plant-concept", "reference", "cover-method", "stratum-method",
+    "dataset"  # Datasets have detail_type but use filter instead of detail view
   )
-  for (type in names(CITATION_RESOURCE_MAP)) {
-    detail_type <- CITATION_RESOURCE_MAP[[type]]$detail_type
+  for (type in names(RESOURCE_REGISTRY)) {
+    detail_type <- RESOURCE_REGISTRY[[type]]$detail_type
     if (!is.null(detail_type)) {
       expect_true(detail_type %in% valid_detail_types,
         info = paste("Invalid detail_type", detail_type, "for resource", type)
@@ -163,7 +170,7 @@ test_that("resolve_citation returns correct structure for user dataset", {
       expect_false(is.null(result))
       expect_equal(result$vb_code, "ds.50")
       expect_equal(result$tab, "Plots")
-      expect_null(result$detail_type)
+      expect_equal(result$detail_type, "dataset")
       expect_true(result$is_dataset)
       expect_equal(result$identifier, "VB.DS.50.TEST")
     }

@@ -1252,6 +1252,9 @@ custom_theme <- bslib::bs_add_rules(
       min-height: 56px !important;
       display: flex;
       align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 2000; /* Ensure it stays above other content */
   }
   .navbar.nav-disabled {
     pointer-events: none;
@@ -1329,7 +1332,7 @@ custom_theme <- bslib::bs_add_rules(
 
   /* Target the nested divs that create the loading animation */
   .dataTables_processing > div > div {
-      background-color: #72B9A2 !important;
+      background-color: var(--vb-green) !important;
   }
 
   /* Generic loading ellipses animation for all overlays */

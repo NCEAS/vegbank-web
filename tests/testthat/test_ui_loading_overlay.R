@@ -91,9 +91,10 @@ test_that("build_loading_overlay includes ellipses animation elements", {
   )
 
   html <- as.character(overlay)
-  expect_true(grepl('class="test-loading-ellipses"', html))
+  # Ellipses use generic 'loading-ellipses' class, not overlay-type-specific
+  expect_true(grepl('class="loading-ellipses"', html))
   # Should have nested divs for animation (checking for the ellipses container)
-  expect_true(grepl("test-loading-ellipses", html))
+  expect_true(grepl("loading-ellipses", html))
 })
 
 test_that("build_loading_overlay includes pun/message element", {
@@ -210,7 +211,8 @@ test_that("build_loading_overlay maintains overlay_type consistency", {
   expect_true(grepl(paste0('id="', type, '-loading-title"'), html))
   expect_true(grepl(paste0('id="', type, '-loading-detail"'), html))
   expect_true(grepl(paste0('id="', type, '-loading-pun"'), html))
-  expect_true(grepl(paste0('class="', type, '-loading-ellipses"'), html))
+  # Ellipses use generic 'loading-ellipses' class (not type-specific)
+  expect_true(grepl('class="loading-ellipses"', html))
 })
 
 test_that("loading overlay messages are appropriate for context", {

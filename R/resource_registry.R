@@ -96,9 +96,24 @@ RESOURCE_REGISTRY <- list(
     api_type = "references",
     detail_type = "reference",
     vb_prefix = "rf",
-    tab = "References",
     singular = "reference",
     plural = "references",
+    is_dataset = FALSE
+  ),
+  "cover-methods" = list(
+    api_type = "cover-methods",
+    detail_type = "cover-method",
+    vb_prefix = "cm",
+    singular = "cover method",
+    plural = "cover methods",
+    is_dataset = FALSE
+  ),
+  "stratum-methods" = list(
+    api_type = "stratum-methods",
+    detail_type = "stratum-method",
+    vb_prefix = "sm",
+    singular = "stratum method",
+    plural = "stratum methods",
     is_dataset = FALSE
   ),
   "user-datasets" = list(
