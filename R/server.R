@@ -469,6 +469,27 @@ server <- function(input, output, session) {
       return()
     }
 
+    # Only datasets, plot observations (Plots tab), and community concepts
+    # (Communities tab) support citation filtering. Other resource types
+    # (references, cover-methods, stratum-methods, etc.) have no dedicated
+    # navbar tab or table filter, so we reject them early.
+    supported_citation_tabs <- c("Plots", "Communities")
+    if (!citation$is_dataset && !isTRUE(citation$tab %in% supported_citation_tabs)) {
+      session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
+      session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+
+      shiny::showNotification(
+        paste0("Citations are not supported for ",
+               citation$resource_info$plural %||% citation$detail_type, "."),
+        type = "warning",
+        duration = NULL
+      )
+      state$current_tab("Overview")
+      shiny::updateNavbarPage(session, "page", selected = "Overview")
+      url_manager$update_query_string("?tab=Overview", mode = "replace")
+      return()
+    }
+
     # Apply a citation filter that limits relevant table to just this entity
     filter_info <- list(
       type = "citation",
@@ -627,7 +648,7 @@ server <- function(input, output, session) {
         new_filter <- list(
           type = plot_filter_type,
           code = plot_filter_code,
-          label = if (url_manager$is_valid_param(filter_label)) filter_label else plot_filter_code
+          label = if (url_manager$is_valid_param(plot_filter_label)) plot_filter_label else plot_filter_code
         )
 
         # Only update if different from current state

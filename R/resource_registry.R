@@ -51,7 +51,7 @@ RESOURCE_REGISTRY <- list(
     api_type = "community-classifications",
     detail_type = "community-classification",
     vb_prefix = "ct",
-    tab = "Communities",
+    tab = "Plots",
     singular = "community classification",
     plural = "community classifications",
     is_dataset = FALSE
