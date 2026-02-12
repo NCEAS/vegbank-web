@@ -39,8 +39,8 @@ test_that("RESOURCE_REGISTRY maps to valid app tabs", {
     tab <- RESOURCE_REGISTRY[[type]]$tab
     # References don't have a navbar tab, they only appear in detail overlays
     # The tab field is set to "References" for consistency but is not validated
-    if (type == "references" || type == "cover-methods" || type == "stratum-methods"
-        || type == "datasets" || type == "community-classifications") {
+    if (type == "references" || type == "cover-methods" || type == "stratum-methods" ||
+      type == "datasets" || type == "community-classifications") {
       next
     }
     expect_true(tab %in% valid_tabs, info = paste("Invalid tab", tab, "for", type))
@@ -52,7 +52,7 @@ test_that("RESOURCE_REGISTRY detail types match show_detail_view switch cases", 
   valid_detail_types <- c(
     "community-classification", "community-concept", "plot-observation",
     "project", "party", "plant-concept", "reference", "cover-method", "stratum-method",
-    "dataset"  # Datasets have detail_type but use filter instead of detail view
+    "dataset" # Datasets have detail_type but use filter instead of detail view
   )
   for (type in names(RESOURCE_REGISTRY)) {
     detail_type <- RESOURCE_REGISTRY[[type]]$detail_type
@@ -293,9 +293,22 @@ test_that("ui() redirects /cite/ path-based URLs to query param form", {
 
   # Should return an HTTP response (a list with status, headers, body)
   expect_true(is.list(result))
-  expect_equal(result$status, 302L)
+  expect_equal(result$status, 301L)
   expect_true(!is.null(result$headers$Location))
+
+  # Verify Location is an absolute path starting with /
+  expect_match(result$headers$Location, "^/")
+
+  # Verify Location does NOT contain /cite/ path (prevents redirect loops)
+  expect_false(grepl("/cite/", result$headers$Location, fixed = TRUE),
+    info = "Location should not contain /cite/ path to avoid redirect loops"
+  )
+
+  # Verify cite parameter is present
   expect_match(result$headers$Location, "cite=VB.Ob.2948.ACAD143")
+
+  # Verify format is /?cite=... (app root with query string)
+  expect_match(result$headers$Location, "^/\\?cite=")
 })
 
 test_that("ui() redirects /cite/ paths with URL-encoded accession codes", {
@@ -306,21 +319,62 @@ test_that("ui() redirects /cite/ paths with URL-encoded accession codes", {
 
   result <- ui(mock_req)
 
-  expect_equal(result$status, 302L)
+  expect_equal(result$status, 301L)
+
+  # Verify absolute path without /cite/ segment
+  expect_match(result$headers$Location, "^/")
+  expect_false(grepl("/cite/", result$headers$Location, fixed = TRUE))
+
   expect_match(result$headers$Location, "cite=")
+  expect_match(result$headers$Location, "^/\\?cite=")
 })
 
 test_that("ui() handles /cite/ paths nested under app base path", {
-  # When running under /beta/, PATH_INFO might include the prefix
+  # When running under /beta/, SCRIPT_NAME contains the base path
   mock_req <- list(
-    PATH_INFO = "/beta/cite/VB.Ob.2948.ACAD143"
+    PATH_INFO = "/cite/VB.Ob.2948.ACAD143",
+    SCRIPT_NAME = "/beta"
   )
 
   result <- ui(mock_req)
 
-  expect_equal(result$status, 302L)
+  expect_equal(result$status, 301L)
+
+  # Location should start with the base path
+  expect_match(result$headers$Location, "^/beta/")
+
+  # Location should not contain /cite/
+  expect_false(grepl("/cite/", result$headers$Location, fixed = TRUE))
+
   # The accession code should be extracted regardless of prefix
   expect_match(result$headers$Location, "cite=VB.Ob.2948.ACAD143")
+
+  # Verify format is /beta/?cite=...
+  expect_match(result$headers$Location, "^/beta/\\?cite=")
+})
+
+test_that("ui() preserves existing query parameters when redirecting /cite/", {
+  # Test that existing query params are preserved alongside cite param
+  mock_req <- list(
+    PATH_INFO = "/cite/ob.2948",
+    QUERY_STRING = "tab=Plots&debug=true"
+  )
+
+  result <- ui(mock_req)
+
+  expect_equal(result$status, 301L)
+
+  # Verify absolute path
+  expect_match(result$headers$Location, "^/")
+  expect_false(grepl("/cite/", result$headers$Location, fixed = TRUE))
+
+  # Verify both existing and new parameters are present
+  expect_match(result$headers$Location, "tab=Plots")
+  expect_match(result$headers$Location, "debug=true")
+  expect_match(result$headers$Location, "cite=ob.2948")
+
+  # Verify format: /?existing_params&cite=...
+  expect_match(result$headers$Location, "^/\\?.*cite=")
 })
 
 test_that("ui() does not redirect for normal paths", {
@@ -332,7 +386,7 @@ test_that("ui() does not redirect for normal paths", {
   result <- ui(mock_req)
 
   # Normal UI should return a Shiny tag list, not an HTTP redirect
-  expect_false(identical(result$status, 302L))
+  expect_false(identical(result$status, 301L))
 })
 
 test_that("ui() does not redirect for /cite/ with empty accession code", {
@@ -347,5 +401,5 @@ test_that("ui() does not redirect for /cite/ with empty accession code", {
   # The grepl matches, but sub produces empty string and nzchar fails
   # Actually /cite/ matches grepl and sub("^.*/cite/", "", "/cite/") = ""
   # nzchar("") = FALSE, so normal UI is returned
-  expect_false(identical(result$status, 302L))
+  expect_false(identical(result$status, 301L))
 })
