@@ -330,7 +330,8 @@ server <- function(input, output, session) {
       table_states = table_states_list,
       highlight_table = state$highlighted_table(),
       highlight_row = state$highlighted_row(),
-      plot_filter = state$plot_filter()
+      plot_filter = state$plot_filter(),
+      community_filter = state$community_filter()
     )
 
     url_manager$update_query_string(target_query, mode = mode)
@@ -468,7 +469,7 @@ server <- function(input, output, session) {
       label = paste("Citation identifier:", identifier),
       resource_type = citation$detail_type,
       is_dataset = citation$is_dataset,
-      resource_info = citation$resource_info  # Include full resource metadata
+      resource_info = citation$resource_info # Include full resource metadata
     )
 
     if (citation$is_dataset) {
@@ -609,17 +610,17 @@ server <- function(input, output, session) {
       }
 
       # Parse and apply plot filter state
-      filter_code <- url_manager$first_param(params$filter_code)
-      filter_type <- url_manager$first_param(params$filter_type)
-      filter_label <- url_manager$first_param(params$filter_label)
+      plot_filter_code <- url_manager$first_param(params$plot_filter_code)
+      plot_filter_type <- url_manager$first_param(params$plot_filter_type)
+      plot_filter_label <- url_manager$first_param(params$plot_filter_label)
 
-      if (url_manager$is_valid_param(filter_code) && url_manager$is_valid_param(filter_type)) {
+      if (url_manager$is_valid_param(plot_filter_code) && url_manager$is_valid_param(plot_filter_type)) {
         # Restore filter from URL
         current_filter <- state$plot_filter()
         new_filter <- list(
-          type = filter_type,
-          code = filter_code,
-          label = if (url_manager$is_valid_param(filter_label)) filter_label else filter_code
+          type = plot_filter_type,
+          code = plot_filter_code,
+          label = if (url_manager$is_valid_param(filter_label)) filter_label else plot_filter_code
         )
 
         # Only update if different from current state
@@ -628,7 +629,7 @@ server <- function(input, output, session) {
           !identical(current_filter$type, new_filter$type)) {
           state$plot_filter(new_filter)
         }
-      } else if (!is.null(params$filter_code) || !is.null(params$filter_type)) {
+      } else if (!is.null(params$plot_filter_code) || !is.null(params$plot_filter_type)) {
         # Invalid filter params in URL, clear them
         state$plot_filter(NULL)
         if (url_manager$is_history_initialized()) {
@@ -638,6 +639,39 @@ server <- function(input, output, session) {
         # No filter params in URL, clear filter state
         if (!is.null(state$plot_filter())) {
           state$plot_filter(NULL)
+        }
+      }
+
+      # Parse and apply community filter state
+      comm_filter_code <- url_manager$first_param(params$comm_filter_code)
+      comm_filter_type <- url_manager$first_param(params$comm_filter_type)
+      comm_filter_label <- url_manager$first_param(params$comm_filter_label)
+
+      if (url_manager$is_valid_param(comm_filter_code) && url_manager$is_valid_param(comm_filter_type)) {
+        # Restore community filter from URL
+        current_comm_filter <- state$community_filter()
+        new_comm_filter <- list(
+          type = comm_filter_type,
+          code = comm_filter_code,
+          label = if (url_manager$is_valid_param(comm_filter_label)) comm_filter_label else comm_filter_code
+        )
+
+        # Only update if different from current state
+        if (is.null(current_comm_filter) ||
+          !identical(current_comm_filter$code, new_comm_filter$code) ||
+          !identical(current_comm_filter$type, new_comm_filter$type)) {
+          state$community_filter(new_comm_filter)
+        }
+      } else if (!is.null(params$comm_filter_code) || !is.null(params$comm_filter_type)) {
+        # Invalid community filter params in URL, clear them
+        state$community_filter(NULL)
+        if (url_manager$is_history_initialized()) {
+          update_app_query(mode = "replace", tab = requested_tab)
+        }
+      } else {
+        # No community filter params in URL, clear filter state
+        if (!is.null(state$community_filter())) {
+          state$community_filter(NULL)
         }
       }
 
@@ -909,8 +943,10 @@ server <- function(input, output, session) {
     message <- if (filter$type == "citation") {
       sprintf("Showing cited %s: %s (%s)", resource_singular, filter$code, filter$label)
     } else {
-      sprintf("Showing %s related to %s: %s (%s)",
-              resource_plural, filter$type, filter$code, filter$label)
+      sprintf(
+        "Showing %s related to %s: %s (%s)",
+        resource_plural, filter$type, filter$code, filter$label
+      )
     }
 
     htmltools::tags$div(
@@ -928,12 +964,14 @@ server <- function(input, output, session) {
 
   output$plot_filter_alert <- shiny::renderUI({
     filter <- state$plot_filter()
-    if (is.null(filter)) return(NULL)
-    
+    if (is.null(filter)) {
+      return(NULL)
+    }
+
     # Get display names from resource_info if available, otherwise use defaults
     resource_singular <- filter$resource_info$singular %||% "plot observation"
     resource_plural <- filter$resource_info$plural %||% "plot observations"
-    
+
     create_filter_alert(
       filter,
       resource_singular = resource_singular,
@@ -944,7 +982,9 @@ server <- function(input, output, session) {
 
   output$comm_filter_alert <- shiny::renderUI({
     filter <- state$community_filter()
-    if (is.null(filter)) return(NULL)
+    if (is.null(filter)) {
+      return(NULL)
+    }
 
     # Get display names from resource_info if available, otherwise use defaults
     resource_singular <- filter$resource_info$singular %||% "community concept"
@@ -1467,7 +1507,7 @@ resolve_citation <- function(identifier) {
     tab = resource_info$tab,
     detail_type = resource_info$detail_type,
     is_dataset = resource_info$is_dataset,
-    resource_info = resource_info,  # Include full resource info for display names
+    resource_info = resource_info, # Include full resource info for display names
     identifier = identifier
   )
 }
