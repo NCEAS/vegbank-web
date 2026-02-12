@@ -481,11 +481,14 @@ server <- function(input, output, session) {
       # Apply filter based on which tab/table this entity belongs to
       if (citation$tab == "Plots") {
         state$plot_filter(filter_info)
+        state$highlighted_table("plot_table")
       } else if (citation$tab == "Communities") {
         state$community_filter(filter_info)
+        state$highlighted_table("comm_table")
       }
-      # For other resource types (Plants, Parties, Projects),
-      # we can add similar filter state as needed.
+
+      # Set row highlight to first row (0-indexed) since filter shows only one entity
+      state$highlighted_row(0L)
 
       state$current_tab(citation$tab)
       shiny::updateNavbarPage(session, "page", selected = citation$tab)
