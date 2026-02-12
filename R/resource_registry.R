@@ -200,3 +200,33 @@ get_resource_by_detail_type <- function(detail_type) {
 get_resource_by_api_type <- function(api_type) {
   RESOURCE_REGISTRY[[api_type]]
 }
+
+#' Extract entity type from VegBank code prefix
+#'
+#' VegBank codes follow the pattern: prefix.id (e.g., pj.340, py.123, pc.456)
+#' This function extracts the prefix and looks up the resource info from
+#' RESOURCE_REGISTRY to get the singular entity type name.
+#'
+#' @param vb_code The VegBank code (e.g., "pj.340")
+#' @return Character string of entity type (e.g., "project"), or NULL if unknown
+#' @noRd
+convert_code_to_singular <- function(vb_code) {
+  if (!is_valid_vb_code(vb_code)) {
+    return(NULL)
+  }
+
+  # Extract prefix before the dot
+  parts <- strsplit(as.character(vb_code), "\\.")[[1]]
+  if (length(parts) < 2) {
+    return(NULL)
+  }
+
+  prefix <- tolower(parts[1])
+  resource_info <- get_resource_by_prefix(prefix)
+
+  if (is.null(resource_info)) {
+    return(NULL)
+  }
+
+  resource_info$singular
+}

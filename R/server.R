@@ -19,8 +19,6 @@
 #' @import vegbankr
 #'
 #' @noRd
-
-
 # ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
   vegbankr::vb_debug()
@@ -51,8 +49,8 @@ server <- function(input, output, session) {
     map_zoom = map_state$map_zoom,
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
-    plot_filter = shiny::reactiveVal(NULL), # Cross-resource filter: list(type, code, label) or NULL
-    community_filter = shiny::reactiveVal(NULL), # Citation filter for community concepts
+    plot_filter = shiny::reactiveVal(NULL), # Cross-resource / citation filter: list(type, code, label)
+    community_filter = shiny::reactiveVal(NULL), # Citation filter for cc: list(type, code, label)
     table_states = shiny::reactiveValues(),
     table_sync_pending = shiny::reactiveValues(),
     table_sync_completed_at = shiny::reactiveValues()
@@ -1450,7 +1448,7 @@ server <- function(input, output, session) {
 
     # Extract entity type from vb_code prefix
     # VegBank codes follow pattern: prefix.id (e.g., pj.340, py.123, pc.456)
-    entity_type <- extract_entity_type_from_code(vb_code)
+    entity_type <- convert_code_to_singular(vb_code)
     if (is.null(entity_type)) {
       warning("Could not determine entity type from vb_code: ", vb_code)
       return()
@@ -1584,36 +1582,6 @@ open_code_details <- function(
 is_valid_vb_code <- function(vb_code) {
   !is.null(vb_code) && !is.na(vb_code) &&
     nchar(as.character(vb_code)) > 0 && vb_code != "NA"
-}
-
-#' Extract entity type from VegBank code prefix
-#'
-#' VegBank codes follow the pattern: prefix.id (e.g., pj.340, py.123, pc.456)
-#' This function extracts the prefix and looks up the resource info from
-#' RESOURCE_REGISTRY to get the singular entity type name.
-#'
-#' @param vb_code The VegBank code (e.g., "pj.340")
-#' @return Character string of entity type (e.g., "project"), or NULL if unknown
-#' @noRd
-extract_entity_type_from_code <- function(vb_code) {
-  if (!is_valid_vb_code(vb_code)) {
-    return(NULL)
-  }
-
-  # Extract prefix before the dot
-  parts <- strsplit(as.character(vb_code), "\\.")[[1]]
-  if (length(parts) < 2) {
-    return(NULL)
-  }
-
-  prefix <- tolower(parts[1])
-  resource_info <- get_resource_by_prefix(prefix)
-
-  if (is.null(resource_info)) {
-    return(NULL)
-  }
-
-  resource_info$singular
 }
 
 #' Move the map to the specified latitude and longitude with a popup message
