@@ -116,7 +116,7 @@ build_concept_table_with_filter <- function(concept_type = c("plant", "community
             options = utils::modifyList(
               spec$options %||% list(),
               list(
-                scrollY = "calc(100vh - 315px)",  # Accommodate citation alert notification
+                scrollY = "calc(100vh - 250px)",  # Accommodate citation alert notification
                 serverSide = FALSE,
                 searching = FALSE,
                 paging = FALSE

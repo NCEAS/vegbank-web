@@ -21,20 +21,62 @@
 #' @noRd
 # ================= CITATION RESOLUTION ============================================================
 
-#' Maps vegbankr API resource types (from vb_resolve) to app navigation targets
+#' Resource registry containing all metadata about VegBank resource types
 #'
-#' Used to route legacy citation URLs (e.g., /cite/VB.Ob.22743.INW32086) to the correct
-#' tab and detail view. The vb_resource_type field returned by vb_resolve() uses plural
-#' API resource names; the app's detail views use singular hyphenated forms.
+#' Centralizes information about each resource type including display names,
+#' navigation targets, and API mappings. Used for citation resolution, filter
+#' alerts, and cross-resource navigation.
 #'
 #' @noRd
-CITATION_RESOURCE_MAP <- list(
-  "plot-observations" = list(tab = "Plots", detail_type = "plot-observation"),
-  "community-concepts" = list(tab = "Communities", detail_type = "community-concept"),
-  "plant-concepts" = list(tab = "Plants", detail_type = "plant-concept"),
-  "projects" = list(tab = "Projects", detail_type = "project"),
-  "parties" = list(tab = "Parties", detail_type = "party"),
-  "user-datasets" = list(tab = "Plots", is_dataset = TRUE)
+RESOURCE_REGISTRY <- list(
+  "plot-observations" = list(
+    api_type = "plot-observations",
+    detail_type = "plot-observation",
+    tab = "Plots",
+    singular = "plot observation",
+    plural = "plot observations",
+    is_dataset = FALSE
+  ),
+  "community-concepts" = list(
+    api_type = "community-concepts",
+    detail_type = "community-concept",
+    tab = "Communities",
+    singular = "community concept",
+    plural = "community concepts",
+    is_dataset = FALSE
+  ),
+  "plant-concepts" = list(
+    api_type = "plant-concepts",
+    detail_type = "plant-concept",
+    tab = "Plants",
+    singular = "plant concept",
+    plural = "plant concepts",
+    is_dataset = FALSE
+  ),
+  "projects" = list(
+    api_type = "projects",
+    detail_type = "project",
+    tab = "Projects",
+    singular = "project",
+    plural = "projects",
+    is_dataset = FALSE
+  ),
+  "parties" = list(
+    api_type = "parties",
+    detail_type = "party",
+    tab = "Parties",
+    singular = "party",
+    plural = "parties",
+    is_dataset = FALSE
+  ),
+  "user-datasets" = list(
+    api_type = "user-datasets",
+    detail_type = "dataset",
+    tab = "Plots",
+    singular = "dataset",
+    plural = "datasets",
+    is_dataset = TRUE
+  )
 )
 
 #' Resolve citation accession code to app navigation parameters
@@ -68,7 +110,7 @@ resolve_citation <- function(accession_code) {
     return(NULL)
   }
 
-  resource_info <- CITATION_RESOURCE_MAP[[result$vb_resource_type]]
+  resource_info <- RESOURCE_REGISTRY[[result$vb_resource_type]]
   if (is.null(resource_info)) {
     return(NULL)
   }
@@ -76,8 +118,9 @@ resolve_citation <- function(accession_code) {
   list(
     vb_code = result$vb_code,
     tab = resource_info$tab,
-    detail_type = resource_info$detail_type %||% NULL,
-    is_dataset = isTRUE(resource_info$is_dataset),
+    detail_type = resource_info$detail_type,
+    is_dataset = resource_info$is_dataset,
+    resource_info = resource_info,  # Include full resource info for display names
     accession_code = accession_code
   )
 }
@@ -496,76 +539,80 @@ server <- function(input, output, session) {
   #   Navigates to the Plots tab with a cross-resource filter applied,
   #   and updates the URL to ?tab=Plots&filter_code=Z&filter_type=...
   resolve_and_redirect_citation <- function(accession_code) {
-    shiny::withProgress(
-      message = paste0("Resolving citation: ", accession_code),
-      value = 0.3,
-      expr = {
-        citation <- resolve_citation(accession_code)
+    # Show full-screen loading overlay and lock navigation during resolution
+    session$sendCustomMessage("showLoadingOverlay", list(
+      type = "citation",
+      title = paste0("Resolving citation: ", accession_code)
+    ))
+    session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
 
-        shiny::incProgress(0.4)
+    citation <- resolve_citation(accession_code)
 
-        if (is.null(citation)) {
-          shiny::showNotification(
-            paste0("Could not resolve citation: ", accession_code),
-            type = "error"
-          )
-          # Fall through to Overview
-          state$current_tab("Overview")
-          shiny::updateNavbarPage(session, "page", selected = "Overview")
-          url_manager$update_query_string("?tab=Overview", mode = "replace")
-          return()
-        }
+    if (is.null(citation)) {
+      # Hide loading overlay and unlock navigation
+      session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
+      session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
 
-        if (citation$is_dataset) {
-          # Dataset: navigate to Plots tab with cross-resource filter
-          filter_info <- list(
-            type = "user-dataset",
-            code = citation$vb_code,
-            label = paste("Dataset", accession_code)
-          )
-          state$plot_filter(filter_info)
-          state$current_tab("Plots")
-          shiny::updateNavbarPage(session, "page", selected = "Plots")
-          update_app_query(mode = "replace", tab = "Plots")
-        } else {
-          # Single entity citation: Show only the cited entity in the table
-          # Apply a citation filter that limits table to just this entity
-          filter_info <- list(
-            type = "citation",
-            code = citation$vb_code,
-            label = paste("Citation", accession_code),
-            resource_type = citation$detail_type # Store detail type for filtering
-          )
-          
-          # Apply filter based on which tab/table this entity belongs to
-          if (citation$tab == "Plots") {
-            state$plot_filter(filter_info)
-          } else if (citation$tab == "Communities") {
-            state$community_filter(filter_info)
-          }
-          # For other resource types (Plants, Parties, Projects),
-          # we can add similar filter state as needed.
-          
-          state$current_tab(citation$tab)
-          shiny::updateNavbarPage(session, "page", selected = citation$tab)
-          
-          # Open detail overlay with highlighting
-          open_detail(
-            detail_type = citation$detail_type,
-            vb_code = citation$vb_code,
-            push_history = FALSE,
-            skip_highlight = FALSE
-          )
-          
-          update_app_query(
-            mode = "replace",
-            tab = citation$tab,
-            detail_type = citation$detail_type,
-            detail_code = citation$vb_code
-          )
-        }
-      }
+      shiny::showNotification(
+        paste0("Could not resolve citation: ", accession_code),
+        type = "error"
+      )
+      # Fall through to Overview
+      state$current_tab("Overview")
+      shiny::updateNavbarPage(session, "page", selected = "Overview")
+      url_manager$update_query_string("?tab=Overview", mode = "replace")
+      return()
+    }
+
+    # Apply a citation filter that limits relevant table to just this entity
+    filter_info <- list(
+      type = "citation",
+      code = citation$vb_code,
+      label = paste("Citation", accession_code),
+      resource_type = citation$detail_type,
+      is_dataset = citation$is_dataset,
+      resource_info = citation$resource_info  # Include full resource metadata
     )
+
+    if (citation$is_dataset) {
+      # Dataset: navigate to Plots tab with cross-resource filter
+      state$plot_filter(filter_info)
+      state$current_tab("Plots")
+      shiny::updateNavbarPage(session, "page", selected = "Plots")
+      update_app_query(mode = "replace", tab = "Plots")
+    } else {
+      # Single entity citation: Show only the cited entity in the table
+      # Apply filter based on which tab/table this entity belongs to
+      if (citation$tab == "Plots") {
+        state$plot_filter(filter_info)
+      } else if (citation$tab == "Communities") {
+        state$community_filter(filter_info)
+      }
+      # For other resource types (Plants, Parties, Projects),
+      # we can add similar filter state as needed.
+
+      state$current_tab(citation$tab)
+      shiny::updateNavbarPage(session, "page", selected = citation$tab)
+
+      # Open detail overlay with highlighting
+      open_detail(
+        detail_type = citation$detail_type,
+        vb_code = citation$vb_code,
+        push_history = FALSE,
+        skip_highlight = FALSE
+      )
+
+      update_app_query(
+        mode = "replace",
+        tab = citation$tab,
+        detail_type = citation$detail_type,
+        detail_code = citation$vb_code
+      )
+    }
+
+    # Hide loading overlay and unlock navigation after successful resolution
+    session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
+    session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
   }
 
   # URL/HISTORY SYNCHRONIZATION OBSERVER -----------------------------------------------------------
@@ -962,7 +1009,7 @@ server <- function(input, output, session) {
     message <- if (filter$type == "citation") {
       sprintf("Showing cited %s: %s (%s)", resource_singular, filter$code, filter$label)
     } else {
-      sprintf("Showing %s related to %s: %s (%s)", 
+      sprintf("Showing %s related to %s: %s (%s)",
               resource_plural, filter$type, filter$code, filter$label)
     }
 
@@ -980,19 +1027,33 @@ server <- function(input, output, session) {
   }
 
   output$plot_filter_alert <- shiny::renderUI({
+    filter <- state$plot_filter()
+    if (is.null(filter)) return(NULL)
+    
+    # Get display names from resource_info if available, otherwise use defaults
+    resource_singular <- filter$resource_info$singular %||% "plot observation"
+    resource_plural <- filter$resource_info$plural %||% "plot observations"
+    
     create_filter_alert(
-      state$plot_filter(),
-      resource_singular = "plot observation",
-      resource_plural = "plot observations",
+      filter,
+      resource_singular = resource_singular,
+      resource_plural = resource_plural,
       clear_input_id = "clear_plot_filter"
     )
   })
 
   output$comm_filter_alert <- shiny::renderUI({
+    filter <- state$community_filter()
+    if (is.null(filter)) return(NULL)
+    
+    # Get display names from resource_info if available, otherwise use defaults
+    resource_singular <- filter$resource_info$singular %||% "community concept"
+    resource_plural <- filter$resource_info$plural %||% "community concepts"
+    
     create_filter_alert(
-      state$community_filter(),
-      resource_singular = "community concept",
-      resource_plural = "community concepts",
+      filter,
+      resource_singular = resource_singular,
+      resource_plural = resource_plural,
       clear_input_id = "clear_comm_filter"
     )
   })
