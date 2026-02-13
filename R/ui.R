@@ -22,7 +22,7 @@ ui <- function(req) {
     return(shiny::tags$html(
       shiny::tags$head(
         shiny::tags$script(shiny::HTML(sprintf(
-          'window.location.replace(%s);',
+          "window.location.replace(%s);",
           safe_url
         )))
       )
@@ -40,6 +40,7 @@ ui <- function(req) {
   navbar <- build_navbar()
   overlay <- build_detail_overlay()
   map_loading_overlay <- build_map_loading_overlay()
+  overview_loading_overlay <- build_overview_loading_overlay()
   download_loading_overlay <- build_download_loading_overlay()
   citation_loading_overlay <- build_citation_loading_overlay()
 
@@ -379,12 +380,12 @@ ui <- function(req) {
       // This ensures table re-renders (e.g., after filter changes) use current URL
       var urlState = getUrlTableState(tableId);
       console.log('vegbankLoadTableState: urlState for', tableId, '=', JSON.stringify(urlState));
-      
+
       // Update expected start for highlight tracking
       if (urlState && typeof urlState.start === 'number') {
         expectedStartByTable[tableId] = urlState.start;
       }
-      
+
       if (!urlState) {
         tableStateLoadComplete[tableId] = true;
         console.log('vegbankLoadTableState: no urlState, returning null');
@@ -1099,7 +1100,7 @@ ui <- function(req) {
       // Client-side validation: check filtered count before initiating download
       // This prevents the browser from recording a failed download attempt
       var filteredCount = Shiny.shinyapp.$inputValues['plot_table_filtered_count'];
-      
+
       if (filteredCount === null || filteredCount === undefined) {
         console.error('Cannot determine filtered record count');
         hideLoadingOverlay('download');
@@ -1110,7 +1111,7 @@ ui <- function(req) {
         });
         return;
       }
-      
+
       if (filteredCount === 0) {
         hideLoadingOverlay('download');
         Shiny.notifications.show({
@@ -1120,7 +1121,7 @@ ui <- function(req) {
         });
         return;
       }
-      
+
       if (filteredCount > DOWNLOAD_MAX_RECORDS) {
         var formattedCount = filteredCount.toLocaleString();
         var formattedMax = DOWNLOAD_MAX_RECORDS.toLocaleString();
@@ -1132,12 +1133,12 @@ ui <- function(req) {
         });
         return;
       }
-      
+
       // All validations passed - show loading overlay and proceed with download
       showLoadingOverlay('download', {
         detail: 'Preparing your download...'
       });
-      
+
       var link = document.getElementById('download_plot_table');
       if (link && link.href) {
         // Create a temporary visible link and click it
@@ -1178,6 +1179,7 @@ ui <- function(req) {
     navbar,
     overlay,
     map_loading_overlay,
+    overview_loading_overlay,
     download_loading_overlay,
     citation_loading_overlay,
     script
@@ -1251,6 +1253,9 @@ custom_theme <- bslib::bs_add_rules(
       position: sticky;
       top: 0;
       z-index: 2000; /* Ensure it stays above other content */
+      background-color: #fff !important;
+      border-bottom: 1px solid rgba(40, 70, 94, 0.1) !important;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
   .navbar.nav-disabled {
     pointer-events: none;
@@ -1479,6 +1484,49 @@ build_navbar <- function() {
             bslib::card(
               bslib::card_header("Vegbank Beta 0.2.0"),
               bslib::card_body(shiny::uiOutput("dataSummary"))
+            )
+          )
+        ),
+        bslib::layout_columns(
+          col_widths = bslib::breakpoints(
+            sm = 12,
+            md = 6,
+            lg = 4
+          ),
+          bslib::card(
+            bslib::card_header("Core Counts"),
+            bslib::card_body(
+              shiny::uiOutput("core_counts_list")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Recently Updated Projects"),
+            bslib::card_body(
+              shiny::uiOutput("latest_projects_table")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Top Projects by Observations"),
+            bslib::card_body(
+              shiny::uiOutput("top_projects_plot")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Most Observed Community Concepts"),
+            bslib::card_body(
+              shiny::uiOutput("top_communities_plot")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Most Observed Plant Concepts"),
+            bslib::card_body(
+              shiny::uiOutput("top_plants_plot")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Top Contributors"),
+            bslib::card_body(
+              shiny::uiOutput("top_contributors_plot")
             )
           )
         )
@@ -1749,6 +1797,33 @@ build_map_loading_overlay <- function() {
       "Last bud not leaf..."
     ),
     completion_message = "Go fir launch!"
+  )
+}
+
+#' Build Overview Loading Overlay for Vegbank UI
+#'
+#' Constructs a full-screen loading overlay for overview statistics with animated
+#' spinner and rotating messages.
+#'
+#' @return A Shiny tag representing the overview loading overlay.
+#'
+#' @noRd
+build_overview_loading_overlay <- function() {
+  build_loading_overlay(
+    overlay_type = "overview",
+    default_title = "Loading the app can take a few seconds. Hold tight, we're:",
+    messages = c(
+      "Counting all the plots (there are a lot)...",
+      "Surveying the survey data...",
+      "Aggregating observations...",
+      "Celebrating our top contributors...",
+      "Crunching the numbers...",
+      "Contributing community classifications...",
+      "Sorting through plant species...",
+      "Compiling project data...",
+      "Organizing taxonomic hierarchies..."
+    ),
+    completion_message = "Take a look!"
   )
 }
 

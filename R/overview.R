@@ -1,0 +1,629 @@
+#' Overview Module
+#'
+#' Provides functions for rendering the Overview page statistics and visualizations.
+#'
+#' @name overview
+#' @noRd
+NULL
+
+#' Initialize Overview Data Reactive
+#'
+#' Creates a reactive expression that fetches overview data from the vegbankr API.
+#' Data is cached to avoid repeated API calls.
+#'
+#' @param state Reactive values containing application state
+#' @param session Shiny session object
+#'
+#' @return A reactive expression that returns overview data
+#' @noRd
+init_overview_data <- function(state, session) {
+  # Initialize cache variable in parent environment
+  .overview_data_cache <- NULL
+
+  # Create reactive
+  overview_data <- shiny::reactive({
+    # Only show loading overlay on first load
+    if (identical(state$current_tab(), "Overview") && is.null(.overview_data_cache)) {
+      session$sendCustomMessage("showLoadingOverlay", list(type = "overview"))
+    }
+
+    # Return cached data if available
+    if (!is.null(.overview_data_cache)) {
+      return(.overview_data_cache)
+    }
+
+    tryCatch(
+      {
+        data <- vegbankr::vb_overview()
+        .overview_data_cache <<- data
+        # Hide loading overlay after data loads
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "overview"))
+        data
+      },
+      error = function(e) {
+        warning("Failed to fetch overview data: ", conditionMessage(e))
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "overview"))
+        NULL
+      }
+    )
+  })
+
+  overview_data
+}
+
+#' Render Core Counts Card
+#'
+#' Renders the core counts as a nested hierarchical list.
+#'
+#' @param output Shiny output object
+#' @param overview_data Reactive expression containing overview data
+#' @noRd
+render_core_counts <- function(output, overview_data) {
+  output$core_counts_list <- shiny::renderUI({
+    data <- overview_data()
+    if (is.null(data) || is.null(data$core_counts)) {
+      return(htmltools::tags$p("No data available"))
+    }
+
+    counts <- data$core_counts
+    # Create a lookup for easy access
+    count_map <- setNames(counts$count, counts$name)
+
+    htmltools::tags$div(
+      style = "font-size: 15px; line-height: 2;",
+      htmltools::tags$div(
+        htmltools::tags$strong("Observations"),
+        htmltools::tags$span(
+          class = "float-end text-primary fw-bold",
+          format(count_map["Observations"], big.mark = ",")
+        )
+      ),
+      htmltools::tags$div(
+        style = "padding-left: 20px;",
+        htmltools::tags$span("Classified observations"),
+        htmltools::tags$span(
+          class = "float-end text-muted",
+          format(count_map["Classified observations"], big.mark = ",")
+        )
+      ),
+      htmltools::tags$div(
+        style = "padding-left: 40px;",
+        htmltools::tags$span("NVC classified observations"),
+        htmltools::tags$span(
+          class = "float-end text-muted",
+          format(count_map["NVC classified observations"], big.mark = ",")
+        )
+      ),
+      htmltools::tags$div(
+        htmltools::tags$strong("Plants"),
+        htmltools::tags$span(
+          class = "float-end text-primary fw-bold",
+          format(count_map["Plants"], big.mark = ",")
+        )
+      ),
+      htmltools::tags$div(
+        style = "padding-left: 20px;",
+        htmltools::tags$span("Accepted USDA plants"),
+        htmltools::tags$span(
+          class = "float-end text-muted",
+          format(count_map["Accepted USDA plants"], big.mark = ",")
+        )
+      ),
+      htmltools::tags$div(
+        style = "padding-left: 40px;",
+        htmltools::tags$span("Observed accepted USDA plants"),
+        htmltools::tags$span(
+          class = "float-end text-muted",
+          format(count_map["Observed accepted USDA plants"], big.mark = ",")
+        )
+      ),
+      htmltools::tags$div(
+        htmltools::tags$strong("Communities"),
+        htmltools::tags$span(
+          class = "float-end text-primary fw-bold",
+          format(count_map["Communities"], big.mark = ",")
+        )
+      ),
+      htmltools::tags$div(
+        style = "padding-left: 20px;",
+        htmltools::tags$span("Accepted US NVC communities"),
+        htmltools::tags$span(
+          class = "float-end text-muted",
+          format(count_map["Accepted US NVC communities"], big.mark = ",")
+        )
+      ),
+      htmltools::tags$div(
+        style = "padding-left: 40px;",
+        htmltools::tags$span("Observed accepted US NVC communities"),
+        htmltools::tags$span(
+          class = "float-end text-muted",
+          format(count_map["Observed accepted US NVC communities"], big.mark = ",")
+        )
+      )
+    )
+  })
+}
+
+#' Render Top Projects Card
+#'
+#' Renders a horizontal bar chart showing top projects by observation count.
+#'
+#' @param output Shiny output object
+#' @param overview_data Reactive expression containing overview data
+#' @noRd
+render_top_projects <- function(output, overview_data) {
+  output$top_projects_plot <- shiny::renderUI({
+    data <- overview_data()
+    if (is.null(data) || is.null(data$top_n_projects)) {
+      return(NULL)
+    }
+
+    projects <- data$top_n_projects[order(-data$top_n_projects$count), ]
+    max_count <- max(projects$count)
+
+    rows <- lapply(seq_len(nrow(projects)), function(i) {
+      width_pct <- (projects$count[i] / max_count) * 100
+      htmltools::tags$div(
+        class = "mb-3",
+        htmltools::tags$div(
+          class = "d-flex justify-content-between align-items-center mb-1",
+          htmltools::tags$a(
+            href = "#",
+            style = "font-size: 0.9rem; word-break: break-word;",
+            onclick = sprintf(
+              "Shiny.setInputValue('proj_link_click', '%s', {priority: 'event'}); return false;",
+              projects$pj_code[i]
+            ),
+            projects$name[i]
+          ),
+          htmltools::tags$a(
+            href = "#",
+            class = "ms-2",
+            style = "font-size: 0.85rem; white-space: nowrap;",
+            onclick = sprintf(
+              "Shiny.setInputValue('obs_count_click', {code: '%s', label: '%s'}, {priority: 'event'}); return false;",
+              projects$pj_code[i],
+              gsub("'", "\\'", projects$name[i])
+            ),
+            format(projects$count[i], big.mark = ",")
+          )
+        ),
+        htmltools::tags$div(
+          class = "progress",
+          style = "height: 20px;",
+          htmltools::tags$div(
+            class = "progress-bar",
+            role = "progressbar",
+            style = sprintf("width: %s%%; background-color: #2e5938;", width_pct),
+            `aria-valuenow` = projects$count[i],
+            `aria-valuemin` = "0",
+            `aria-valuemax` = max_count
+          )
+        )
+      )
+    })
+
+    htmltools::tags$div(rows)
+  })
+}
+
+#' Render Top Communities Card
+#'
+#' Renders a horizontal bar chart showing top community concepts by observation count.
+#'
+#' @param output Shiny output object
+#' @param overview_data Reactive expression containing overview data
+#' @noRd
+render_top_communities <- function(output, overview_data) {
+  output$top_communities_plot <- shiny::renderUI({
+    data <- overview_data()
+    if (is.null(data) || is.null(data$top_n_community_concepts)) {
+      return(NULL)
+    }
+
+    communities <- data$top_n_community_concepts[order(-data$top_n_community_concepts$count), ]
+    max_count <- max(communities$count)
+
+    rows <- lapply(seq_len(nrow(communities)), function(i) {
+      width_pct <- (communities$count[i] / max_count) * 100
+      htmltools::tags$div(
+        class = "mb-3",
+        htmltools::tags$div(
+          class = "d-flex justify-content-between align-items-center mb-1",
+          htmltools::tags$a(
+            href = "#",
+            style = "font-size: 0.9rem; word-break: break-word;",
+            onclick = sprintf(
+              "Shiny.setInputValue('comm_link_click', '%s', {priority: 'event'}); return false;",
+              communities$cc_code[i]
+            ),
+            communities$name[i]
+          ),
+          htmltools::tags$a(
+            href = "#",
+            class = "ms-2",
+            style = "font-size: 0.85rem; white-space: nowrap;",
+            onclick = sprintf(
+              "Shiny.setInputValue('obs_count_click', {code: '%s', label: '%s'}, {priority: 'event'}); return false;",
+              communities$cc_code[i],
+              gsub("'", "\\'", communities$name[i])
+            ),
+            format(communities$count[i], big.mark = ",")
+          )
+        ),
+        htmltools::tags$div(
+          class = "progress",
+          style = "height: 20px;",
+          htmltools::tags$div(
+            class = "progress-bar",
+            role = "progressbar",
+            style = sprintf("width: %s%%; background-color: #3d7349;", width_pct),
+            `aria-valuenow` = communities$count[i],
+            `aria-valuemin` = "0",
+            `aria-valuemax` = max_count
+          )
+        )
+      )
+    })
+
+    htmltools::tags$div(rows)
+  })
+}
+
+#' Render Top Contributors Card
+#'
+#' Renders a horizontal bar chart showing top contributors by observation count.
+#'
+#' @param output Shiny output object
+#' @param overview_data Reactive expression containing overview data
+#' @noRd
+render_top_contributors <- function(output, overview_data) {
+  output$top_contributors_plot <- shiny::renderUI({
+    data <- overview_data()
+    if (is.null(data) || is.null(data$top_n_contributors)) {
+      return(NULL)
+    }
+
+    contributors <- data$top_n_contributors[order(-data$top_n_contributors$count), ]
+    max_count <- max(contributors$count)
+
+    rows <- lapply(seq_len(nrow(contributors)), function(i) {
+      width_pct <- (contributors$count[i] / max_count) * 100
+      htmltools::tags$div(
+        class = "mb-3",
+        htmltools::tags$div(
+          class = "d-flex justify-content-between align-items-center mb-1",
+          htmltools::tags$a(
+            href = "#",
+            style = "font-size: 0.9rem;",
+            onclick = sprintf(
+              "Shiny.setInputValue('party_link_click', '%s', {priority: 'event'}); return false;",
+              contributors$py_code[i]
+            ),
+            contributors$name[i]
+          ),
+          htmltools::tags$a(
+            href = "#",
+            class = "ms-2",
+            style = "font-size: 0.85rem; white-space: nowrap;",
+            onclick = sprintf(
+              "Shiny.setInputValue('obs_count_click', {code: '%s', label: '%s'}, {priority: 'event'}); return false;",
+              contributors$py_code[i],
+              contributors$name[i]
+            ),
+            format(contributors$count[i], big.mark = ",")
+          )
+        ),
+        htmltools::tags$div(
+          class = "progress",
+          style = "height: 20px;",
+          htmltools::tags$div(
+            class = "progress-bar",
+            role = "progressbar",
+            style = sprintf("width: %s%%; background-color: #4d8d5a;", width_pct),
+            `aria-valuenow` = contributors$count[i],
+            `aria-valuemin` = "0",
+            `aria-valuemax` = max_count
+          )
+        )
+      )
+    })
+
+    htmltools::tags$div(rows)
+  })
+}
+
+#' Render Top Plants Card
+#'
+#' Renders a horizontal bar chart showing top 5 plant concepts by observation count.
+#'
+#' @param output Shiny output object
+#' @param overview_data Reactive expression containing overview data
+#' @noRd
+render_top_plants <- function(output, overview_data) {
+  output$top_plants_plot <- shiny::renderUI({
+    data <- overview_data()
+    if (is.null(data) || is.null(data$top_n_plant_concepts)) {
+      return(NULL)
+    }
+
+    plants <- data$top_n_plant_concepts[order(-data$top_n_plant_concepts$count), ]
+    # Ensure exactly 5 entries
+    plants <- head(plants, 5)
+    max_count <- max(plants$count)
+
+    rows <- lapply(seq_len(nrow(plants)), function(i) {
+      width_pct <- (plants$count[i] / max_count) * 100
+      htmltools::tags$div(
+        class = "mb-3",
+        htmltools::tags$div(
+          class = "d-flex justify-content-between align-items-center mb-1",
+          htmltools::tags$a(
+            href = "#",
+            style = "font-size: 0.9rem; word-break: break-word;",
+            onclick = sprintf(
+              "Shiny.setInputValue('plant_link_click', '%s', {priority: 'event'}); return false;",
+              plants$pc_code[i]
+            ),
+            plants$name[i]
+          ),
+          htmltools::tags$a(
+            href = "#",
+            class = "ms-2",
+            style = "font-size: 0.85rem; white-space: nowrap;",
+            onclick = sprintf(
+              "Shiny.setInputValue('obs_count_click', {code: '%s', label: '%s'}, {priority: 'event'}); return false;",
+              plants$pc_code[i],
+              gsub("'", "\\'", plants$name[i])
+            ),
+            format(plants$count[i], big.mark = ",")
+          )
+        ),
+        htmltools::tags$div(
+          class = "progress",
+          style = "height: 20px;",
+          htmltools::tags$div(
+            class = "progress-bar",
+            role = "progressbar",
+            style = sprintf("width: %s%%; background-color: #5da76b;", width_pct),
+            `aria-valuenow` = plants$count[i],
+            `aria-valuemin` = "0",
+            `aria-valuemax` = max_count
+          )
+        )
+      )
+    })
+
+    htmltools::tags$div(rows)
+  })
+}
+
+#' Render Latest Projects Card
+#'
+#' Renders a table showing recently updated projects.
+#'
+#' @param output Shiny output object
+#' @param overview_data Reactive expression containing overview data
+#' @noRd
+render_latest_projects <- function(output, overview_data) {
+  output$latest_projects_table <- shiny::renderUI({
+    data <- overview_data()
+    if (is.null(data) || is.null(data$latest_n_projects)) {
+      return(htmltools::tags$p("No data available"))
+    }
+
+    projects <- data$latest_n_projects
+    rows <- lapply(seq_len(nrow(projects)), function(i) {
+      htmltools::tags$tr(
+        htmltools::tags$td(
+          htmltools::tags$a(
+            href = "#",
+            onclick = sprintf(
+              "Shiny.setInputValue('proj_link_click', '%s', {priority: 'event'}); return false;",
+              projects$pj_code[i]
+            ),
+            projects$name[i]
+          )
+        ),
+        htmltools::tags$td(
+          class = "small",
+          style = "color: #333;",
+          as.Date(projects$last_date_added[i], format = "%a, %d %b %Y")
+        ),
+        htmltools::tags$td(
+          class = "text-end",
+          htmltools::tags$a(
+            href = "#",
+            onclick = sprintf(
+              "Shiny.setInputValue('obs_count_click', {code: '%s', label: '%s'}, {priority: 'event'}); return false;",
+              projects$pj_code[i],
+              gsub("'", "\\'", projects$name[i])
+            ),
+            format(projects$count[i], big.mark = ",")
+          )
+        )
+      )
+    })
+
+    htmltools::tags$table(
+      class = "table table-sm table-hover",
+      htmltools::tags$thead(
+        htmltools::tags$tr(
+          htmltools::tags$th("Project"),
+          htmltools::tags$th("Last Added", style = "width: 120px;"),
+          htmltools::tags$th("Obs", class = "text-end", style = "width: 80px;")
+        )
+      ),
+      htmltools::tags$tbody(rows)
+    )
+  })
+}
+
+#' Render Data Summary
+#'
+#' Renders the introductory text and instructions for the Overview page.
+#'
+#' @param output Shiny output object
+#' @noRd
+render_data_summary <- function(output) {
+  output$dataSummary <- shiny::renderUI({
+    htmltools::tagList(
+      htmltools::tags$div(
+        htmltools::strong(
+          "Now with some filtering, some sorting, additional plot details, and a more manageable map!"
+        ),
+        htmltools::tags$p(
+          " More features are coming soon and this page will change. This is still a beta release; please ",
+          htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here.")
+        )
+      ),
+      htmltools::tags$br(),
+      htmltools::tags$h5("Getting Started"),
+      htmltools::tags$ul(
+        htmltools::tags$li(
+          htmltools::tags$strong("Map:"),
+          " View plot locations on an interactive map. Click markers to zoom to plot clusters and ",
+          "the links on location labels to see plot observation details. Some location labels have ",
+          "many plot observations because of repeated sampling or location fuzzing for privacy."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Plots:"),
+          " Browse vegetation plot observations. Each row represents a single plot observation ",
+          "with location, date, and ecological data. Use the search box to find plots with a specific ",
+          " plant species, community type, author code, or location (eg: ",
+          htmltools::tags$code("Sibbaldiopsis tridentata"), ", ",
+          htmltools::tags$code("CEGL001833"), ", ",
+          htmltools::tags$code("Eleocharis palustris Marsh"), ", ",
+          htmltools::tags$code("BADL.126"), ", or ",
+          htmltools::tags$code("California"), ")."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Plants:"),
+          " Explore the plant taxonomy database. Search for plant concepts by plant name or browse ",
+          "the full list of plant concepts."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Communities:"),
+          " View community classification types. Communities represent recurring patterns of ",
+          "co-occurring plant species. You can also search them by name or browse the full list."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Parties:"),
+          " Find contributors, authors, and parties associated with plot data."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Projects:"),
+          " Explore research projects that have contributed data to VegBank."
+        )
+      ),
+      htmltools::tags$h5("Using the App"),
+      htmltools::tags$ul(
+        htmltools::tags$li(
+          "Click ", htmltools::tags$strong("'Details'"),
+          " buttons or links in tables to view detailed information about any entity."
+        ),
+        htmltools::tags$li(
+          "Browse the ", htmltools::tags$strong("'Map'"),
+          " to see plots grouped by location. Clicking the links on the pin labels will show details",
+          " for a plot, and clicking the ", htmltools::tags$strong("'Map'"),
+          " button in a row of the plot table will center the map on that plot."
+        ),
+        htmltools::tags$li(
+          "Use the ", htmltools::tags$strong("search box"),
+          " in the top-right of each table to find matching results.",
+          htmltools::tags$ul(
+            htmltools::tags$li(
+              htmltools::tags$i("Quotes:"),
+              " Use double quotes to search for exact phrases (e.g., ",
+              htmltools::tags$code('"Quercus alba"'), ")."
+            ),
+            htmltools::tags$li(
+              htmltools::tags$i("Multiple terms:"),
+              " Separate words with spaces to match rows containing multiple terms (e.g., ",
+              htmltools::tags$code("oak prairie"), ")."
+            ),
+            htmltools::tags$li(
+              htmltools::tags$i("Exclude terms:"),
+              " Prefix a word with a minus sign to exclude it (e.g., ",
+              htmltools::tags$code("-alliance"), ")."
+            )
+          )
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Filter"), " the plot table by plant, community, party or project ",
+          "by clicking the numerical observation, contribution, or plot count links for that entity. That ",
+          "will bring you to the plots table and show only plots associated with that entity. Use the ",
+          "'Clear filter' button above the plot table to remove the filter."
+        ),
+        htmltools::tags$li(
+          htmltools::tags$strong("Sorting"), " is now supported for any table column that has ",
+          "arrows in its header. You can click that header to sort by that column in ascending or ",
+          "descending order, and you can hold shift and click multiple column headers to sort by ",
+          "multiple columns."
+        ),
+        htmltools::tags$li(
+          "Your ", htmltools::tags$strong("URL updates"),
+          " as you navigate, so you can bookmark or share specific views."
+        ),
+        htmltools::tags$li(
+          "Use your browser's ", htmltools::tags$strong("back/forward buttons"),
+          " to navigate through your browsing history."
+        ),
+        htmltools::tags$li(
+          "For common questions, check the ",
+          htmltools::tags$a(
+            href = "?tab=FAQ",
+            htmltools::tags$strong("FAQ")
+          ),
+          " tab."
+        )
+      ),
+      htmltools::tags$h5("Beta Notice"),
+      htmltools::tags$p(
+        htmltools::tags$em(
+          "This is a beta release. Things may be slow and buggy. Most features are still in development. ",
+          "When you encounter issues, please report them to help@vegbank.org with details ",
+          "about what you were doing when the problem occurred."
+        )
+      ),
+      htmltools::tags$br(),
+      htmltools::tags$p(
+        "For more information, see the previous ",
+        htmltools::tags$a(href = "http://vegbank.org", target = "_blank", " VegBank site"),
+        " or the ",
+        htmltools::tags$a(
+          href = "https://github.com/NCEAS/vegbankr",
+          target = "_blank",
+          "vegbankr R package"
+        ),
+        " for programmatic data access."
+      )
+    )
+  })
+}
+
+#' Initialize Overview Module
+#'
+#' Main function to set up all overview page outputs.
+#'
+#' @param output Shiny output object
+#' @param state Reactive values containing application state
+#' @param session Shiny session object
+#'
+#' @return A reactive expression containing overview data
+#' @noRd
+init_overview <- function(output, state, session) {
+  # Initialize data reactive
+  overview_data <- init_overview_data(state, session)
+
+  # Render all cards
+  render_core_counts(output, overview_data)
+  render_top_projects(output, overview_data)
+  render_top_communities(output, overview_data)
+  render_top_contributors(output, overview_data)
+  render_top_plants(output, overview_data)
+  render_latest_projects(output, overview_data)
+  render_data_summary(output)
+
+  overview_data
+}
