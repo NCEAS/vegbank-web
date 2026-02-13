@@ -473,7 +473,7 @@ server <- function(input, output, session) {
     # navbar tab or table filter, so we reject them early.
     supported_citation_tabs <- c("Plots", "Communities")
     is_dataset <- citation$resource_info$api_type == "user-datasets"
-    
+
     if (!is_dataset && !isTRUE(citation$tab %in% supported_citation_tabs)) {
       session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
       session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))

@@ -76,7 +76,7 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
 #'
 #' @param concept_type Either "plant" or "community"
 #' @param vb_code Optional VegBank code for citation filtering (e.g., "cc.1234")
-#' @param filter_type Optional filter type ("citation")
+#' @param filter_type Optional filter type ("single-entity-citation")
 #' @return A DT::datatable object
 #' @noRd
 build_concept_table_with_filter <- function(concept_type = c("plant", "community"), 
@@ -91,7 +91,7 @@ build_concept_table_with_filter <- function(concept_type = c("plant", "community
   has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
 
   # For citation filters, fetch the specific concept directly
-  if (has_filter && !is.null(filter_type) && filter_type == "citation") {
+  if (has_filter && !is.null(filter_type) && filter_type == "single-entity-citation") {
     tryCatch(
       {
         # Fetch the single concept using the appropriate API function
