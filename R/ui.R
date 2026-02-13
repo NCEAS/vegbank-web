@@ -1328,7 +1328,7 @@ custom_theme <- bslib::bs_add_rules(
 
   /* Target the nested divs that create the loading animation */
   .dataTables_processing > div > div {
-      background-color: #72B9A2; !important;
+      background-color: #72B9A2 !important;
   }
 
   /* Generic loading ellipses animation for all overlays */
