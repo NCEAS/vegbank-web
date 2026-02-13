@@ -20,16 +20,16 @@ test_that("RESOURCE_REGISTRY entries have correct structure for single entities"
     expect_true(!is.null(info$detail_type), info = paste("Missing detail_type for", type))
     expect_true(nzchar(info$tab), info = paste("Empty tab for", type))
     expect_true(nzchar(info$detail_type), info = paste("Empty detail_type for", type))
-    # Single entities should have is_dataset = FALSE
-    expect_false(info$is_dataset, info = paste("Expected is_dataset=FALSE for", type))
+    # Single entities should not be user-datasets
+    expect_false(info$api_type == "user-datasets", info = paste("Expected non-dataset for", type))
   }
 })
 
 test_that("RESOURCE_REGISTRY dataset entry has correct structure", {
   info <- RESOURCE_REGISTRY[["user-datasets"]]
   expect_equal(info$tab, "Plots")
-  expect_true(isTRUE(info$is_dataset))
-  expect_equal(info$detail_type, NULL)  # Datasets use a filter-based view, not a detail overlay"
+  expect_equal(info$api_type, "user-datasets")
+  expect_equal(info$detail_type, NULL)  # Datasets use a filter-based view, not a detail overlay
 })
 
 test_that("RESOURCE_REGISTRY maps to valid app tabs", {
@@ -88,7 +88,7 @@ test_that("resolve_citation returns correct structure for plot observation", {
       expect_equal(result$vb_code, "ob.2948")
       expect_equal(result$tab, "Plots")
       expect_equal(result$detail_type, "plot-observation")
-      expect_false(result$is_dataset)
+      expect_equal(result$resource_info$api_type, "plot-observations")
       expect_equal(result$identifier, "VB.Ob.2948.ACAD143")
     }
   )
@@ -105,7 +105,7 @@ test_that("resolve_citation returns correct structure for community concept", {
       expect_equal(result$vb_code, "cc.1234")
       expect_equal(result$tab, "Communities")
       expect_equal(result$detail_type, "community-concept")
-      expect_false(result$is_dataset)
+      expect_equal(result$resource_info$api_type, "community-concepts")
     }
   )
 })
@@ -121,7 +121,7 @@ test_that("resolve_citation returns correct structure for plant concept", {
       expect_equal(result$vb_code, "pc.5678")
       expect_equal(result$tab, "Plants")
       expect_equal(result$detail_type, "plant-concept")
-      expect_false(result$is_dataset)
+      expect_equal(result$resource_info$api_type, "plant-concepts")
     }
   )
 })
@@ -137,7 +137,7 @@ test_that("resolve_citation returns correct structure for project", {
       expect_equal(result$vb_code, "pj.100")
       expect_equal(result$tab, "Projects")
       expect_equal(result$detail_type, "project")
-      expect_false(result$is_dataset)
+      expect_equal(result$resource_info$api_type, "projects")
     }
   )
 })
@@ -153,7 +153,7 @@ test_that("resolve_citation returns correct structure for party", {
       expect_equal(result$vb_code, "py.200")
       expect_equal(result$tab, "Parties")
       expect_equal(result$detail_type, "party")
-      expect_false(result$is_dataset)
+      expect_equal(result$resource_info$api_type, "parties")
     }
   )
 })
@@ -169,7 +169,7 @@ test_that("resolve_citation returns correct structure for user dataset", {
       expect_equal(result$vb_code, "ds.50")
       expect_equal(result$tab, "Plots")
       expect_equal(result$detail_type, NULL)
-      expect_true(result$is_dataset)
+      expect_equal(result$resource_info$api_type, "user-datasets")
       expect_equal(result$identifier, "VB.DS.50.TEST")
     }
   )

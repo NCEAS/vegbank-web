@@ -69,14 +69,14 @@ build_plot_table <- function() {
 #' Configures the plot table with an optional vb_code parameter for
 #' cross-resource queries (e.g., showing plots for a specific project).
 #' For citation filters of single entities, directly fetches and displays the single cited entity.
-#' For dataset citations, uses AJAX table with vb_code query parameter.
+#' For collection citations (datasets), uses AJAX table with vb_code query parameter.
 #'
 #' @param vb_code Optional VegBank code for cross-resource filtering (e.g., "pj.340", "ob.2948")
-#' @param filter_type Optional filter type ("user-dataset", "project", "party", "citation")
-#' @param is_dataset Logical indicating if this is a dataset (affects citation filter handling)
+#' @param filter_type Optional filter type ("plant concept", "community concept", "project", 
+#'                    "party", "single-entity-citation", "collection-citation")
 #' @return A DT::datatable object
 #' @noRd
-build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL, is_dataset = FALSE) {
+build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL) {
   # Deep copy to avoid mutating the shared PLOT_TABLE_SPEC
   spec <- PLOT_TABLE_SPEC
   spec$data_source <- utils::modifyList(spec$data_source, list())
@@ -85,9 +85,9 @@ build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL, is_
   # Determine if filter is active
   has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
 
-  # For citation filters of single entities (not datasets), fetch the specific plot observation directly
-  # Datasets should use AJAX table with vb_code query parameter for proper pagination
-  if (has_filter && !is.null(filter_type) && filter_type == "citation" && !isTRUE(is_dataset)) {
+  # For single-entity-citation filters, fetch the specific plot observation directly
+  # Collection citations (datasets) use AJAX table with vb_code for proper pagination
+  if (has_filter && !is.null(filter_type) && filter_type == "single-entity-citation") {
     tryCatch(
       {
         # Fetch the single plot observation using the same parameters as the AJAX table
@@ -145,8 +145,8 @@ build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL, is_
   }
 
   # Add vb_code to query if filtering is active
-  # This includes: cross-resource filters, dataset citations, and fallback from failed single-entity citation fetch
-  if (has_filter && (is.null(filter_type) || filter_type != "citation" || isTRUE(is_dataset))) {
+  # This includes: cross-resource filters, collection citations, and fallback from failed single-entity citation fetch
+  if (has_filter && (is.null(filter_type) || filter_type != "single-entity-citation")) {
     spec$data_source$query$vb_code <- vb_code
   }
 

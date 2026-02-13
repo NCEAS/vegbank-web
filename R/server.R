@@ -472,7 +472,9 @@ server <- function(input, output, session) {
     # (references, cover-methods, stratum-methods, etc.) have no dedicated
     # navbar tab or table filter, so we reject them early.
     supported_citation_tabs <- c("Plots", "Communities")
-    if (!citation$is_dataset && !isTRUE(citation$tab %in% supported_citation_tabs)) {
+    is_dataset <- citation$resource_info$api_type == "user-datasets"
+    
+    if (!is_dataset && !isTRUE(citation$tab %in% supported_citation_tabs)) {
       session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
       session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
 
@@ -489,16 +491,19 @@ server <- function(input, output, session) {
     }
 
     # Apply a citation filter that limits relevant table to just this entity
+    # Use distinct filter types: "collection-citation" for datasets, "single-entity-citation" otherwise
+    # This distinction persists in the URL via *_filter_type parameter
+    filter_type <- if (is_dataset) "collection-citation" else "single-entity-citation"
+
     filter_info <- list(
-      type = "citation",
+      type = filter_type,
       code = citation$vb_code,
       label = paste("Citation identifier:", identifier),
       resource_type = citation$detail_type,
-      is_dataset = citation$is_dataset,
       resource_info = citation$resource_info # Include full resource metadata
     )
 
-    if (citation$is_dataset) {
+    if (is_dataset) {
       # Dataset: navigate to Plots tab with cross-resource filter
       state$plot_filter(filter_info)
       state$current_tab("Plots")
@@ -1029,8 +1034,7 @@ server <- function(input, output, session) {
     filter <- state$plot_filter()
     vb_code <- if (!is.null(filter)) filter$code else NULL
     filter_type <- if (!is.null(filter)) filter$type else NULL
-    is_dataset <- if (!is.null(filter)) filter$is_dataset else FALSE
-    build_plot_table_with_filter(vb_code, filter_type, is_dataset)
+    build_plot_table_with_filter(vb_code, filter_type)
   })
 
   # Enable/disable DT download button based on filtered record count
@@ -1505,7 +1509,7 @@ server <- function(input, output, session) {
 #'     \item{vb_code}{The resolved VegBank code (e.g., "ob.2948")}
 #'     \item{tab}{The app tab to navigate to (e.g., "Plots")}
 #'     \item{detail_type}{The detail view type (e.g., "plot-observation")}
-#'     \item{is_dataset}{TRUE if the resolved resource is a dataset}
+#'     \item{resource_info}{Full resource metadata from RESOURCE_REGISTRY}
 #'     \item{identifier}{The original identifier (for labeling)}
 #'   }
 #'   Returns NULL if resolution fails or the resource type is unsupported.
@@ -1532,7 +1536,6 @@ resolve_citation <- function(identifier) {
     vb_code = result$vb_code,
     tab = resource_info$tab,
     detail_type = resource_info$detail_type,
-    is_dataset = resource_info$is_dataset,
     resource_info = resource_info, # Include full resource info for display names
     identifier = identifier
   )

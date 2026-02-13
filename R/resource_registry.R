@@ -11,7 +11,6 @@
 #' - VegBank code prefixes (for cross-resource navigation)
 #' - Tab navigation targets
 #' - Display names (singular/plural for UI text)
-#' - Resource flags (e.g., is_dataset for special handling)
 #'
 #' @format A named list where each entry contains:
 #' \describe{
@@ -21,7 +20,6 @@
 #'   \item{tab}{Navbar tab name to navigate to (e.g., "Plots")}
 #'   \item{singular}{Singular display name (e.g., "plot observation")}
 #'   \item{plural}{Plural display name (e.g., "plot observations")}
-#'   \item{is_dataset}{Logical flag indicating if this is a dataset resource}
 #' }
 #'
 #' @examples
@@ -44,8 +42,7 @@ RESOURCE_REGISTRY <- list(
     vb_prefix = "ob",
     tab = "Plots",
     singular = "plot observation",
-    plural = "plot observations",
-    is_dataset = FALSE
+    plural = "plot observations"
   ),
   "community-classifications" = list(
     api_type = "community-classifications",
@@ -62,8 +59,7 @@ RESOURCE_REGISTRY <- list(
     vb_prefix = "cc",
     tab = "Communities",
     singular = "community concept",
-    plural = "community concepts",
-    is_dataset = FALSE
+    plural = "community concepts"
   ),
   "plant-concepts" = list(
     api_type = "plant-concepts",
@@ -71,8 +67,7 @@ RESOURCE_REGISTRY <- list(
     vb_prefix = "pc",
     tab = "Plants",
     singular = "plant concept",
-    plural = "plant concepts",
-    is_dataset = FALSE
+    plural = "plant concepts"
   ),
   "projects" = list(
     api_type = "projects",
@@ -80,8 +75,7 @@ RESOURCE_REGISTRY <- list(
     vb_prefix = "pj",
     tab = "Projects",
     singular = "project",
-    plural = "projects",
-    is_dataset = FALSE
+    plural = "projects"
   ),
   "parties" = list(
     api_type = "parties",
@@ -89,8 +83,7 @@ RESOURCE_REGISTRY <- list(
     vb_prefix = "py",
     tab = "Parties",
     singular = "party",
-    plural = "parties",
-    is_dataset = FALSE
+    plural = "parties"
   ),
   "references" = list(
     api_type = "references",
@@ -98,8 +91,7 @@ RESOURCE_REGISTRY <- list(
     vb_prefix = "rf",
     tab = NULL,  # No dedicated tab, accessed via detail views
     singular = "reference",
-    plural = "references",
-    is_dataset = FALSE
+    plural = "references"
   ),
   "cover-methods" = list(
     api_type = "cover-methods",
@@ -107,8 +99,7 @@ RESOURCE_REGISTRY <- list(
     vb_prefix = "cm",
     tab = NULL,  # No dedicated tab, accessed via detail views
     singular = "cover method",
-    plural = "cover methods",
-    is_dataset = FALSE
+    plural = "cover methods"
   ),
   "stratum-methods" = list(
     api_type = "stratum-methods",
@@ -116,8 +107,7 @@ RESOURCE_REGISTRY <- list(
     vb_prefix = "sm",
     tab = NULL,  # No dedicated tab, accessed via detail views
     singular = "stratum method",
-    plural = "stratum methods",
-    is_dataset = FALSE
+    plural = "stratum methods"
   ),
   "user-datasets" = list(
     api_type = "user-datasets",
@@ -125,8 +115,7 @@ RESOURCE_REGISTRY <- list(
     detail_type = NULL,  # Datasets use a filter-based view, not a detail overlay
     tab = "Plots",
     singular = "dataset",
-    plural = "datasets",
-    is_dataset = TRUE
+    plural = "datasets"
   )
 )
 
