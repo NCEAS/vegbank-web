@@ -49,7 +49,8 @@ server <- function(input, output, session) {
     map_zoom = map_state$map_zoom,
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
-    plot_filter = shiny::reactiveVal(NULL), # Cross-resource filter: list(type, code, label) or NULL
+    plot_filter = shiny::reactiveVal(NULL), # Cross-resource / citation filter: list(type, code, label)
+    community_filter = shiny::reactiveVal(NULL), # Citation filter for cc: list(type, code, label)
     table_states = shiny::reactiveValues(),
     table_sync_pending = shiny::reactiveValues(),
     table_sync_completed_at = shiny::reactiveValues()
@@ -327,7 +328,8 @@ server <- function(input, output, session) {
       table_states = table_states_list,
       highlight_table = state$highlighted_table(),
       highlight_row = state$highlighted_row(),
-      plot_filter = state$plot_filter()
+      plot_filter = state$plot_filter(),
+      community_filter = state$community_filter()
     )
 
     url_manager$update_query_string(target_query, mode = mode)
@@ -414,6 +416,137 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  # --- Citation Resolution -----
+  # Legacy citation URL handling is done in UI.R with a client-side redirect
+  # from /cite/IDENTIFIER to /?cite=IDENTIFIER. This server-side function
+  # resolves a ?cite=IDENTIFIER URL and navigates to the appropriate view.
+  #
+  # Called from the URL observer when a ?cite= query parameter is detected.
+  # Delegates to resolve_citation() for API lookup, then directly applies
+  # the navigation using existing server-side functions (open_detail, state
+  # mutations, tab switching) rather than relying on a URL round-trip, since
+  # shiny::updateQueryString("replace") does not trigger a reactive re-fire
+  # of session$clientData$url_search.
+  #
+  # This function handles both single-entity citations and dataset citations.
+  #
+  # For single entities (only plot observations & concepts right now):
+  #   Shows only the cited entity in its table (filtered view), highlights it,
+  #   opens the detail overlay, and updates the URL persist that state.
+  #
+  # For datasets:
+  #   Navigates to the Plots tab with a cross-resource dataset filter applied,
+  #   and updates the URL to persist that state.
+  #
+  # Parameters:
+  #   identifier - The citation identifier (accession code, doi, vb code) to resolve.
+  resolve_and_redirect_citation <- function(identifier) {
+    # Show full-screen loading overlay and lock navigation during resolution
+    session$sendCustomMessage("showLoadingOverlay", list(
+      type = "citation",
+      title = paste0("Resolving citation: ", identifier)
+    ))
+    session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
+
+    citation <- resolve_citation(identifier)
+
+    if (is.null(citation)) {
+      # Hide loading overlay and unlock navigation
+      session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
+      session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+
+      shiny::showNotification(
+        paste0("Could not resolve citation: ", identifier),
+        type = "error",
+        duration = NULL
+      )
+      # Fall through to Overview
+      state$current_tab("Overview")
+      shiny::updateNavbarPage(session, "page", selected = "Overview")
+      url_manager$update_query_string("?tab=Overview", mode = "replace")
+      return()
+    }
+
+    # Only datasets, plot observations (Plots tab), and community concepts
+    # (Communities tab) support citation filtering. Other resource types
+    # (references, cover-methods, stratum-methods, etc.) have no dedicated
+    # navbar tab or table filter, so we reject them early.
+    supported_citation_tabs <- c("Plots", "Communities")
+    is_dataset <- citation$resource_info$api_type == "user-datasets"
+
+    if (!is_dataset && !isTRUE(citation$tab %in% supported_citation_tabs)) {
+      session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
+      session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+
+      shiny::showNotification(
+        paste0("Citations are not supported for ",
+               citation$resource_info$plural %||% citation$detail_type, "."),
+        type = "warning",
+        duration = NULL
+      )
+      state$current_tab("Overview")
+      shiny::updateNavbarPage(session, "page", selected = "Overview")
+      url_manager$update_query_string("?tab=Overview", mode = "replace")
+      return()
+    }
+
+    # Apply a citation filter that limits relevant table to just this entity
+    # Use distinct filter types: "collection-citation" for datasets, "single-entity-citation" otherwise
+    # This distinction persists in the URL via *_filter_type parameter
+    filter_type <- if (is_dataset) "collection-citation" else "single-entity-citation"
+
+    filter_info <- list(
+      type = filter_type,
+      code = citation$vb_code,
+      label = paste("Citation identifier:", identifier),
+      resource_type = citation$detail_type,
+      resource_info = citation$resource_info # Include full resource metadata
+    )
+
+    if (is_dataset) {
+      # Dataset: navigate to Plots tab with cross-resource filter
+      state$plot_filter(filter_info)
+      state$current_tab("Plots")
+      shiny::updateNavbarPage(session, "page", selected = "Plots")
+      update_app_query(mode = "replace", tab = "Plots")
+    } else {
+      # Single entity citation: Show only the cited entity in the table
+      # Apply filter based on which tab/table this entity belongs to
+      if (citation$tab == "Plots") {
+        state$plot_filter(filter_info)
+        state$highlighted_table("plot_table")
+      } else if (citation$tab == "Communities") {
+        state$community_filter(filter_info)
+        state$highlighted_table("comm_table")
+      }
+
+      # Set row highlight to first row (0-indexed) since filter shows only one entity
+      state$highlighted_row(0L)
+
+      state$current_tab(citation$tab)
+      shiny::updateNavbarPage(session, "page", selected = citation$tab)
+
+      # Open detail overlay with highlighting
+      open_detail(
+        detail_type = citation$detail_type,
+        vb_code = citation$vb_code,
+        push_history = FALSE,
+        skip_highlight = FALSE
+      )
+
+      update_app_query(
+        mode = "replace",
+        tab = citation$tab,
+        detail_type = citation$detail_type,
+        detail_code = citation$vb_code
+      )
+    }
+
+    # Hide loading overlay and unlock navigation after successful resolution
+    session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
+    session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+  }
+
   # URL/HISTORY SYNCHRONIZATION OBSERVER -----------------------------------------------------------
   # This observer runs whenever the browser URL changes (back/forward, refresh, direct link).
   # It parses query parameters and restores tab, detail overlay, map view, and table state.
@@ -434,6 +567,21 @@ server <- function(input, output, session) {
         },
         add = TRUE
       )
+
+      # Handle citation resolution: ?cite=IDENTIFIER
+      # Legacy VegBank citation URLs (e.g., /cite/VB.Ob.22743.INW32086) are converted to
+      # ?cite=IDENTIFIER by ui.R on the client side before reaching this observer.
+      # Here we resolve the identifier via the vegbankr API and redirect to the appropriate
+      # internal URL. The observer will re-fire with the resolved params on the next cycle.
+      cite_param <- url_manager$first_param(params$cite)
+      if (url_manager$is_valid_param(cite_param)) {
+        # Strip surrounding quotes that may appear from URL encoding (%22)
+        cite_param <- gsub('^["\']|["\']$', "", cite_param)
+        if (nzchar(cite_param)) {
+          resolve_and_redirect_citation(cite_param)
+          return()
+        }
+      }
 
       # Parse and apply requested tab
       requested_tab <- url_manager$first_param(params$tab)
@@ -493,17 +641,17 @@ server <- function(input, output, session) {
       }
 
       # Parse and apply plot filter state
-      filter_code <- url_manager$first_param(params$filter_code)
-      filter_type <- url_manager$first_param(params$filter_type)
-      filter_label <- url_manager$first_param(params$filter_label)
+      plot_filter_code <- url_manager$first_param(params$plot_filter_code)
+      plot_filter_type <- url_manager$first_param(params$plot_filter_type)
+      plot_filter_label <- url_manager$first_param(params$plot_filter_label)
 
-      if (url_manager$is_valid_param(filter_code) && url_manager$is_valid_param(filter_type)) {
+      if (url_manager$is_valid_param(plot_filter_code) && url_manager$is_valid_param(plot_filter_type)) {
         # Restore filter from URL
         current_filter <- state$plot_filter()
         new_filter <- list(
-          type = filter_type,
-          code = filter_code,
-          label = if (url_manager$is_valid_param(filter_label)) filter_label else filter_code
+          type = plot_filter_type,
+          code = plot_filter_code,
+          label = if (url_manager$is_valid_param(plot_filter_label)) plot_filter_label else plot_filter_code
         )
 
         # Only update if different from current state
@@ -512,7 +660,7 @@ server <- function(input, output, session) {
           !identical(current_filter$type, new_filter$type)) {
           state$plot_filter(new_filter)
         }
-      } else if (!is.null(params$filter_code) || !is.null(params$filter_type)) {
+      } else if (!is.null(params$plot_filter_code) || !is.null(params$plot_filter_type)) {
         # Invalid filter params in URL, clear them
         state$plot_filter(NULL)
         if (url_manager$is_history_initialized()) {
@@ -522,6 +670,39 @@ server <- function(input, output, session) {
         # No filter params in URL, clear filter state
         if (!is.null(state$plot_filter())) {
           state$plot_filter(NULL)
+        }
+      }
+
+      # Parse and apply community filter state
+      comm_filter_code <- url_manager$first_param(params$comm_filter_code)
+      comm_filter_type <- url_manager$first_param(params$comm_filter_type)
+      comm_filter_label <- url_manager$first_param(params$comm_filter_label)
+
+      if (url_manager$is_valid_param(comm_filter_code) && url_manager$is_valid_param(comm_filter_type)) {
+        # Restore community filter from URL
+        current_comm_filter <- state$community_filter()
+        new_comm_filter <- list(
+          type = comm_filter_type,
+          code = comm_filter_code,
+          label = if (url_manager$is_valid_param(comm_filter_label)) comm_filter_label else comm_filter_code
+        )
+
+        # Only update if different from current state
+        if (is.null(current_comm_filter) ||
+          !identical(current_comm_filter$code, new_comm_filter$code) ||
+          !identical(current_comm_filter$type, new_comm_filter$type)) {
+          state$community_filter(new_comm_filter)
+        }
+      } else if (!is.null(params$comm_filter_code) || !is.null(params$comm_filter_type)) {
+        # Invalid community filter params in URL, clear them
+        state$community_filter(NULL)
+        if (url_manager$is_history_initialized()) {
+          update_app_query(mode = "replace", tab = requested_tab)
+        }
+      } else {
+        # No community filter params in URL, clear filter state
+        if (!is.null(state$community_filter())) {
+          state$community_filter(NULL)
         }
       }
 
@@ -783,27 +964,68 @@ server <- function(input, output, session) {
     )
   })
 
+  # Helper function to create filter alert UI
+  create_filter_alert <- function(filter, resource_singular, resource_plural, clear_input_id) {
+    if (is.null(filter)) {
+      return(NULL)
+    }
+
+    # Customize message based on filter type
+    message <- if (filter$type == "citation") {
+      sprintf("Showing cited %s: %s (%s)", resource_singular, filter$code, filter$label)
+    } else {
+      sprintf(
+        "Showing %s related to %s: %s (%s)",
+        resource_plural, filter$type, filter$code, filter$label
+      )
+    }
+
+    htmltools::tags$div(
+      class = "alert alert-info alert-dismissible show d-flex align-items-center justify-content-between",
+      role = "alert",
+      htmltools::tags$strong(message),
+      htmltools::tags$button(
+        type = "button",
+        class = "btn btn-sm btn-outline-info ms-3",
+        onclick = sprintf("Shiny.setInputValue('%s', Math.random());", clear_input_id),
+        "Clear filter"
+      )
+    )
+  }
+
   output$plot_filter_alert <- shiny::renderUI({
     filter <- state$plot_filter()
     if (is.null(filter)) {
       return(NULL)
     }
 
-    htmltools::tags$div(
-      class = "alert alert-info alert-dismissible show d-flex align-items-center justify-content-between",
-      role = "alert",
-      htmltools::tags$strong(
-        sprintf(
-          "Showing plot observations related to %s: %s (%s)",
-          filter$type, filter$code, filter$label
-        )
-      ),
-      htmltools::tags$button(
-        type = "button",
-        class = "btn btn-sm btn-outline-info ms-3",
-        onclick = "Shiny.setInputValue('clear_plot_filter', Math.random());",
-        "Clear filter"
-      )
+    # Get display names from resource_info if available, otherwise use defaults
+    resource_singular <- filter$resource_info$singular %||% "plot observation"
+    resource_plural <- filter$resource_info$plural %||% "plot observations"
+
+    create_filter_alert(
+      filter,
+      resource_singular = resource_singular,
+      resource_plural = resource_plural,
+      clear_input_id = "clear_plot_filter"
+    )
+  })
+
+  output$comm_filter_alert <- shiny::renderUI({
+    filter <- state$community_filter()
+    if (is.null(filter)) {
+      return(NULL)
+    }
+
+    # Get display names from resource_info if available, otherwise use defaults
+    resource_singular <- filter$resource_info$singular %||% "community concept"
+    resource_plural <- filter$resource_info$plural %||% "community concepts"
+
+    create_filter_alert(
+      filter,
+      resource_singular = resource_singular,
+      resource_plural = resource_plural,
+      clear_input_id = "clear_comm_filter"
     )
   })
 
@@ -811,7 +1033,8 @@ server <- function(input, output, session) {
     # Rebuild table when filter changes to pass vb_code for cross-resource queries
     filter <- state$plot_filter()
     vb_code <- if (!is.null(filter)) filter$code else NULL
-    build_plot_table_with_filter(vb_code)
+    filter_type <- if (!is.null(filter)) filter$type else NULL
+    build_plot_table_with_filter(vb_code, filter_type)
   })
 
   # Enable/disable DT download button based on filtered record count
@@ -844,7 +1067,11 @@ server <- function(input, output, session) {
   output$download_plot_table <- create_table_download_handler("plot_table", input, state, session)
 
   output$comm_table <- DT::renderDataTable({
-    build_community_table()
+    # Rebuild table when filter changes for citation filtering
+    filter <- state$community_filter()
+    vb_code <- if (!is.null(filter)) filter$code else NULL
+    filter_type <- if (!is.null(filter)) filter$type else NULL
+    build_concept_table_with_filter(concept_type = "community", vb_code = vb_code, filter_type = filter_type)
   })
 
   output$proj_table <- DT::renderDataTable({
@@ -1225,7 +1452,7 @@ server <- function(input, output, session) {
 
     # Extract entity type from vb_code prefix
     # VegBank codes follow pattern: prefix.id (e.g., pj.340, py.123, pc.456)
-    entity_type <- extract_entity_type_from_code(vb_code)
+    entity_type <- convert_code_to_singular(vb_code)
     if (is.null(entity_type)) {
       warning("Could not determine entity type from vb_code: ", vb_code)
       return()
@@ -1256,8 +1483,63 @@ server <- function(input, output, session) {
     # Update URL to remove filter parameters
     update_app_query(mode = "push", tab = state$current_tab())
   })
+
+  shiny::observeEvent(input$clear_comm_filter, {
+    state$community_filter(NULL)
+    # Clear communities table state when clearing filter
+    state$table_states[["communities"]] <- NULL
+    # Update URL to remove filter parameters
+    update_app_query(mode = "push", tab = state$current_tab())
+  })
 }
 
+# ================= CITATION RESOLUTION ============================================================
+# Note: RESOURCE_REGISTRY and helper functions are defined in R/resource_registry.R
+
+#' Resolve citation identifier to app navigation parameters
+#'
+#' Calls vegbankr::vb_resolve() to look up the resource type and VegBank code
+#' for a legacy identifier, then maps the result to app navigation targets
+#' using RESOURCE_REGISTRY.
+#'
+#' @param identifier Character string, the accession code (or vb_code or DOI) to resolve
+#'   (e.g., "VB.Ob.2948.ACAD143")
+#' @return A list with components:
+#'   \describe{
+#'     \item{vb_code}{The resolved VegBank code (e.g., "ob.2948")}
+#'     \item{tab}{The app tab to navigate to (e.g., "Plots")}
+#'     \item{detail_type}{The detail view type (e.g., "plot-observation")}
+#'     \item{resource_info}{Full resource metadata from RESOURCE_REGISTRY}
+#'     \item{identifier}{The original identifier (for labeling)}
+#'   }
+#'   Returns NULL if resolution fails or the resource type is unsupported.
+#' @noRd
+resolve_citation <- function(identifier) {
+  result <- tryCatch(
+    vegbankr::vb_resolve(identifier),
+    error = function(e) {
+      warning("Citation resolution failed for '", identifier, "': ", conditionMessage(e))
+      NULL
+    }
+  )
+
+  if (is.null(result) || is.null(result$vb_resource_type) || is.null(result$vb_code)) {
+    return(NULL)
+  }
+
+  resource_info <- get_resource_by_api_type(result$vb_resource_type)
+  if (is.null(resource_info)) {
+    return(NULL)
+  }
+
+  list(
+    vb_code = result$vb_code,
+    tab = resource_info$tab,
+    detail_type = resource_info$detail_type,
+    resource_info = resource_info, # Include full resource info for display names
+    identifier = identifier
+  )
+}
 
 # ================= OTHER FUNCTIONS ===========================================================
 
@@ -1277,7 +1559,7 @@ open_code_details <- function(
     skip_highlight = FALSE) {
   if (!is_valid_vb_code(vb_code)) {
     error_msg <- error_message %||% paste0("No VegBank code found for that ", gsub("-", " ", detail_type))
-    shiny::showNotification(error_msg, type = "error")
+    shiny::showNotification(error_msg, type = "error", duration = NULL)
     return(FALSE)
   }
 
@@ -1303,46 +1585,6 @@ open_code_details <- function(
 is_valid_vb_code <- function(vb_code) {
   !is.null(vb_code) && !is.na(vb_code) &&
     nchar(as.character(vb_code)) > 0 && vb_code != "NA"
-}
-
-#' Extract entity type from VegBank code prefix
-#'
-#' VegBank codes follow the pattern: prefix.id (e.g., pj.340, py.123, pc.456)
-#' This function extracts the prefix and maps it to the human-readable entity type.
-#'
-#' @param vb_code The VegBank code (e.g., "pj.340")
-#' @return Character string of entity type (e.g., "project"), or NULL if unknown
-#' @noRd
-extract_entity_type_from_code <- function(vb_code) {
-  if (!is_valid_vb_code(vb_code)) {
-    return(NULL)
-  }
-
-  # Extract prefix before the dot
-  parts <- strsplit(as.character(vb_code), "\\.")[[1]]
-  if (length(parts) < 2) {
-    return(NULL)
-  }
-
-  prefix <- tolower(parts[1])
-
-  # Map VegBank prefixes to entity types
-  prefix_map <- c(
-    "pj" = "project",
-    "py" = "party",
-    "pc" = "plant concept",
-    "cc" = "community concept",
-    "ct" = "community classification",
-    "ob" = "plot observation",
-    "rf" = "reference"
-  )
-
-  entity_type <- prefix_map[[prefix]]
-  if (is.null(entity_type)) {
-    return(NULL)
-  }
-
-  entity_type
 }
 
 #' Move the map to the specified latitude and longitude with a popup message

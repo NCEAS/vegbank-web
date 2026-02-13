@@ -6,11 +6,29 @@
 #' @return A Shiny tag list.
 #'
 #' @noRd
-#' @param req A Shiny request object.
-#' @return A Shiny tag list.
-#'
-#' @noRd
 ui <- function(req) {
+  # Handle legacy citation URLs: /cite/IDENTIFIER → ?cite=IDENTIFIER
+  # Old VegBank had citation URLs like http://vegbank.org/cite/VB.Ob.22743.INW32086
+  # This redirect converts path-based citations to query parameter form for server processing.
+  path_info <- req$PATH_INFO
+
+  if (!is.null(path_info) && length(path_info) > 0 && grepl("^/cite/", path_info)) {
+    identifier <- sub("^/cite/", "", path_info)
+    redirect_url <- paste0("/?cite=", utils::URLencode(identifier, reserved = TRUE))
+
+    # Return JavaScript redirect that executes immediately
+    # Use jsonlite::toJSON to safely escape the URL for JavaScript context
+    safe_url <- jsonlite::toJSON(redirect_url, auto_unbox = TRUE)
+    return(shiny::tags$html(
+      shiny::tags$head(
+        shiny::tags$script(shiny::HTML(sprintf(
+          'window.location.replace(%s);',
+          safe_url
+        )))
+      )
+    ))
+  }
+
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
   # Ensure Inter font loads from CDN before any CSS
@@ -23,6 +41,7 @@ ui <- function(req) {
   overlay <- build_detail_overlay()
   map_loading_overlay <- build_map_loading_overlay()
   download_loading_overlay <- build_download_loading_overlay()
+  citation_loading_overlay <- build_citation_loading_overlay()
 
   script <- htmltools::tags$script(htmltools::HTML(paste0(
     "// Application constants - single source of truth from R\n",
@@ -1160,6 +1179,7 @@ ui <- function(req) {
     overlay,
     map_loading_overlay,
     download_loading_overlay,
+    citation_loading_overlay,
     script
   )
 }
@@ -1228,6 +1248,9 @@ custom_theme <- bslib::bs_add_rules(
       min-height: 56px !important;
       display: flex;
       align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 2000; /* Ensure it stays above other content */
   }
   .navbar.nav-disabled {
     pointer-events: none;
@@ -1308,8 +1331,8 @@ custom_theme <- bslib::bs_add_rules(
       background-color: #72B9A2 !important;
   }
 
-  /* Map loading ellipses animation */
-  .map-loading-ellipses {
+  /* Generic loading ellipses animation for all overlays */
+  .loading-ellipses {
       display: inline-block;
       position: relative;
       margin-bottom: 1rem;
@@ -1317,7 +1340,7 @@ custom_theme <- bslib::bs_add_rules(
       height: 1.5rem;
   }
 
-  .map-loading-ellipses > div {
+  .loading-ellipses > div {
       position: absolute;
       width: 1.5rem;
       height: 1.5rem;
@@ -1326,37 +1349,37 @@ custom_theme <- bslib::bs_add_rules(
       animation-timing-function: cubic-bezier(0, 1, 1, 0);
   }
 
-  .map-loading-ellipses > div:nth-child(1) {
+  .loading-ellipses > div:nth-child(1) {
       left: 0.75rem;
-      animation: mapEllipses1 0.6s infinite;
+      animation: loadingEllipses1 0.6s infinite;
   }
 
-  .map-loading-ellipses > div:nth-child(2) {
+  .loading-ellipses > div:nth-child(2) {
       left: 0.75rem;
-      animation: mapEllipses2 0.6s infinite;
+      animation: loadingEllipses2 0.6s infinite;
   }
 
-  .map-loading-ellipses > div:nth-child(3) {
+  .loading-ellipses > div:nth-child(3) {
       left: 3.75rem;
-      animation: mapEllipses2 0.6s infinite;
+      animation: loadingEllipses2 0.6s infinite;
   }
 
-  .map-loading-ellipses > div:nth-child(4) {
+  .loading-ellipses > div:nth-child(4) {
       left: 6.75rem;
-      animation: mapEllipses3 0.6s infinite;
+      animation: loadingEllipses3 0.6s infinite;
   }
 
-  @keyframes mapEllipses1 {
+  @keyframes loadingEllipses1 {
     0% { transform: scale(0); }
     100% { transform: scale(1); }
   }
 
-  @keyframes mapEllipses2 {
+  @keyframes loadingEllipses2 {
     0% { transform: translate(0, 0); }
     100% { transform: translate(3rem, 0); }
   }
 
-  @keyframes mapEllipses3 {
+  @keyframes loadingEllipses3 {
     0% { transform: scale(1); }
     100% { transform: scale(0); }
   }
@@ -1385,58 +1408,6 @@ custom_theme <- bslib::bs_add_rules(
     z-index: 9999;
   }
 
-  .download-loading-ellipses {
-      display: inline-block;
-      position: relative;
-      margin-bottom: 1rem;
-      width: 9.375rem;
-      height: 1.5rem;
-  }
-
-  .download-loading-ellipses > div {
-      position: absolute;
-      width: 1.5rem;
-      height: 1.5rem;
-      border-radius: 50%;
-      background: #72B9A2;
-      animation-timing-function: cubic-bezier(0, 1, 1, 0);
-  }
-
-  .download-loading-ellipses > div:nth-child(1) {
-      left: 0.75rem;
-      animation: downloadEllipses1 0.6s infinite;
-  }
-
-  .download-loading-ellipses > div:nth-child(2) {
-      left: 0.75rem;
-      animation: downloadEllipses2 0.6s infinite;
-  }
-
-  .download-loading-ellipses > div:nth-child(3) {
-      left: 3.75rem;
-      animation: downloadEllipses2 0.6s infinite;
-  }
-
-  .download-loading-ellipses > div:nth-child(4) {
-      left: 6.75rem;
-      animation: downloadEllipses3 0.6s infinite;
-  }
-
-  @keyframes downloadEllipses1 {
-    0% { transform: scale(0); }
-    100% { transform: scale(1); }
-  }
-
-  @keyframes downloadEllipses2 {
-    0% { transform: translate(0, 0); }
-    100% { transform: translate(3rem, 0); }
-  }
-
-  @keyframes downloadEllipses3 {
-    0% { transform: scale(1); }
-    100% { transform: scale(0); }
-  }
-
   #download-loading-overlay.fade-out {
     animation: fadeOut 0.5s ease-out forwards;
   }
@@ -1445,6 +1416,10 @@ custom_theme <- bslib::bs_add_rules(
     margin-top: 0.5rem;
     font-size: 0.9rem;
     color: #666;
+  }
+
+  #citation-loading-overlay.fade-out {
+    animation: fadeOut 0.5s ease-out forwards;
   }
 
   /* Detail overlay responsive width */
@@ -1536,6 +1511,7 @@ build_navbar <- function() {
     bslib::nav_panel(
       title = "Communities",
       shiny::fluidPage(
+        shiny::uiOutput("comm_filter_alert"),
         DT::dataTableOutput("comm_table")
       )
     ),
@@ -1708,7 +1684,7 @@ build_loading_overlay <- function(overlay_type, default_title, messages, complet
   title_id <- paste0(overlay_type, "-loading-title")
   detail_id <- paste0(overlay_type, "-loading-detail")
   pun_id <- paste0(overlay_type, "-loading-pun")
-  ellipses_class <- paste0(overlay_type, "-loading-ellipses")
+  ellipses_class <- "loading-ellipses"
 
   htmltools::tags$div(
     id = overlay_id,
@@ -1797,5 +1773,28 @@ build_download_loading_overlay <- function() {
     ),
     completion_message = "Your data is ready!",
     show_detail = TRUE
+  )
+}
+
+#' Build Citation Loading Overlay for Vegbank UI
+#'
+#' Constructs a full-screen loading overlay for citation resolution with animated
+#' spinner and rotating messages.
+#'
+#' @return A Shiny tag representing the citation loading overlay.
+#'
+#' @noRd
+build_citation_loading_overlay <- function() {
+  build_loading_overlay(
+    overlay_type = "citation",
+    default_title = "Resolving citation...",
+    messages = c(
+      "Looking up identifier...",
+      "Consulting the archives...",
+      "Following the paper trail...",
+      "Tracking down that reference...",
+      "Dusting off old records..."
+    ),
+    completion_message = "Citation resolved!"
   )
 }

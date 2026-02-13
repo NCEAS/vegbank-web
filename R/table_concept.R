@@ -70,6 +70,84 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
   build_table_from_spec(spec)
 }
 
+#' Build concept DataTable with optional citation filter
+#'
+#' For citation filters, directly fetches and displays the single cited entity.
+#'
+#' @param concept_type Either "plant" or "community"
+#' @param vb_code Optional VegBank code for citation filtering (e.g., "cc.1234")
+#' @param filter_type Optional filter type ("single-entity-citation")
+#' @return A DT::datatable object
+#' @noRd
+build_concept_table_with_filter <- function(concept_type = c("plant", "community"), 
+                                            vb_code = NULL, 
+                                            filter_type = NULL) {
+  concept_type <- match.arg(concept_type)
+  spec <- CONCEPT_TABLE_SPECS[[concept_type]]
+  if (is.null(spec)) {
+    stop("No concept table spec registered for type: ", concept_type)
+  }
+
+  has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
+
+  # For citation filters, fetch the specific concept directly
+  if (has_filter && !is.null(filter_type) && filter_type == "single-entity-citation") {
+    tryCatch(
+      {
+        # Fetch the single concept using the appropriate API function
+        # Concept endpoints require detail = "full" (minimal not supported)
+        concept_data <- if (concept_type == "community") {
+          vegbankr::vb_get_community_concepts(vb_code, detail = "full", with_nested = FALSE)
+        } else {
+          vegbankr::vb_get_plant_concepts(vb_code, detail = "full", with_nested = FALSE)
+        }
+
+        if (!is.null(concept_data) && nrow(concept_data) > 0) {
+          # Process through the same pipeline as AJAX
+          coerced <- spec$coerce_fn(concept_data)
+          normalized <- spec$normalize_fn(coerced)
+          display_data <- spec$display_fn(normalized)
+
+          # Build static table (no AJAX) with the single row
+          static_config <- list(
+            initial_data = display_data,
+            column_defs = spec$column_defs,
+            page_length = 1L,
+            options = utils::modifyList(
+              spec$options %||% list(),
+              list(
+                scrollY = "calc(100vh - 250px)",  # Accommodate citation alert notification
+                serverSide = FALSE,
+                searching = FALSE,
+                paging = FALSE
+              )
+            ),
+            datatable_args = spec$datatable_args,
+            escape = FALSE
+          )
+
+          return(create_table(static_config))
+        } else {
+          shiny::showNotification(
+            paste("Could not load cited", concept_type, "concept:", vb_code),
+            type = "warning"
+          )
+        }
+      },
+      error = function(e) {
+        shiny::showNotification(
+          paste("Error loading cited", concept_type, "concept:", conditionMessage(e)),
+          type = "error"
+        )
+      }
+    )
+    # Fall through to normal AJAX table if fetch fails
+  }
+
+  # No filter or fetch failed - return normal AJAX table
+  build_table_from_spec(spec)
+}
+
 #' Process concept data into display format
 #'
 #' @param data_sources List containing concept data keyed by concept type

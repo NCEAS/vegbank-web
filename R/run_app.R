@@ -12,6 +12,7 @@ run_app <- function(options = list()) {
     ui = ui,
     server = server,
     enableBookmarking = "url",
+    uiPattern = ".*",
     options = options
   )
 }

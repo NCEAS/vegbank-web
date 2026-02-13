@@ -15,11 +15,18 @@ MAX_TAXA_RETURNED <- 100000
 #' @return TRUE when the view is rendered successfully, FALSE otherwise
 #' @noRd
 show_detail_view <- function(resource_type, vb_code, output, session) {
+  # Get resource info for better display names
+  resource_info <- get_resource_by_detail_type(resource_type)
+  display_name <- if (!is.null(resource_info)) {
+    resource_info$singular
+  } else {
+    resource_type  # Fallback to technical name
+  }
+
   shiny::withProgress(
-    message = paste0("Loading ", resource_type, " details..."),
+    message = paste0("Loading ", display_name, " details..."),
     value = 0.2,
     expr = {
-      shiny::incProgress(0.3, "Fetching details")
 
       result <- switch(resource_type,
         "community-classification" =
