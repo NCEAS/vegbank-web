@@ -1210,7 +1210,8 @@ custom_theme <- bslib::bs_add_rules(
     font-feature-settings: 'liga' 1, 'calt' 1;
     --bs-font-sans-serif: Inter, sans-serif !important;
 
-    --bslib-navbar-height: 57px;
+    /* Navbar height - responsive to mobile collapse */
+    --navbar-height: 56px;
 
     /* Vegbank brand colors */
     --vb-green: hsl(153, 31%, 25%);
@@ -1223,6 +1224,14 @@ custom_theme <- bslib::bs_add_rules(
     --not-current-bg: hsl(45, 100%, 85%);
     --not-current-text: hsl(45, 94%, 21%);
   }
+  
+  /* Adjust navbar height for mobile when toggler is visible */
+  @media (max-width: 767px) {
+    :root {
+      --navbar-height: 56px;
+    }
+  }
+  
   @supports (font-variation-settings: normal) {
     :root {
       font-family: InterVariable, sans-serif !important;
@@ -1247,16 +1256,24 @@ custom_theme <- bslib::bs_add_rules(
     font-weight: bold;
   }
   .navbar {
-      min-height: 56px !important;
+      min-height: var(--navbar-height);
       display: flex;
       align-items: center;
-      position: sticky;
+      position: fixed;
       top: 0;
-      z-index: 2000; /* Ensure it stays above other content */
+      left: 0;
+      right: 0;
+      z-index: 2000;
       background-color: #fff !important;
       border-bottom: 1px solid rgba(40, 70, 94, 0.1) !important;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
+  
+  /* Add top padding to main content to account for fixed navbar */
+  .container-fluid.html-fill-item.html-fill-container {
+    padding-top: var(--navbar-height) !important;
+  }
+  
   .navbar.nav-disabled {
     pointer-events: none;
   }
@@ -1287,17 +1304,6 @@ custom_theme <- bslib::bs_add_rules(
       display: flex;
       align-items: center;
       height: 100%;
-  }
-  .navbar-form {
-      display: flex;
-      align-items: center;
-      margin-bottom: 5px;
-  }
-  .navbar-form .form-group {
-      margin: 0;
-  }
-  .form-control {
-      height: 36px;
   }
   .detail-section {
       display: none;
@@ -1430,14 +1436,15 @@ custom_theme <- bslib::bs_add_rules(
   /* Detail overlay responsive width */
   #detail-overlay {
     position: fixed;
-    top: var(--bslib-navbar-height, 57px);
-    height: calc(100vh - var(--bslib-navbar-height, 57px));
+    top: var(--navbar-height);
+    height: calc(100vh - var(--navbar-height));
     overflow-y: auto;
     background: #fff;
-    border-left: 1px solid #ccc;
+    border-left: 1px solid rgba(40, 70, 94, 0.15);
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
     z-index: 1050;
     padding: 20px;
-    transition: right 0.4s;
+    transition: right 0.4s ease-in-out;
   }
 
   /* Mobile: full width */
@@ -1742,8 +1749,8 @@ build_loading_overlay <- function(overlay_type, default_title, messages, complet
     `aria-busy` = "true",
     `data-messages` = jsonlite::toJSON(messages, auto_unbox = TRUE),
     `data-completion-message` = completion_message,
-    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 57px); left: 0;
-             width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 57px));
+    style = "display: none; position: fixed; top: var(--navbar-height); left: 0;
+             width: 100vw; height: calc(100vh - var(--navbar-height));
              background: rgba(255, 255, 255, 0.98); z-index: 1200;
              justify-content: center; align-items: center; flex-direction: column;",
     htmltools::tags$div(
@@ -1794,6 +1801,8 @@ build_map_loading_overlay <- function() {
       "Monitoring mycelial networks...",
       "Disturbing the substrate...",
       "Planning successful succession...",
+      "Aggregating observations (there are a lot)...",
+      "Braving the brush...",
       "Last bud not leaf..."
     ),
     completion_message = "Go fir launch!"
@@ -1813,12 +1822,14 @@ build_overview_loading_overlay <- function() {
     overlay_type = "overview",
     default_title = "Loading the app can take a few seconds. Hold tight, we're:",
     messages = c(
+      "Rooting through the database...",
+      "Monitoring mycelial networks...",
+      "Disturbing the substrate...",
       "Counting all the plots (there are a lot)...",
       "Surveying the survey data...",
-      "Aggregating observations...",
       "Celebrating our top contributors...",
       "Crunching the numbers...",
-      "Contributing community classifications...",
+      "Classifiying communities...",
       "Sorting through plant species...",
       "Compiling project data...",
       "Organizing taxonomic hierarchies..."
