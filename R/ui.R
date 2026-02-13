@@ -17,11 +17,13 @@ ui <- function(req) {
     redirect_url <- paste0("/?cite=", utils::URLencode(identifier, reserved = TRUE))
 
     # Return JavaScript redirect that executes immediately
+    # Use jsonlite::toJSON to safely escape the URL for JavaScript context
+    safe_url <- jsonlite::toJSON(redirect_url, auto_unbox = TRUE)
     return(shiny::tags$html(
       shiny::tags$head(
         shiny::tags$script(shiny::HTML(sprintf(
-          'window.location.replace("%s");',
-          redirect_url
+          'window.location.replace(%s);',
+          safe_url
         )))
       )
     ))

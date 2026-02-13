@@ -116,7 +116,7 @@ build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL, is_
             options = utils::modifyList(
               spec$options %||% list(),
               list(
-                scrollY = "calc(100vh - 315px)",  # Accommodate citation alert notification
+                scrollY = "calc(100vh - 300px)",  # Accommodate citation alert notification
                 serverSide = FALSE,  # Disable server-side processing
                 searching = FALSE,    # No need to search a single row
                 paging = FALSE        # No pagination for single row
@@ -152,8 +152,8 @@ build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL, is_
 
   spec$options <- utils::modifyList(spec$options, list())
 
-  # Adjust table height based on whether filter alert is shown so we don't overflow viewport
-  spec$options$scrollY <- if (has_filter) "calc(100vh - 315px)" else "calc(100vh - 235px)"
+  # Accomodate filter alert, download button, and search bar so we don't overflow viewport
+  spec$options$scrollY <- if (has_filter) "calc(100vh - 300px)" else "calc(100vh - 235px)"
 
   build_table_from_spec(spec)
 }

@@ -1498,7 +1498,7 @@ server <- function(input, output, session) {
 #' for a legacy identifier, then maps the result to app navigation targets
 #' using RESOURCE_REGISTRY.
 #'
-#' @param identifier Character string, the identifier (identifier or DOI) to resolve
+#' @param identifier Character string, the accession code (or vb_code or DOI) to resolve
 #'   (e.g., "VB.Ob.2948.ACAD143")
 #' @return A list with components:
 #'   \describe{

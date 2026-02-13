@@ -29,18 +29,17 @@ test_that("RESOURCE_REGISTRY dataset entry has correct structure", {
   info <- RESOURCE_REGISTRY[["user-datasets"]]
   expect_equal(info$tab, "Plots")
   expect_true(isTRUE(info$is_dataset))
-  # Datasets have detail_type = "dataset"
-  expect_equal(info$detail_type, "dataset")
+  expect_equal(info$detail_type, NULL)  # Datasets use a filter-based view, not a detail overlay"
 })
 
 test_that("RESOURCE_REGISTRY maps to valid app tabs", {
   valid_tabs <- c("Overview", "Map", "Plots", "Plants", "Communities", "Parties", "Projects", "FAQ", "Cite")
   for (type in names(RESOURCE_REGISTRY)) {
     tab <- RESOURCE_REGISTRY[[type]]$tab
-    # References don't have a navbar tab, they only appear in detail overlays
-    # The tab field is set to "References" for consistency but is not validated
-    if (type == "references" || type == "cover-methods" || type == "stratum-methods" ||
-      type == "datasets" || type == "community-classifications") {
+    # The tab field is not set for comm classifications, references, cover-methods, stratum-methods
+    # since they only appear in detail overlays
+    if (type == "references" || type == "cover-methods" || type == "stratum-methods"
+        || type == "community-classifications") {
       next
     }
     expect_true(tab %in% valid_tabs, info = paste("Invalid tab", tab, "for", type))
@@ -51,8 +50,7 @@ test_that("RESOURCE_REGISTRY detail types match show_detail_view switch cases", 
   # These are the resource_type values accepted by show_detail_view() in detail_view.R
   valid_detail_types <- c(
     "community-classification", "community-concept", "plot-observation",
-    "project", "party", "plant-concept", "reference", "cover-method", "stratum-method",
-    "dataset" # Datasets have detail_type but use filter instead of detail view
+    "project", "party", "plant-concept", "reference", "cover-method", "stratum-method"
   )
   for (type in names(RESOURCE_REGISTRY)) {
     detail_type <- RESOURCE_REGISTRY[[type]]$detail_type
@@ -170,7 +168,7 @@ test_that("resolve_citation returns correct structure for user dataset", {
       expect_false(is.null(result))
       expect_equal(result$vb_code, "ds.50")
       expect_equal(result$tab, "Plots")
-      expect_equal(result$detail_type, "dataset")
+      expect_equal(result$detail_type, NULL)
       expect_true(result$is_dataset)
       expect_equal(result$identifier, "VB.DS.50.TEST")
     }
@@ -312,6 +310,24 @@ test_that("ui() correctly URL-encodes special characters in citation identifier"
 
   # Should encode space as %20 and + as %2B
   expect_true(grepl("VB\\.Test%20123%2BSpecial", js_code))
+})
+
+test_that("ui() safely escapes JavaScript-unsafe characters in redirect URL", {
+  # Test with identifier that could break JavaScript if not properly escaped
+  # Using a backslash and quote characters
+  req <- list(PATH_INFO = '/cite/VB.Test"Quote')
+
+  result <- ui(req)
+
+  # Extract JavaScript
+  script_tag <- result$children[[1]]$children[[1]]
+  js_code <- as.character(script_tag$children[[1]])
+
+  # The URL should be JSON-escaped, protecting against XSS
+  # jsonlite::toJSON will escape the quote as \"
+  expect_true(grepl("window\\.location\\.replace", js_code))
+  # Should not contain unescaped quotes that would break the JavaScript
+  expect_false(grepl('window\\.location\\.replace\\("[^"]*"[^"]*"\\)', js_code))
 })
 
 test_that("ui() handles simple plot observation citation path", {

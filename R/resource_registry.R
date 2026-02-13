@@ -50,8 +50,8 @@ RESOURCE_REGISTRY <- list(
   "community-classifications" = list(
     api_type = "community-classifications",
     detail_type = "community-classification",
-    vb_prefix = "ct",
-    tab = "Plots",
+    vb_prefix = "cl",
+    tab = "Plots", # Comm class are accessed via the Plots tab since they are plot-level metadata
     singular = "community classification",
     plural = "community classifications",
     is_dataset = FALSE
@@ -96,6 +96,7 @@ RESOURCE_REGISTRY <- list(
     api_type = "references",
     detail_type = "reference",
     vb_prefix = "rf",
+    tab = NULL,  # No dedicated tab, accessed via detail views
     singular = "reference",
     plural = "references",
     is_dataset = FALSE
@@ -104,6 +105,7 @@ RESOURCE_REGISTRY <- list(
     api_type = "cover-methods",
     detail_type = "cover-method",
     vb_prefix = "cm",
+    tab = NULL,  # No dedicated tab, accessed via detail views
     singular = "cover method",
     plural = "cover methods",
     is_dataset = FALSE
@@ -112,14 +114,15 @@ RESOURCE_REGISTRY <- list(
     api_type = "stratum-methods",
     detail_type = "stratum-method",
     vb_prefix = "sm",
+    tab = NULL,  # No dedicated tab, accessed via detail views
     singular = "stratum method",
     plural = "stratum methods",
     is_dataset = FALSE
   ),
   "user-datasets" = list(
     api_type = "user-datasets",
-    detail_type = "dataset",
     vb_prefix = "ds",
+    detail_type = NULL,  # Datasets use a filter-based view, not a detail overlay
     tab = "Plots",
     singular = "dataset",
     plural = "datasets",
