@@ -22,12 +22,7 @@ init_overview_data <- function(state, session) {
 
   # Create reactive
   overview_data <- shiny::reactive({
-    # Only show loading overlay on first load
-    if (identical(state$current_tab(), "Overview") && is.null(.overview_data_cache)) {
-      session$sendCustomMessage("showLoadingOverlay", list(type = "overview"))
-    }
-
-    # Return cached data if available
+    # Return cached data if available (overlay already hidden)
     if (!is.null(.overview_data_cache)) {
       return(.overview_data_cache)
     }
