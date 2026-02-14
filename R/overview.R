@@ -184,12 +184,11 @@ render_top_projects <- function(output, overview_data) {
           )
         ),
         htmltools::tags$div(
-          class = "progress",
-          style = "height: 20px;",
+          class = "progress overview-progress",
           htmltools::tags$div(
-            class = "progress-bar",
+            class = "progress-bar progress-bar-projects",
             role = "progressbar",
-            style = sprintf("width: %s%%; background-color: #2e5938;", width_pct),
+            style = sprintf("width: %s%%;", width_pct),
             `aria-valuenow` = projects$count[i],
             `aria-valuemin` = "0",
             `aria-valuemax` = max_count
@@ -247,12 +246,11 @@ render_top_communities <- function(output, overview_data) {
           )
         ),
         htmltools::tags$div(
-          class = "progress",
-          style = "height: 20px;",
+          class = "progress overview-progress",
           htmltools::tags$div(
-            class = "progress-bar",
+            class = "progress-bar progress-bar-communities",
             role = "progressbar",
-            style = sprintf("width: %s%%; background-color: #3d7349;", width_pct),
+            style = sprintf("width: %s%%;", width_pct),
             `aria-valuenow` = communities$count[i],
             `aria-valuemin` = "0",
             `aria-valuemax` = max_count
@@ -310,12 +308,11 @@ render_top_contributors <- function(output, overview_data) {
           )
         ),
         htmltools::tags$div(
-          class = "progress",
-          style = "height: 20px;",
+          class = "progress overview-progress",
           htmltools::tags$div(
-            class = "progress-bar",
+            class = "progress-bar progress-bar-contributors",
             role = "progressbar",
-            style = sprintf("width: %s%%; background-color: #4d8d5a;", width_pct),
+            style = sprintf("width: %s%%;", width_pct),
             `aria-valuenow` = contributors$count[i],
             `aria-valuemin` = "0",
             `aria-valuemax` = max_count
@@ -375,12 +372,11 @@ render_top_plants <- function(output, overview_data) {
           )
         ),
         htmltools::tags$div(
-          class = "progress",
-          style = "height: 20px;",
+          class = "progress overview-progress",
           htmltools::tags$div(
-            class = "progress-bar",
+            class = "progress-bar progress-bar-plants",
             role = "progressbar",
-            style = sprintf("width: %s%%; background-color: #5da76b;", width_pct),
+            style = sprintf("width: %s%%;", width_pct),
             `aria-valuenow` = plants$count[i],
             `aria-valuemin` = "0",
             `aria-valuemax` = max_count
@@ -421,8 +417,7 @@ render_latest_projects <- function(output, overview_data) {
           )
         ),
         htmltools::tags$td(
-          class = "small",
-          style = "color: #333;",
+          class = "small overview-date",
           as.Date(projects$last_date_added[i], format = "%a, %d %b %Y")
         ),
         htmltools::tags$td(
