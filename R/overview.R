@@ -470,123 +470,24 @@ render_data_summary <- function(output) {
     htmltools::tagList(
       htmltools::tags$div(
         htmltools::strong(
-          "Now with some filtering, some sorting, additional plot details, and a more manageable map!"
+          "Now with some filtering, some citations, and downloading plot observations!"
         ),
         htmltools::tags$p(
-          " More features are coming soon and this page will change. This is still a beta release; please ",
-          htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here.")
-        )
-      ),
-      htmltools::tags$br(),
-      htmltools::tags$h5("Getting Started"),
-      htmltools::tags$ul(
-        htmltools::tags$li(
-          htmltools::tags$strong("Map:"),
-          " View plot locations on an interactive map. Click markers to zoom to plot clusters and ",
-          "the links on location labels to see plot observation details. Some location labels have ",
-          "many plot observations because of repeated sampling or location fuzzing for privacy."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Plots:"),
-          " Browse vegetation plot observations. Each row represents a single plot observation ",
-          "with location, date, and ecological data. Use the search box to find plots with a specific ",
-          " plant species, community type, author code, or location (eg: ",
-          htmltools::tags$code("Sibbaldiopsis tridentata"), ", ",
-          htmltools::tags$code("CEGL001833"), ", ",
-          htmltools::tags$code("Eleocharis palustris Marsh"), ", ",
-          htmltools::tags$code("BADL.126"), ", or ",
-          htmltools::tags$code("California"), ")."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Plants:"),
-          " Explore the plant taxonomy database. Search for plant concepts by plant name or browse ",
-          "the full list of plant concepts."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Communities:"),
-          " View community classification types. Communities represent recurring patterns of ",
-          "co-occurring plant species. You can also search them by name or browse the full list."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Parties:"),
-          " Find contributors, authors, and parties associated with plot data."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Projects:"),
-          " Explore research projects that have contributed data to VegBank."
-        )
-      ),
-      htmltools::tags$h5("Using the App"),
-      htmltools::tags$ul(
-        htmltools::tags$li(
-          "Click ", htmltools::tags$strong("'Details'"),
-          " buttons or links in tables to view detailed information about any entity."
-        ),
-        htmltools::tags$li(
-          "Browse the ", htmltools::tags$strong("'Map'"),
-          " to see plots grouped by location. Clicking the links on the pin labels will show details",
-          " for a plot, and clicking the ", htmltools::tags$strong("'Map'"),
-          " button in a row of the plot table will center the map on that plot."
-        ),
-        htmltools::tags$li(
-          "Use the ", htmltools::tags$strong("search box"),
-          " in the top-right of each table to find matching results.",
-          htmltools::tags$ul(
-            htmltools::tags$li(
-              htmltools::tags$i("Quotes:"),
-              " Use double quotes to search for exact phrases (e.g., ",
-              htmltools::tags$code('"Quercus alba"'), ")."
-            ),
-            htmltools::tags$li(
-              htmltools::tags$i("Multiple terms:"),
-              " Separate words with spaces to match rows containing multiple terms (e.g., ",
-              htmltools::tags$code("oak prairie"), ")."
-            ),
-            htmltools::tags$li(
-              htmltools::tags$i("Exclude terms:"),
-              " Prefix a word with a minus sign to exclude it (e.g., ",
-              htmltools::tags$code("-alliance"), ")."
-            )
-          )
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Filter"), " the plot table by plant, community, party or project ",
-          "by clicking the numerical observation, contribution, or plot count links for that entity. That ",
-          "will bring you to the plots table and show only plots associated with that entity. Use the ",
-          "'Clear filter' button above the plot table to remove the filter."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Sorting"), " is now supported for any table column that has ",
-          "arrows in its header. You can click that header to sort by that column in ascending or ",
-          "descending order, and you can hold shift and click multiple column headers to sort by ",
-          "multiple columns."
-        ),
-        htmltools::tags$li(
-          "Your ", htmltools::tags$strong("URL updates"),
-          " as you navigate, so you can bookmark or share specific views."
-        ),
-        htmltools::tags$li(
-          "Use your browser's ", htmltools::tags$strong("back/forward buttons"),
-          " to navigate through your browsing history."
-        ),
-        htmltools::tags$li(
-          "For common questions, check the ",
+          "If you're new to VegBank, check out our ",
           htmltools::tags$a(
-            href = "?tab=FAQ",
-            htmltools::tags$strong("FAQ")
+            href = "#",
+            onclick = "Shiny.setInputValue('page', 'Getting Started'); return false;",
+            "getting started guide"
           ),
-          " tab."
+          " or our ",
+          htmltools::tags$a(
+            href = "#",
+            onclick = "Shiny.setInputValue('page', 'FAQ'); return false;",
+            "FAQ"
+          ),
+          " page for common questions and troubleshooting tips."
         )
       ),
-      htmltools::tags$h5("Beta Notice"),
-      htmltools::tags$p(
-        htmltools::tags$em(
-          "This is a beta release. Things may be slow and buggy. Most features are still in development. ",
-          "When you encounter issues, please report them to help@vegbank.org with details ",
-          "about what you were doing when the problem occurred."
-        )
-      ),
-      htmltools::tags$br(),
       htmltools::tags$p(
         "For more information, see the previous ",
         htmltools::tags$a(href = "http://vegbank.org", target = "_blank", " VegBank site"),
@@ -597,6 +498,16 @@ render_data_summary <- function(output) {
           "vegbankr R package"
         ),
         " for programmatic data access."
+      ),
+      htmltools::tags$br(),
+      htmltools::tags$h5("Beta Notice"),
+      htmltools::tags$p(
+        htmltools::tags$em(
+          " More features are coming soon and this page will change. This is still a beta release; ",
+          " things may be slow and buggy. Please ",
+          htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here"),
+          "with details about what you were doing when the problem occurred."
+        ),
       )
     )
   })

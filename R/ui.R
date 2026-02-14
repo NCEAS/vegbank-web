@@ -1586,6 +1586,10 @@ build_navbar <- function() {
       title = "About",
       align = "right",
       bslib::nav_panel(
+        title = "Getting Started",
+        shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
+      ),
+      bslib::nav_panel(
         title = "FAQ",
         shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
       ),

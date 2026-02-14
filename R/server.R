@@ -694,6 +694,11 @@ server <- function(input, output, session) {
 
   # EVENT OBSERVERS --------------------------------------------------------------------------------
 
+  # Handle navigation from overview page links
+  shiny::observeEvent(input$page, {
+    shiny::updateNavbarPage(session, "page", selected = input$page)
+  })
+
   # Fetch map data when Map tab is first visited.
   # Uses map_fetch_in_progress flag to prevent duplicate requests.
   shiny::observeEvent(state$current_tab(),
