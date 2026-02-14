@@ -694,11 +694,6 @@ server <- function(input, output, session) {
 
   # EVENT OBSERVERS --------------------------------------------------------------------------------
 
-  # Handle navigation from overview page links
-  shiny::observeEvent(input$page, {
-    shiny::updateNavbarPage(session, "page", selected = input$page)
-  })
-
   # Fetch map data when Map tab is first visited.
   # Uses map_fetch_in_progress flag to prevent duplicate requests.
   shiny::observeEvent(state$current_tab(),
@@ -769,18 +764,6 @@ server <- function(input, output, session) {
     session$sendCustomMessage("triggerDownload", list())
   })
 
-  # Invalidating the map size is necessary when navigating to Map tab because the map forgets its size when
-  # hidden and needs to be recalculated to render properly. See https://github.com/NCEAS/vegbank-web/issues/28
-  shiny::observeEvent(input$page,
-    {
-      if (identical(input$page, "Map")) {
-        # Invalidate map size to ensure proper rendering after tab switches
-        session$sendCustomMessage("invalidateMapSize", list())
-      }
-    },
-    ignoreInit = TRUE
-  )
-
   # Hide loading screen when map is fully rendered and ready
   shiny::observeEvent(input$map_ready,
     {
@@ -843,13 +826,29 @@ server <- function(input, output, session) {
     ignoreInit = TRUE
   )
 
+  # Handle tab navigation: update state, restore table state, invalidate map, update URL
+  # This observer handles user-initiated tab changes (navbar clicks).
+  # It does NOT call updateNavbarPage() - the URL observer handles that to prevent feedback loops.
   shiny::observeEvent(input$page,
     {
       if (is.null(input$page) || !nzchar(input$page)) {
         return()
       }
 
+      # Early exit if we're in the middle of URL restoration to prevent feedback loops
+      # The URL observer will handle navbar updates during restoration
+      if (url_manager$is_updating()) {
+        return()
+      }
+
       state$current_tab(input$page)
+
+      # Invalidate map size when navigating to Map tab to ensure proper rendering
+      # Map forgets its size when hidden and needs recalculation
+      # See https://github.com/NCEAS/vegbank-web/issues/28
+      if (identical(input$page, "Map")) {
+        session$sendCustomMessage("invalidateMapSize", list())
+      }
 
       # When switching tabs, apply any stored table state for the new tab's table
       new_table_key <- url_manager$get_table_key(input$page)

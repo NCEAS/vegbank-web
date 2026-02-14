@@ -465,14 +465,12 @@ render_data_summary <- function(output) {
         htmltools::tags$p(
           "If you're new to VegBank, check out our ",
           htmltools::tags$a(
-            href = "#",
-            onclick = "Shiny.setInputValue('page', 'Getting Started'); return false;",
+            href = "?tab=Getting Started",
             "getting started guide"
           ),
           " or our ",
           htmltools::tags$a(
-            href = "#",
-            onclick = "Shiny.setInputValue('page', 'FAQ'); return false;",
+            href = "?tab=FAQ",
             "FAQ"
           ),
           " page for common questions and troubleshooting tips."
