@@ -81,10 +81,12 @@ build_loading_overlay <- function(overlay_type, default_title, messages, complet
 #' Constructs a full-screen loading overlay for initial map loading with animated
 #' spinner and rotating plant puns.
 #'
+#' @param visible If TRUE, the overlay is displayed immediately on page load.
+#'   Used to prevent flash of empty cards when loading the map for the first time.
 #' @return A Shiny tag representing the map loading overlay.
 #'
 #' @noRd
-build_map_loading_overlay <- function() {
+build_map_loading_overlay <- function(visible = FALSE) {
   build_loading_overlay(
     overlay_type = "map",
     default_title = "Loading the map for the first time can take a few seconds. It's busy:",
@@ -93,13 +95,19 @@ build_map_loading_overlay <- function() {
       "Branching out...",
       "Rooting through the database...",
       "Monitoring mycelial networks...",
+      "Looking through the leaf litter...",
       "Disturbing the substrate...",
+      "Digging soil samples...",
       "Planning successful succession...",
       "Aggregating observations (there are a lot)...",
       "Braving the brush...",
+      "Tackling the topography...",
+      "Navigating the terrain...",
+      "Extracting the latitudes and longitudes...",
       "Last bud not leaf..."
     ),
-    completion_message = "Go fir launch!"
+    completion_message = "Go fir launch!",
+    visible_on_load = visible
   )
 }
 
@@ -108,28 +116,31 @@ build_map_loading_overlay <- function() {
 #' Constructs a full-screen loading overlay for overview statistics with animated
 #' spinner and rotating messages.
 #'
+#' @param visible If TRUE, the overlay is displayed immediately on page load.
+#'   Used to prevent flash of empty cards when loading Overview page.
 #' @return A Shiny tag representing the overview loading overlay.
 #'
 #' @noRd
-build_overview_loading_overlay <- function() {
+build_overview_loading_overlay <- function(visible = FALSE) {
   build_loading_overlay(
     overlay_type = "overview",
-    default_title = "Loading the app can take a few seconds. Hold tight, we're:",
+    default_title = "Loading the overview can take a few seconds. Hold tight, we're:",
     messages = c(
       "Rooting through the database...",
       "Monitoring mycelial networks...",
+      "Running multivariate analysis on plots...",
       "Disturbing the substrate...",
       "Counting all the plots (there are a lot)...",
       "Surveying the survey data...",
       "Celebrating our top contributors...",
       "Crunching the numbers...",
-      "Classifiying communities...",
+      "Classifying communities...",
       "Sorting through plant species...",
       "Compiling project data...",
       "Organizing taxonomic hierarchies..."
     ),
     completion_message = "Take a look!",
-    visible_on_load = TRUE
+    visible_on_load = visible
   )
 }
 
@@ -149,6 +160,7 @@ build_download_loading_overlay <- function() {
       "Gathering plot observations...",
       "Untangling nested data...",
       "Pressing specimens into CSVs...",
+      "Double-checking species IDs...",
       "Bundling the herbarium...",
       "Zipping up the collection..."
     ),
@@ -162,10 +174,12 @@ build_download_loading_overlay <- function() {
 #' Constructs a full-screen loading overlay for citation resolution with animated
 #' spinner and rotating messages.
 #'
+#' @param visible If TRUE, the overlay is displayed immediately on page load.
+#'   Used when navigating directly to a citation URL.
 #' @return A Shiny tag representing the citation loading overlay.
 #'
 #' @noRd
-build_citation_loading_overlay <- function() {
+build_citation_loading_overlay <- function(visible = FALSE) {
   build_loading_overlay(
     overlay_type = "citation",
     default_title = "Resolving citation...",
@@ -174,8 +188,10 @@ build_citation_loading_overlay <- function() {
       "Consulting the archives...",
       "Following the paper trail...",
       "Tracking down that reference...",
-      "Dusting off old records..."
+      "Dusting off old records...",
+      "Pulling specimens from the herbarium..."
     ),
-    completion_message = "Citation resolved!"
+    completion_message = "Citation resolved!",
+    visible_on_load = visible
   )
 }

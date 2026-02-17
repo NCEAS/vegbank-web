@@ -279,55 +279,42 @@ test_that("resolve_citation passes accession code to vb_resolve", {
 
 # ==== UI Citation URL Redirect ====
 
-test_that("ui() redirects /cite/ paths to query parameter format", {
+test_that("ui() returns HTTP 302 redirect for /cite/ paths", {
   # Mock request object for /cite/VB.Ob.2948.ACAD143
   req <- list(PATH_INFO = "/cite/VB.Ob.2948.ACAD143")
 
   result <- ui(req)
 
-  # Should return HTML with JavaScript redirect
-  expect_s3_class(result, "shiny.tag")
-  expect_equal(result$name, "html")
-
-  # Extract JavaScript from head
-  script_tag <- result$children[[1]]$children[[1]]
-  expect_equal(script_tag$name, "script")
-
-  js_code <- as.character(script_tag$children[[1]])
-  expect_true(grepl("window\\.location\\.replace", js_code))
-  expect_true(grepl("/\\?cite=VB\\.Ob\\.2948\\.ACAD143", js_code))
+  # Should return an httpResponse with 302 status
+  expect_true(inherits(result, "httpResponse"))
+  expect_equal(result$status, 302L)
+  expect_true(grepl("cite=VB\\.Ob\\.2948\\.ACAD143", result$headers$Location))
 })
 
-test_that("ui() correctly URL-encodes special characters in citation identifier", {
+test_that("ui() correctly URL-encodes special characters in citation redirect", {
   # Test with identifier containing spaces and special chars
   req <- list(PATH_INFO = "/cite/VB.Test 123+Special")
 
   result <- ui(req)
 
-  # Extract JavaScript
-  script_tag <- result$children[[1]]$children[[1]]
-  js_code <- as.character(script_tag$children[[1]])
-
-  # Should encode space as %20 and + as %2B
-  expect_true(grepl("VB\\.Test%20123%2BSpecial", js_code))
+  # Should return an HTTP 302 redirect with encoded identifier
+  expect_true(inherits(result, "httpResponse"))
+  expect_equal(result$status, 302L)
+  # Space should be encoded as %20, + as %2B
+  expect_true(grepl("VB\\.Test%20123%2BSpecial", result$headers$Location))
 })
 
-test_that("ui() safely escapes JavaScript-unsafe characters in redirect URL", {
-  # Test with identifier that could break JavaScript if not properly escaped
-  # Using a backslash and quote characters
+test_that("ui() safely encodes special characters in citation redirect URL", {
+  # Test with identifier that has quote characters
   req <- list(PATH_INFO = '/cite/VB.Test"Quote')
 
   result <- ui(req)
 
-  # Extract JavaScript
-  script_tag <- result$children[[1]]$children[[1]]
-  js_code <- as.character(script_tag$children[[1]])
-
-  # The URL should be JSON-escaped, protecting against XSS
-  # jsonlite::toJSON will escape the quote as \"
-  expect_true(grepl("window\\.location\\.replace", js_code))
-  # Should not contain unescaped quotes that would break the JavaScript
-  expect_false(grepl('window\\.location\\.replace\\("[^"]*"[^"]*"\\)', js_code))
+  # Should still return a valid HTTP 302 redirect
+  expect_true(inherits(result, "httpResponse"))
+  expect_equal(result$status, 302L)
+  # Quote should be URL-encoded as %22
+  expect_true(grepl("VB\\.Test%22Quote", result$headers$Location))
 })
 
 test_that("ui() handles simple plot observation citation path", {
@@ -335,10 +322,9 @@ test_that("ui() handles simple plot observation citation path", {
 
   result <- ui(req)
 
-  script_tag <- result$children[[1]]$children[[1]]
-  js_code <- as.character(script_tag$children[[1]])
-
-  expect_true(grepl("/\\?cite=VB\\.Ob\\.22743\\.INW32086", js_code))
+  expect_true(inherits(result, "httpResponse"))
+  expect_equal(result$status, 302L)
+  expect_true(grepl("cite=VB\\.Ob\\.22743\\.INW32086", result$headers$Location))
 })
 
 test_that("ui() handles community concept citation path", {
@@ -346,10 +332,9 @@ test_that("ui() handles community concept citation path", {
 
   result <- ui(req)
 
-  script_tag <- result$children[[1]]$children[[1]]
-  js_code <- as.character(script_tag$children[[1]])
-
-  expect_true(grepl("/\\?cite=VB\\.CC\\.1234\\.EXAMPLE", js_code))
+  expect_true(inherits(result, "httpResponse"))
+  expect_equal(result$status, 302L)
+  expect_true(grepl("cite=VB\\.CC\\.1234\\.EXAMPLE", result$headers$Location))
 })
 
 test_that("ui() handles dataset citation path", {
@@ -357,10 +342,9 @@ test_that("ui() handles dataset citation path", {
 
   result <- ui(req)
 
-  script_tag <- result$children[[1]]$children[[1]]
-  js_code <- as.character(script_tag$children[[1]])
-
-  expect_true(grepl("/\\?cite=VB\\.DS\\.50\\.TESTDATA", js_code))
+  expect_true(inherits(result, "httpResponse"))
+  expect_equal(result$status, 302L)
+  expect_true(grepl("cite=VB\\.DS\\.50\\.TESTDATA", result$headers$Location))
 })
 
 test_that("ui() does not redirect non-citation paths", {

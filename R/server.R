@@ -86,6 +86,28 @@ server <- function(input, output, session) {
     table_registry = table_registry
   )
 
+  # Initialize current_tab from URL before any render logic runs.
+  # This prevents unnecessarily loading the Overview page when navigating directly to another tab.
+  # Citation URLs arrive as ?cite=IDENTIFIER after an HTTP 302 redirect from /cite/ paths.
+  initial_query <- shiny::isolate(shiny::parseQueryString(session$clientData$url_search))
+  has_cite_param <- !is.null(initial_query$cite) && nzchar(initial_query$cite)
+
+  # For citation URLs, don't pre-select a tab — the citation resolver will navigate
+  # to the correct tab after resolving the identifier. For all other URLs, parse the
+  # tab parameter or default to Overview.
+  if (has_cite_param) {
+    # Leave state$current_tab at its default ("Overview") but don't initialize any
+    # tab-specific data. The citation resolver will set the real tab.
+    initial_tab <- NULL
+  } else {
+    initial_tab <- if (!is.null(initial_query$tab) && nzchar(initial_query$tab)) {
+      initial_query$tab
+    } else {
+      "Overview"
+    }
+    state$current_tab(initial_tab)
+  }
+
   session$onFlushed(function() {
     if (!url_manager$is_history_initialized()) {
       session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
@@ -305,9 +327,6 @@ server <- function(input, output, session) {
   #   skip_highlight - If TRUE, skip server-side row highlight (client handles it from URL)
   open_detail <- function(detail_type, vb_code, push_history = TRUE, history_mode = "push",
                           skip_highlight = FALSE) {
-    # Ensure we have an up-to-date record of the current tab
-    state$current_tab(input$page %||% state$current_tab())
-
     success <- open_code_details(
       state = state,
       session = session,
@@ -372,66 +391,53 @@ server <- function(input, output, session) {
   }
 
   # --- Citation Resolution -----
-  # Legacy citation URL handling is done in UI.R with a client-side redirect
-  # from /cite/IDENTIFIER to /?cite=IDENTIFIER. This server-side function
-  # resolves a ?cite=IDENTIFIER URL and navigates to the appropriate view.
-  #
-  # Called from the URL observer when a ?cite= query parameter is detected.
-  # Delegates to resolve_citation() for API lookup, then directly applies
-  # the navigation using existing server-side functions (open_detail, state
-  # mutations, tab switching) rather than relying on a URL round-trip, since
-  # shiny::updateQueryString("replace") does not trigger a reactive re-fire
-  # of session$clientData$url_search.
-  #
-  # This function handles both single-entity citations and dataset citations.
-  #
-  # For single entities (only plot observations & concepts right now):
-  #   Shows only the cited entity in its table (filtered view), highlights it,
-  #   opens the detail overlay, and updates the URL persist that state.
-  #
-  # For datasets:
-  #   Navigates to the Plots tab with a cross-resource dataset filter applied,
-  #   and updates the URL to persist that state.
-  #
-  # Parameters:
-  #   identifier - The citation identifier (accession code, doi, vb code) to resolve.
-  resolve_and_redirect_citation <- function(identifier) {
-    # Show full-screen loading overlay and lock navigation during resolution
-    session$sendCustomMessage("showLoadingOverlay", list(
-      type = "citation",
-      title = paste0("Resolving citation: ", identifier)
-    ))
-    session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
 
+  # Resolve a ?cite=IDENTIFIER URL and navigate to the appropriate view.
+  # Called from the URL observer when a ?cite= query parameter is detected.
+  #
+  # Uses resolve_citation() for API lookup, then directly applies navigation
+  # using existing server-side functions (open_detail, state mutations, tab
+  # switching) rather than relying on a URL round-trip.
+  #
+  # Supported citation types:
+  #   - Single entities (Plots/Communities): filter + detail overlay + highlight
+  #   - Datasets: cross-resource filter on Plots tab
+  #   - Unsupported types: error notification, stay on current tab
+  #
+  # The citation loading overlay (already visible from page load) is hidden
+  # when resolution completes or fails.
+  resolve_and_redirect_citation <- function(identifier) {
     citation <- resolve_citation(identifier)
 
     if (is.null(citation)) {
-      # Hide loading overlay and unlock navigation
       session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
-      session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
 
       shiny::showNotification(
         paste0("Could not resolve citation: ", identifier),
         type = "error",
         duration = NULL
       )
-      # Fall through to Overview
+
+      # Fall back to Overview tab and initialize it
       state$current_tab("Overview")
       shiny::updateNavbarPage(session, "page", selected = "Overview")
-      url_manager$update_query_string("?tab=Overview", mode = "replace")
+      if (!overview_initialized()) {
+        session$sendCustomMessage("showLoadingOverlay", list(type = "overview"))
+        init_overview(output, state, session)
+        overview_initialized(TRUE)
+      }
+      update_app_query(mode = "replace", tab = "Overview")
+      session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
       return()
     }
 
     # Only datasets, plot observations (Plots tab), and community concepts
-    # (Communities tab) support citation filtering. Other resource types
-    # (references, cover-methods, stratum-methods, etc.) have no dedicated
-    # navbar tab or table filter, so we reject them early.
+    # (Communities tab) support citation filtering.
     supported_citation_tabs <- c("Plots", "Communities")
     is_dataset <- citation$resource_info$api_type == "user-datasets"
 
     if (!is_dataset && !isTRUE(citation$tab %in% supported_citation_tabs)) {
       session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
-      session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
 
       shiny::showNotification(
         paste0("Citations are not supported for ",
@@ -439,15 +445,20 @@ server <- function(input, output, session) {
         type = "warning",
         duration = NULL
       )
+
+      # Fall back to Overview tab and initialize it
       state$current_tab("Overview")
       shiny::updateNavbarPage(session, "page", selected = "Overview")
-      url_manager$update_query_string("?tab=Overview", mode = "replace")
+      if (!overview_initialized()) {
+        session$sendCustomMessage("showLoadingOverlay", list(type = "overview"))
+        init_overview(output, state, session)
+        overview_initialized(TRUE)
+      }
+      update_app_query(mode = "replace", tab = "Overview")
+      session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
       return()
     }
 
-    # Apply a citation filter that limits relevant table to just this entity
-    # Use distinct filter types: "collection-citation" for datasets, "single-entity-citation" otherwise
-    # This distinction persists in the URL via *_filter_type parameter
     filter_type <- if (is_dataset) "collection-citation" else "single-entity-citation"
 
     filter_info <- list(
@@ -455,18 +466,15 @@ server <- function(input, output, session) {
       code = citation$vb_code,
       label = paste("Citation identifier:", identifier),
       resource_type = citation$detail_type,
-      resource_info = citation$resource_info # Include full resource metadata
+      resource_info = citation$resource_info
     )
 
     if (is_dataset) {
-      # Dataset: navigate to Plots tab with cross-resource filter
       state$plot_filter(filter_info)
       state$current_tab("Plots")
       shiny::updateNavbarPage(session, "page", selected = "Plots")
       update_app_query(mode = "replace", tab = "Plots")
     } else {
-      # Single entity citation: Show only the cited entity in the table
-      # Apply filter based on which tab/table this entity belongs to
       if (citation$tab == "Plots") {
         state$plot_filter(filter_info)
         state$highlighted_table("plot_table")
@@ -475,13 +483,10 @@ server <- function(input, output, session) {
         state$highlighted_table("comm_table")
       }
 
-      # Set row highlight to first row (0-indexed) since filter shows only one entity
       state$highlighted_row(0L)
-
       state$current_tab(citation$tab)
       shiny::updateNavbarPage(session, "page", selected = citation$tab)
 
-      # Open detail overlay with highlighting
       open_detail(
         detail_type = citation$detail_type,
         vb_code = citation$vb_code,
@@ -497,7 +502,6 @@ server <- function(input, output, session) {
       )
     }
 
-    # Hide loading overlay and unlock navigation after successful resolution
     session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
     session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
   }
@@ -533,8 +537,47 @@ server <- function(input, output, session) {
 
   # RENDER UI ELEMENTS --------------------------------------------------------------------------------
 
-  # Initialize overview page
-  overview_data <- init_overview(output, state, session)
+  # Initialize overview page only when navigating to Overview tab
+  # This prevents unnecessary data fetching when navigating directly to other tabs
+  # Track whether overview has been initialized to avoid repeated initialization
+  overview_initialized <- shiny::reactiveVal(FALSE)
+
+  # Initialize overview immediately if that's the initial tab (not a citation URL)
+  if (identical(initial_tab, "Overview")) {
+    init_overview(output, state, session)
+    overview_initialized(TRUE)
+  }
+
+  # Lazy-initialize overview on subsequent navigations to the Overview tab
+  shiny::observeEvent(state$current_tab(), {
+    if (identical(state$current_tab(), "Overview") && !overview_initialized()) {
+      session$sendCustomMessage("showLoadingOverlay", list(type = "overview"))
+      init_overview(output, state, session)
+      overview_initialized(TRUE)
+    }
+  }, ignoreInit = TRUE)
+
+  # Initialize map data fetch when navigating directly to the Map tab.
+  # The map data observeEvent below uses ignoreInit = TRUE so it only handles
+  # subsequent tab changes. This block handles the initial page load case.
+  if (identical(initial_tab, "Map")) {
+    # Defer the fetch to after Shiny is fully initialized (map output registered)
+    session$onFlushed(function() {
+      if (is.null(isolate(map_observations())) && !isTRUE(isolate(map_fetch_in_progress()))) {
+        session$sendCustomMessage("showLoadingOverlay", list(type = "map"))
+        session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
+        map_fetch_in_progress(TRUE)
+        observations <- fetch_plot_map_data()
+        map_fetch_in_progress(FALSE)
+        if (!is.null(observations)) {
+          map_observations(observations)
+        } else {
+          session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+          session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
+        }
+      }
+    }, once = TRUE)
+  }
 
   output$plot_filter_alert <- shiny::renderUI({
     filter <- state$plot_filter()
@@ -829,6 +872,8 @@ server <- function(input, output, session) {
   # Handle tab navigation: update state, restore table state, invalidate map, update URL
   # This observer handles user-initiated tab changes (navbar clicks).
   # It does NOT call updateNavbarPage() - the URL observer handles that to prevent feedback loops.
+  # ignoreInit = TRUE prevents firing on the initial navbar selection ("Overview"),
+  # which would race with citation resolution and URL-driven initialization.
   shiny::observeEvent(input$page,
     {
       if (is.null(input$page) || !nzchar(input$page)) {
@@ -838,6 +883,13 @@ server <- function(input, output, session) {
       # Early exit if we're in the middle of URL restoration to prevent feedback loops
       # The URL observer will handle navbar updates during restoration
       if (url_manager$is_updating()) {
+        return()
+      }
+
+      # Skip if the tab is already current (e.g., after citation resolution already
+      # set the tab via state$current_tab() and updateNavbarPage()). This prevents
+      # duplicate URL pushes and redundant state updates.
+      if (identical(state$current_tab(), input$page)) {
         return()
       }
 
@@ -872,7 +924,8 @@ server <- function(input, output, session) {
         detail_code = if (isTRUE(state$details_open())) state$detail_code() else NULL
       )
     },
-    ignoreNULL = FALSE
+    ignoreNULL = FALSE,
+    ignoreInit = TRUE
   )
 
   shiny::observeEvent(input$row_highlight,
@@ -1039,10 +1092,10 @@ server <- function(input, output, session) {
       )
 
       # Handle citation resolution: ?cite=IDENTIFIER
-      # Legacy VegBank citation URLs (e.g., /cite/VB.Ob.22743.INW32086) are converted to
-      # ?cite=IDENTIFIER by ui.R on the client side before reaching this observer.
-      # Here we resolve the identifier via the vegbankr API and redirect to the appropriate
-      # internal URL. The observer will re-fire with the resolved params on the next cycle.
+      # /cite/ paths are HTTP-302-redirected to /?cite= by the UI function.
+      # Here we resolve the identifier via the vegbankr API, apply the appropriate
+      # navigation state, and replace the URL with resolved parameters.
+      # The return() ensures no other URL params from the ?cite= query are processed.
       cite_param <- url_manager$first_param(params$cite)
       if (url_manager$is_valid_param(cite_param)) {
         # Strip surrounding quotes that may appear from URL encoding (%22)

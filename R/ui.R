@@ -7,26 +7,28 @@
 #'
 #' @noRd
 ui <- function(req) {
-  # Handle legacy citation URLs: /cite/IDENTIFIER → ?cite=IDENTIFIER
+  # Handle /cite/IDENTIFIER paths: --> HTTP 302 redirect --> /?cite=IDENTIFIER
   # Old VegBank had citation URLs like http://vegbank.org/cite/VB.Ob.22743.INW32086
   # This redirect converts path-based citations to query parameter form for server processing.
-  path_info <- req$PATH_INFO
+  # after the app loads.
+  identifier <- extract_citation_identifier(req)
+  if (!is.null(identifier)) {
+    return(build_citation_redirect(identifier))
+  }
 
-  if (!is.null(path_info) && length(path_info) > 0 && grepl("^/cite/", path_info)) {
-    identifier <- sub("^/cite/", "", path_info)
-    redirect_url <- paste0("/?cite=", utils::URLencode(identifier, reserved = TRUE))
+  # Parse initial state from URL query parameters
+  query_string <- req$QUERY_STRING
+  initial_tab <- "Overview"
+  has_cite_param <- FALSE
 
-    # Return JavaScript redirect that executes immediately
-    # Use jsonlite::toJSON to safely escape the URL for JavaScript context
-    safe_url <- jsonlite::toJSON(redirect_url, auto_unbox = TRUE)
-    return(shiny::tags$html(
-      shiny::tags$head(
-        shiny::tags$script(shiny::HTML(sprintf(
-          "window.location.replace(%s);",
-          safe_url
-        )))
-      )
-    ))
+  if (!is.null(query_string) && nzchar(query_string)) {
+    query_params <- shiny::parseQueryString(query_string)
+    if (!is.null(query_params$cite) && nzchar(query_params$cite)) {
+      # Citation will be resolved server-side; start on Overview with loading overlay
+      has_cite_param <- TRUE
+    } else if (!is.null(query_params$tab) && nzchar(query_params$tab)) {
+      initial_tab <- query_params$tab
+    }
   }
 
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
@@ -38,12 +40,18 @@ ui <- function(req) {
     htmltools::tags$link(rel = "stylesheet", href = "assets/vegbank-styles.css")
   )
 
-  navbar <- build_navbar()
+  navbar <- build_navbar(initial_tab)
   overlay <- build_detail_overlay()
-  map_loading_overlay <- build_map_loading_overlay()
-  overview_loading_overlay <- build_overview_loading_overlay()
+  map_loading_overlay <- build_map_loading_overlay(
+    visible = identical(initial_tab, "Map")
+  )
+  overview_loading_overlay <- build_overview_loading_overlay(
+    visible = identical(initial_tab, "Overview") && !has_cite_param
+  )
+  citation_loading_overlay <- build_citation_loading_overlay(
+    visible = has_cite_param
+  )
   download_loading_overlay <- build_download_loading_overlay()
-  citation_loading_overlay <- build_citation_loading_overlay()
 
   # Inline script with application constants injected from R
   constants_script <- htmltools::tags$script(htmltools::HTML(paste0(
@@ -60,8 +68,8 @@ ui <- function(req) {
     overlay,
     map_loading_overlay,
     overview_loading_overlay,
-    download_loading_overlay,
     citation_loading_overlay,
+    download_loading_overlay,
     constants_script,
     app_script
   )
@@ -91,12 +99,14 @@ custom_theme <- bslib::bs_theme(
 #'
 #' Constructs and returns the navigation bar to be used in the UI.
 #'
+#' @param initial_tab Character string specifying which tab to show initially
 #' @return A Shiny tag list representing the navigation bar.
 #'
 #' @noRd
-build_navbar <- function() {
+build_navbar <- function(initial_tab = "Overview") {
   navbar <- bslib::page_navbar(
     id = "page",
+    selected = initial_tab,
     theme = custom_theme,
     title = htmltools::tags$span(
       htmltools::tags$img(
@@ -341,5 +351,48 @@ build_detail_overlay <- function() {
         )
       )
     )
+  )
+}
+
+# ================= CITATION REDIRECT HELPERS ======================================================
+
+#' Extract Citation Identifier from /cite/ Path
+#'
+#' Checks if the request path is a /cite/IDENTIFIER URL and returns the identifier.
+#' Only checks path-based citations — query-based (?cite=) citations are handled
+#' by the server after the app loads.
+#'
+#' @param req A Shiny request object
+#' @return The citation identifier string, or NULL if not a /cite/ path
+#' @noRd
+extract_citation_identifier <- function(req) {
+  path_info <- req$PATH_INFO
+  if (!is.null(path_info) && length(path_info) > 0 && grepl("^/cite/", path_info)) {
+    identifier <- sub("^/cite/", "", path_info)
+    if (nzchar(identifier)) {
+      return(identifier)
+    }
+  }
+  NULL
+}
+
+#' Build an HTTP 302 Redirect for Citation URLs
+#'
+#' Returns an HTTP 302 response that redirects /cite/IDENTIFIER to /?cite=IDENTIFIER.
+#' This is an immediate server-level redirect — no HTML is rendered and no resources
+#' are loaded — which avoids the problem of relative asset paths being misinterpreted
+#' as citation identifiers when uiPattern = ".*" routes all requests through ui().
+#'
+#' @param identifier The citation identifier to redirect
+#' @return A Shiny httpResponse object with status 302
+#' @noRd
+build_citation_redirect <- function(identifier) {
+  encoded_id <- utils::URLencode(identifier, reserved = TRUE)
+  shiny::httpResponse(
+    status = 302L,
+    headers = list(
+      Location = paste0("/?cite=", encoded_id)
+    ),
+    content = ""
   )
 }
