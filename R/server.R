@@ -650,11 +650,18 @@ server <- function(input, output, session) {
     # Wait for map data to be available (fetched when Map tab is visited)
     shiny::req(map_observations())
 
+    # Use the current map state (already restored from URL by the URL observer) so that
+    # direct navigation with map_lat/map_lng/map_zoom params renders the correct initial view.
+    # isolate() prevents creating a reactive dependency that would re-render the whole map.
+    center_lat <- shiny::isolate(state$map_center_lat())
+    center_lng <- shiny::isolate(state$map_center_lng())
+    zoom <- shiny::isolate(state$map_zoom())
+
     map <- process_map_data(
       map_data = map_observations(),
-      center_lng = DEFAULT_MAP_LNG,
-      center_lat = DEFAULT_MAP_LAT,
-      zoom = DEFAULT_MAP_ZOOM
+      center_lng = center_lng,
+      center_lat = center_lat,
+      zoom = zoom
     )
 
     # Add callback to hide loading screen once map is fully rendered
