@@ -162,7 +162,7 @@ render_top_projects <- function(output, overview_data) {
       htmltools::tags$div(
         class = "mb-3",
         htmltools::tags$div(
-          class = "d-flex justify-content-between align-items-center mb-1",
+          class = "d-flex justify-content-between align-items-start mb-1",
           htmltools::tags$a(
             href = "#",
             style = "font-size: 0.9rem; word-break: break-word;",
@@ -224,7 +224,7 @@ render_top_communities <- function(output, overview_data) {
       htmltools::tags$div(
         class = "mb-3",
         htmltools::tags$div(
-          class = "d-flex justify-content-between align-items-center mb-1",
+          class = "d-flex justify-content-between align-items-start mb-1",
           htmltools::tags$a(
             href = "#",
             style = "font-size: 0.9rem; word-break: break-word;",
@@ -286,7 +286,7 @@ render_top_contributors <- function(output, overview_data) {
       htmltools::tags$div(
         class = "mb-3",
         htmltools::tags$div(
-          class = "d-flex justify-content-between align-items-center mb-1",
+          class = "d-flex justify-content-between align-items-start mb-1",
           htmltools::tags$a(
             href = "#",
             style = "font-size: 0.9rem;",
@@ -350,7 +350,7 @@ render_top_plants <- function(output, overview_data) {
       htmltools::tags$div(
         class = "mb-3",
         htmltools::tags$div(
-          class = "d-flex justify-content-between align-items-center mb-1",
+          class = "d-flex justify-content-between align-items-start mb-1",
           htmltools::tags$a(
             href = "#",
             style = "font-size: 0.9rem; word-break: break-word;",
