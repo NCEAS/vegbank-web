@@ -65,6 +65,7 @@ render_core_counts <- function(output, overview_data) {
     count_map <- setNames(counts$count, counts$name)
 
     htmltools::tags$div(
+      class = "core-counts-list",
       style = "font-size: 15px; line-height: 2;",
       htmltools::tags$div(
         htmltools::tags$strong("Observations"),

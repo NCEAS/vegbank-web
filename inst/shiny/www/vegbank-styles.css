@@ -340,3 +340,25 @@ table.dataTable tbody tr.selected-entity:hover,
   font-size: 1em;
   white-space: nowrap;
 }
+
+/* Core counts rows: flexbox keeps label left, count right without either overflowing */
+.core-counts-list > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+/* Override Bootstrap's float-end since we use flex alignment instead */
+.core-counts-list .float-end {
+  float: none !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Allow the label text to wrap onto the next line rather than pushing the count off-screen */
+.core-counts-list > div > span:first-child,
+.core-counts-list > div > strong:first-child {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
