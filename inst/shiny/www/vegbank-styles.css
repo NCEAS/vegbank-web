@@ -179,6 +179,21 @@ table.dataTable tbody tr.selected-entity:hover,
   background-color: #72B9A2 !important;
 }
 
+/* Description column in DataTables */
+.dt-description {
+  display: -webkit-box;
+  line-clamp: 5;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dt-read-more {
+  display: none;
+  font-size: 1em;
+  white-space: nowrap;
+}
+
 /* Generic loading ellipses animation for all overlays */
 .loading-ellipses {
   display: inline-block;
@@ -288,10 +303,25 @@ table.dataTable tbody tr.selected-entity:hover,
   overflow-y: auto;
   background: #fff;
   border-left: 1px solid rgba(40, 70, 94, 0.15);
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12), -2px 0 8px rgba(0, 0, 0, 0.08);
   z-index: 1050;
   padding: 20px;
-  transition: right 0.4s ease-in-out;
+  transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#detail-overlay.closed {
+  right: -100vw !important;
+}
+
+#detail-overlay::before {
+  content: '';
+  position: sticky;
+  top: -20px;
+  display: block;
+  margin: -20px -20px 12px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--vb-green), hsl(160, 29%, 58%));
+  z-index: 1;
 }
 
 /* Mobile: full width */
@@ -302,18 +332,24 @@ table.dataTable tbody tr.selected-entity:hover,
   }
 }
 
-/* Desktop: 420px width */
+/* Desktop: split screen */
 @media (min-width: 768px) {
   #detail-overlay {
-    right: -420px;
-    width: 420px;
+    right: -100vw;
+    width: 480px;
+  }
+}
+
+/* Monitor: wider split */
+@media (min-width: 2560px) {
+  #detail-overlay {
+    right: -100vw;
+    width: 560px;
   }
 }
 
 /* Overview Page Styles */
 
-/* Track: full-width container. Not a direct card-body child so bslib fill JS
-   never touches it. overflow:hidden clips the fill to the track width. */
 .overview-bar-track {
   width: 100%;
   height: 10px;
@@ -323,7 +359,6 @@ table.dataTable tbody tr.selected-entity:hover,
   background-color: transparent;
 }
 
-/* Prevent bslib fill system from collapsing bar height */
 .overview-bar-fill {
   min-height: 10px;
 }
@@ -352,19 +387,6 @@ table.dataTable tbody tr.selected-entity:hover,
   overflow: hidden;
 }
 
-.dt-description {
-  display: -webkit-box;
-  line-clamp: 5;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.dt-read-more {
-  display: none;
-  font-size: 1em;
-  white-space: nowrap;
-}
 
 /* Core counts rows: flexbox keeps label left, count right without either overflowing */
 .core-counts-list > div {

@@ -245,8 +245,7 @@ build_detail_overlay <- function() {
     id = "detail-overlay",
     shiny::actionButton("close_overlay", "",
       onclick = "var overlay = document.getElementById('detail-overlay');
-                 var closePos = window.innerWidth < 768 ? '-100vw' : '-420px';
-                 overlay.style.right = closePos;
+                 overlay.classList.add('closed');
                  Shiny.setInputValue('close_details', true, {priority:'event'});",
       class = "btn-close", style = "float:right; margin-bottom:10px;"
     ),
