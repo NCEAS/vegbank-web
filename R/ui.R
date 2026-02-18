@@ -13,7 +13,7 @@ ui <- function(req) {
   # after the app loads.
   identifier <- extract_citation_identifier(req)
   if (!is.null(identifier)) {
-    return(build_citation_redirect(identifier))
+    return(build_citation_redirect(identifier, req))
   }
 
   # Parse initial state from URL query parameters
@@ -383,15 +383,26 @@ extract_citation_identifier <- function(req) {
 #' are loaded — which avoids the problem of relative asset paths being misinterpreted
 #' as citation identifiers when uiPattern = ".*" routes all requests through ui().
 #'
+#' Preserves the base path where the app is deployed (e.g., /beta) so that
+#' https://example.org/beta/cite/ID redirects to https://example.org/beta/?cite=ID
+#'
 #' @param identifier The citation identifier to redirect
+#' @param req A Shiny request object used to extract the base path
 #' @return A Shiny httpResponse object with status 302
 #' @noRd
-build_citation_redirect <- function(identifier) {
+build_citation_redirect <- function(identifier, req) {
   encoded_id <- utils::URLencode(identifier, reserved = TRUE)
+
+  # Extract base path where app is mounted (e.g., "/beta" or "" for root)
+  base_path <- req$SCRIPT_NAME
+  if (is.null(base_path) || base_path == "/") {
+    base_path <- ""
+  }
+
   shiny::httpResponse(
     status = 302L,
     headers = list(
-      Location = paste0("/?cite=", encoded_id)
+      Location = paste0(base_path, "/?cite=", encoded_id)
     ),
     content = ""
   )
