@@ -513,8 +513,12 @@ server <- function(input, output, session) {
     }
 
     # Customize message based on filter type
-    message <- if (filter$type == "citation") {
-      sprintf("Showing cited %s: %s (%s)", resource_singular, filter$code, filter$label)
+    message <- if (filter$type == "single-entity-citation") {
+      # e.g. "Showing the cited plot observation: ob.2948 (Citation identifier: VB.Ob.2948.ACAD143)"
+      sprintf("Showing the cited %s: %s (%s)", resource_singular, filter$code, filter$label)
+    } else if (filter$type == "collection-citation") {
+      # e.g. "Showing plot observations in dataset: ds.200278 (Citation identifier: ds.200278)"
+      sprintf("Showing plot observations in dataset: %s (%s)", filter$code, filter$label)
     } else {
       sprintf(
         "Showing %s related to %s: %s (%s)",
