@@ -80,7 +80,6 @@ process_project_data <- function(project_data) {
   last_added <- clean_column_dates(project_data, "last_plot_added_date")
 
   descriptions <- clean_column_data(project_data, "project_description")
-  descriptions <- truncate_text_with_ellipsis(descriptions, max_chars = 680L)
 
   data.frame(
     "Actions" = actions,
@@ -90,7 +89,14 @@ process_project_data <- function(project_data) {
     "Started" = vapply(starts, htmltools::htmlEscape, character(1)),
     "Ended" = vapply(stops, htmltools::htmlEscape, character(1)),
     "Last Plot Added" = vapply(last_added, htmltools::htmlEscape, character(1)),
-    "Description" = vapply(descriptions, htmltools::htmlEscape, character(1)),
+    "Description" = vapply(seq_along(descriptions), function(i) {
+      safe_desc <- htmltools::htmlEscape(descriptions[i])
+      safe_code <- htmltools::htmlEscape(as.character(pj_codes[i]), attribute = TRUE)
+      sprintf(
+        '<div class="dt-description-container"><div class="dt-description">%s</div><a href="#" class="dt-read-more dt-shiny-action" data-input-id="proj_link_click" data-value="%s">Read more</a></div>',
+        safe_desc, safe_code
+      )
+    }, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )

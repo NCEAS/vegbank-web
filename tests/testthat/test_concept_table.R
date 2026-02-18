@@ -64,7 +64,18 @@ community_test_data <- data.frame(
   concept_rf_code = c("cr.5", NA),
   concept_rf_label = c("Prairie Ref", ""),
   obs_count = c("8", ""),
-  comm_description = c("Grassland", NA),
+  comm_description = c(
+    paste(
+      "Temperate grassland dominated by mid- to tall-grass species including Andropogon gerardii and Sorghastrum nutans.",
+      "Occurs on well-drained loam soils across the central Great Plains.",
+      "Associated with periodic fire disturbance and grazing by large ungulates.",
+      "Structurally defined by a continuous herbaceous layer with sparse woody cover.",
+      "Seasonal phenology peaks in late summer with abundant forb diversity in the understory.",
+      "Often considered a reference condition for tallgrass prairie restoration programs in the region.",
+      sep = " "
+    ),
+    NA
+  ),
   stringsAsFactors = FALSE
 )
 
@@ -88,7 +99,8 @@ test_that("process_concept_data formats plant concepts", {
     expect_true(grepl(">15</a>", result$Observations[1]))
     expect_true(grepl("obs-count-link", result$Observations[1]))
     expect_equal(result$Observations[2], "0")
-    expect_equal(result$Description, c("Deciduous tree", "Not provided"))
+    expect_true(grepl("Deciduous tree", result$Description[1]) && grepl('data-value="pc.101"', result$Description[1]))
+    expect_true(grepl("Not provided", result$Description[2]) && grepl('data-value="pc.102"', result$Description[2]))
   })
 })
 
@@ -113,6 +125,10 @@ test_that("process_concept_data formats community concepts", {
     expect_true(grepl(">8</a>", result$Observations[1]))
     expect_true(grepl("obs-count-link", result$Observations[1]))
     expect_equal(result$Observations[2], "0")
-    expect_equal(result$Description, c("Grassland", "Not provided"))
+    # Full description text is present untruncated (truncation is CSS-only)
+    expect_true(grepl("Temperate grassland", result$Description[1]))
+    expect_true(grepl("restoration programs in the region", result$Description[1]))
+    expect_true(grepl('data-value="cc.201"', result$Description[1]))
+    expect_true(grepl("Not provided", result$Description[2]) && grepl('data-value="cc.202"', result$Description[2]))
   })
 })

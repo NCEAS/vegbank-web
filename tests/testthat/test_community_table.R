@@ -53,6 +53,7 @@ test_that("community concept data includes community-specific values", {
     expect_true(grepl(">8</a>", result$Observations[1]))
     expect_true(grepl("obs-count-link", result$Observations[1]))
     expect_equal(result$Observations[2], "0")
-    expect_equal(result$Description, c("Grassland", "Marsh"))
+    expect_true(grepl("Grassland", result$Description[1]) && grepl('data-value="cc.101"', result$Description[1]))
+    expect_true(grepl("Marsh", result$Description[2]) && grepl('data-value="cc.102"', result$Description[2]))
   })
 })
