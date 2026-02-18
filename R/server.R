@@ -11,7 +11,7 @@
 #' @importFrom rlang .data
 #' @importFrom shiny reactiveVal observeEvent observe req renderUI renderText showNotification
 #'             updateNavbarPage invalidateLater reactiveValuesToList onBookmark onBookmarked
-#'             onRestore
+#'             onRestore isolate
 #' @importFrom DT renderDataTable datatable dataTableProxy
 #' @importFrom htmltools tags
 #' @importFrom leaflet renderLeaflet leafletProxy
