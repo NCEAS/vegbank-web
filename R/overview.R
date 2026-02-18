@@ -405,19 +405,23 @@ render_latest_projects <- function(output, overview_data) {
 
     projects <- data$latest_n_projects
     rows <- lapply(seq_len(nrow(projects)), function(i) {
+      full_name <- projects$name[i]
       htmltools::tags$tr(
         htmltools::tags$td(
+          style = "min-width: 0;",
           htmltools::tags$a(
             href = "#",
+            class = "overview-project-name",
+            title = full_name,
             onclick = sprintf(
               "Shiny.setInputValue('proj_link_click', '%s', {priority: 'event'}); return false;",
               projects$pj_code[i]
             ),
-            projects$name[i]
+            full_name
           )
         ),
         htmltools::tags$td(
-          class = "small overview-date",
+          class = "overview-date",
           as.Date(projects$last_date_added[i], format = "%a, %d %b %Y")
         ),
         htmltools::tags$td(
@@ -437,6 +441,7 @@ render_latest_projects <- function(output, overview_data) {
 
     htmltools::tags$table(
       class = "table table-sm table-hover",
+      style = "table-layout: fixed; width: 100%;",
       htmltools::tags$thead(
         htmltools::tags$tr(
           htmltools::tags$th("Project"),

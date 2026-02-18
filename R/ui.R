@@ -95,7 +95,7 @@ custom_theme <- bslib::bs_theme(
   "font-size-base" = "0.875rem"
 )
 
-#' Build Navigation Bar for Vegbank UI
+#' Build Navigation Bar for VegBank UI
 #'
 #' Constructs and returns the navigation bar to be used in the UI.
 #'
@@ -112,7 +112,7 @@ build_navbar <- function(initial_tab = "Overview") {
       htmltools::tags$img(
         src = "assets/logo_vegbank_leaves.svg"
       ),
-      "Vegbank"
+      "VegBank"
     ),
     bslib::nav_panel(
       title = "Overview",
@@ -121,7 +121,7 @@ build_navbar <- function(initial_tab = "Overview") {
           shiny::column(
             12,
             bslib::card(
-              bslib::card_header("Vegbank Beta 0.2.0"),
+              bslib::card_header("VegBank Beta 0.2.0"),
               bslib::card_body(shiny::uiOutput("dataSummary"))
             )
           )
