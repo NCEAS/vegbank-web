@@ -177,9 +177,8 @@ render_top_projects <- function(output, overview_data) {
             class = "ms-2",
             style = "font-size: 0.85rem; white-space: nowrap;",
             onclick = sprintf(
-              "Shiny.setInputValue('obs_count_click', {code: '%s', label: '%s'}, {priority: 'event'}); return false;",
-              projects$pj_code[i],
-              gsub("'", "\\'", projects$name[i])
+              "Shiny.setInputValue('obs_count_click', %s, {priority: 'event'}); return false;",
+              jsonlite::toJSON(list(code = projects$pj_code[i], label = projects$name[i]), auto_unbox = TRUE)
             ),
             format(projects$count[i], big.mark = ",")
           )
@@ -239,9 +238,8 @@ render_top_communities <- function(output, overview_data) {
             class = "ms-2",
             style = "font-size: 0.85rem; white-space: nowrap;",
             onclick = sprintf(
-              "Shiny.setInputValue('obs_count_click', {code: '%s', label: '%s'}, {priority: 'event'}); return false;",
-              communities$cc_code[i],
-              gsub("'", "\\'", communities$name[i])
+              "Shiny.setInputValue('obs_count_click', %s, {priority: 'event'}); return false;",
+              jsonlite::toJSON(list(code = communities$cc_code[i], label = communities$name[i]), auto_unbox = TRUE)
             ),
             format(communities$count[i], big.mark = ",")
           )
@@ -289,7 +287,7 @@ render_top_contributors <- function(output, overview_data) {
           class = "d-flex justify-content-between align-items-start mb-1",
           htmltools::tags$a(
             href = "#",
-            style = "font-size: 0.9rem;",
+            style = "font-size: 0.9rem; word-break: break-word;",
             onclick = sprintf(
               "Shiny.setInputValue('party_link_click', '%s', {priority: 'event'}); return false;",
               contributors$py_code[i]
@@ -301,9 +299,8 @@ render_top_contributors <- function(output, overview_data) {
             class = "ms-2",
             style = "font-size: 0.85rem; white-space: nowrap;",
             onclick = sprintf(
-              "Shiny.setInputValue('obs_count_click', {code: '%s', label: '%s'}, {priority: 'event'}); return false;",
-              contributors$py_code[i],
-              contributors$name[i]
+              "Shiny.setInputValue('obs_count_click', %s, {priority: 'event'}); return false;",
+              jsonlite::toJSON(list(code = contributors$py_code[i], label = contributors$name[i]), auto_unbox = TRUE)
             ),
             format(contributors$count[i], big.mark = ",")
           )
@@ -365,9 +362,8 @@ render_top_plants <- function(output, overview_data) {
             class = "ms-2",
             style = "font-size: 0.85rem; white-space: nowrap;",
             onclick = sprintf(
-              "Shiny.setInputValue('obs_count_click', {code: '%s', label: '%s'}, {priority: 'event'}); return false;",
-              plants$pc_code[i],
-              gsub("'", "\\'", plants$name[i])
+              "Shiny.setInputValue('obs_count_click', %s, {priority: 'event'}); return false;",
+              jsonlite::toJSON(list(code = plants$pc_code[i], label = plants$name[i]), auto_unbox = TRUE)
             ),
             format(plants$count[i], big.mark = ",")
           )
@@ -430,9 +426,8 @@ render_latest_projects <- function(output, overview_data) {
           htmltools::tags$a(
             href = "#",
             onclick = sprintf(
-              "Shiny.setInputValue('obs_count_click', {code: '%s', label: '%s'}, {priority: 'event'}); return false;",
-              projects$pj_code[i],
-              gsub("'", "\\'", projects$name[i])
+              "Shiny.setInputValue('obs_count_click', %s, {priority: 'event'}); return false;",
+              jsonlite::toJSON(list(code = projects$pj_code[i], label = projects$name[i]), auto_unbox = TRUE)
             ),
             format(projects$count[i], big.mark = ",")
           )
@@ -500,8 +495,8 @@ render_data_summary <- function(output) {
           " More features are coming soon and this page will change. This is still a beta release; ",
           " things may be slow and buggy. Please ",
           htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here"),
-          "with details about what you were doing when the problem occurred."
-        ),
+          " with details about what you were doing when the problem occurred."
+        )
       )
     )
   })
