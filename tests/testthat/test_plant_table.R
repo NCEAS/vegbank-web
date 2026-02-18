@@ -52,6 +52,7 @@ test_that("plant concept data includes plant-specific values", {
     expect_true(grepl(">15</a>", result$Observations[1]))
     expect_true(grepl(">7</a>", result$Observations[2]))
     expect_true(all(grepl("obs-count-link", result$Observations)))
-    expect_equal(result$Description, plant_data$plant_description)
+    expect_true(grepl("Deciduous tree", result$Description[1]) && grepl('data-value="pc.101"', result$Description[1]))
+    expect_true(grepl("Deciduous tree", result$Description[2]) && grepl('data-value="pc.102"', result$Description[2]))
   })
 })
