@@ -848,6 +848,14 @@ $(document).on('draw.dt', function(e, settings) {
       }
     }
   }
+
+  // Show "Read more" only on rows where the description is actually clamped
+  $(e.target).find('.dt-description').each(function() {
+    var readMore = $(this).siblings('.dt-read-more');
+    if (readMore.length) {
+      readMore.toggle(this.scrollHeight > this.clientHeight + 1);
+    }
+  });
 });
 
 // For server-side AJAX tables, try row highlight after data arrives

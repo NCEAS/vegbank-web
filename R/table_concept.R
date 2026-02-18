@@ -176,9 +176,9 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   obs_counts <- suppressWarnings(as.numeric(clean_column_data(concept_data, "obs_count", "0")))
   obs_counts[is.na(obs_counts)] <- 0
   descriptions <- clean_column_data(concept_data, config$description_field)
-  descriptions <- truncate_text_with_ellipsis(descriptions, max_chars = 680L)
+  detail_input_id <- if (concept_type == "plant") "plant_link_click" else "comm_link_click"
   actions <- create_action_buttons(
-    if (concept_type == "plant") "plant_link_click" else "comm_link_click",
+    detail_input_id,
     "Details",
     concept_data[[config$code_field]]
   )
@@ -211,7 +211,14 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     Level = vapply(levels, htmltools::htmlEscape, character(1)),
     `Reference Source` = ref_links,
     Observations = obs_count_links,
-    Description = vapply(descriptions, htmltools::htmlEscape, character(1)),
+    Description = vapply(seq_along(descriptions), function(i) {
+      safe_desc <- htmltools::htmlEscape(descriptions[i])
+      safe_code <- htmltools::htmlEscape(as.character(concept_codes[[i]]), attribute = TRUE)
+      sprintf(
+        '<div class="dt-description-container"><div class="dt-description">%s</div><a href="#" class="dt-read-more dt-shiny-action" data-input-id="%s" data-value="%s">Read more</a></div>',
+        safe_desc, detail_input_id, safe_code
+      )
+    }, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
