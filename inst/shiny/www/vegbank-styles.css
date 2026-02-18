@@ -12,10 +12,10 @@
   --vb-green: hsl(153, 31%, 25%);
 
   /* Overview progress bar colors - VegBank green variants */
-  --vb-green-base: #2e5938;
-  --vb-green-light: #3d7349;
-  --vb-green-medium: #4d8d5a;
-  --vb-green-lighter: #5da76b;
+  --vb-green-400: hsl(133, 30%, 43%);
+  --vb-green-300: hsl(133, 30%, 51%);
+  --vb-green-200: hsl(133, 30%, 70%);
+  --vb-green-100: hsl(133, 30%, 80%);
 
   /* Text colors */
   --text-muted: #333;
@@ -286,25 +286,34 @@ table.dataTable tbody tr.selected-entity:hover,
 }
 
 /* Overview Page Styles */
-.overview-progress {
-  height: 20px;
+
+/* Track: full-width container. Not a direct card-body child so bslib fill JS
+   never touches it. overflow:hidden clips the fill to the track width. */
+.overview-bar-track {
+  width: 100%;
+  height: 10px;
+  min-height: 10px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background-color: transparent;
 }
 
-.progress-bar-projects {
-  background-color: var(--vb-green-base) !important;
+/* Prevent bslib fill system from collapsing bar height */
+.overview-bar-fill {
+  min-height: 10px;
 }
 
-.progress-bar-communities {
-  background-color: var(--vb-green-light) !important;
+/* Fill: the coloured portion, sized by inline width% set from R */
+.overview-bar-fill {
+  height: 100%;
+  min-width: 4px;
+  border-radius: 9999px;
 }
 
-.progress-bar-contributors {
-  background-color: var(--vb-green-medium) !important;
-}
-
-.progress-bar-plants {
-  background-color: var(--vb-green-lighter) !important;
-}
+.overview-bar-projects    { background-color: var(--vb-green-400); }
+.overview-bar-communities { background-color: var(--vb-green-200); }
+.overview-bar-contributors { background-color: var(--vb-green-100); }
+.overview-bar-plants      { background-color: var(--vb-green-300); }
 
 .overview-date {
   color: var(--text-muted);
