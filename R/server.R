@@ -552,15 +552,6 @@ server <- function(input, output, session) {
     overview_initialized(TRUE)
   }
 
-  # Lazy-initialize overview on subsequent navigations to the Overview tab
-  shiny::observeEvent(state$current_tab(), {
-    if (identical(state$current_tab(), "Overview") && !overview_initialized()) {
-      session$sendCustomMessage("showLoadingOverlay", list(type = "overview"))
-      init_overview(output, state, session)
-      overview_initialized(TRUE)
-    }
-  }, ignoreInit = TRUE)
-
   # Initialize map data fetch when navigating directly to the Map tab.
   # The map data observeEvent below uses ignoreInit = TRUE so it only handles
   # subsequent tab changes. This block handles the initial page load case.
@@ -748,12 +739,23 @@ server <- function(input, output, session) {
 
   # EVENT OBSERVERS --------------------------------------------------------------------------------
 
-  # Fetch map data when Map tab is first visited.
-  # Uses map_fetch_in_progress flag to prevent duplicate requests.
+  # Handle tab-specific initialization on navigation:
+  #   - Overview: lazy-initialize overview data on first visit
+  #   - Map: fetch plot observation data on first visit
+  # Uses per-tab flags to prevent duplicate work across repeated navigations.
   shiny::observeEvent(state$current_tab(),
     {
-      # Only fetch when switching to Map tab
-      if (!identical(state$current_tab(), "Map")) {
+      tab <- state$current_tab()
+
+      # Lazy-initialize Overview content on first visit
+      if (identical(tab, "Overview") && !overview_initialized()) {
+        session$sendCustomMessage("showLoadingOverlay", list(type = "overview"))
+        init_overview(output, state, session)
+        overview_initialized(TRUE)
+      }
+
+      # Only fetch map data when switching to Map tab
+      if (!identical(tab, "Map")) {
         return()
       }
 
