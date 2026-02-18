@@ -33,8 +33,6 @@ build_loading_overlay <- function(overlay_type, default_title, messages, complet
   pun_id <- paste0(overlay_type, "-loading-pun")
   ellipses_class <- "loading-ellipses"
 
-  initial_display <- if (visible_on_load) "flex" else "none"
-
   htmltools::tags$div(
     id = overlay_id,
     class = "loading-overlay",
@@ -43,21 +41,18 @@ build_loading_overlay <- function(overlay_type, default_title, messages, complet
     `aria-busy` = "true",
     `data-messages` = jsonlite::toJSON(messages, auto_unbox = TRUE),
     `data-completion-message` = completion_message,
-    style = sprintf("display: %s; position: fixed; top: var(--navbar-height); left: 0;
-             width: 100vw; height: calc(100vh - var(--navbar-height));
-             background: rgba(255, 255, 255, 0.98); z-index: 1200;
-             justify-content: center; align-items: center; flex-direction: column;", initial_display),
+    style = if (visible_on_load) "display: flex;" else NULL,
     htmltools::tags$div(
       class = "loading-content",
-      style = "text-align: center; margin-top: -5rem;",
       htmltools::tags$h2(
         id = title_id,
-        style = "font-size: 0.875rem; color: var(--no-status-text); margin-bottom: 1.5rem;",
+        class = "loading-title",
         default_title,
         if (show_detail) {
           htmltools::tags$span(
             id = detail_id,
-            style = "font-size: 0.875rem; color: var(--no-status-text); margin-bottom: 1.5rem; display: none;"
+            class = "loading-detail",
+            style = "display: none;"
           )
         }
       ),
@@ -70,7 +65,7 @@ build_loading_overlay <- function(overlay_type, default_title, messages, complet
       ),
       htmltools::tags$div(
         id = pun_id,
-        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500;"
+        class = "loading-pun"
       )
     )
   )
