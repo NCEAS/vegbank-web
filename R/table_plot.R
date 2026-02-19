@@ -213,23 +213,25 @@ format_plot_action_buttons <- function(ob_codes, author_codes, latitudes, longit
     # Details button
     detail_btn <- if (!is.null(detail_code) && nzchar(detail_code)) {
       sprintf(
-        '<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" data-input-id="plot_link_click" data-value="%s">Details</button>',
-        htmltools::htmlEscape(detail_code, attribute = TRUE)
+        '<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" style="display:inline-flex;align-items:center" data-input-id="plot_link_click" data-value="%s">%sDetails</button>',
+        htmltools::htmlEscape(detail_code, attribute = TRUE),
+        .BTN_ICON_EYE
       )
     } else {
-      '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Details</button>'
+      sprintf('<button type="button" class="btn btn-sm btn-outline-primary" style="display:inline-flex;align-items:center" disabled>%sDetails</button>', .BTN_ICON_EYE)
     }
-    # Map button
+    # Map/pin button
     map_btn <- if (has_coords) {
       code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code, attribute = TRUE)) else ""
       sprintf(
-        '<button type="button" class="btn btn-sm btn-outline-primary dt-map-action" data-lat="%s" data-lng="%s"%s>Map</button>',
+        '<button type="button" class="btn btn-sm btn-outline-primary dt-map-action" style="display:inline-flex;align-items:center" data-lat="%s" data-lng="%s"%s>%sMap</button>',
         htmltools::htmlEscape(lat, attribute = TRUE),
         htmltools::htmlEscape(lng, attribute = TRUE),
-        code_attr
+        code_attr,
+        .BTN_ICON_PIN
       )
     } else {
-      '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Map</button>'
+      sprintf('<button type="button" class="btn btn-sm btn-outline-primary" style="display:inline-flex;align-items:center" disabled>%sMap</button>', .BTN_ICON_PIN)
     }
     sprintf('<div class="btn-group btn-group-sm" role="group">%s%s</div>', detail_btn, map_btn)
   }, character(1))
@@ -502,8 +504,8 @@ PLOT_TABLE_SPEC <- list(
     buttons = I(list(
       list(
         extend = "csv",
-        text = paste0("Download CSV (up to ", format(DOWNLOAD_MAX_RECORDS, big.mark = ","), " entries)"),
-        className = "btn btn-sm btn-primary",
+        text = paste0(.BTN_ICON_DOWNLOAD, "Download CSV (up to ", format(DOWNLOAD_MAX_RECORDS, big.mark = ","), " entries)"),
+        className = "btn btn-sm btn-outline-info",
         action = DT::JS("function(e, dt, node, config) { Shiny.setInputValue('plot_download_trigger', Math.random()); }")
       )
     )),

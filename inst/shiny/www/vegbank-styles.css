@@ -148,6 +148,25 @@
   display: none;
 }
 
+/* Action buttons: Details, Map, Download CSV, Clear filter
+   Standardize size, border radius, and fill-on-hover across all uses. */
+/* .btn-outline-primary.btn-sm {
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-outline-primary.btn-sm:hover:not(:disabled):not(.disabled) {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: #fff;
+}
+
+.btn-outline-primary.btn-sm:disabled,
+.btn-outline-primary.btn-sm.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+} */
+
 /* DataTables Styles */
 .dataTables_wrapper table th {
   font-weight: 500 !important;

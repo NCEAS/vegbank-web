@@ -88,7 +88,7 @@ custom_theme <- bslib::bs_theme(
   bg = "hsl(0, 0%, 100%)",
   fg = "hsl(156, 12%, 11%)",
   info = "hsl(160, 69%, 30%)",
-  primary = "hsl(160, 29%, 48%)",
+  primary = "hsl(160, 29%, 40%)",
   secondary = "hsl(160, 34%, 59%)",
   base_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
