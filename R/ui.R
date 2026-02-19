@@ -139,7 +139,7 @@ build_navbar <- function(initial_tab = "Overview") {
             lg = 4
           ),
           bslib::card(
-            bslib::card_header("Core Counts"),
+            bslib::card_header("Data in VegBank"),
             bslib::card_body(
               shiny::uiOutput("core_counts_list")
             )
@@ -157,13 +157,13 @@ build_navbar <- function(initial_tab = "Overview") {
             )
           ),
           bslib::card(
-            bslib::card_header("Most Observed Community Concepts"),
+            bslib::card_header("Common Communities"),
             bslib::card_body(
               shiny::uiOutput("top_communities_plot")
             )
           ),
           bslib::card(
-            bslib::card_header("Most Observed Plant Concepts"),
+            bslib::card_header("Common Plants"),
             bslib::card_body(
               shiny::uiOutput("top_plants_plot")
             )
