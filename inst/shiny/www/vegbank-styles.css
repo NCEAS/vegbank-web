@@ -324,6 +324,7 @@ table.dataTable tbody tr.selected-entity:hover,
   top: var(--navbar-height);
   height: calc(100vh - var(--navbar-height));
   overflow-y: auto;
+  /* overscroll-behavior: contain; */
   background: #fff;
   border-left: 1px solid rgba(40, 70, 94, 0.15);
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12), -2px 0 8px rgba(0, 0, 0, 0.08);
@@ -349,6 +350,14 @@ table.dataTable tbody tr.selected-entity:hover,
 
 /* Mobile: full width */
 @media (max-width: 767px) {
+  /* Lock body scroll while overlay is open so the phantom scrollbar
+     doesn't appear behind a full-screen overlay. Desktop intentionally
+     omitted: the page content to the left of the panel is still
+     reachable and users may want to scroll the table while reading. */
+  body.overlay-open {
+    overflow: hidden;
+  }
+
   #detail-overlay {
     right: -100vw;
     width: 100vw;

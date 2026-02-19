@@ -8,6 +8,8 @@ Shiny.addCustomMessageHandler('openOverlay', function(message) {
   if (overlay) {
     overlay.classList.remove('closed');
     overlay.style.right = '0px';
+    overlay.scrollTop = 0;
+    document.body.classList.add('overlay-open');
   }
 });
 
@@ -15,6 +17,7 @@ Shiny.addCustomMessageHandler('closeOverlay', function(message) {
   var overlay = document.getElementById('detail-overlay');
   if (overlay) {
     overlay.classList.add('closed');
+    document.body.classList.remove('overlay-open');
   }
 });
 
@@ -987,8 +990,11 @@ $(document).ready(function() {
   
   var params = new URLSearchParams(window.location.search);
   if(params.get('details_open') === 'true') {
-    if (document.getElementById('detail-overlay')) {
-        document.getElementById('detail-overlay').style.right = '0px';
+    var overlay = document.getElementById('detail-overlay');
+    if (overlay) {
+      overlay.classList.remove('closed');
+      overlay.style.right = '0px';
+      document.body.classList.add('overlay-open');
     }
   }
  });
