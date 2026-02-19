@@ -61,6 +61,10 @@
   }
 }
 
+.text-muted, .text-secondary {
+  color: var(--text-secondary) !important;
+}
+
 /* Card Styles */
 .card {
   border: none;
