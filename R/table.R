@@ -179,7 +179,7 @@ create_action_buttons <- function(input_id, button_label = "Details", code_value
         class = "btn-group btn-group-sm", role = "group",
         htmltools::tags$button(
           type = "button",
-          class = "btn btn-sm btn-outline-primary dt-shiny-action",
+          class = "btn btn-sm btn-outline-primary dt-icon-btn dt-shiny-action",
           `data-input-id` = input_id,
           `data-value` = safe_code,
           htmltools::HTML(paste0(.BTN_ICON_EYE, safe_label))

@@ -212,28 +212,48 @@ format_plot_action_buttons <- function(ob_codes, author_codes, latitudes, longit
     has_coords <- !is.na(lat) && !is.na(lng)
     # Details button
     detail_btn <- if (!is.null(detail_code) && nzchar(detail_code)) {
-      sprintf(
-        '<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" style="display:inline-flex;align-items:center" data-input-id="plot_link_click" data-value="%s">%sDetails</button>',
-        htmltools::htmlEscape(detail_code, attribute = TRUE),
-        .BTN_ICON_EYE
+      htmltools::tags$button(
+        type = "button",
+        class = "btn btn-sm btn-outline-primary dt-icon-btn dt-shiny-action",
+        `data-input-id` = "plot_link_click",
+        `data-value` = htmltools::htmlEscape(detail_code, attribute = TRUE),
+        htmltools::HTML(paste0(.BTN_ICON_EYE, "Details"))
       )
     } else {
-      sprintf('<button type="button" class="btn btn-sm btn-outline-primary" style="display:inline-flex;align-items:center" disabled>%sDetails</button>', .BTN_ICON_EYE)
+      htmltools::tags$button(
+        type = "button",
+        class = "btn btn-sm btn-outline-primary dt-icon-btn",
+        disabled = NA,
+        htmltools::HTML(paste0(.BTN_ICON_EYE, "Details"))
+      )
     }
     # Map/pin button
     map_btn <- if (has_coords) {
-      code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code, attribute = TRUE)) else ""
-      sprintf(
-        '<button type="button" class="btn btn-sm btn-outline-primary dt-map-action" style="display:inline-flex;align-items:center" data-lat="%s" data-lng="%s"%s>%sMap</button>',
-        htmltools::htmlEscape(lat, attribute = TRUE),
-        htmltools::htmlEscape(lng, attribute = TRUE),
-        code_attr,
-        .BTN_ICON_PIN
+      map_attrs <- list(
+        type = "button",
+        class = "btn btn-sm btn-outline-primary dt-icon-btn dt-map-action",
+        `data-lat` = htmltools::htmlEscape(lat, attribute = TRUE),
+        `data-lng` = htmltools::htmlEscape(lng, attribute = TRUE),
+        htmltools::HTML(paste0(.BTN_ICON_PIN, "Map"))
       )
+      if (!is.null(code) && nzchar(code)) {
+        map_attrs[["data-code"]] <- htmltools::htmlEscape(code, attribute = TRUE)
+      }
+      do.call(htmltools::tags$button, map_attrs)
     } else {
-      sprintf('<button type="button" class="btn btn-sm btn-outline-primary" style="display:inline-flex;align-items:center" disabled>%sMap</button>', .BTN_ICON_PIN)
+      htmltools::tags$button(
+        type = "button",
+        class = "btn btn-sm btn-outline-primary dt-icon-btn",
+        disabled = NA,
+        htmltools::HTML(paste0(.BTN_ICON_PIN, "Map"))
+      )
     }
-    sprintf('<div class="btn-group btn-group-sm" role="group">%s%s</div>', detail_btn, map_btn)
+    as.character(htmltools::tags$div(
+      class = "btn-group btn-group-sm",
+      role = "group",
+      detail_btn,
+      map_btn
+    ))
   }, character(1))
 }
 
