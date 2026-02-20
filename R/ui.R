@@ -252,6 +252,7 @@ build_detail_overlay <- function() {
     shiny::actionButton("close_overlay", "",
       onclick = "var overlay = document.getElementById('detail-overlay');
                  overlay.classList.add('closed');
+                 document.body.classList.remove('overlay-open');
                  Shiny.setInputValue('close_details', true, {priority:'event'});",
       class = "btn-close", style = "float:right; margin-bottom:10px;"
     ),
