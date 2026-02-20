@@ -107,7 +107,7 @@
 
 /* Offset in-page anchor targets by the fixed navbar height so fragment
    navigation (e.g. FAQ section links) doesn't scroll the heading under
-   the navbar.  A small extra gap (0.75rem) keeps it from feeling cramped. */
+   the navbar. A 3rem gap accounts for the section spacing. */
 h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   scroll-margin-top: calc(var(--navbar-height) + 3rem);
 }
