@@ -88,8 +88,14 @@ custom_theme <- bslib::bs_theme(
   bg = "hsl(0, 0%, 100%)",
   fg = "hsl(156, 12%, 11%)",
   info = "hsl(160, 69%, 30%)",
-  primary = "hsl(160, 29%, 48%)",
-  secondary = "hsl(160, 34%, 59%)",
+  # WCAG AA requires ≥ 4.5:1 contrast for normal text.
+  # hsl(160, 29%, 40%) only achieved ~4.07:1 against white.
+  # Dropping lightness to 35% raises that to ~4.97:1, keeping
+  # white-on-primary filled buttons at the same ratio (both pass).
+  primary = "hsl(165, 41%, 34%)",
+  # secondary at 59% lightness (~3.3:1) also fails if used as text,
+  # darkened to 42% (~4.56:1) as a proactive fix.
+  secondary = "hsl(160, 34%, 42%)",
   base_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   "font-size-base" = "0.875rem"
@@ -133,7 +139,7 @@ build_navbar <- function(initial_tab = "Overview") {
             lg = 4
           ),
           bslib::card(
-            bslib::card_header("Core Counts"),
+            bslib::card_header("Data in VegBank"),
             bslib::card_body(
               shiny::uiOutput("core_counts_list")
             )
@@ -151,13 +157,13 @@ build_navbar <- function(initial_tab = "Overview") {
             )
           ),
           bslib::card(
-            bslib::card_header("Most Observed Community Concepts"),
+            bslib::card_header("Common Communities"),
             bslib::card_body(
               shiny::uiOutput("top_communities_plot")
             )
           ),
           bslib::card(
-            bslib::card_header("Most Observed Plant Concepts"),
+            bslib::card_header("Common Plants"),
             bslib::card_body(
               shiny::uiOutput("top_plants_plot")
             )
@@ -245,8 +251,8 @@ build_detail_overlay <- function() {
     id = "detail-overlay",
     shiny::actionButton("close_overlay", "",
       onclick = "var overlay = document.getElementById('detail-overlay');
-                 var closePos = window.innerWidth < 768 ? '-100vw' : '-420px';
-                 overlay.style.right = closePos;
+                 overlay.classList.add('closed');
+                 document.body.classList.remove('overlay-open');
                  Shiny.setInputValue('close_details', true, {priority:'event'});",
       class = "btn-close", style = "float:right; margin-bottom:10px;"
     ),

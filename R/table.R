@@ -124,6 +124,45 @@ clean_column_dates <- function(data, column_name, default_value = "Not provided"
 }
 
 
+#' Load and resize an SVG icon from the package www folder
+#'
+#' Reads an SVG file from inst/shiny/www/ (using the icon_<name>.svg naming
+#' convention), normalises its dimensions, maps hardcoded dark colours to
+#' currentColor so the icon inherits button text colour on hover, and injects
+#' aria-hidden plus an inline style into the root svg element.
+#'
+#' @param name Icon filename stem (e.g. "eye" for icon_eye.svg)
+#' @param size Icon width/height in pixels
+#' @param style Inline CSS applied to the svg element
+#' @return A plain character string of the processed SVG markup
+#' @noRd
+load_btn_icon <- function(name, size = 12, style = "margin-right:4px;flex-shrink:0") {
+  path <- system.file("shiny", "www", paste0("icon_", name, ".svg"), package = "vegbankweb")
+  if (!nzchar(path)) return("")
+  svg <- paste(readLines(path, warn = FALSE), collapse = "")
+  # Strip XML declaration
+  svg <- sub("<\\?xml[^?]*\\?>", "", svg)
+  # Normalise large pixel dimensions (e.g. 800px) to the desired icon size
+  svg <- gsub('(width|height)="[0-9]+px"', sprintf('\\1="%dpx"', size), svg, perl = TRUE)
+  # Also handle plain-number dimensions used by some icon sets (e.g. width="16")
+  svg <- gsub('width="16"', sprintf('width="%d"', size), svg, fixed = TRUE)
+  svg <- gsub('height="16"', sprintf('height="%d"', size), svg, fixed = TRUE)
+  # Map hardcoded dark fill/stroke colours to currentColor
+  svg <- gsub('fill="#[0-9A-Fa-f]{6}"', 'fill="currentColor"', svg, perl = TRUE)
+  svg <- gsub('stroke="#[0-9A-Fa-f]{6}"', 'stroke="currentColor"', svg, perl = TRUE)
+  # Strip class attributes
+  svg <- gsub(' class="[^"]*"', "", svg)
+  # Inject aria-hidden and style into the root svg element
+  svg <- sub("<svg ", sprintf('<svg aria-hidden="true" style="%s" ', style), svg, fixed = TRUE)
+  svg
+}
+
+# Package-level icon constants — read once when the package is loaded.
+# All SVGs use currentColor so they inherit button text colour on hover.
+.BTN_ICON_EYE <- load_btn_icon("eye")
+.BTN_ICON_PIN <- load_btn_icon("pin")
+.BTN_ICON_DOWNLOAD <- load_btn_icon("download", size = 14, style = "margin-right:6px;flex-shrink:0")
+
 #' Create action buttons for each row (R version)
 #'
 #' @param input_id The Shiny input ID for the button click event
@@ -140,10 +179,10 @@ create_action_buttons <- function(input_id, button_label = "Details", code_value
         class = "btn-group btn-group-sm", role = "group",
         htmltools::tags$button(
           type = "button",
-          class = "btn btn-sm btn-outline-primary dt-shiny-action",
+          class = "btn btn-sm btn-outline-primary dt-icon-btn dt-shiny-action",
           `data-input-id` = input_id,
           `data-value` = safe_code,
-          safe_label
+          htmltools::HTML(paste0(.BTN_ICON_EYE, safe_label))
         )
       ))
     } else {

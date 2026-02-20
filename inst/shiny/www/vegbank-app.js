@@ -4,17 +4,20 @@
 // window.DOWNLOAD_MAX_RECORDS is set inline in ui.R
 
 Shiny.addCustomMessageHandler('openOverlay', function(message) {
-  if (document.getElementById('detail-overlay')) {
-    document.getElementById('detail-overlay').style.right = '0px';
+  var overlay = document.getElementById('detail-overlay');
+  if (overlay) {
+    overlay.classList.remove('closed');
+    overlay.style.right = '0px';
+    overlay.scrollTop = 0;
+    document.body.classList.add('overlay-open');
   }
 });
 
 Shiny.addCustomMessageHandler('closeOverlay', function(message) {
   var overlay = document.getElementById('detail-overlay');
   if (overlay) {
-    // Use responsive close position based on screen width
-    var closePosition = window.innerWidth < 768 ? '-100vw' : '-420px';
-    overlay.style.right = closePosition;
+    overlay.classList.add('closed');
+    document.body.classList.remove('overlay-open');
   }
 });
 
@@ -987,8 +990,11 @@ $(document).ready(function() {
   
   var params = new URLSearchParams(window.location.search);
   if(params.get('details_open') === 'true') {
-    if (document.getElementById('detail-overlay')) {
-        document.getElementById('detail-overlay').style.right = '0px';
+    var overlay = document.getElementById('detail-overlay');
+    if (overlay) {
+      overlay.classList.remove('closed');
+      overlay.style.right = '0px';
+      document.body.classList.add('overlay-open');
     }
   }
  });
