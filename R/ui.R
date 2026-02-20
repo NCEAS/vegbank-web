@@ -92,7 +92,7 @@ custom_theme <- bslib::bs_theme(
   # hsl(160, 29%, 40%) only achieved ~4.07:1 against white.
   # Dropping lightness to 35% raises that to ~4.97:1, keeping
   # white-on-primary filled buttons at the same ratio (both pass).
-  primary = "hsl(160, 29%, 40%)",
+  primary = "hsl(165, 41%, 34%)",
   # secondary at 59% lightness (~3.3:1) also fails if used as text,
   # darkened to 42% (~4.56:1) as a proactive fix.
   secondary = "hsl(160, 34%, 42%)",
