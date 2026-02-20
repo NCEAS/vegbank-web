@@ -109,7 +109,7 @@ test_that("build_loading_overlay includes pun/message element", {
   expect_true(grepl('id="test-loading-pun"', html))
 })
 
-test_that("build_loading_overlay sets proper CSS for hidden overlay", {
+test_that("build_loading_overlay hidden state is managed by CSS class, not inline styles", {
   overlay <- build_loading_overlay(
     overlay_type = "test",
     default_title = "Loading...",
@@ -117,10 +117,41 @@ test_that("build_loading_overlay sets proper CSS for hidden overlay", {
     completion_message = "Done!"
   )
 
-  # Should be hidden by default
-  expect_true(grepl("display: none", overlay$attribs$style))
-  expect_true(grepl("position: fixed", overlay$attribs$style))
-  expect_true(grepl("z-index: 1200", overlay$attribs$style))
+  # Positioning and default-hidden state are now managed by the .loading-overlay
+  # CSS class (display:none, position:fixed, z-index:1200), so the element should
+  # carry NO inline style when visible_on_load is FALSE (the default).
+  expect_true(is.null(overlay$attribs$style) || !nzchar(overlay$attribs$style %||% ""))
+
+  # The CSS class must be present so the stylesheet rules apply
+  expect_equal(overlay$attribs$class, "loading-overlay")
+})
+
+test_that("build_loading_overlay visible_on_load=TRUE adds display:flex inline style", {
+  visible_overlay <- build_loading_overlay(
+    overlay_type = "test",
+    default_title = "Loading...",
+    messages = c("Loading..."),
+    completion_message = "Done!",
+    visible_on_load = TRUE
+  )
+
+  # Inline display:flex overrides the CSS class's display:none so the overlay
+  # appears immediately without a JavaScript call on initial page load.
+  expect_true(grepl("display: flex", visible_overlay$attribs$style))
+})
+
+test_that("build_loading_overlay visible_on_load=FALSE (default) has no inline display style", {
+  hidden_overlay <- build_loading_overlay(
+    overlay_type = "test",
+    default_title = "Loading...",
+    messages = c("Loading..."),
+    completion_message = "Done!",
+    visible_on_load = FALSE
+  )
+
+  # No inline style means the CSS class's display:none is in effect
+  style_val <- hidden_overlay$attribs$style %||% ""
+  expect_false(grepl("display", style_val))
 })
 
 test_that("build_map_loading_overlay returns valid overlay", {
@@ -218,24 +249,79 @@ test_that("build_loading_overlay maintains overlay_type consistency", {
 test_that("loading overlay messages are appropriate for context", {
   map_overlay <- build_map_loading_overlay()
   download_overlay <- build_download_loading_overlay()
+  overview_overlay <- build_overview_loading_overlay()
+  citation_overlay <- build_citation_loading_overlay()
 
   map_messages <- jsonlite::fromJSON(map_overlay$attribs$`data-messages`)
   download_messages <- jsonlite::fromJSON(download_overlay$attribs$`data-messages`)
+  overview_messages <- jsonlite::fromJSON(overview_overlay$attribs$`data-messages`)
+  citation_messages <- jsonlite::fromJSON(citation_overlay$attribs$`data-messages`)
 
   # Each should have multiple messages
   expect_true(length(map_messages) >= 3)
   expect_true(length(download_messages) >= 3)
-  
-  # Messages should not be identical
+  expect_true(length(overview_messages) >= 3)
+  expect_true(length(citation_messages) >= 3)
+
+  # All four message sets should be distinct
   expect_false(identical(map_messages, download_messages))
+  expect_false(identical(map_messages, overview_messages))
+  expect_false(identical(map_messages, citation_messages))
+  expect_false(identical(overview_messages, citation_messages))
 })
 
 test_that("loading overlay completion messages are set", {
   map_overlay <- build_map_loading_overlay()
   download_overlay <- build_download_loading_overlay()
+  overview_overlay <- build_overview_loading_overlay()
+  citation_overlay <- build_citation_loading_overlay()
 
-  expect_true(!is.null(map_overlay$attribs$`data-completion-message`))
-  expect_true(!is.null(download_overlay$attribs$`data-completion-message`))
-  expect_true(nchar(map_overlay$attribs$`data-completion-message`) > 0)
-  expect_true(nchar(download_overlay$attribs$`data-completion-message`) > 0)
+  for (overlay in list(map_overlay, download_overlay, overview_overlay, citation_overlay)) {
+    expect_true(!is.null(overlay$attribs$`data-completion-message`))
+    expect_true(nchar(overlay$attribs$`data-completion-message`) > 0)
+  }
+})
+
+test_that("build_overview_loading_overlay returns valid overlay", {
+  overlay <- build_overview_loading_overlay()
+
+  expect_s3_class(overlay, "shiny.tag")
+  expect_equal(overlay$attribs$id, "overview-loading-overlay")
+  expect_equal(overlay$attribs$class, "loading-overlay")
+
+  # Not visible by default
+  style_val <- overlay$attribs$style %||% ""
+  expect_false(grepl("display", style_val))
+
+  # Messages are overview-themed
+  messages <- jsonlite::fromJSON(overlay$attribs$`data-messages`)
+  expect_true(any(grepl("plot|project|community|overview|statistic|number|contributor", messages, ignore.case = TRUE)))
+})
+
+test_that("build_overview_loading_overlay visible=TRUE shows overlay immediately", {
+  overlay <- build_overview_loading_overlay(visible = TRUE)
+
+  expect_true(grepl("display: flex", overlay$attribs$style))
+})
+
+test_that("build_citation_loading_overlay returns valid overlay", {
+  overlay <- build_citation_loading_overlay()
+
+  expect_s3_class(overlay, "shiny.tag")
+  expect_equal(overlay$attribs$id, "citation-loading-overlay")
+  expect_equal(overlay$attribs$class, "loading-overlay")
+
+  # Not visible by default
+  style_val <- overlay$attribs$style %||% ""
+  expect_false(grepl("display", style_val))
+
+  # Messages are citation-themed
+  messages <- jsonlite::fromJSON(overlay$attribs$`data-messages`)
+  expect_true(any(grepl("citation|identifier|archive|reference|record|herbarium|paper", messages, ignore.case = TRUE)))
+})
+
+test_that("build_citation_loading_overlay visible=TRUE shows overlay immediately", {
+  overlay <- build_citation_loading_overlay(visible = TRUE)
+
+  expect_true(grepl("display: flex", overlay$attribs$style))
 })
