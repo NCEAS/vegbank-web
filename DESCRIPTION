@@ -8,6 +8,7 @@ Description: "This package provides a Shiny web interface to browse, search, ins
 License: Apache License (>= 2)
 Imports: 
     bslib (>= 0.8.0),
+    config (>= 0.3.2),
     dplyr (>= 1.0.10),
     DT (>= 0.34.0),
     htmltools (>= 0.5.8.1),
