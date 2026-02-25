@@ -22,7 +22,7 @@
 # ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
   vegbankr::vb_debug()
-  vegbankr::vb_set_base_url("https://api-dev.vegbank.org")
+  vegbankr::vb_set_base_url("https://api.vegbank.org")
 
   # MAP DEFAULTS ------------------------------------------------------------------------------------
   # Get default map settings from constants module
