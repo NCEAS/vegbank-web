@@ -21,7 +21,7 @@
 #' @noRd
 # ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
-  cfg <- config::get(file = system.file("config.yml", package = "vegbankweb"))
+  cfg <- config::get()
   if (isTRUE(cfg$vb_debug)) vegbankr::vb_debug()
   vegbankr::vb_set_base_url(cfg$vb_base_url)
 

@@ -1,4 +1,4 @@
-# config used is controlled by R_CONFIG_ACTIVE environment variable set in the
+# config used is controlled by R_CONFIG_FILE and R_CONFIG_ACTIVE environment variables set in the
 # gitignored .Renviron file in the root directory; defaults to "default" if not set
 default:
   vb_base_url: "https://api.vegbank.org"
