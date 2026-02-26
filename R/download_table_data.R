@@ -105,11 +105,11 @@ build_bundle_url <- function(config, filter_state) {
     if (!is.null(parent_api_type) && parent_api_type != config$resource) {
       # Sub-resource path: /{parent_api_type}/{code}/plot-observations
       path <- paste0("/", parent_api_type, "/", filter_code, "/", config$resource)
-      query_params <- list(bundle = "csv")
+      query_params <- list(bundle = "csv", limit = DOWNLOAD_MAX_RECORDS)
     } else if (!is.null(parent_api_type) && parent_api_type == config$resource) {
       # The filter code IS a plot observation (single-entity citation): /plot-observations/{code}
       path <- paste0("/", config$resource, "/", filter_code)
-      query_params <- list(bundle = "csv")
+      query_params <- list(bundle = "csv", limit = DOWNLOAD_MAX_RECORDS)
     } else {
       # Unknown prefix: fall back to general endpoint with vb_code param
       path <- paste0("/", config$resource)
@@ -150,10 +150,12 @@ create_table_download_handler <- function(table_id, input, state, session) {
 
   shiny::downloadHandler(
     filename = function() {
+      now <- Sys.time()
       paste0(
-             config$filename_prefix,
-             "_", format(Sys.Date(), "%Y%m%d"),
-             "_", format(Sys.time(), "%H%M%S"), ".zip")
+        config$filename_prefix,
+        "_", format(now, "%Y%m%d"),
+        "_", format(now, "%H%M%S"), ".zip"
+      )
     },
     content = function(file) {
       # Get current filter state
