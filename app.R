@@ -1,3 +1,5 @@
+# Must be kept at the top level of the app directory to be recognized and run by the vscode
+# shiny extension. R build ignores this file, so it won't be included in the package bundle.
 withr::with_options(new = list(shiny.autoload.r = FALSE), code = {
   if (!interactive()) {
     sink(stderr(), type = "output")
