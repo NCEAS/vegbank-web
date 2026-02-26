@@ -94,8 +94,8 @@ test_that("build_bundle_url uses project-scoped path for project filter (pj.)", 
 
   expect_true(grepl("/projects/pj.10542/plot-observations", url, fixed = TRUE))
   expect_true(grepl("bundle=csv", url))
+  expect_true(grepl(paste0("limit=", DOWNLOAD_MAX_RECORDS), url))
   expect_false(grepl("vb_code=", url))
-  expect_false(grepl("limit=", url))
 })
 
 test_that("build_bundle_url uses party-scoped path for party filter (py.)", {
@@ -109,8 +109,8 @@ test_that("build_bundle_url uses party-scoped path for party filter (py.)", {
 
   expect_true(grepl("/parties/py.291/plot-observations", url, fixed = TRUE))
   expect_true(grepl("bundle=csv", url))
+  expect_true(grepl(paste0("limit=", DOWNLOAD_MAX_RECORDS), url))
   expect_false(grepl("vb_code=", url))
-  expect_false(grepl("limit=", url))
 })
 
 test_that("build_bundle_url uses community-concepts-scoped path for community concept filter (cc.)", {
@@ -124,8 +124,8 @@ test_that("build_bundle_url uses community-concepts-scoped path for community co
 
   expect_true(grepl("/community-concepts/cc.123/plot-observations", url, fixed = TRUE))
   expect_true(grepl("bundle=csv", url))
+  expect_true(grepl(paste0("limit=", DOWNLOAD_MAX_RECORDS), url))
   expect_false(grepl("vb_code=", url))
-  expect_false(grepl("limit=", url))
 })
 
 test_that("build_bundle_url uses plant-concepts-scoped path for plant concept filter (pc.)", {
@@ -139,8 +139,8 @@ test_that("build_bundle_url uses plant-concepts-scoped path for plant concept fi
 
   expect_true(grepl("/plant-concepts/pc.456/plot-observations", url, fixed = TRUE))
   expect_true(grepl("bundle=csv", url))
+  expect_true(grepl(paste0("limit=", DOWNLOAD_MAX_RECORDS), url))
   expect_false(grepl("vb_code=", url))
-  expect_false(grepl("limit=", url))
 })
 
 test_that("build_bundle_url uses user-datasets-scoped path for dataset citation (ds.)", {
@@ -154,8 +154,8 @@ test_that("build_bundle_url uses user-datasets-scoped path for dataset citation 
 
   expect_true(grepl("/user-datasets/ds.200278/plot-observations", url, fixed = TRUE))
   expect_true(grepl("bundle=csv", url))
+  expect_true(grepl(paste0("limit=", DOWNLOAD_MAX_RECORDS), url))
   expect_false(grepl("vb_code=", url))
-  expect_false(grepl("limit=", url))
 })
 
 test_that("build_bundle_url uses single-obs path for single-entity citation (ob.)", {
@@ -169,8 +169,8 @@ test_that("build_bundle_url uses single-obs path for single-entity citation (ob.
 
   expect_true(grepl("/plot-observations/ob.2948", url, fixed = TRUE))
   expect_true(grepl("bundle=csv", url))
+  expect_true(grepl(paste0("limit=", DOWNLOAD_MAX_RECORDS), url))
   expect_false(grepl("vb_code=", url))
-  expect_false(grepl("limit=", url))
 })
 
 test_that("build_bundle_url appends search to sub-resource path when both filter and search are active", {
@@ -185,8 +185,8 @@ test_that("build_bundle_url appends search to sub-resource path when both filter
   expect_true(grepl("/parties/py.291/plot-observations", url, fixed = TRUE))
   expect_true(grepl("bundle=csv", url))
   expect_true(grepl("search=pine", url))
+  expect_true(grepl(paste0("limit=", DOWNLOAD_MAX_RECORDS), url))
   expect_false(grepl("vb_code=", url))
-  expect_false(grepl("limit=", url))
 })
 
 test_that("build_bundle_url appends search to project sub-resource path", {
@@ -201,8 +201,8 @@ test_that("build_bundle_url appends search to project sub-resource path", {
   expect_true(grepl("/projects/pj.10542/plot-observations", url, fixed = TRUE))
   expect_true(grepl("bundle=csv", url))
   expect_true(grepl("search=oak", url))
+  expect_true(grepl(paste0("limit=", DOWNLOAD_MAX_RECORDS), url))
   expect_false(grepl("vb_code=", url))
-  expect_false(grepl("limit=", url))
 })
 
 test_that("build_bundle_url appends search to single-entity citation path", {
@@ -217,6 +217,7 @@ test_that("build_bundle_url appends search to single-entity citation path", {
   expect_true(grepl("/plot-observations/ob.2948", url, fixed = TRUE))
   expect_true(grepl("bundle=csv", url))
   expect_true(grepl("search=forest", url))
+  expect_true(grepl(paste0("limit=", DOWNLOAD_MAX_RECORDS), url))
   expect_false(grepl("vb_code=", url))
 })
 
@@ -230,6 +231,7 @@ test_that("build_bundle_url passes search term for search-only queries", {
   expect_true(grepl("bundle=csv", url))
   expect_true(grepl("search=", url))
   expect_true(grepl("oak", url))
+  expect_true(grepl(paste0("limit=", DOWNLOAD_MAX_RECORDS), url))
   expect_false(grepl("vb_code=", url))
 })
 
@@ -284,6 +286,3 @@ test_that("build_bundle_url ignores whitespace-only search string", {
 
   expect_false(grepl("search=", url))
 })
-
-
-
