@@ -9,5 +9,5 @@ development:
   vb_debug: true
 
 production:
-  vb_base_url: "https://api-ssd.vegbank.org"
+  inherit: default
   vb_debug: true
