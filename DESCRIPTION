@@ -8,10 +8,12 @@ Description: "This package provides a Shiny web interface to browse, search, ins
 License: Apache License (>= 2)
 Imports: 
     bslib (>= 0.8.0),
+    config (>= 0.3.2),
     dplyr (>= 1.0.10),
     DT (>= 0.34.0),
     htmltools (>= 0.5.8.1),
     htmlwidgets (>= 1.6.2),
+    httr (>= 1.4.0),
     httpuv (>= 1.6.16),
     jsonlite (>= 2.0),
     leaflet (>= 2.2.2),
@@ -19,9 +21,7 @@ Imports:
     R6 (>= 2.6.1),
     rlang (>= 1.0.0),
     shiny (>= 1.11.1),
-    tidyr (>= 1.3.0),
-    vegbankr,
-    zip (>= 2.3.2)
+    vegbankr
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
