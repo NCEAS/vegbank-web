@@ -75,7 +75,7 @@ normalize_plot_obs_result <- function(result) {
 #'     - stratum_label = Normalized stratum name ("Unspecified" for missing values)
 #'     - cover_numeric = Numeric cover value
 #'     - cover_numeric_order = Cover value for sorting (missing values as -Inf)
-#'     - cover_display = Formatted cover string (e.g., "25.40%") or "Not specified"
+#'     - cover_display = Formatted cover string (e.g., "25.40%") or "" for missing values
 #' @noRd
 prepare_taxa_display <- function(taxa) {
   if (is.null(taxa) || nrow(taxa) == 0) {
@@ -109,7 +109,7 @@ prepare_taxa_display <- function(taxa) {
   sorted_taxa$cover_display <- ifelse(
     !is.na(sorted_taxa$cover_numeric),
     sprintf("%.2f%%", sorted_taxa$cover_numeric),
-    "Not specified"
+    ""
   )
 
   sorted_taxa
@@ -264,9 +264,9 @@ build_plot_obs_details_view <- function(result) {
         rows <- lapply(seq_len(nrow(disturbances)), function(i) {
           row <- disturbances[i, , drop = FALSE]
 
-          type_val <- row$type %|||% "Unspecified"
-          intensity_val <- row$intensity %|||% "Unspecified"
-          comment_val <- row$comment %|||% "Unspecified"
+          type_val <- row$type %|||% ""
+          intensity_val <- row$intensity %|||% ""
+          comment_val <- row$comment %|||% ""
 
           htmltools::tags$tr(
             htmltools::tags$td(type_val),
