@@ -12,10 +12,10 @@ build_party_details_view <- function(result) {
   }
 
   vb_code <- result$py_code
-  label <- result$party_label %|||% "Unknown Name"
-  organization <- result$organization_name %|||% "No organization specified"
+  label <- result$party_label %|||% "Unnamed Party"
+  organization <- result$organization_name %|||% "No organization recorded"
   # TODO: if this is filled it directs to something like the email field which we don't display here
-  contact <- result$contact_instructions %|||% "No contact information provided"
+  contact <- result$contact_instructions %|||% "No contact information recorded"
   contributions <- result$obs_count %|||% 0
 
   # Construct full name from name components, filtering out NULL/NA/empty values

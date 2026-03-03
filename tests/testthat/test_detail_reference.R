@@ -33,7 +33,7 @@ test_that("build_reference_details_view formats reference data", {
   expect_true(grepl("Book", summary_html, fixed = TRUE))
 
   identifiers_html <- htmltools::renderTags(details$reference_identifiers(shinysession = mock_session))$html
-  expect_true(grepl("No DOI, ISBN, or URL provided", identifiers_html))
+  expect_true(grepl("No DOI, ISBN, or URL recorded", identifiers_html))
 
   publication_html <- htmltools::renderTags(details$reference_publication(shinysession = mock_session))$html
   expect_true(grepl("2020-01-01", publication_html, fixed = TRUE))

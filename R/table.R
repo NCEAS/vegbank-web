@@ -82,7 +82,7 @@ create_table <- function(table_config = list()) {
 #' @param default_value Value to use for NA/empty values
 #' @returns A character vector with cleaned data
 #' @noRd
-clean_column_data <- function(data, column_name, default_value = "Not provided") {
+clean_column_data <- function(data, column_name, default_value = "Unspecified") {
   if (column_name %in% colnames(data)) {
     cleaned <- dplyr::coalesce(dplyr::na_if(as.character(data[[column_name]]), ""), default_value)
     # Return early if the cleaned vector is empty (avoids unnecessary processing)
@@ -111,7 +111,7 @@ clean_column_data <- function(data, column_name, default_value = "Not provided")
 #' @param date_format Format string for output dates
 #' @returns A character vector with cleaned data
 #' @noRd
-clean_column_dates <- function(data, column_name, default_value = "Not provided", date_format = "%Y-%m-%d") {
+clean_column_dates <- function(data, column_name, default_value = "Unspecified", date_format = "%Y-%m-%d") {
   if (!(column_name %in% colnames(data))) {
     return(rep(default_value, nrow(data)))
   }

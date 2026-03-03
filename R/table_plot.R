@@ -269,7 +269,7 @@ format_plot_taxa_list <- function(taxa_list, taxon_counts) {
     taxa <- taxa_list[[idx]]
     total <- suppressWarnings(as.integer(taxon_counts[[idx]]))
     if (is.null(taxa) || !is.data.frame(taxa) || nrow(taxa) == 0) {
-      return('<span class="text-muted">Not provided</span>')
+      return('<span class="text-muted">No taxa recorded</span>')
     }
     links <- vapply(seq_len(nrow(taxa)), function(j) {
       name <- taxa[j, "name", drop = TRUE]
@@ -307,7 +307,7 @@ format_plot_community_list <- function(comm_list) {
   vapply(seq_len(row_count), function(idx) {
     comms <- comm_list[[idx]]
     if (is.null(comms) || !is.data.frame(comms) || nrow(comms) == 0) {
-      return('<span class="text-muted">Not provided</span>')
+      return('<span class="text-muted">No communities recorded</span>')
     }
     links <- vapply(seq_len(nrow(comms)), function(j) {
       comm_name <- comms[j, "comm_name", drop = TRUE]
@@ -367,7 +367,7 @@ format_location_column <- function(data, latitudes = NULL, longitudes = NULL, el
 
     # Default if no location provided
     if (!length(lines)) {
-      lines <- "Not provided"
+      lines <- "Unspecified"
     }
 
     # Add coordinates in muted text if available

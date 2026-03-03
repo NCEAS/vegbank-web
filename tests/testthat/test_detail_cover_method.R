@@ -116,10 +116,10 @@ test_that("build_cover_method_details_view handles cover method without referenc
   expect_true(grepl("NC Botanical Garden", header_html))
   expect_true(grepl("cm.1631", header_html))
 
-  # Test details (should show "Not provided" for reference)
+  # Test details (should show "Unspecified" for reference)
   details_html <- htmltools::renderTags(details$cover_method_details(shinysession = mock_session))$html
-  expect_true(grepl("Not provided", details_html))
-  expect_true(grepl("Not recorded", details_html)) # cover_estimation_method is NA
+  expect_true(grepl("Unspecified", details_html))
+  expect_true(grepl("Unspecified", details_html)) # cover_estimation_method is NA
 
   # Test indexes (should show no indexes message)
   indexes_html <- htmltools::renderTags(details$cover_method_indexes(shinysession = mock_session))$html
@@ -143,13 +143,13 @@ test_that("build_cover_method_details_view handles missing fields gracefully", {
 
   # Test header with missing cover_type
   header_html <- htmltools::renderTags(details$cover_method_header(shinysession = mock_session))$html
-  expect_true(grepl("Not recorded", header_html))
+  expect_true(grepl("Unnamed Cover Method", header_html))
   expect_true(grepl("cm.999", header_html))
 
   # Test details with all missing fields
   details_html <- htmltools::renderTags(details$cover_method_details(shinysession = mock_session))$html
-  expect_true(grepl("Not recorded", details_html))
-  expect_true(grepl("Not provided", details_html))
+  expect_true(grepl("Unspecified", details_html))
+  expect_true(grepl("Unspecified", details_html))
 })
 
 test_that("build_cover_method_details_view creates clickable reference link", {

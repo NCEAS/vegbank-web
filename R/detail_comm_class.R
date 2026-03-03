@@ -106,7 +106,7 @@ create_comm_class_details_ui <- function(result) {
               result$class_publication_rf_label
             )
           } else {
-            "Not provided"
+            "Unspecified"
           }
         )
       )
@@ -149,17 +149,17 @@ create_comm_class_interpretations_ui <- function(result) {
         rows <- lapply(seq_len(nrow(interpretations)), function(i) {
           interp <- interpretations[i, , drop = FALSE]
 
-          comm_name <- interp$comm_name %|||% "Unknown community"
+          comm_name <- interp$comm_name %|||% "Unspecified"
           cc_code <- if ("cc_code" %in% names(interp)) interp$cc_code else NULL
 
-          confidence <- interp$class_confidence %|||% "Not recorded"
-          fit <- interp$class_fit %|||% "Not recorded"
-          typal_value <- if ("type" %in% names(interp)) format_boolean(interp$type) else "Not recorded"
+          confidence <- interp$class_confidence %|||% "Unspecified"
+          fit <- interp$class_fit %|||% "Unspecified"
+          typal_value <- if ("type" %in% names(interp)) format_boolean(interp$type) else "Unspecified"
 
           authority <- if ("comm_authority_rf_label" %in% names(interp)) {
-            interp$comm_authority_rf_label %|||% "Not specified"
+            interp$comm_authority_rf_label %|||% "Unspecified"
           } else {
-            "Not specified"
+            "Unspecified"
           }
 
           authority_rf_code <- if ("comm_authority_rf_code" %in% names(interp)) {
@@ -252,9 +252,9 @@ create_comm_class_contributors_ui <- function(result) {
         rows <- lapply(seq_len(nrow(contributors)), function(i) {
           contrib <- contributors[i, , drop = FALSE]
 
-          party_name <- contrib$party_label %|||% "Unknown"
+          party_name <- contrib$party_label %|||% "Unspecified"
           py_code <- if ("py_code" %in% names(contrib)) contrib$py_code else NULL
-          role <- contrib$role %|||% "Not specified"
+          role <- contrib$role %|||% "Unspecified"
 
           htmltools::tags$tr(
             htmltools::tags$td(

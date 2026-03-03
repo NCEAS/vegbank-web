@@ -116,10 +116,10 @@ test_that("build_stratum_method_details_view handles stratum method without refe
   expect_true(grepl("Test Method", header_html))
   expect_true(grepl("sm.999", header_html))
 
-  # Test details (should show "Not provided" for reference)
+  # Test details (should show "Unspecified" for reference)
   details_html <- htmltools::renderTags(details$stratum_method_details(shinysession = mock_session))$html
-  expect_true(grepl("Not provided", details_html))
-  expect_true(grepl("Not recorded", details_html)) # stratum_method_description is NA
+  expect_true(grepl("Unspecified", details_html))
+  expect_true(grepl("Unspecified", details_html)) # stratum_method_description is NA
 
   # Test types (should show no types message)
   types_html <- htmltools::renderTags(details$stratum_types(shinysession = mock_session))$html
@@ -144,13 +144,13 @@ test_that("build_stratum_method_details_view handles missing fields gracefully",
 
   # Test header with missing stratum_method_name
   header_html <- htmltools::renderTags(details$stratum_method_header(shinysession = mock_session))$html
-  expect_true(grepl("Not recorded", header_html))
+  expect_true(grepl("Unnamed Stratum Method", header_html))
   expect_true(grepl("sm.888", header_html))
 
   # Test details with all missing fields
   details_html <- htmltools::renderTags(details$stratum_method_details(shinysession = mock_session))$html
-  expect_true(grepl("Not recorded", details_html))
-  expect_true(grepl("Not provided", details_html))
+  expect_true(grepl("Unspecified", details_html))
+  expect_true(grepl("Unspecified", details_html))
 })
 
 test_that("build_stratum_method_details_view creates clickable reference link", {

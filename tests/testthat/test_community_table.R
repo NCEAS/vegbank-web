@@ -47,7 +47,7 @@ test_that("community concept data includes community-specific values", {
     expect_equal(result$`Community Concept`, c("Prairie", "Wetland"))
     expect_true(grepl("Not Current", result$Status[1]))
     expect_true(grepl("No Status", result$Status[2]))
-    expect_equal(result$Level, c("Alliance", "Not provided"))
+    expect_equal(result$Level, c("Alliance", "Unspecified"))
     expect_true(grepl("<a ", result$`Reference Source`[1]))
     expect_equal(result$`Reference Source`[2], "Not provided")
     expect_true(grepl(">8</a>", result$Observations[1]))

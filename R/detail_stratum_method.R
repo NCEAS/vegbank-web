@@ -19,8 +19,8 @@ build_stratum_method_details_view <- function(result) {
 
   # Overview Card - sm_code and stratum_method_name
   header_ui <- shiny::renderUI({
-    sm_code <- sm$sm_code %|||% "Not recorded"
-    stratum_method_name <- sm$stratum_method_name %|||% "Not recorded"
+    sm_code <- sm$sm_code %|||% "Unspecified Code"
+    stratum_method_name <- sm$stratum_method_name %|||% "Unnamed Stratum Method"
 
     htmltools::tags$div(
       htmltools::tags$h5(stratum_method_name, style = "font-weight: 600; margin-bottom: 0px;"),
@@ -30,15 +30,15 @@ build_stratum_method_details_view <- function(result) {
 
   # Detail Card - stratum_method_description, stratum_assignment, and reference link
   details_ui <- shiny::renderUI({
-    stratum_method_description <- sm$stratum_method_description %|||% "Not recorded"
-    stratum_assignment <- sm$stratum_assignment %|||% "Not recorded"
+    stratum_method_description <- sm$stratum_method_description %|||% "Unspecified"
+    stratum_assignment <- sm$stratum_assignment %|||% "Unspecified"
 
     # Create reference link if rf_code and rf_label exist
     reference_display <- if (has_valid_field_value(sm, "rf_code") &&
       has_valid_field_value(sm, "rf_label")) {
       create_detail_link("ref_link_click", sm$rf_code, sm$rf_label)
     } else {
-      "Not provided"
+      "Unspecified"
     }
 
     details <- list(
@@ -48,7 +48,7 @@ build_stratum_method_details_view <- function(result) {
     )
 
     col_names <- c(
-      stratum_method_description = "Stratum Method Description",
+      stratum_method_description = "Description",
       stratum_assignment = "Stratum Assignment",
       reference = "Reference"
     )

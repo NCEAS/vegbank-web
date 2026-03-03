@@ -46,7 +46,7 @@ test_that("plant concept data includes plant-specific values", {
     expect_equal(result$`Plant Concept`, c("Oak", "Maple"))
     expect_true(grepl("Accepted", result$Status[1]))
     expect_true(grepl("Not Current", result$Status[2]))
-    expect_equal(result$Level, c("Species", "Not provided"))
+    expect_equal(result$Level, c("Species", "Unspecified"))
     expect_true(grepl("<a ", result$`Reference Source`[1]))
     expect_equal(result$`Reference Source`[2], "Not provided")
     expect_true(grepl(">15</a>", result$Observations[1]))
