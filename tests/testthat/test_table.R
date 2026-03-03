@@ -66,32 +66,32 @@ test_that("clean_column_data handles all cases correctly", {
   # 1. Test with string column - NA and empty strings should be replaced
   result1 <- clean_column_data(test_data, "string_col")
   expect_type(result1, "character")
-  expect_equal(result1, c("Value", "Not provided", "Not provided", "  ", "Normal"))
+  expect_equal(result1, c("Value", "Unspecified", "Unspecified", "  ", "Normal"))
 
   # 2. Test with numeric column - NA should be replaced, numbers converted to character
   result2 <- clean_column_data(test_data, "num_col")
   expect_type(result2, "character")
-  expect_equal(result2, c("1", "Not provided", "3", "4", "5"))
+  expect_equal(result2, c("1", "Unspecified", "3", "4", "5"))
 
   # 3. Test with factor column - NA should be replaced, factor converted to character
   result3 <- clean_column_data(test_data, "factor_col")
   expect_type(result3, "character")
-  expect_equal(result3, c("A", "Not provided", "C", "D", "E"))
+  expect_equal(result3, c("A", "Unspecified", "C", "D", "E"))
 
   # 4. Test with logical column - NA should be replaced, logical converted to character
   result4 <- clean_column_data(test_data, "logical_col")
   expect_type(result4, "character")
-  expect_equal(result4, c("TRUE", "FALSE", "Not provided", "TRUE", "FALSE"))
+  expect_equal(result4, c("TRUE", "FALSE", "Unspecified", "TRUE", "FALSE"))
 
   # 5. Test with date column - NA should be replaced, dates converted to character
   result5 <- clean_column_data(test_data, "date_col")
   expect_type(result5, "character")
-  expect_equal(result5, c("2023-01-01", "Not provided", "2023-03-01", "2023-04-01", "2023-05-01"))
+  expect_equal(result5, c("2023-01-01", "Unspecified", "2023-03-01", "2023-04-01", "2023-05-01"))
 
   # 6. Test with non-existent column - should return vector of default values
   missing_col_result <- clean_column_data(test_data, "nonexistent_col")
   expect_type(missing_col_result, "character")
-  expect_equal(missing_col_result, rep("Not provided", nrow(test_data)))
+  expect_equal(missing_col_result, rep("Unspecified", nrow(test_data)))
 
   # 7. Test with custom default value
   custom_result <- clean_column_data(test_data, "string_col", "MISSING")
@@ -106,12 +106,12 @@ test_that("clean_column_data handles all cases correctly", {
   # 9. Test with data frame that has a column but all values are NA
   all_na_df <- data.frame(all_na = c(NA, NA, NA), stringsAsFactors = FALSE)
   all_na_result <- clean_column_data(all_na_df, "all_na")
-  expect_equal(all_na_result, c("Not provided", "Not provided", "Not provided"))
+  expect_equal(all_na_result, c("Unspecified", "Unspecified", "Unspecified"))
 
   # 10. Test with data frame that has a column but all values are empty strings
   all_empty_df <- data.frame(all_empty = c("", "", ""), stringsAsFactors = FALSE)
   all_empty_result <- clean_column_data(all_empty_df, "all_empty")
-  expect_equal(all_empty_result, c("Not provided", "Not provided", "Not provided"))
+  expect_equal(all_empty_result, c("Unspecified", "Unspecified", "Unspecified"))
 
   # 11. Test that whitespace is preserved
   whitespace_df <- data.frame(
@@ -123,9 +123,9 @@ test_that("clean_column_data handles all cases correctly", {
 
   # 12. Test with a single row data frame
   single_row <- data.frame(x = NA, y = "value", stringsAsFactors = FALSE)
-  expect_equal(clean_column_data(single_row, "x"), "Not provided")
+  expect_equal(clean_column_data(single_row, "x"), "Unspecified")
   expect_equal(clean_column_data(single_row, "y"), "Value")
-  expect_equal(clean_column_data(single_row, "z"), "Not provided")
+  expect_equal(clean_column_data(single_row, "z"), "Unspecified")
 })
 
 test_that("create_table wires DataTables state load from URL", {

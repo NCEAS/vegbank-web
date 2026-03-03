@@ -111,8 +111,8 @@ test_that("format_location_column handles missing data", {
 
   result <- format_location_column(data, lats, lngs, elevs)
 
-  expect_equal(result[1], "Not provided")
-  expect_equal(result[2], "Not provided")
+  expect_equal(result[1], "Unspecified")
+  expect_equal(result[2], "Unspecified")
 })
 
 test_that("process_plot_data returns correctly formatted display data", {
