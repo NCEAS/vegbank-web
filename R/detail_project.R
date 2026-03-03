@@ -20,7 +20,7 @@ build_project_details_view <- function(result) {
       htmltools::div(
         htmltools::tags$h5(result$project_name, style = "font-weight: 600; margin-bottom: 0px;"),
         htmltools::tags$h5(result$pj_code, style = "color: var(--vb-green); font-weight: 600;"),
-        if (date_range != "Date not recorded") {
+        if (date_range != "Unspecified date") {
           htmltools::tags$p(
             date_range
           )
@@ -39,12 +39,16 @@ build_project_details_view <- function(result) {
     }),
 
     project_description = shiny::renderUI({
-      htmltools::tags$div(id = "project-description", htmltools::htmlEscape(result$project_description))
+      if (has_valid_field_value(result, "project_description")) {
+        htmltools::tags$div(id = "project-description", htmltools::htmlEscape(result$project_description))
+      } else {
+        htmltools::p("No description recorded")
+      }
     }),
     project_dates = render_detail_table(c("start_date", "stop_date", "last_plot_added_date"), result),
     # TODO: Implement contributor listing when API supports cross-resource queries
     project_contributors = shiny::renderUI({
-      htmltools::tags$p("No contributors available")
+      htmltools::tags$p("No contributors recorded")
     })
   )
 }

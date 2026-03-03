@@ -53,7 +53,7 @@ safe_parse_date <- function(date_string) {
 #' @param format_string Format passed to `format()` for parsed dates
 #' @return A character string suitable for UI display
 #' @noRd
-format_date <- function(date_string, default_value = "Not provided", format_string = "%Y-%m-%d") {
+format_date <- function(date_string, default_value = "Unspecified", format_string = "%Y-%m-%d") {
   parsed <- safe_parse_date(date_string)
   if (is.na(parsed)) {
     return(default_value)
@@ -84,15 +84,15 @@ get_field_display_names <- function() {
 #' Apply Units to Field Value
 #'
 #' Applies appropriate units to field values based on a lookup map of field names to unit strings.
-#' Only appends units to non-empty, non-"Not recorded" values.
+#' Only appends units to non-empty, non-"Unspecified" values.
 #'
 #' @param field_name The name of the field
-#' @param value The value to format (can be "Not recorded", NA, or actual value)
+#' @param value The value to format (can be "Unspecified", NA, or actual value)
 #' @return The value with units appended if applicable, otherwise the original value
 #' @noRd
 append_units <- function(field_name, value) {
-  # Skip if value is "Not recorded" or NA
-  if (is.null(value) || is.na(value) || identical(value, "Not recorded")) {
+  # Skip if value is "Unspecified" or NA
+  if (is.null(value) || is.na(value) || identical(value, "Unspecified")) {
     return(value)
   }
 
@@ -176,7 +176,7 @@ format_fields_for_detail_table <- function(fields, dataframe, skip_empty = FALSE
   }
 
   values <- lapply(dataframe[valid_fields], function(x) {
-    if (is.null(x) || all(is.na(x))) "Not recorded" else x
+    if (is.null(x) || all(is.na(x))) "Unspecified" else x
   })
 
   values <- lapply(values, function(x) {
@@ -185,7 +185,7 @@ format_fields_for_detail_table <- function(fields, dataframe, skip_empty = FALSE
 
   # Skip empty fields if requested
   if (skip_empty) {
-    non_empty <- sapply(values, function(x) !identical(x, "Not recorded"))
+    non_empty <- sapply(values, function(x) !identical(x, "Unspecified"))
     values <- values[non_empty]
     valid_fields <- valid_fields[non_empty]
   }
@@ -453,7 +453,7 @@ format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d",
       format(stop_parsed, format_string)
     }
   } else {
-    "Date not recorded"
+    "Unspecified date"
   }
 }
 
@@ -467,7 +467,7 @@ format_date_range <- function(start_date, stop_date, format_string = "%Y-%m-%d",
 #' @noRd
 format_boolean <- function(val) {
   if (is.null(val) || is.na(val)) {
-    return("Not recorded")
+    return("Unspecified")
   }
   if (is.logical(val)) {
     return(if (val) "Yes" else "No")

@@ -197,7 +197,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     if (!is.null(code) && !is.na(code) && nzchar(code)) {
       as.character(create_detail_link("ref_link_click", code, label %|||% code))
     } else {
-      htmltools::htmlEscape(label %|||% "Not provided")
+      htmltools::htmlEscape(label %|||% "Unspecified")
     }
   }, character(1))
 
