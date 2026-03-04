@@ -53,8 +53,8 @@ test_that("normalize_plot_obs_result handles dataframe payload format", {
   expect_false("disturbances" %in% names(normalized$plot_observation))
   expect_false("soils" %in% names(normalized$plot_observation))
 
-  # top_taxon_observations: 5 rows (3 "-all-" + 2 stratum-specific)
-  expect_equal(nrow(normalized$top_taxon_observations), 5)
+  # top_taxon_observations: 22 rows (11 taxa × 2: one row per taxon per stratum + one "-all-" row each)
+  expect_equal(nrow(normalized$top_taxon_observations), 22)
   expect_equal(normalized$top_taxon_observations$pc_code[1], "pc.10653")
   expect_equal(normalized$top_taxon_observations$plant_name[3], "Bryophyta")
 

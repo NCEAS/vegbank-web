@@ -179,7 +179,7 @@ test_that("fetch_plot_map_data returns data when API succeeds", {
       .package = "vegbankr"
     )
 
-    expect_equal(result, acad_map_data)
+    expect_equal(result, as.data.frame(acad_map_data))
     expect_equal(nrow(result), 3)
     expect_equal(result$ob_code, c("ob.2948", "ob.3776", "ob.206444"))
     expect_length(get_mock_notifications(), 0)
