@@ -1,24 +1,5 @@
 # Tests for cover method detail view
-
-# Create mock cover method data
-mock_cover_method_with_indexes <- data.frame(
-  cm_code = "cm.471",
-  cover_type = "Braun-blanquet (MN)",
-  cover_estimation_method = "canopy cover",
-  rf_code = "rf.28",
-  rf_label = "Braun-Blanquet",
-  stringsAsFactors = FALSE
-)
-
-# Add nested cover_indexes as a list column
-mock_cover_method_with_indexes$cover_indexes <- list(data.frame(
-  cover_code = c("1", "2", "3"),
-  lower_limit = c("0", "5", "25"),
-  upper_limit = c("5", "25", "50"),
-  cover_percent = c("2.5", "15", "37.5"),
-  index_description = c("Rare", "Occasional", "Common"),
-  stringsAsFactors = FALSE
-))
+# Real mocks (mock_cover_method_cm79/cm1630/cm1) are loaded from mocks/cover_methods.R
 
 mock_cover_method_no_indexes <- data.frame(
   cm_code = "cm.1631",
@@ -63,7 +44,8 @@ test_that("build_cover_method_details_view handles empty dataframe", {
 })
 
 test_that("build_cover_method_details_view formats cover method with indexes and reference", {
-  details <- build_cover_method_details_view(mock_cover_method_with_indexes)
+  # cm.1: has rf.27/CVS Protocol, no estimation method, 3 cover indexes
+  details <- build_cover_method_details_view(mock_cover_method_cm1)
 
   expect_type(details, "list")
   expect_named(details, c(
@@ -80,30 +62,62 @@ test_that("build_cover_method_details_view formats cover method with indexes and
 
   # Test header
   header_html <- htmltools::renderTags(details$cover_method_header(shinysession = mock_session))$html
-  expect_true(grepl("Braun-blanquet \\(MN\\)", header_html))
-  expect_true(grepl("cm.471", header_html))
+  expect_true(grepl("Carolina Vegetation Survey", header_html))
+  expect_true(grepl("cm.1", header_html))
 
-  # Test details (should have cover estimation method and reference link)
+  # Test details: no estimation method → Unspecified; has rf link
   details_html <- htmltools::renderTags(details$cover_method_details(shinysession = mock_session))$html
-  expect_true(grepl("canopy cover", details_html))
-  expect_true(grepl("Braun-Blanquet", details_html))
+  expect_true(grepl("Unspecified", details_html))   # cover_estimation_method is NA
+  expect_true(grepl("CVS Protocol", details_html))
   expect_true(grepl("ref_link_click", details_html))
-  expect_true(grepl("rf.28", details_html))
+  expect_true(grepl("rf.27", details_html))
 
-  # Test indexes table
+  # Test indexes table structure
   indexes_html <- htmltools::renderTags(details$cover_method_indexes(shinysession = mock_session))$html
   expect_true(grepl("Cover Code", indexes_html))
   expect_true(grepl("Lower Limit %", indexes_html))
   expect_true(grepl("Upper Limit %", indexes_html))
   expect_true(grepl("Cover %", indexes_html))
   expect_true(grepl("Index Desc", indexes_html))
-  expect_true(grepl("Rare", indexes_html))
-  expect_true(grepl("Occasional", indexes_html))
-  expect_true(grepl("Common", indexes_html))
-
-  # Test toggle checkbox
   expect_true(grepl("toggle_cover_index_description", indexes_html))
   expect_true(grepl("Show Index Description Column", indexes_html))
+})
+
+test_that("build_cover_method_details_view formats cm.1630 (Domin, estimation method, UNKNOWN ref)", {
+  details <- build_cover_method_details_view(mock_cover_method_cm1630)
+  mock_session <- shiny::MockShinySession$new()
+
+  header_html <- htmltools::renderTags(details$cover_method_header(shinysession = mock_session))$html
+  expect_true(grepl("Domin Cover Scale", header_html))
+  expect_true(grepl("cm.1630", header_html))
+
+  details_html <- htmltools::renderTags(details$cover_method_details(shinysession = mock_session))$html
+  expect_true(grepl("canopy cover", details_html))
+  expect_true(grepl("UNKNOWN", details_html))
+  expect_true(grepl("ref_link_click", details_html))
+  expect_true(grepl("rf.35243", details_html))
+
+  indexes_html <- htmltools::renderTags(details$cover_method_indexes(shinysession = mock_session))$html
+  expect_true(grepl("trace", indexes_html))
+  expect_true(grepl("0-1 percent", indexes_html))
+})
+
+test_that("build_cover_method_details_view formats cm.79 (NPS, no ref, no estimation method)", {
+  details <- build_cover_method_details_view(mock_cover_method_cm79)
+  mock_session <- shiny::MockShinySession$new()
+
+  header_html <- htmltools::renderTags(details$cover_method_header(shinysession = mock_session))$html
+  expect_true(grepl("NPS CoverMethod", header_html))
+  expect_true(grepl("cm.79", header_html))
+
+  # No rf_code and no estimation method → both Unspecified
+  details_html <- htmltools::renderTags(details$cover_method_details(shinysession = mock_session))$html
+  expect_true(grepl("Unspecified", details_html))
+  expect_false(grepl("ref_link_click", details_html))
+
+  indexes_html <- htmltools::renderTags(details$cover_method_indexes(shinysession = mock_session))$html
+  expect_true(grepl("01", indexes_html))  # cover_code
+  expect_true(grepl("Cover Code", indexes_html))
 })
 
 test_that("build_cover_method_details_view handles cover method without reference", {
@@ -153,21 +167,21 @@ test_that("build_cover_method_details_view handles missing fields gracefully", {
 })
 
 test_that("build_cover_method_details_view creates clickable reference link", {
-  details <- build_cover_method_details_view(mock_cover_method_with_indexes)
+  # cm.1 has rf.27/CVS Protocol
+  details <- build_cover_method_details_view(mock_cover_method_cm1)
 
   mock_session <- shiny::MockShinySession$new()
   details_html <- htmltools::renderTags(details$cover_method_details(shinysession = mock_session))$html
 
-  # Verify the reference link has the correct structure (uses onclick with Shiny.setInputValue)
   expect_true(grepl("Shiny.setInputValue", details_html, fixed = TRUE))
   expect_true(grepl("ref_link_click", details_html, fixed = TRUE))
-  expect_true(grepl("rf.28", details_html))
-  expect_true(grepl("Braun-Blanquet", details_html))
+  expect_true(grepl("rf.27", details_html))
+  expect_true(grepl("CVS Protocol", details_html))
   expect_true(grepl('href="#"', details_html, fixed = TRUE))
 })
 
 test_that("cover indexes table has correct column visibility toggle", {
-  details <- build_cover_method_details_view(mock_cover_method_with_indexes)
+  details <- build_cover_method_details_view(mock_cover_method_cm1)
 
   mock_session <- shiny::MockShinySession$new()
   indexes_html <- htmltools::renderTags(details$cover_method_indexes(shinysession = mock_session))$html

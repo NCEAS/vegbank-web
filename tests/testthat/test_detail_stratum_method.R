@@ -1,28 +1,5 @@
 # Tests for stratum method detail view
-
-# Create mock stratum method data
-mock_stratum_method_with_types <- data.frame(
-  sm_code = "sm.1",
-  stratum_method_name = "Carolina Vegetation Survey",
-  stratum_method_description = "Stratum heights are constructed to reflect the vegetation of the plot.  Foliage is then determined to belong to a stratum based only on height of the foliage, not the individual.  Lifeform is not considered.  An individual's foliage may be broken into different strata.",
-  stratum_assignment = NA,
-  rf_code = "rf.27",
-  rf_label = "CVS Protocol",
-  stringsAsFactors = FALSE
-)
-
-# Add nested stratum_types as a list column
-mock_stratum_method_with_types$stratum_types <- list(data.frame(
-  sy_code = c("sy.1", "sy.2", "sy.3"),
-  stratum_index = c("E", "H", "S"),
-  stratum_name = c("Emergent", "Herb", "Shrub"),
-  stratum_description = c(
-    "Foliage generally greater than 35m high",
-    "Foliage generally less than 0.5m high",
-    "Foliage generally 0.5-6m high"
-  ),
-  stringsAsFactors = FALSE
-))
+# Real mocks (mock_stratum_method_sm1/sm5/sm329) are loaded from mocks/stratum_methods.R
 
 mock_stratum_method_no_types <- data.frame(
   sm_code = "sm.999",
@@ -68,7 +45,7 @@ test_that("build_stratum_method_details_view handles empty dataframe", {
 })
 
 test_that("build_stratum_method_details_view formats stratum method with types and reference", {
-  details <- build_stratum_method_details_view(mock_stratum_method_with_types)
+  details <- build_stratum_method_details_view(mock_stratum_method_sm1)
 
   expect_type(details, "list")
   expect_named(details, c(
@@ -104,6 +81,47 @@ test_that("build_stratum_method_details_view formats stratum method with types a
   expect_true(grepl("Herb", types_html))
   expect_true(grepl("Shrub", types_html))
   expect_true(grepl("greater than 35m high", types_html))
+})
+
+test_that("build_stratum_method_details_view formats sm.5 (NPS, NA stratum descriptions)", {
+  details <- build_stratum_method_details_view(mock_stratum_method_sm5)
+  mock_session <- shiny::MockShinySession$new()
+
+  header_html <- htmltools::renderTags(details$stratum_method_header(shinysession = mock_session))$html
+  expect_true(grepl("National Park Service", header_html))
+  expect_true(grepl("sm.5", header_html))
+
+  details_html <- htmltools::renderTags(details$stratum_method_details(shinysession = mock_session))$html
+  expect_true(grepl("NPS Methodology", details_html))
+  expect_true(grepl("rf.29", details_html))
+  expect_true(grepl("ref_link_click", details_html))
+
+  types_html <- htmltools::renderTags(details$stratum_types(shinysession = mock_session))$html
+  expect_true(grepl("T1", types_html))       # stratum_index
+  expect_true(grepl("T2", types_html))
+  expect_true(grepl("Canopy", types_html))   # stratum_name
+  expect_true(grepl("Sub-Canopy", types_html))
+  expect_true(grepl("Stratum Index", types_html))
+})
+
+test_that("build_stratum_method_details_view formats sm.329 (No Strata, no reference)", {
+  details <- build_stratum_method_details_view(mock_stratum_method_sm329)
+  mock_session <- shiny::MockShinySession$new()
+
+  header_html <- htmltools::renderTags(details$stratum_method_header(shinysession = mock_session))$html
+  expect_true(grepl("No Strata", header_html))
+  expect_true(grepl("sm.329", header_html))
+
+  # No rf_code → reference shows Unspecified
+  details_html <- htmltools::renderTags(details$stratum_method_details(shinysession = mock_session))$html
+  expect_true(grepl("No Strata were used", details_html))
+  expect_true(grepl("Unspecified", details_html))  # reference
+
+  # Single module stratum type
+  types_html <- htmltools::renderTags(details$stratum_types(shinysession = mock_session))$html
+  expect_true(grepl("mod", types_html))       # stratum_index
+  expect_true(grepl("module", types_html))    # stratum_name
+  expect_true(grepl("No vertical splitting", types_html))
 })
 
 test_that("build_stratum_method_details_view handles stratum method without reference", {
@@ -154,7 +172,7 @@ test_that("build_stratum_method_details_view handles missing fields gracefully",
 })
 
 test_that("build_stratum_method_details_view creates clickable reference link", {
-  details <- build_stratum_method_details_view(mock_stratum_method_with_types)
+  details <- build_stratum_method_details_view(mock_stratum_method_sm1)
 
   mock_session <- shiny::MockShinySession$new()
   details_html <- htmltools::renderTags(details$stratum_method_details(shinysession = mock_session))$html
@@ -168,7 +186,7 @@ test_that("build_stratum_method_details_view creates clickable reference link", 
 })
 
 test_that("stratum types table handles NULL stratum_description gracefully", {
-  stratum_method_null_desc <- mock_stratum_method_with_types
+  stratum_method_null_desc <- mock_stratum_method_sm1
   stratum_method_null_desc$stratum_types <- list(data.frame(
     sy_code = c("sy.1", "sy.2"),
     stratum_index = c("A", "F"),
