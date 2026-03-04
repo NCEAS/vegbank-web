@@ -16,26 +16,82 @@ test_that("build_reference_details_view handles NULL data gracefully", {
   expect_true(grepl("Reference details not available", html))
 })
 
-test_that("build_reference_details_view formats reference data", {
-  details <- build_reference_details_view(mock_reference_data)
+test_that("build_reference_details_view formats reference data — all three mocks", {
+  for (mock in list(mock_reference_rf36675, mock_reference_rf37, mock_reference_rf35243)) {
+    details <- build_reference_details_view(mock)
+    expect_type(details, "list")
+    expect_named(details, c("reference_header", "reference_identifiers", "reference_publication"))
+    expect_s3_class(details$reference_header, "shiny.render.function")
+    expect_s3_class(details$reference_identifiers, "shiny.render.function")
+    expect_s3_class(details$reference_publication, "shiny.render.function")
+  }
+})
 
-  expect_type(details, "list")
-  expect_named(details, c(
-    "reference_header",
-    "reference_identifiers",
-    "reference_publication"
-  ))
-
-  expect_s3_class(details$reference_header, "shiny.render.function")
+test_that("build_reference_details_view renders correct header content", {
   mock_session <- shiny::MockShinySession$new()
-  summary_html <- htmltools::renderTags(details$reference_header(shinysession = mock_session))$html
-  expect_true(grepl("Example Author. 2020.", summary_html, fixed = TRUE))
-  expect_true(grepl("Book", summary_html, fixed = TRUE))
 
-  identifiers_html <- htmltools::renderTags(details$reference_identifiers(shinysession = mock_session))$html
-  expect_true(grepl("No DOI, ISBN, or URL recorded", identifiers_html))
+  # rf.36675: Report type, label present, has publication date
+  details_36675 <- build_reference_details_view(mock_reference_rf36675)
+  html <- htmltools::renderTags(details_36675$reference_header(shinysession = mock_session))$html
+  expect_true(grepl("NYNHP Field Form Instructions", html, fixed = TRUE))
+  expect_true(grepl("rf.36675", html, fixed = TRUE))
+  expect_true(grepl("Report", html, fixed = TRUE))
+  expect_true(grepl("1905-06-22", html, fixed = TRUE))
 
-  publication_html <- htmltools::renderTags(details$reference_publication(shinysession = mock_session))$html
-  expect_true(grepl("2020-01-01", publication_html, fixed = TRUE))
-  expect_true(grepl("Example Title", publication_html, fixed = TRUE))
+  # rf.37: no reference_type, label present, has publication date
+  details_37 <- build_reference_details_view(mock_reference_rf37)
+  html37 <- htmltools::renderTags(details_37$reference_header(shinysession = mock_session))$html
+  expect_true(grepl("USDA Plants 2011", html37, fixed = TRUE))
+  expect_true(grepl("rf.37", html37, fixed = TRUE))
+  expect_true(grepl("2011-08-25", html37, fixed = TRUE))
+
+  # rf.35243: no type, no publication date, label is UNKNOWN
+  details_35243 <- build_reference_details_view(mock_reference_rf35243)
+  html35243 <- htmltools::renderTags(details_35243$reference_header(shinysession = mock_session))$html
+  expect_true(grepl("UNKNOWN", html35243, fixed = TRUE))
+  expect_true(grepl("rf.35243", html35243, fixed = TRUE))
+  expect_false(grepl("Published:", html35243, fixed = TRUE))  # no date
+})
+
+test_that("build_reference_details_view renders correct identifiers content", {
+  mock_session <- shiny::MockShinySession$new()
+
+  # rf.36675: has URL → rendered as clickable link
+  details_36675 <- build_reference_details_view(mock_reference_rf36675)
+  id_html <- htmltools::renderTags(details_36675$reference_identifiers(shinysession = mock_session))$html
+  expect_true(grepl("whiteoak.natureserve.org", id_html, fixed = TRUE))
+  expect_true(grepl("<a ", id_html, fixed = TRUE))
+
+  # rf.37: no doi/isbn/url → fallback message
+  details_37 <- build_reference_details_view(mock_reference_rf37)
+  id_html37 <- htmltools::renderTags(details_37$reference_identifiers(shinysession = mock_session))$html
+  expect_true(grepl("No DOI, ISBN, or URL recorded", id_html37))
+
+  # rf.35243: all NA → fallback message
+  details_35243 <- build_reference_details_view(mock_reference_rf35243)
+  id_html35243 <- htmltools::renderTags(details_35243$reference_identifiers(shinysession = mock_session))$html
+  expect_true(grepl("No DOI, ISBN, or URL recorded", id_html35243))
+})
+
+test_that("build_reference_details_view renders correct publication content", {
+  mock_session <- shiny::MockShinySession$new()
+
+  # rf.36675: full citation, title, publisher, publication place, 31 pages, date
+  details_36675 <- build_reference_details_view(mock_reference_rf36675)
+  pub_html <- htmltools::renderTags(details_36675$reference_publication(shinysession = mock_session))$html
+  expect_true(grepl("Edinger et al. 2000", pub_html, fixed = TRUE))
+  expect_true(grepl("Community Field Form Instructions", pub_html, fixed = TRUE))
+  expect_true(grepl("New York Natural Heritage Program", pub_html, fixed = TRUE))
+  expect_true(grepl("1905-06-22", pub_html, fixed = TRUE))
+
+  # rf.37: full citation includes USDA, title present, no total_pages
+  details_37 <- build_reference_details_view(mock_reference_rf37)
+  pub_html37 <- htmltools::renderTags(details_37$reference_publication(shinysession = mock_session))$html
+  expect_true(grepl("USDA, NRCS. 2011", pub_html37, fixed = TRUE))
+  expect_true(grepl("The Plants Database", pub_html37, fixed = TRUE))
+
+  # rf.35243: citation is UNKNOWN, no other fields
+  details_35243 <- build_reference_details_view(mock_reference_rf35243)
+  pub_html35243 <- htmltools::renderTags(details_35243$reference_publication(shinysession = mock_session))$html
+  expect_true(grepl("UNKNOWN", pub_html35243, fixed = TRUE))
 })
