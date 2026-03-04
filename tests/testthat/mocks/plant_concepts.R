@@ -114,3 +114,7 @@ mock_plant_concept_psme$usages <- I(list(data.frame(
   status = c("Standard", "Standard", "Standard", "Standard"),
   stringsAsFactors = FALSE
 )))
+
+# Backward-compatible alias: tests that need a generic single-row plant mock
+# use mock_plant_concept_data (= ACRU, the most fully-populated concept).
+mock_plant_concept_data <- mock_plant_concept_acru

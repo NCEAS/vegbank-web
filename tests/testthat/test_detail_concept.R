@@ -17,20 +17,37 @@ test_that("build_comm_concept_details_view handles NULL data gracefully", {
 })
 
 test_that("build_comm_concept_details_view formats community data correctly", {
-  result <- build_comm_concept_details_view(mock_comm_concept_data)
-
-  # Test structure and types
+  # CEGL007230: fully populated — description, parent, correlations, 5 usages
+  result <- build_comm_concept_details_view(mock_comm_concept_cegl007230)
   expect_type(result, "list")
   expect_named(result, c(
     "community_concept_header",
     "community_concept_details",
     "community_party_perspective"
   ))
-
-  # Each component should be a render function
   expect_true(inherits(result$community_concept_header, "shiny.render.function"))
   expect_true(inherits(result$community_concept_details, "shiny.render.function"))
   expect_true(inherits(result$community_party_perspective, "shiny.render.function"))
+
+  # Brachypodium: no parent, no children, no description, status="undetermined"
+  result_b <- build_comm_concept_details_view(mock_comm_concept_brachypodium)
+  expect_type(result_b, "list")
+  expect_named(result_b, c(
+    "community_concept_header",
+    "community_concept_details",
+    "community_party_perspective"
+  ))
+  expect_true(inherits(result_b$community_concept_header, "shiny.render.function"))
+
+  # VII: has children, has stop_date (superseded), no parent, obs_count=0
+  result_vii <- build_comm_concept_details_view(mock_comm_concept_vii)
+  expect_type(result_vii, "list")
+  expect_named(result_vii, c(
+    "community_concept_header",
+    "community_concept_details",
+    "community_party_perspective"
+  ))
+  expect_true(inherits(result_vii$community_concept_header, "shiny.render.function"))
 })
 
 test_that("build_plant_concept_details_view handles valid data", {
@@ -183,5 +200,119 @@ test_that("create_concept_aliases_ui sorts usages alphabetically", {
   )))
 
   result <- create_concept_aliases_ui(sorted_data, is_plant = TRUE)
+  expect_true(inherits(result, "shiny.tag") || inherits(result, "shiny.tag.list"))
+})
+
+# ── Community equivalents: create_party_perspective_ui ────────────────────────
+
+test_that("create_party_perspective_ui handles valid community data", {
+  with_mocked_bindings(
+    renderUI = function(expr) {
+      structure(list(func = expr), class = "shiny.render.function")
+    },
+    .package = "shiny",
+    {
+      # CEGL007230: has party, parent, correlations, 5 usages, no children
+      result <- create_party_perspective_ui(
+        mock_comm_concept_cegl007230,
+        "community",
+        "cc_code",
+        "parent_cc_code",
+        "comm_link_click"
+      )
+      expect_s3_class(result, "shiny.render.function")
+
+      # VII: has children (3), no parent, stop_date set
+      result_vii <- create_party_perspective_ui(
+        mock_comm_concept_vii,
+        "community",
+        "cc_code",
+        "parent_cc_code",
+        "comm_link_click"
+      )
+      expect_s3_class(result_vii, "shiny.render.function")
+    }
+  )
+})
+
+test_that("create_party_perspective_ui handles minimal community data", {
+  with_mocked_bindings(
+    renderUI = function(expr) {
+      structure(list(func = expr), class = "shiny.render.function")
+    },
+    .package = "shiny",
+    {
+      # Brachypodium: no parent, no children, status="undetermined", no stop_date
+      result <- create_party_perspective_ui(
+        mock_comm_concept_brachypodium,
+        "community",
+        "cc_code",
+        "parent_cc_code",
+        "comm_link_click"
+      )
+      expect_s3_class(result, "shiny.render.function")
+    }
+  )
+})
+
+test_that("create_party_perspective_ui handles NA community values", {
+  na_data <- mock_comm_concept_cegl007230
+  na_data$children <- I(list(NA))
+  na_data$usages <- I(list(NA))
+  na_data$party_label <- NA
+  na_data$status <- NA
+  na_data$start_date <- NA
+  na_data$stop_date <- NA
+  na_data$parent_name <- NA
+
+  with_mocked_bindings(
+    renderUI = function(expr) {
+      structure(list(func = expr), class = "shiny.render.function")
+    },
+    .package = "shiny",
+    {
+      result <- create_party_perspective_ui(
+        na_data,
+        "community",
+        "cc_code",
+        "parent_cc_code",
+        "comm_link_click"
+      )
+      expect_s3_class(result, "shiny.render.function")
+    }
+  )
+})
+
+# ── Community equivalents: create_concept_aliases_ui ─────────────────────────
+
+test_that("create_concept_aliases_ui handles community usages", {
+  # CEGL007230 has 5 usages (Scientific, Common, Translated, Code, UID)
+  result <- create_concept_aliases_ui(mock_comm_concept_cegl007230, is_plant = FALSE)
+  expect_true(inherits(result, "shiny.tag") || inherits(result, "shiny.tag.list"))
+
+  # VII has 2 usages (Code, Scientific)
+  result_vii <- create_concept_aliases_ui(mock_comm_concept_vii, is_plant = FALSE)
+  expect_true(inherits(result_vii, "shiny.tag") || inherits(result_vii, "shiny.tag.list"))
+})
+
+test_that("create_concept_aliases_ui handles NA/empty community usages", {
+  na_data <- mock_comm_concept_cegl007230
+  na_data$usages <- I(list(NA))
+  expect_true(inherits(create_concept_aliases_ui(na_data, is_plant = FALSE), "shiny.tag"))
+
+  empty_data <- mock_comm_concept_cegl007230
+  empty_data$usages <- I(list(NULL))
+  expect_true(inherits(create_concept_aliases_ui(empty_data, is_plant = FALSE), "shiny.tag"))
+})
+
+test_that("create_concept_aliases_ui sorts community usages alphabetically", {
+  sorted_data <- mock_comm_concept_cegl007230
+  sorted_data$usages <- I(list(data.frame(
+    class_system = c("Zebra", "Alpha", "Beta"),
+    comm_name = c("Last Community", "First Community", "Second Community"),
+    stringsAsFactors = FALSE
+  )))
+
+  result <- create_concept_aliases_ui(sorted_data, is_plant = FALSE)
   expect_true(inherits(result, "shiny.tag") || inherits(result, "shiny.tag.list"))
 })
