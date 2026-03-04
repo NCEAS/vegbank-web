@@ -1,6 +1,20 @@
-#' Mock Shiny Functions for Testing
+#' Mock Shiny Functions and Session Stubs for Testing
 #'
-#' This file provides consistent mocks for Shiny functions used across tests.
+#' This file provides consistent mocks for Shiny functions used across tests,
+#' as well as shared session/output stubs used by detail-view tests.
+
+# Mock Shiny output environment
+mock_output <- new.env()
+
+# Mock Shiny session with message capture
+mock_session <- list(
+  sendCustomMessage = function(type, message) {
+    if (!exists("messages", envir = mock_session, inherits = FALSE)) {
+      mock_session$messages <- list()
+    }
+    mock_session$messages[[type]] <- message
+  }
+)
 
 #' Environment to store notifications for testing
 mock_notification_env <- new.env(parent = emptyenv())
