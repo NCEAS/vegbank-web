@@ -116,64 +116,85 @@ test_that("format_location_column handles missing data", {
 })
 
 test_that("process_plot_data returns correctly formatted display data", {
-  plot_data <- data.frame(
-    ob_code = c("ob.123", "ob.456"),
-    pl_code = c("pl.1", "pl.2"),
-    author_plot_code = c("PLOT001", "PLOT002"),
-    author_obs_code = c("OBS001", "OBS002"),
-    state_province = c("Virginia", "Maryland"),
-    country = c("USA", "USA"),
-    latitude = c(38.5, 39.2),
-    longitude = c(-78.2, -77.0),
-    elevation = c(500, 750),
-    area = c(100, 200),
-    year = c("2020", "2021"),
-    taxon_count = c(5L, 3L),
-    taxon_count_returned = c(3L, 2L),
-    stringsAsFactors = FALSE
-  )
+  # The table uses detail="minimal" which returns name/pc_code/max_cover in top_taxon_observations
+  # (different from the full detail view's plant_name/cover columns).
+  # Build a copy of the shared mock with table-appropriate nested column names,
+  # using the same real plant data (same pc_codes, same cover values) as the detail-view mocks.
+  plot_data <- mock_plot_observations_multi
   plot_data$top_taxon_observations <- list(
-    data.frame(name = "Species A", pc_code = "pc.1", max_cover = 12.3, stringsAsFactors = FALSE),
-    data.frame(name = "Species B", pc_code = "pc.2", max_cover = 8.7, stringsAsFactors = FALSE)
-  )
-  plot_data$top_classifications <- list(
-    data.frame(comm_name = "Class A", cl_code = "cl.1", comm_code = "CEGL0001", stringsAsFactors = FALSE),
-    data.frame(comm_name = "Class B", cl_code = "cl.2", comm_code = "CEGL0002", stringsAsFactors = FALSE)
+    # ACAD.143 (ob.2948) — Vaccinium dwarf-shrubland: stratum-specific rows only
+    data.frame(
+      name      = c("Aronia melanocarpa", "Bryophyta", "Danthonia spicata"),
+      pc_code   = c("pc.10653", "pc.92211", "pc.22506"),
+      max_cover = c(0.1875, 0.5625, 0.0625),
+      stringsAsFactors = FALSE
+    ),
+    # GRSM.225 (ob.3776) — Aesculus flava / Acer saccharum Forest
+    data.frame(
+      name      = c("Acer saccharum", "Acer pensylvanicum"),
+      pc_code   = c("pc.7191", "pc.7186"),
+      max_cover = c(62.5, 0.55),
+      stringsAsFactors = FALSE
+    ),
+    # OLYM.Z.681.0003 (ob.206444) — no taxa recorded
+    NULL
   )
 
   result <- process_plot_data(plot_data)
 
   expect_s3_class(result, "data.frame")
-  expect_equal(nrow(result), 2)
+  expect_equal(nrow(result), 3)
   expect_equal(ncol(result), 7)
 
-  expected_cols <- c("Actions", "Observation Code", "Location", "Top Taxa", "Communities", "Survey Year")
   expected_cols <- c("Actions", "Vegbank Code", "Author Code", "Location", "Top Taxa", "Communities", "Survey Year")
   expect_equal(names(result), expected_cols)
 
-  # Check action column contains HTML buttons
+  # Check action column contains HTML buttons with correct data attributes
   expect_true(all(grepl("<button", result$Actions)))
   expect_true(all(grepl("dt-shiny-action", result$Actions)))
-  expect_true(all(grepl("dt-map-action", result$Actions)))
+  # ACAD.143 and GRSM.225 have coordinates — map button has dt-map-action class
+  expect_true(grepl("dt-map-action", result$Actions[1]))
+  expect_true(grepl("dt-map-action", result$Actions[2]))
+  # OLYM has no coordinates — map button is rendered but disabled (no dt-map-action class)
+  expect_false(grepl("dt-map-action", result$Actions[3]))
 
-  # Check separate code columns
-  expect_equal(result$`Vegbank Code`, vapply(c("ob.123", "ob.456"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
-  expect_equal(result$`Author Code`, c("OBS001", "OBS002"))
+  # Vegbank Code and Author Code use real observation codes
+  expect_equal(
+    result$`Vegbank Code`,
+    vapply(c("ob.2948", "ob.3776", "ob.206444"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE)
+  )
+  expect_equal(result$`Author Code`, c("ACAD.143", "GRSM.225", "OLYM.Z.681.0003"))
+
+  # Location: ACAD.143 in Maine, GRSM.225 in Tennessee, OLYM has no coordinates
   expect_equal(
     result$Location,
     c(
-      "Virginia<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">38.5000, -78.2000</span><br><span class=\"text-muted small\">Elevation: 500m</span>",
-      "Maryland<br><span class=\"text-muted small\">USA</span><br><span class=\"text-muted small\">39.2000, -77.0000</span><br><span class=\"text-muted small\">Elevation: 750m</span>"
+      "Maine<br><span class=\"text-muted small\">United States</span><br><span class=\"text-muted small\">44.3465, -68.2293</span><br><span class=\"text-muted small\">Elevation: 416m</span>",
+      "Tennessee<br><span class=\"text-muted small\">United States</span><br><span class=\"text-muted small\">35.5800, -83.8000</span><br><span class=\"text-muted small\">Elevation: 930m</span>",
+      "Unspecified<br><span class=\"text-muted small\">Elevation: 1915m</span>"
     )
   )
-  expect_equal(result$`Survey Year`, c("2020", "2021"))
 
-  # Check taxa and communities columns contain HTML
-  expect_true(all(grepl("<div", result$`Top Taxa`)))
-  expect_true(all(grepl("dt-shiny-action", result$`Top Taxa`)))
-  expect_true(all(grepl("<a", result$`Top Taxa`)))
+  # Survey years differ across parks and eras
+  expect_equal(result$`Survey Year`, c("1998", "1998", "2012"))
+
+  # Top Taxa: rows 1-2 have taxa, row 3 (OLYM) has none
+  expect_true(grepl("<div", result$`Top Taxa`[1]))
+  expect_true(grepl("dt-shiny-action", result$`Top Taxa`[1]))
+  expect_true(grepl("<a", result$`Top Taxa`[1]))
+  expect_true(grepl("Aronia melanocarpa", result$`Top Taxa`[1]))
+  expect_true(grepl("pc.10653", result$`Top Taxa`[1]))
+  expect_true(grepl("Acer saccharum", result$`Top Taxa`[2]))
+  expect_true(grepl("pc.7191", result$`Top Taxa`[2]))
+  # OLYM has no taxa — produces the "No taxa recorded" placeholder
+  expect_true(grepl("No taxa recorded", result$`Top Taxa`[3]))
+
+  # Communities column links to real CEGL community codes
   expect_true(all(grepl("<a", result$Communities)))
   expect_true(all(grepl("dt-shiny-action", result$Communities)))
+  expect_true(grepl("CEGL005094", result$Communities[1]))  # ACAD.143 Vaccinium dwarf-shrubland
+  expect_true(grepl("CEGL007695", result$Communities[2]))  # GRSM.225 Aesculus/Acer forest
+  expect_true(grepl("CEGL008260", result$Communities[3]))  # OLYM Alpine sparse vegetation
 })
 
 test_that("process_plot_data handles empty data correctly", {

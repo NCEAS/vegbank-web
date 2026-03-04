@@ -81,50 +81,58 @@ test_that("normalize_plot_obs_result handles dataframe payload format", {
   expect_true(is.na(normalized$soils$ph[1]))
 })
 
-test_that("normalize_plot_obs_result handles ACAD.144 with null observation fields", {
-  # ob.2949: observation_narrative = NA, slope_aspect/gradient = 0, no rock_type,
-  # surficial_deposits present, hydrologic_regime = Seasonally flooded
-  normalized <- vegbankweb:::normalize_plot_obs_result(mock_plot_data_acad144)
+test_that("normalize_plot_obs_result handles GRSM.225 with confidential location and null soils", {
+  # ob.3776: confidentiality_status = 1, float elevation, Tennessee, null soils, permanence = TRUE
+  normalized <- vegbankweb:::normalize_plot_obs_result(mock_plot_data_grsm225)
 
   expect_true(normalized$has_data)
-  expect_equal(normalized$plot_observation$ob_code, "ob.2949")
-  expect_equal(normalized$plot_observation$hydrologic_regime, "Seasonally flooded")
-  expect_true(is.na(normalized$plot_observation$observation_narrative))
-  expect_true(is.na(normalized$plot_observation$rock_type))
-  expect_equal(normalized$plot_observation$surficial_deposits, "Glacial Deposits: Till")
+  expect_equal(normalized$plot_observation$ob_code, "ob.3776")
+  expect_equal(normalized$plot_observation$author_obs_code, "GRSM.225")
+  expect_equal(normalized$plot_observation$state_province, "Tennessee")
+  expect_equal(normalized$plot_observation$country, "United States")
+  expect_equal(normalized$plot_observation$taxon_count, 42L)
+  expect_equal(normalized$plot_observation$year, "1998")
+  expect_true(normalized$plot_observation$permanence)
+  expect_equal(normalized$plot_observation$confidentiality_status, 1L)
 
-  # Zero slope values should be preserved (not treated as missing)
+  # Zero slope_aspect is valid (not treated as missing)
   expect_equal(normalized$plot_observation$slope_aspect, 0L)
-  expect_equal(normalized$plot_observation$slope_gradient, 0L)
+  expect_equal(normalized$plot_observation$slope_gradient, 36L)
 
-  # Peat soil with no texture
-  expect_equal(nrow(normalized$soils), 1)
-  expect_true(is.na(normalized$soils$texture[1]))
-  expect_true(grepl("peat depth", normalized$soils$description[1]))
+  # Null soils should normalize to an empty data frame
+  expect_equal(nrow(normalized$soils), 0)
 
-  # Communities: Typha eastern marsh
-  expect_equal(normalized$communities$comm_code[1], "CEGL006153")
-  expect_equal(normalized$communities$cl_code[1], "cl.1554")
+  # Disturbances: 1 row with descriptive comment
+  expect_equal(nrow(normalized$disturbances), 1)
+  expect_equal(normalized$disturbances$type[1], "unknown")
+
+  # Communities: CEGL007695 Aesculus/Acer forest
+  expect_equal(normalized$communities$comm_code[1], "CEGL007695")
+  expect_equal(normalized$communities$cl_code[1], "cl.2254")
 })
 
-test_that("normalize_plot_obs_result handles ACAD.145 with high taxon count", {
-  # ob.2950: taxon_count = 28, topo_position = Midslope, woodland community
-  normalized <- vegbankweb:::normalize_plot_obs_result(mock_plot_data_acad145)
+test_that("normalize_plot_obs_result handles OLYM.Z.681.0003 with null location and zero taxa", {
+  # ob.206444: null lat/lng, null state/country, zero taxon_count, null nested tables
+  normalized <- vegbankweb:::normalize_plot_obs_result(mock_plot_data_olym)
 
   expect_true(normalized$has_data)
-  expect_equal(normalized$plot_observation$ob_code, "ob.2950")
-  expect_equal(normalized$plot_observation$taxon_count, 28L)
-  expect_equal(normalized$plot_observation$topo_position, "Midslope")
-  expect_equal(normalized$plot_observation$slope_aspect, 270L)
-  expect_equal(normalized$plot_observation$soil_drainage, "somewhat excessively drained")
+  expect_equal(normalized$plot_observation$ob_code, "ob.206444")
+  expect_equal(normalized$plot_observation$author_obs_code, "OLYM.Z.681.0003")
+  expect_equal(normalized$plot_observation$taxon_count, 0L)
+  expect_true(is.na(normalized$plot_observation$latitude))
+  expect_true(is.na(normalized$plot_observation$longitude))
+  expect_true(is.na(normalized$plot_observation$state_province))
+  expect_equal(normalized$plot_observation$year, "2012")
+  expect_equal(normalized$plot_observation$rf_code, "rf.87576")
 
-  # Loamy sand soil texture should be preserved
-  expect_equal(nrow(normalized$soils), 1)
-  expect_equal(normalized$soils$texture[1], "Loamy Sands: Loamy Sand")
+  # All nested tables should be empty (null in API => empty data frames)
+  expect_equal(nrow(normalized$top_taxon_observations), 0)
+  expect_equal(nrow(normalized$disturbances), 0)
+  expect_equal(nrow(normalized$soils), 0)
 
-  # Woodland community
-  expect_equal(normalized$communities$comm_code[1], "CEGL006116")
-  expect_true(grepl("Pinus rigida", normalized$communities$comm_name[1]))
+  # Communities: CEGL008260 Olympic alpine vegetation
+  expect_equal(normalized$communities$comm_code[1], "CEGL008260")
+  expect_equal(normalized$communities$cl_code[1], "cl.167378")
 })
 
 test_that("prepare_taxa_display groups by stratum and sorts cover", {
@@ -201,9 +209,9 @@ test_that("prepare_taxa_display handles taxa with missing cover values", {
   expect_equal(prepared$cover_display[prepared$plant_name == "Species C"], "5.00%")
 })
 
-test_that("build_plot_obs_details_view handles ACAD.144 with null observation_narrative", {
-  # ob.2949 has observation_narrative = NA — should not crash
-  result <- build_plot_obs_details_view(mock_plot_data_acad144)
+test_that("build_plot_obs_details_view handles GRSM.225 with confidential location and null soils", {
+  # ob.3776: observation_narrative = NA, location = "<confidential>", null soils — should not crash
+  result <- build_plot_obs_details_view(mock_plot_data_grsm225)
 
   expect_type(result, "list")
   expect_named(result, c(
@@ -217,12 +225,13 @@ test_that("build_plot_obs_details_view handles ACAD.144 with null observation_na
   expect_true(inherits(result$soils_details, "shiny.render.function"))
 })
 
-test_that("build_plot_obs_details_view handles ACAD.145 with large taxon count", {
-  # ob.2950 has taxon_count = 28
-  result <- build_plot_obs_details_view(mock_plot_data_acad145)
+test_that("build_plot_obs_details_view handles OLYM.Z.681.0003 with null taxa and disturbances", {
+  # ob.206444: taxon_count = 0, null top_taxon_observations, null disturbances — should not crash
+  result <- build_plot_obs_details_view(mock_plot_data_olym)
 
   expect_type(result, "list")
   expect_true(inherits(result$taxa_details, "shiny.render.function"))
+  expect_true(inherits(result$disturbances_details, "shiny.render.function"))
 })
 
 test_that("build_plot_obs_details_view renders synonym notification for replaced observations", {
@@ -287,29 +296,28 @@ test_that("disturbances with null intensity are correctly structured in mock dat
   expect_silent(build_plot_obs_details_view(mock_plot_data))
 })
 
-test_that("ACAD.145 has multi-word disturbance comment", {
-  # ob.2950 has a richer disturbance comment with fire and wind notes
-  normalized <- vegbankweb:::normalize_plot_obs_result(mock_plot_data_acad145)
+test_that("GRSM.225 has disturbance with descriptive comment", {
+  # ob.3776 has a disturbance with a natural dead-and-down comment
+  normalized <- vegbankweb:::normalize_plot_obs_result(mock_plot_data_grsm225)
 
   expect_equal(nrow(normalized$disturbances), 1)
-  expect_true(grepl("Fire:", normalized$disturbances$comment[1]))
-  expect_true(grepl("Wind:", normalized$disturbances$comment[1]))
+  expect_equal(normalized$disturbances$type[1], "unknown")
+  expect_true(grepl("natural dead", normalized$disturbances$comment[1]))
   expect_true(is.na(normalized$disturbances$intensity[1]))
 })
 
-test_that("soils texture is present for ACAD.143 (sand) and absent for ACAD.144 (peat)", {
+test_that("soils texture present for ACAD.143 and null soils handled for GRSM.225", {
   # ACAD.143 has texture = "Sands: Sand"
   normalized_143 <- vegbankweb:::normalize_plot_obs_result(mock_plot_data)
   expect_equal(normalized_143$soils$texture[1], "Sands: Sand")
   expect_equal(normalized_143$soils$horizon[1], "unknown")
   expect_true(grepl("Profile:", normalized_143$soils$description[1]))
 
-  # ACAD.144 has texture = NA (peat soil — no texture class applies)
-  normalized_144 <- vegbankweb:::normalize_plot_obs_result(mock_plot_data_acad144)
-  expect_true(is.na(normalized_144$soils$texture[1]))
-  expect_true(grepl("peat depth", normalized_144$soils$description[1]))
+  # GRSM.225 has soils = null in API — should normalize to an empty data frame
+  normalized_grsm <- vegbankweb:::normalize_plot_obs_result(mock_plot_data_grsm225)
+  expect_equal(nrow(normalized_grsm$soils), 0)
 
   # Both should not error when building detailed view
   expect_silent(build_plot_obs_details_view(mock_plot_data))
-  expect_silent(build_plot_obs_details_view(mock_plot_data_acad144))
+  expect_silent(build_plot_obs_details_view(mock_plot_data_grsm225))
 })

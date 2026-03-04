@@ -107,15 +107,13 @@ test_that("validate_map_data returns invalid when all coordinates are NA", {
 })
 
 test_that("validate_map_data returns valid with good data", {
-  good_data <- data.frame(
-    latitude = 40.7128,
-    longitude = -74.0060,
-    author_obs_code = "NYC",
-    ob_code = "ob.2948"
-  )
+  # Use real ob.2948 coordinates from the Acadia National Park dataset
+  good_data <- mock_plot_data[1, c("latitude", "longitude", "author_obs_code", "ob_code")]
   result <- validate_map_data(good_data)
   expect_true(result$valid)
   expect_equal(nrow(result$data), 1)
+  expect_equal(result$data$ob_code, "ob.2948")
+  expect_equal(result$data$author_obs_code, "ACAD.143")
 })
 
 test_that("validate_map_data filters out NA coordinates", {
@@ -150,56 +148,40 @@ test_that("process_map_data handles empty input", {
 test_that("process_map_data creates a map with markers", {
   defaults <- get_map_defaults()
 
-  # Create a small test dataset
-  test_data <- data.frame(
-    latitude = c(40.7128, 34.0522),
-    longitude = c(-74.0060, -118.2437),
-    author_obs_code = c("NYC", "LA"),
-    ob_code = c("ob.2948", "ob.2949"),
-    stringsAsFactors = FALSE
-  )
+  # Use the three real Acadia National Park observations (Maine coords)
+  test_data <- mock_plot_observations_multi[, c("latitude", "longitude", "author_obs_code", "ob_code")]
 
   with_mock_shiny_notifications({
     map <- process_map_data(test_data, defaults$lng, defaults$lat, defaults$zoom)
-    # Just check that the map is created successfully
     expect_true(inherits(map, "leaflet"))
-    # Check that there's at least one call in the map object
     expect_true(length(map$x$calls) > 0)
   })
 })
 
 test_that("process_map_data handles custom center and zoom", {
-  test_data <- data.frame(
-    latitude = c(40.7128),
-    longitude = c(-74.0060),
-    author_obs_code = c("NYC"),
-    ob_code = c("ob.2948"),
-    stringsAsFactors = FALSE
-  )
+  # Use the single real ob.2948 (ACAD.143) observation from Maine
+  test_data <- mock_plot_data[1, c("latitude", "longitude", "author_obs_code", "ob_code")]
 
   with_mock_shiny_notifications({
-    map <- process_map_data(test_data, center_lat = 35.0, center_lng = -100.0, zoom = 4)
-    # Just check that the map is created successfully
+    map <- process_map_data(test_data, center_lat = 44.0, center_lng = -68.0, zoom = 10)
     expect_true(inherits(map, "leaflet"))
   })
 })
 
 test_that("fetch_plot_map_data returns data when API succeeds", {
-  fake_data <- data.frame(
-    latitude = 10,
-    longitude = 20,
-    author_obs_code = "CODE",
-    ob_code = "ob.1"
-  )
+  # Return the real three-observation Acadia dataset from the mocked API
+  acad_map_data <- mock_plot_observations_multi[, c("latitude", "longitude", "author_obs_code", "ob_code")]
 
   with_mock_shiny_notifications({
     result <- testthat::with_mocked_bindings(
       fetch_plot_map_data(),
-      vb_get_plot_observations = function(...) fake_data,
+      vb_get_plot_observations = function(...) acad_map_data,
       .package = "vegbankr"
     )
 
-    expect_equal(result, fake_data)
+    expect_equal(result, acad_map_data)
+    expect_equal(nrow(result), 3)
+    expect_equal(result$ob_code, c("ob.2948", "ob.3776", "ob.206444"))
     expect_length(get_mock_notifications(), 0)
   })
 })
