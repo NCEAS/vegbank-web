@@ -61,7 +61,7 @@ cl1943   <- vegbankr::vb_get_community_classifications("cl.1943",   detail = "fu
 cl2358   <- vegbankr::vb_get_community_classifications("cl.2358",   detail = "full", with_nested = TRUE)
 cl167392 <- vegbankr::vb_get_community_classifications("cl.167392", detail = "full", with_nested = TRUE)
 
-write_mock_file("community_classifciations.R", c(
+write_mock_file("community_classifications.R", c(
   file_header("community classification", "vegbankr::vb_get_community_classifications"),
   "# ── cl.1943 · BADL.119 · ob.3407 ───────────────────────────────────────────",
   as_assignment("mock_comm_class_cl1943", cl1943),

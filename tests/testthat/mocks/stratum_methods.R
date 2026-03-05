@@ -20,11 +20,25 @@ mock_stratum_method_sm1$stratum_types <- I(list(data.frame(
   stratum_description = c(
     "Foliage generally greater than 35m high",
     "Foliage generally less than 0.5m high",
-    "Foliage generally 0.5-6m high"
+    "Foliage generally 0.5-6m high",
+    "Foliage generally 15-35m high",
+    "Foliage generally 6-15m high",
+    "No vertical splitting of a plot, but rather a horizontal portion of a plot, generally a 10m x 10m square, though sometimes 5m x 20m",
+    "Foliage generally less than 0.5m high",
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_
   ),
-  stratum_index = c("E", "H", "S"),
-  stratum_name = c("Emergent", "Herb", "Shrub"),
-  sy_code = c("sy.1", "sy.2", "sy.3"),
+  stratum_index = c("E", "H", "S", "C", "U", "mod", "H", "A", "F", "O", "T"),
+  stratum_name = c(
+    "Emergent", "Herb", "Shrub", "Canopy", "Understory",
+    "module", "Herb", "Aquatic submerged", "Floating", "Other", "Tree"
+  ),
+  sy_code = c(
+    "sy.1", "sy.2", "sy.3", "sy.4", "sy.5",
+    "sy.217663", "sy.217664", "sy.217688", "sy.218016", "sy.218017", "sy.218018"
+  ),
   stringsAsFactors = FALSE
 )))
 
@@ -42,10 +56,42 @@ mock_stratum_method_sm5 <- data.frame(
   stringsAsFactors = FALSE
 )
 mock_stratum_method_sm5$stratum_types <- I(list(data.frame(
-  stratum_description = c(NA_character_, NA_character_, NA_character_),
-  stratum_index = c("T1", "T2", "T3"),
-  stratum_name = c("Emergent", "Canopy", "Sub-Canopy"),
-  sy_code = c("sy.33", "sy.34", "sy.35"),
+  stratum_description = c(
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    NA_character_,
+    "No vertical splitting of a plot, but rather a horizontal portion of a plot, generally a 10m x 10m square, though sometimes 5m x 20m",
+    NA_character_,
+    NA_character_,
+    "Submergent aquatic. may include submerged seedlings of typical emergent and floating-leaved aquatic plants.",
+    "Floating-leaved aquatic. Detached floating plants are treated as detritus (unvegetated surface/litter and duff layer).",
+    "Emergent aquatic. Does not include trees, shrubs and vines. may include typical submergent and floating-leaved aquatic with uppermost leaves emergent due to drawdown (e.g., Nuphar spp.)."
+  ),
+  stratum_index = c(
+    "T1", "T2", "T3", "S1", "S2", "S3", "H", "N", "V", "E",
+    "Unkn", "S", "T", "mod", "TC", "H", "A3", "A2", "A1"
+  ),
+  stratum_name = c(
+    "Emergent", "Canopy", "Sub-Canopy", "Tall Shrub", "Short Shrub", "Dwarf Shrub",
+    "Herbaceous", "Nonvascular", "Vine/Liana", "Epiphyte", "Unknown stratum", "Shrub",
+    "Tree", "module", "Total-Calculated", "Herbaceous", "submerged aquatic",
+    "floating-leaved aquatic", "emergent aquatic"
+  ),
+  sy_code = c(
+    "sy.33", "sy.34", "sy.35", "sy.36", "sy.37", "sy.38", "sy.39", "sy.40",
+    "sy.41", "sy.42", "sy.773", "sy.774", "sy.775", "sy.217661", "sy.218050",
+    "sy.218003", "sy.218004", "sy.218005", "sy.218006"
+  ),
   stringsAsFactors = FALSE
 )))
 
