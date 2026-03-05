@@ -95,3 +95,47 @@ test_that("build_reference_details_view renders correct publication content", {
   pub_html35243 <- htmltools::renderTags(details_35243$reference_publication(shinysession = mock_session))$html
   expect_true(grepl("UNKNOWN", pub_html35243, fixed = TRUE))
 })
+
+# ---------------------------------------------------------------------------
+# URL scheme whitelist / stored-XSS mitigation
+# ---------------------------------------------------------------------------
+
+test_that("build_reference_identifiers_ui renders http and https URLs as clickable links", {
+  mock_session <- shiny::MockShinySession$new()
+
+  for (safe_url in c("http://example.com/page", "https://example.com/page")) {
+    ref <- mock_reference_rf36675
+    ref$url <- safe_url
+
+    details <- build_reference_details_view(ref)
+    id_html <- htmltools::renderTags(details$reference_identifiers(shinysession = mock_session))$html
+
+    expect_true(grepl("<a ", id_html, fixed = TRUE),
+      info = paste("Expected <a> tag for safe URL:", safe_url))
+    expect_true(grepl(safe_url, id_html, fixed = TRUE),
+      info = paste("Expected URL text present:", safe_url))
+  }
+})
+
+test_that("build_reference_identifiers_ui renders disallowed URL schemes as plain text, not links", {
+  mock_session <- shiny::MockShinySession$new()
+
+  dangerous_urls <- c(
+    "javascript:alert('xss')",
+    "javascript:void(0)",
+    "data:text/html,<script>alert(1)</script>",
+    "vbscript:msgbox('xss')",
+    "file:///etc/passwd"
+  )
+
+  for (bad_url in dangerous_urls) {
+    ref <- mock_reference_rf36675
+    ref$url <- bad_url
+
+    details <- build_reference_details_view(ref)
+    id_html <- htmltools::renderTags(details$reference_identifiers(shinysession = mock_session))$html
+
+    expect_false(grepl("<a ", id_html, fixed = TRUE),
+      info = paste("Expected NO <a> tag for dangerous URL scheme:", bad_url))
+  }
+})
