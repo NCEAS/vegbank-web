@@ -18,7 +18,7 @@ ui <- function(req) {
 
   # Parse initial state from URL query parameters
   query_string <- req$QUERY_STRING
-  initial_tab <- "Overview"
+  initial_tab <- "Home"
   has_cite_param <- FALSE
 
   if (!is.null(query_string) && nzchar(query_string)) {
@@ -109,7 +109,7 @@ custom_theme <- bslib::bs_theme(
 #' @return A Shiny tag list representing the navigation bar.
 #'
 #' @noRd
-build_navbar <- function(initial_tab = "Overview") {
+build_navbar <- function(initial_tab = "Home") {
   navbar <- bslib::page_navbar(
     id = "page",
     selected = initial_tab,
@@ -120,6 +120,7 @@ build_navbar <- function(initial_tab = "Overview") {
       ),
       "VegBank"
     ),
+    build_landing_panel(),
     bslib::nav_panel(
       title = "Overview",
       shiny::fluidPage(

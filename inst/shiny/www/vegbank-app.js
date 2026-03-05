@@ -527,6 +527,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     Shiny.setInputValue('show_on_map', payload, {priority: 'event'});
   });
+
+  // Navigate to the Home tab when the VegBank brand/logo is clicked
+  $(document).on('click', '.navbar-brand', function(e) {
+    e.preventDefault();
+    var homeLink = document.querySelector('.navbar-nav [data-value="Home"]');
+    if (homeLink) {
+      homeLink.click();
+    }
+  });
 });
 
 Shiny.addCustomMessageHandler('setNavInteractivity', function(message) {

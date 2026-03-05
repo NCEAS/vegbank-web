@@ -39,7 +39,7 @@ server <- function(input, output, session) {
   map_state <- initialize_map_state()
 
   state <- list(
-    current_tab = shiny::reactiveVal("Overview"),
+    current_tab = shiny::reactiveVal("Home"),
     details_open = shiny::reactiveVal(FALSE),
     detail_type = shiny::reactiveVal(NULL),
     detail_code = shiny::reactiveVal(NULL),
@@ -104,7 +104,7 @@ server <- function(input, output, session) {
     initial_tab <- if (!is.null(initial_query$tab) && nzchar(initial_query$tab)) {
       initial_query$tab
     } else {
-      "Overview"
+      "Home"
     }
     state$current_tab(initial_tab)
   }
@@ -1123,7 +1123,7 @@ server <- function(input, output, session) {
       # Parse and apply requested tab
       requested_tab <- url_manager$first_param(params$tab)
       if (!url_manager$is_valid_param(requested_tab)) {
-        requested_tab <- "Overview"
+        requested_tab <- "Home"
       }
 
       if (!identical(state$current_tab(), requested_tab)) {
