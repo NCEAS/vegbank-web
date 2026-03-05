@@ -166,15 +166,15 @@ test_that("show_detail_view handles reference data correctly", {
 
 test_that("show_detail_view works with plant-concept type", {
   mock_get_plant_concept <- function(code) {
-    if (code == "pc.12345") {
-      return(mock_plant_concept_data)
+    if (code == "pc.111478") {
+      return(mock_plant_concept_acru)
     }
     data.frame()
   }
 
-  result <- mock_get_plant_concept("pc.12345")
+  result <- mock_get_plant_concept("pc.111478")
   expect_true(nrow(result) > 0)
-  expect_equal(result$pc_code, "pc.12345")
+  expect_equal(result$pc_code, "pc.111478")
 })
 
 test_that("show_detail_view handles missing plant concept data", {

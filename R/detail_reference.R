@@ -82,15 +82,22 @@ build_reference_identifiers_ui <- function(ref) {
         return("Unspecified")
       }
 
-      # Render URLs as clickable links
+      # Render URLs as clickable links only for safe schemes (http/https).
+      # Reject other schemes (e.g. javascript:, data:) to prevent stored XSS.
       if (field_name == "url") {
         url_string <- as.character(field_value)
-        return(htmltools::tags$a(
-          href = url_string,
-          target = "_blank",
-          rel = "noopener noreferrer",
-          url_string
-        ))
+        url_lower <- tolower(trimws(url_string))
+        is_safe_url <- startsWith(url_lower, "http://") || startsWith(url_lower, "https://")
+        if (is_safe_url) {
+          return(htmltools::tags$a(
+            href = url_string,
+            target = "_blank",
+            rel = "noopener noreferrer",
+            url_string
+          ))
+        } else {
+          return(url_string)
+        }
       }
 
       field_value
