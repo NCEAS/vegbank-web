@@ -120,7 +120,7 @@ build_navbar <- function(initial_tab = "Home") {
       ),
       "VegBank"
     ),
-    build_landing_panel(),
+    build_home_panel(),
     bslib::nav_panel(
       title = "Overview",
       shiny::fluidPage(

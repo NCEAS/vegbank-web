@@ -434,9 +434,9 @@ table.dataTable tbody tr.selected-entity:hover,
   overflow-wrap: break-word;
 }
 
-/* ==================== LANDING PAGE ==================== */
+/* ==================== home PAGE ==================== */
 /* Start image right below the nav bar */
-.vb-landing {
+.vb-home {
   margin-top: -1.6rem;
 }
 
@@ -485,7 +485,7 @@ table.dataTable tbody tr.selected-entity:hover,
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-.vb-landing-content {
+.vb-home-content {
   max-width: 780px;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 4rem;
@@ -502,11 +502,11 @@ table.dataTable tbody tr.selected-entity:hover,
   line-height: 1.7;
 }
 
-.vb-landing-section {
+.vb-home-section {
   margin-bottom: 2.75rem;
 }
 
-.vb-landing-section h2,
+.vb-home-section h2,
 .vb-markdown-page h2 {
   font-size: 1.5em;
   font-weight: 600;
@@ -515,24 +515,24 @@ table.dataTable tbody tr.selected-entity:hover,
 }
 
 /* Headings rendered from includeMarkdown */
-.vb-landing-section h2:not(:first-child),
+.vb-home-section h2:not(:first-child),
 .vb-markdown-page h2:not(:first-child) {
   margin-top: 2.25rem;
 }
 
 /* Paragraph spacing for markdown content */
-.vb-landing-section p,
+.vb-home-section p,
 .vb-markdown-page p {
   margin-bottom: 1em;
 }
 
 /* List item spacing for markdown content */
-.vb-landing-section li,
+.vb-home-section li,
 .vb-markdown-page li {
   margin-bottom: 0.65em;
 }
 
-.vb-landing-cta {
+.vb-home-cta {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
@@ -557,7 +557,7 @@ table.dataTable tbody tr.selected-entity:hover,
     padding: 1.25rem 1.25rem;
   }
 
-  .vb-landing-content,
+  .vb-home-content,
   .vb-markdown-page {
     padding: 1.5rem 1rem 3rem;
   }

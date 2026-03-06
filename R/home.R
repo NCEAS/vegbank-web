@@ -1,17 +1,18 @@
 #' Build Home / Landing Page Panel
 #'
 #' Constructs the nav_panel displayed when no tab is specified in the URL.
-#' Contains a hero image, VegBank description, CTA buttons, and a getting
-#' started guide. The panel is static — no server-side initialization required.
+#' Contains a hero image, VegBank description, CTA buttons, and links to the
+#' getting started guide, and affiliate logos. The panel is static — no
+#' server-side initialization required.
 #'
 #' @return A \code{bslib::nav_panel} for the Home tab.
 #'
 #' @noRd
-build_landing_panel <- function() {
+build_home_panel <- function() {
   bslib::nav_panel(
     title = "Home",
     htmltools::tags$div(
-      class = "vb-landing",
+      class = "vb-home",
 
       # Hero image with gradient overlay and text
       htmltools::tags$div(
@@ -36,11 +37,11 @@ build_landing_panel <- function() {
 
       # Main content: description, CTAs, getting started guide
       htmltools::tags$div(
-        class = "vb-landing-content",
+        class = "vb-home-content",
 
         # Welcome to VegBank
         htmltools::tags$div(
-          class = "vb-landing-section",
+          class = "vb-home-section",
           htmltools::tags$h2("Welcome to VegBank!"),
           htmltools::tags$p(
             "VegBank is the public, open repository for vegetation plot data,",
@@ -73,7 +74,7 @@ build_landing_panel <- function() {
 
         # CTA buttons
         htmltools::tags$div(
-          class = "vb-landing-cta",
+          class = "vb-home-cta",
           # Browse dropdown
           htmltools::tags$div(
             class = "btn-group",
@@ -132,6 +133,7 @@ build_landing_panel <- function() {
           )
         ),
 
+        # Beta notice
         htmltools::tags$h5("Beta Notice"),
         htmltools::tags$p(
           htmltools::tags$em(
