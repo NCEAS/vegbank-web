@@ -316,7 +316,7 @@ CONCEPT_TABLE_SPECS <- local({
     sort_field_map <- list(
       "1" = "default", # Vegbank Code
       "2" = config$name_field, # Name
-      "6" = "obs_count" # Observations = Plots for layman clarity
+      "6" = "obs_count" # Plots
     )
 
     list(
