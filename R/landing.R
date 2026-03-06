@@ -56,7 +56,7 @@ build_landing_panel <- function() {
             " ecological research, conservation planning, and biodiversity monitoring."
           ),
           htmltools::tags$p(
-            "For programmatic data access, see the ",
+            "For programmatic data access or to upload data, see the ",
             htmltools::tags$a(
               href = "https://github.com/NCEAS/vegbankr",
               target = "_blank",
@@ -74,20 +74,61 @@ build_landing_panel <- function() {
         # CTA buttons
         htmltools::tags$div(
           class = "vb-landing-cta",
-          htmltools::tags$a(
-            href = "?tab=Plots",
-            class = "btn btn-primary btn-lg vb-cta-btn",
-            "Browse and Download Plots"
+          # Browse dropdown
+          htmltools::tags$div(
+            class = "btn-group",
+            htmltools::tags$button(
+              type = "button",
+              class = "btn btn-primary btn-lg vb-cta-btn dropdown-toggle",
+              `data-bs-toggle` = "dropdown",
+              `aria-expanded` = "false",
+              "Browse Plots"
+            ),
+            htmltools::tags$ul(
+              class = "dropdown-menu",
+              htmltools::tags$li(htmltools::tags$a(
+                class = "dropdown-item",
+                href = "?tab=Plots",
+                "All Plots in a Table"
+              )),
+              htmltools::tags$li(htmltools::tags$a(
+                class = "dropdown-item",
+                href = "?tab=Map",
+                "All Plots on a Map"
+              )),
+              htmltools::tags$li(htmltools::tags$hr(class = "dropdown-divider")),
+              htmltools::tags$li(htmltools::tags$a(
+                class = "dropdown-item",
+                href = "?tab=Communities",
+                "By Vegetation Community"
+              )),
+              htmltools::tags$li(htmltools::tags$a(
+                class = "dropdown-item",
+                href = "?tab=Plants",
+                "By Plant Species"
+              )),
+              htmltools::tags$li(htmltools::tags$a(
+                class = "dropdown-item",
+                href = "?tab=Parties",
+                "By Data Contributor"
+              )),
+              htmltools::tags$li(htmltools::tags$a(
+                class = "dropdown-item",
+                href = "?tab=Projects",
+                "By Sampling Project"
+              ))
+            )
           ),
           htmltools::tags$a(
-            href = "?tab=Map",
+            href = "https://github.com/NCEAS/vegbankr",
+            target = "_blank",
             class = "btn btn-outline-primary btn-lg vb-cta-btn",
-            "Explore the Map"
+            "Contribute Plots"
           ),
           htmltools::tags$a(
-            href = "?tab=Overview",
-            class = "btn btn-outline-secondary btn-lg vb-cta-btn",
-            "Get an Overview"
+            href = "?tab=Getting Started",
+            class = "btn btn-outline-primary btn-lg vb-cta-btn",
+            "Learn More"
           )
         ),
 

@@ -3,6 +3,7 @@
 
 Here's an overview of what you can do on different tabs:
 
+- **Overview**: Use this dashboard to get a sense for the scale of data in VegBank, browsing recently updated projects, and find the most observed plants and communities.
 - **Map**: View plot locations on an interactive map. Click markers to zoom to plot clusters and the links on location labels to see plot observation details. Some location labels have many plot observations because of repeated sampling or location fuzzing for privacy.
 - **Plots**: Browse vegetation plot observations. Each row represents a single plot observation with location, date, and ecological data. Use the search box to find plots with a specific plant species, community type, author code, or location (eg: `Sibbaldiopsis tridentata`, `CEGL001833`, `Eleocharis palustris Marsh`, `BADL.126`, or `California`)
 - **Plants**: Explore the plant taxonomy database. Search for plant concepts by plant name or browse the full list of plant concepts.
