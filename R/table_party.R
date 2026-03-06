@@ -17,7 +17,7 @@ PARTY_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 )
 
 PARTY_TABLE_DISPLAY_TEMPLATE <- build_display_template(
-  column_names = c("Actions", "Vegbank Code", "Party", "Organization", "Contributions", "Contact")
+  column_names = c("Actions", "Vegbank Code", "Party", "Organization", "Plots", "Contact")
 )
 
 create_party_column_defs <- function() {
@@ -26,7 +26,7 @@ create_party_column_defs <- function() {
     list(targets = 1, width = "12%", orderable = TRUE), # py_code (Vegbank Code)
     list(targets = 2, width = "23%", orderable = TRUE), # Party Label (sortable by surname)
     list(targets = 3, width = "30%", orderable = TRUE), # Organization
-    list(targets = 4, width = "10%", className = "dt-right", type = "num", orderable = TRUE), # Contributions
+    list(targets = 4, width = "10%", className = "dt-right", type = "num", orderable = TRUE), # Plots
     list(targets = 5, width = "25%", orderable = FALSE) # Contact
   )
 }
@@ -78,7 +78,7 @@ process_party_data <- function(party_data) {
     "Vegbank Code" = vapply(py_codes, htmltools::htmlEscape, character(1)),
     "Party" = vapply(party_labels, htmltools::htmlEscape, character(1)),
     "Organization" = vapply(organizations, htmltools::htmlEscape, character(1)),
-    "Contributions" = obs_count_links,
+    "Plots" = obs_count_links,
     "Contact" = vapply(contact_info, htmltools::htmlEscape, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
@@ -114,7 +114,7 @@ PARTY_TABLE_SPEC <- list(
       "1" = "default", # Vegbank Code
       "2" = "surname", # Party (sort by surname)
       "3" = "organization_name", # Organization
-      "4" = "obs_count" # Contributions
+      "4" = "obs_count" # Plots
     )
   ),
   page_length = NULL,

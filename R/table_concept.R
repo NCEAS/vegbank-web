@@ -210,7 +210,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     Status = status_badges,
     Level = vapply(levels, htmltools::htmlEscape, character(1)),
     `Reference Source` = ref_links,
-    Observations = obs_count_links,
+    Plots = obs_count_links,
     Description = vapply(seq_along(descriptions), function(i) {
       safe_desc <- htmltools::htmlEscape(descriptions[i])
       safe_code <- htmltools::htmlEscape(as.character(concept_codes[[i]]), attribute = TRUE)
@@ -244,7 +244,7 @@ create_concept_column_defs <- function(detail_input_id) {
     list(targets = 3, width = "10%", className = "dt-center", orderable = FALSE), # Status
     list(targets = 4, width = "10%", className = "dt-center", orderable = FALSE), # Level
     list(targets = 5, width = "10%", orderable = FALSE), # Reference Source
-    list(targets = 6, width = "10%", type = "num", className = "dt-right", orderable = TRUE), # Observations
+    list(targets = 6, width = "10%", type = "num", className = "dt-right", orderable = TRUE), # Plots
     list(targets = 7, width = "25%", orderable = FALSE) # Description
   )
 }
@@ -316,7 +316,7 @@ CONCEPT_TABLE_SPECS <- local({
     sort_field_map <- list(
       "1" = "default", # Vegbank Code
       "2" = config$name_field, # Name
-      "6" = "obs_count" # Observations
+      "6" = "obs_count" # Observations = Plots for layman clarity
     )
 
     list(

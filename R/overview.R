@@ -68,7 +68,7 @@ render_core_counts <- function(output, overview_data) {
       class = "core-counts-list",
       style = "font-size: 15px; line-height: 2;",
       htmltools::tags$div(
-        htmltools::tags$strong("Observations"),
+        htmltools::tags$strong("Plots"),
         htmltools::tags$span(
           class = "float-end text-primary fw-bold",
           format(count_map["Observations"], big.mark = ",")
@@ -76,7 +76,7 @@ render_core_counts <- function(output, overview_data) {
       ),
       htmltools::tags$div(
         style = "padding-left: 20px;",
-        htmltools::tags$span("Classified observations"),
+        htmltools::tags$span("Classified Plots"),
         htmltools::tags$span(
           class = "float-end text-muted",
           format(count_map["Classified observations"], big.mark = ",")
@@ -84,7 +84,7 @@ render_core_counts <- function(output, overview_data) {
       ),
       htmltools::tags$div(
         style = "padding-left: 40px;",
-        htmltools::tags$span("NVC classified observations"),
+        htmltools::tags$span("NVC classified Plots"),
         htmltools::tags$span(
           class = "float-end text-muted",
           format(count_map["NVC classified observations"], big.mark = ",")
@@ -107,7 +107,7 @@ render_core_counts <- function(output, overview_data) {
       ),
       htmltools::tags$div(
         style = "padding-left: 40px;",
-        htmltools::tags$span("Observed accepted USDA plants"),
+        htmltools::tags$span("Accepted USDA plants on Plots"),
         htmltools::tags$span(
           class = "float-end text-muted",
           format(count_map["Observed accepted USDA plants"], big.mark = ",")
@@ -130,7 +130,7 @@ render_core_counts <- function(output, overview_data) {
       ),
       htmltools::tags$div(
         style = "padding-left: 40px;",
-        htmltools::tags$span("Observed accepted US NVC communities"),
+        htmltools::tags$span("Accepted US NVC communities on Plots"),
         htmltools::tags$span(
           class = "float-end text-muted",
           format(count_map["Observed accepted US NVC communities"], big.mark = ",")
@@ -442,7 +442,7 @@ render_latest_projects <- function(output, overview_data) {
         htmltools::tags$tr(
           htmltools::tags$th("Project"),
           htmltools::tags$th("Last Added", style = "width: 120px;"),
-          htmltools::tags$th("Obs", class = "text-end", style = "width: 80px;")
+          htmltools::tags$th("Plots", class = "text-end", style = "width: 80px;")
         )
       ),
       htmltools::tags$tbody(rows)
