@@ -49,6 +49,7 @@ build_home_panel <- function() {
             htmltools::tags$a(
               href = "https://esa.org/vegpanel/",
               target = "_blank",
+              rel = "noopener noreferrer",
               "Ecological Society of America's Vegetation Classification Panel"
             ),
             ". It stores thousands of plot observations recording plant species",
@@ -61,6 +62,7 @@ build_home_panel <- function() {
             htmltools::tags$a(
               href = "https://github.com/NCEAS/vegbankr",
               target = "_blank",
+              rel = "noopener noreferrer",
               "vegbankr R package"
             ),
             ". You can also browse the ",
@@ -123,6 +125,7 @@ build_home_panel <- function() {
           htmltools::tags$a(
             href = "https://github.com/NCEAS/vegbankr",
             target = "_blank",
+            rel = "noopener noreferrer",
             class = "btn btn-outline-primary btn-lg vb-cta-btn",
             "Contribute Plots"
           ),
@@ -150,6 +153,7 @@ build_home_panel <- function() {
           htmltools::tags$a(
             href = "https://esa.org",
             target = "_blank",
+            rel = "noopener noreferrer",
             class = "vb-partner-logo-link",
             htmltools::tags$img(
               src = "assets/logo_esa.jpg",
@@ -160,6 +164,7 @@ build_home_panel <- function() {
           htmltools::tags$a(
             href = "https://www.nceas.ucsb.edu",
             target = "_blank",
+            rel = "noopener noreferrer",
             class = "vb-partner-logo-link",
             htmltools::tags$img(
               src = "assets/logo_nceas_full.png",
@@ -170,6 +175,7 @@ build_home_panel <- function() {
           htmltools::tags$a(
             href = "https://www.usnvc.org",
             target = "_blank",
+            rel = "noopener noreferrer",
             class = "vb-partner-logo-link",
             htmltools::tags$img(
               src = "assets/logo_usnvc.png",
