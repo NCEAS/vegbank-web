@@ -116,7 +116,7 @@ build_navbar <- function(initial_tab = "Home") {
     theme = custom_theme,
     title = htmltools::tags$span(
       htmltools::tags$img(
-        src = "assets/logo_vegbank_high_res.svg"
+        src = "assets/logo_vegbank_leaves.svg"
       ),
       "VegBank"
     ),

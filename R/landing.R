@@ -138,6 +138,41 @@ build_landing_panel <- function() {
           shiny::includeMarkdown(
             system.file("shiny", "www", "getting_started.md", package = "vegbankweb")
           )
+        ),
+
+        # Partner / affiliation logos
+        htmltools::tags$div(
+          class = "vb-partner-logos",
+          htmltools::tags$a(
+            href = "https://esa.org",
+            target = "_blank",
+            class = "vb-partner-logo-link",
+            htmltools::tags$img(
+              src = "assets/logo_esa.jpg",
+              alt = "Ecological Society of America",
+              class = "vb-partner-logo"
+            )
+          ),
+          htmltools::tags$a(
+            href = "https://www.nceas.ucsb.edu",
+            target = "_blank",
+            class = "vb-partner-logo-link",
+            htmltools::tags$img(
+              src = "assets/logo_nceas_full.png",
+              alt = "National Center for Ecological Analysis and Synthesis",
+              class = "vb-partner-logo"
+            )
+          ),
+          htmltools::tags$a(
+            href = "https://www.usnvc.org",
+            target = "_blank",
+            class = "vb-partner-logo-link",
+            htmltools::tags$img(
+              src = "assets/logo_usnvc.png",
+              alt = "U.S. National Vegetation Classification",
+              class = "vb-partner-logo"
+            )
+          )
         )
       )
     )
