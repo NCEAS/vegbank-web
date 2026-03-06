@@ -487,20 +487,35 @@ table.dataTable tbody tr.selected-entity:hover,
   padding: 2.5rem 1.5rem 4rem;
 }
 
+/* Standalone markdown pages (About dropdown: Getting Started, FAQ, Cite) */
+.vb-markdown-page {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
 .vb-landing-section {
   margin-bottom: 2.5rem;
 }
 
-.vb-landing-section h2 {
+.vb-landing-section h2,
+.vb-markdown-page h2 {
   font-size: 1.35rem;
   font-weight: 600;
   color: var(--vb-green);
   margin-bottom: 0.75rem;
 }
 
-/* Getting-started headings rendered from includeMarkdown */
-.vb-landing-section h2:not(:first-child) {
+/* Headings rendered from includeMarkdown */
+.vb-landing-section h2:not(:first-child),
+.vb-markdown-page h2:not(:first-child) {
   margin-top: 2rem;
+}
+
+/* List item spacing for markdown content */
+.vb-landing-section li,
+.vb-markdown-page li {
+  margin-bottom: 0.6rem;
 }
 
 .vb-landing-cta {
@@ -528,7 +543,8 @@ table.dataTable tbody tr.selected-entity:hover,
     padding: 1.25rem 1.25rem;
   }
 
-  .vb-landing-content {
+  .vb-landing-content,
+  .vb-markdown-page {
     padding: 1.5rem 1rem 3rem;
   }
 }

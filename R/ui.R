@@ -226,15 +226,24 @@ build_navbar <- function(initial_tab = "Home") {
       align = "right",
       bslib::nav_panel(
         title = "Getting Started",
-        shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
+        )
       ),
       bslib::nav_panel(
         title = "FAQ",
-        shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
+        )
       ),
       bslib::nav_panel(
         title = "Cite",
-        shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+        )
       )
     )
   )
