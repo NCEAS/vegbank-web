@@ -24,7 +24,7 @@ ui <- function(req) {
   if (!is.null(query_string) && nzchar(query_string)) {
     query_params <- shiny::parseQueryString(query_string)
     if (!is.null(query_params$cite) && nzchar(query_params$cite)) {
-      # Citation will be resolved server-side; start on Overview with loading overlay
+      # Citation will be resolved server-side; start on Home with loading overlay
       has_cite_param <- TRUE
     } else if (!is.null(query_params$tab) && nzchar(query_params$tab)) {
       initial_tab <- query_params$tab

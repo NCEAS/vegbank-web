@@ -76,6 +76,9 @@ server <- function(input, output, session) {
   map_fetch_in_progress <- shiny::reactiveVal(FALSE)
   map_initialized <- shiny::reactiveVal(FALSE)
 
+  # Overview data state so we can lazy load that page once a session
+  overview_initialized <- shiny::reactiveVal(FALSE)
+
   # Initialize URL State Manager with defaults and table registry
   url_manager <- URLStateManager$new(
     session = session,
@@ -88,16 +91,15 @@ server <- function(input, output, session) {
   )
 
   # Initialize current_tab from URL before any render logic runs.
-  # This prevents unnecessarily loading the Overview page when navigating directly to another tab.
   # Citation URLs arrive as ?cite=IDENTIFIER after an HTTP 302 redirect from /cite/ paths.
   initial_query <- shiny::isolate(shiny::parseQueryString(session$clientData$url_search))
   has_cite_param <- !is.null(initial_query$cite) && nzchar(initial_query$cite)
 
   # For citation URLs, don't pre-select a tab — the citation resolver will navigate
   # to the correct tab after resolving the identifier. For all other URLs, parse the
-  # tab parameter or default to Overview.
+  # tab parameter or default to Home.
   if (has_cite_param) {
-    # Leave state$current_tab at its default ("Overview") but don't initialize any
+    # Leave state$current_tab at its default ("Home") but don't initialize any
     # tab-specific data. The citation resolver will set the real tab.
     initial_tab <- NULL
   } else {
@@ -419,15 +421,10 @@ server <- function(input, output, session) {
         duration = NULL
       )
 
-      # Fall back to Overview tab and initialize it
-      state$current_tab("Overview")
-      shiny::updateNavbarPage(session, "page", selected = "Overview")
-      if (!overview_initialized()) {
-        session$sendCustomMessage("showLoadingOverlay", list(type = "overview"))
-        init_overview(output, state, session)
-        overview_initialized(TRUE)
-      }
-      update_app_query(mode = "replace", tab = "Overview")
+      # Fall back to Home tab
+      state$current_tab("Home")
+      shiny::updateNavbarPage(session, "page", selected = "Home")
+      update_app_query(mode = "replace", tab = "Home")
       session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
       return()
     }
@@ -447,15 +444,10 @@ server <- function(input, output, session) {
         duration = NULL
       )
 
-      # Fall back to Overview tab and initialize it
-      state$current_tab("Overview")
-      shiny::updateNavbarPage(session, "page", selected = "Overview")
-      if (!overview_initialized()) {
-        session$sendCustomMessage("showLoadingOverlay", list(type = "overview"))
-        init_overview(output, state, session)
-        overview_initialized(TRUE)
-      }
-      update_app_query(mode = "replace", tab = "Overview")
+      # Fall back to Home tab
+      state$current_tab("Home")
+      shiny::updateNavbarPage(session, "page", selected = "Home")
+      update_app_query(mode = "replace", tab = "Home")
       session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
       return()
     }
@@ -542,10 +534,6 @@ server <- function(input, output, session) {
 
   # RENDER UI ELEMENTS --------------------------------------------------------------------------------
 
-  # Initialize overview page only when navigating to Overview tab
-  # This prevents unnecessary data fetching when navigating directly to other tabs
-  # Track whether overview has been initialized to avoid repeated initialization
-  overview_initialized <- shiny::reactiveVal(FALSE)
 
   # Initialize overview immediately if that's the initial tab (not a citation URL)
   if (identical(initial_tab, "Overview")) {
