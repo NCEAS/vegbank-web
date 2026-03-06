@@ -435,13 +435,17 @@ table.dataTable tbody tr.selected-entity:hover,
 }
 
 /* ==================== LANDING PAGE ==================== */
+/* Start image right below the nav bar */
+.vb-landing {
+  margin-top: -1.6rem;
+}
 
 .vb-hero {
   /* Full-bleed hero image regardless of container padding */
   width: 100vw;
   margin-left: calc(-50vw + 50%);
   position: relative;
-  height: 350px;
+  height: 330px;
   overflow: hidden;
 }
 
