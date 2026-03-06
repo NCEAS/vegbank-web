@@ -450,58 +450,6 @@ render_latest_projects <- function(output, overview_data) {
   })
 }
 
-#' Render Data Summary
-#'
-#' Renders the introductory text and instructions for the Overview page.
-#'
-#' @param output Shiny output object
-#' @noRd
-render_data_summary <- function(output) {
-  output$dataSummary <- shiny::renderUI({
-    htmltools::tagList(
-      htmltools::tags$div(
-        htmltools::strong(
-          "Now with some filtering, some citations, and downloading plot observations!"
-        ),
-        htmltools::tags$p(
-          "If you're new to VegBank, check out our ",
-          htmltools::tags$a(
-            href = "?tab=Getting Started",
-            "getting started guide"
-          ),
-          " or our ",
-          htmltools::tags$a(
-            href = "?tab=FAQ",
-            "FAQ"
-          ),
-          " page for common questions and troubleshooting tips."
-        )
-      ),
-      htmltools::tags$p(
-        "For more information, see the previous ",
-        htmltools::tags$a(href = "http://vegbank.org", target = "_blank", " VegBank site"),
-        " or the ",
-        htmltools::tags$a(
-          href = "https://github.com/NCEAS/vegbankr",
-          target = "_blank",
-          "vegbankr R package"
-        ),
-        " for programmatic data access."
-      ),
-      htmltools::tags$br(),
-      htmltools::tags$h5("Beta Notice"),
-      htmltools::tags$p(
-        htmltools::tags$em(
-          " More features are coming soon and this page will change. This is still a beta release; ",
-          " things may be slow and buggy. Please ",
-          htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here"),
-          " with details about what you were doing when the problem occurred."
-        )
-      )
-    )
-  })
-}
-
 #' Initialize Overview Module
 #'
 #' Main function to set up all overview page outputs.
@@ -523,7 +471,6 @@ init_overview <- function(output, state, session) {
   render_top_contributors(output, overview_data)
   render_top_plants(output, overview_data)
   render_latest_projects(output, overview_data)
-  render_data_summary(output)
 
   overview_data
 }

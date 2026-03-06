@@ -124,15 +124,6 @@ build_navbar <- function(initial_tab = "Home") {
     bslib::nav_panel(
       title = "Overview",
       shiny::fluidPage(
-        shiny::fluidRow(
-          shiny::column(
-            12,
-            bslib::card(
-              bslib::card_header("VegBank Beta 0.2.0"),
-              bslib::card_body(shiny::uiOutput("dataSummary"))
-            )
-          )
-        ),
         bslib::layout_columns(
           col_widths = bslib::breakpoints(
             sm = 12,

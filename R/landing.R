@@ -132,11 +132,13 @@ build_landing_panel <- function() {
           )
         ),
 
-        # Getting started guide (reuses the shared markdown file)
-        htmltools::tags$div(
-          class = "vb-landing-section",
-          shiny::includeMarkdown(
-            system.file("shiny", "www", "getting_started.md", package = "vegbankweb")
+        htmltools::tags$h5("Beta Notice"),
+        htmltools::tags$p(
+          htmltools::tags$em(
+            " The content of this page may change. This is still a beta release; ",
+            " things may be slow and buggy. Please ",
+            htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here"),
+            " with details about what you were doing when the problem occurred."
           )
         ),
 
