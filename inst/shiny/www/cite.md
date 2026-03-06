@@ -1,14 +1,10 @@
 # Cite or Link to VegBank
 
-## Future Development
-
-**Citation** is not currently supported, but soon past vegbank citation urls will resolve to current views on this website and youʻll be able to create citation urls doing something like the following:
-
-### Why Cite or Link?
+## Why Cite or Link?
 
 One of VegBank's strengths is that its data is permanently archived. This means that you can cite a plot in VegBank and others will be able to follow your citation hyperlink to see the same data you saw at the time of citation.
 
-### How do I cite?
+## How do I cite?
 
 #### Citing a Description of VegBank
 
