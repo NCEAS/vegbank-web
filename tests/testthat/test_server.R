@@ -5,7 +5,7 @@ test_that("server initializes state correctly", {
   testServer(server, {
     expect_true(!is.null(state))
     expect_true(!is.null(state$current_tab))
-    expect_equal(state$current_tab(), "Overview")
+    expect_equal(state$current_tab(), "Home")
     expect_true(!is.null(state$details_open))
     expect_false(state$details_open())
     expect_true(!is.null(state$table_states))

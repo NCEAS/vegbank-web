@@ -35,7 +35,7 @@ test_that("community concept data includes community-specific values", {
 
     expect_equal(colnames(result), c(
       "Actions", "Vegbank Code", "Community Concept", "Status",
-      "Level", "Reference Source", "Observations", "Description"
+      "Level", "Reference Source", "Plots", "Description"
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
@@ -56,11 +56,11 @@ test_that("community concept data includes community-specific values", {
     # Reference source: all three have valid concept_rf_code → all links
     expect_true(all(grepl("<a ", result$`Reference Source`)))
     # Observations: CEGL=294→link, Brachypodium=17→link, VII=0→"0"
-    expect_true(grepl(">294</a>", result$Observations[1]))
-    expect_true(grepl("obs-count-link", result$Observations[1]))
-    expect_true(grepl(">17</a>",  result$Observations[2]))
-    expect_true(grepl("obs-count-link", result$Observations[2]))
-    expect_equal(result$Observations[3], "0")
+    expect_true(grepl(">294</a>", result$Plots[1]))
+    expect_true(grepl("obs-count-link", result$Plots[1]))
+    expect_true(grepl(">17</a>",  result$Plots[2]))
+    expect_true(grepl("obs-count-link", result$Plots[2]))
+    expect_equal(result$Plots[3], "0")
     # Descriptions
     expect_true(grepl("forests occur", result$Description[1]) && grepl('data-value="cc.47882"', result$Description[1]))
     expect_true(grepl("Unspecified",   result$Description[2]) && grepl('data-value="cc.38611"', result$Description[2]))

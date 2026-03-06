@@ -72,7 +72,7 @@ test_that("process_concept_data formats plant concepts", {
 
     expect_equal(colnames(result), c(
       "Actions", "Vegbank Code", "Plant Concept", "Status",
-      "Level", "Reference Source", "Observations", "Description"
+      "Level", "Reference Source", "Plots", "Description"
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
@@ -84,11 +84,11 @@ test_that("process_concept_data formats plant concepts", {
     expect_true(grepl("Not Current", result$Status[3]))  # PSME: current_accepted=FALSE
     expect_equal(result$Level, c("Species", "Unspecified", "Species"))
     expect_true(all(grepl("<a ", result$`Reference Source`)))  # all three have valid ref codes
-    expect_equal(result$Observations[1], "0")                  # ACRU: obs_count=0 (no link)
-    expect_true(grepl(">828</a>",  result$Observations[2]))    # Vaccinium: 828
-    expect_true(grepl("obs-count-link", result$Observations[2]))
-    expect_true(grepl(">7475</a>", result$Observations[3]))    # PSME: 7475
-    expect_true(grepl("obs-count-link", result$Observations[3]))
+    expect_equal(result$Plots[1], "0")                  # ACRU: obs_count=0 (no link)
+    expect_true(grepl(">828</a>",  result$Plots[2]))    # Vaccinium: 828
+    expect_true(grepl("obs-count-link", result$Plots[2]))
+    expect_true(grepl(">7475</a>", result$Plots[3]))    # PSME: 7475
+    expect_true(grepl("obs-count-link", result$Plots[3]))
     # All three have NA descriptions → all show "Unspecified" with data-value attribute
     expect_true(grepl("Unspecified", result$Description[1]) && grepl('data-value="pc.111478"', result$Description[1]))
     expect_true(grepl("Unspecified", result$Description[2]) && grepl('data-value="pc.389660"', result$Description[2]))
@@ -103,7 +103,7 @@ test_that("process_concept_data formats community concepts", {
 
     expect_equal(colnames(result), c(
       "Actions", "Vegbank Code", "Community Concept", "Status",
-      "Level", "Reference Source", "Observations", "Description"
+      "Level", "Reference Source", "Plots", "Description"
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
@@ -118,11 +118,11 @@ test_that("process_concept_data formats community concepts", {
     expect_true(grepl("Not Current", result$Status[3]))  # VII: current_accepted=FALSE
     expect_equal(result$Level, c("Association", "Association", "Class"))
     expect_true(all(grepl("<a ", result$`Reference Source`)))  # all three have valid ref codes
-    expect_true(grepl(">294</a>",  result$Observations[1]))   # CEGL007230: 294
-    expect_true(grepl("obs-count-link", result$Observations[1]))
-    expect_true(grepl(">17</a>",   result$Observations[2]))   # Brachypodium: 17
-    expect_true(grepl("obs-count-link", result$Observations[2]))
-    expect_equal(result$Observations[3], "0")                  # VII: obs_count=0 (no link)
+    expect_true(grepl(">294</a>",  result$Plots[1]))   # CEGL007230: 294
+    expect_true(grepl("obs-count-link", result$Plots[1]))
+    expect_true(grepl(">17</a>",   result$Plots[2]))   # Brachypodium: 17
+    expect_true(grepl("obs-count-link", result$Plots[2]))
+    expect_equal(result$Plots[3], "0")                  # VII: obs_count=0 (no link)
     # CEGL007230 has description; Brachypodium and VII have NA → "Unspecified"
     expect_true(grepl("These forests occur", result$Description[1]))
     expect_true(grepl('data-value="cc.47882"', result$Description[1]))

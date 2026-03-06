@@ -143,7 +143,7 @@ build_navbar <- function(initial_tab = "Home") {
             )
           ),
           bslib::card(
-            bslib::card_header("Top Projects by Observations"),
+            bslib::card_header("Projects with Most Plots"),
             bslib::card_body(
               shiny::uiOutput("top_projects_plot")
             )
