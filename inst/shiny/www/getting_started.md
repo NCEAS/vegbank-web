@@ -6,7 +6,7 @@ When you open the app you'll land on the **Home** page. Here's an overview of wh
 - **Home**: Start here for quick links into VegBank data, and any featured content or updates.
 - **Overview**: Use this dashboard to get a sense for the scale of data in VegBank, browse recently updated projects, and find the most observed plants and communities.
 - **Map**: View plot locations on an interactive map. Click markers to zoom to plot clusters and the links on location labels to see plot observation details. Some location labels have many plot observations because of repeated sampling or location fuzzing for privacy.
-- **Plots**: Browse vegetation plot observations. Each row represents a single plot observation with location, date, and ecological data. Use the search box to find plots with a specific plant species, community type, author code, or location (eg: `Sibbaldiopsis tridentata`, `CEGL001833`, `Eleocharis palustris Marsh`, `BADL.126`, or `California`)
+- **Plots**: Browse vegetation plot observations. Each row represents a single plot observation with location, date, and ecological data. Use the search box to find plots with a specific plant species, community type, author code, vegbank code, or location (eg: `Sibbaldiopsis tridentata`, `CEGL001833`, `Eleocharis palustris Marsh`, `BADL.126`, `ob.ob.3736`, or `California`)
 - **Plants**: Explore the plant taxonomy database. Search for plant concepts by plant name or browse the full list of plant concepts.
 - **Communities**: View community classification types. Communities represent recurring patterns of co-occurring plant species. You can also search them by name or browse the full list.      
 - **Parties**: Find contributors, authors, and parties associated with plot data.
