@@ -435,15 +435,27 @@ table.dataTable tbody tr.selected-entity:hover,
 }
 
 /* ==================== home PAGE ==================== */
+
+/* Strip horizontal padding from the two ancestor containers that constrain
+   the Home tab's width (bslib gap-spacing wrapper and Bootstrap container-fluid).
+   Scoped to the active Home tab so no other tab is affected.
+   .vb-hero can then fill 100% width naturally — no 100vw breakout needed. */
+.bslib-gap-spacing:has(> .vb-home) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.container-fluid.html-fill-item.html-fill-container:has(.tab-pane.active > .vb-home) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
 /* Start image right below the nav bar */
 .vb-home {
   margin-top: -1.6rem;
 }
 
 .vb-hero {
-  /* Full-bleed hero image regardless of container padding */
-  width: 100vw;
-  margin-left: calc(-50vw + 50%);
   position: relative;
   height: 330px;
   overflow: hidden;

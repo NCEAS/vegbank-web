@@ -44,7 +44,7 @@ build_home_panel <- function() {
           class = "vb-home-section",
           htmltools::tags$h2("Welcome to VegBank!"),
           htmltools::tags$p(
-            "VegBank is the public, open repository for vegetation plot data,",
+            "VegBank is the public repository for vegetation plot data,",
             " maintained by the ",
             htmltools::tags$a(
               href = "https://esa.org/vegpanel/",
