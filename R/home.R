@@ -9,6 +9,14 @@
 #'
 #' @noRd
 build_home_panel <- function() {
+  hero_images <- list(
+    list(src = "assets/hero_chiso_mountains.jpg",  alt = "Chisos Mountains landscape"),
+    list(src = "assets/hero_crater_lake.jpg",      alt = "Crater Lake surrounded by forest"),
+    list(src = "assets/hero_joshua_tree.jpg",      alt = "Joshua Tree desert landscape"),
+    list(src = "assets/hero_sage_brush.jpg",       alt = "Sage brush steppe landscape")
+  )
+  hero <- hero_images[[sample(length(hero_images), 1L)]]
+
   bslib::nav_panel(
     title = "Home",
     htmltools::tags$div(
@@ -18,8 +26,8 @@ build_home_panel <- function() {
       htmltools::tags$div(
         class = "vb-hero",
         htmltools::tags$img(
-          src = "assets/vegbank-hero.jpg",
-          alt = "Researcher recording vegetation plot data in a wildflower meadow at sunrise",
+          src = hero$src,
+          alt = hero$alt,
           class = "vb-hero-img"
         ),
         htmltools::tags$div(
