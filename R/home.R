@@ -60,10 +60,8 @@ build_home_panel <- function() {
               rel = "noopener noreferrer",
               "Ecological Society of America's Vegetation Classification Panel"
             ),
-            ". It stores thousands of plot observations recording plant species",
-            " occurrences across North America,",
-            " supporting the development of the U.S. National Vegetation Classification,",
-            " ecological research, conservation planning, and biodiversity monitoring."
+            ". These data support the development of the U.S. National Vegetation",
+            " Classification and general ecological research across North America."
           ),
           htmltools::tags$p(
             "For programmatic data access or to upload data, see the ",
