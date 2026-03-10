@@ -37,7 +37,7 @@ ui <- function(req) {
   font_head <- htmltools::tags$head(
     htmltools::tags$link(rel = "preconnect", href = "https://rsms.me/"),
     htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css"),
-    htmltools::tags$link(rel = "stylesheet", href = "assets/vegbank-styles.css")
+    htmltools::tags$link(rel = "stylesheet", href = "assets/vegbank_styles.css")
   )
 
   navbar <- build_navbar(initial_tab)
@@ -60,7 +60,7 @@ ui <- function(req) {
   )))
 
   # External JavaScript file with main application logic
-  app_script <- htmltools::tags$script(src = "assets/vegbank-app.js")
+  app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
 
   htmltools::tagList(
     font_head,
