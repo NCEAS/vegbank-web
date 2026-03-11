@@ -18,13 +18,13 @@ ui <- function(req) {
 
   # Parse initial state from URL query parameters
   query_string <- req$QUERY_STRING
-  initial_tab <- "Overview"
+  initial_tab <- "Home"
   has_cite_param <- FALSE
 
   if (!is.null(query_string) && nzchar(query_string)) {
     query_params <- shiny::parseQueryString(query_string)
     if (!is.null(query_params$cite) && nzchar(query_params$cite)) {
-      # Citation will be resolved server-side; start on Overview with loading overlay
+      # Citation will be resolved server-side; start on Home with loading overlay
       has_cite_param <- TRUE
     } else if (!is.null(query_params$tab) && nzchar(query_params$tab)) {
       initial_tab <- query_params$tab
@@ -37,7 +37,7 @@ ui <- function(req) {
   font_head <- htmltools::tags$head(
     htmltools::tags$link(rel = "preconnect", href = "https://rsms.me/"),
     htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css"),
-    htmltools::tags$link(rel = "stylesheet", href = "assets/vegbank-styles.css")
+    htmltools::tags$link(rel = "stylesheet", href = "assets/vegbank_styles.css")
   )
 
   navbar <- build_navbar(initial_tab)
@@ -60,7 +60,7 @@ ui <- function(req) {
   )))
 
   # External JavaScript file with main application logic
-  app_script <- htmltools::tags$script(src = "assets/vegbank-app.js")
+  app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
 
   htmltools::tagList(
     font_head,
@@ -109,7 +109,7 @@ custom_theme <- bslib::bs_theme(
 #' @return A Shiny tag list representing the navigation bar.
 #'
 #' @noRd
-build_navbar <- function(initial_tab = "Overview") {
+build_navbar <- function(initial_tab = "Home") {
   navbar <- bslib::page_navbar(
     id = "page",
     selected = initial_tab,
@@ -120,18 +120,10 @@ build_navbar <- function(initial_tab = "Overview") {
       ),
       "VegBank"
     ),
+    build_home_panel(),
     bslib::nav_panel(
       title = "Overview",
       shiny::fluidPage(
-        shiny::fluidRow(
-          shiny::column(
-            12,
-            bslib::card(
-              bslib::card_header("VegBank Beta 0.2.0"),
-              bslib::card_body(shiny::uiOutput("dataSummary"))
-            )
-          )
-        ),
         bslib::layout_columns(
           col_widths = bslib::breakpoints(
             sm = 12,
@@ -151,7 +143,7 @@ build_navbar <- function(initial_tab = "Overview") {
             )
           ),
           bslib::card(
-            bslib::card_header("Top Projects by Observations"),
+            bslib::card_header("Projects with Most Plots"),
             bslib::card_body(
               shiny::uiOutput("top_projects_plot")
             )
@@ -225,15 +217,24 @@ build_navbar <- function(initial_tab = "Overview") {
       align = "right",
       bslib::nav_panel(
         title = "Getting Started",
-        shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
+        )
       ),
       bslib::nav_panel(
         title = "FAQ",
-        shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
+        )
       ),
       bslib::nav_panel(
         title = "Cite",
-        shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+        )
       )
     )
   )

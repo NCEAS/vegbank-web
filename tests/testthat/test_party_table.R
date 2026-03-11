@@ -28,7 +28,7 @@ test_that("process_party_data formats normalized rows", {
 
   result <- process_party_data(test_data)
 
-  expect_equal(colnames(result), c("Actions", "Vegbank Code", "Party", "Organization", "Contributions", "Contact"))
+  expect_equal(colnames(result), c("Actions", "Vegbank Code", "Party", "Organization", "Plots", "Contact"))
   expect_true(all(grepl("<button", result$Actions)))
   expect_equal(
     result$`Vegbank Code`,
@@ -43,11 +43,11 @@ test_that("process_party_data formats normalized rows", {
     "Unspecified"
   ))
   # Contributions: py.415=8657 (link), py.17=290 (link), py.199146=NA→0 (span)
-  expect_true(grepl(">8657</a>", result$Contributions[1]))
-  expect_true(grepl("obs-count-link", result$Contributions[1]))
-  expect_true(grepl(">290</a>", result$Contributions[2]))
-  expect_true(grepl("obs-count-link", result$Contributions[2]))
-  expect_equal(result$Contributions[3], "0")
+  expect_true(grepl(">8657</a>", result$Plots[1]))
+  expect_true(grepl("obs-count-link", result$Plots[1]))
+  expect_true(grepl(">290</a>", result$Plots[2]))
+  expect_true(grepl("obs-count-link", result$Plots[2]))
+  expect_equal(result$Plots[3], "0")
   # Contact: py.415=NA→Unspecified, py.17=capitalized, py.199146=NA→Unspecified
   expect_equal(result$Contact[1], "Unspecified")
   expect_equal(result$Contact[2], "Contact the contributor at specified email:")

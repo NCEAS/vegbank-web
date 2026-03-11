@@ -68,7 +68,7 @@ render_core_counts <- function(output, overview_data) {
       class = "core-counts-list",
       style = "font-size: 15px; line-height: 2;",
       htmltools::tags$div(
-        htmltools::tags$strong("Observations"),
+        htmltools::tags$strong("Plots"),
         htmltools::tags$span(
           class = "float-end text-primary fw-bold",
           format(count_map["Observations"], big.mark = ",")
@@ -76,7 +76,7 @@ render_core_counts <- function(output, overview_data) {
       ),
       htmltools::tags$div(
         style = "padding-left: 20px;",
-        htmltools::tags$span("Classified observations"),
+        htmltools::tags$span("Classified Plots"),
         htmltools::tags$span(
           class = "float-end text-muted",
           format(count_map["Classified observations"], big.mark = ",")
@@ -84,7 +84,7 @@ render_core_counts <- function(output, overview_data) {
       ),
       htmltools::tags$div(
         style = "padding-left: 40px;",
-        htmltools::tags$span("NVC classified observations"),
+        htmltools::tags$span("NVC classified Plots"),
         htmltools::tags$span(
           class = "float-end text-muted",
           format(count_map["NVC classified observations"], big.mark = ",")
@@ -107,7 +107,7 @@ render_core_counts <- function(output, overview_data) {
       ),
       htmltools::tags$div(
         style = "padding-left: 40px;",
-        htmltools::tags$span("Observed accepted USDA plants"),
+        htmltools::tags$span("Accepted USDA plants on Plots"),
         htmltools::tags$span(
           class = "float-end text-muted",
           format(count_map["Observed accepted USDA plants"], big.mark = ",")
@@ -130,7 +130,7 @@ render_core_counts <- function(output, overview_data) {
       ),
       htmltools::tags$div(
         style = "padding-left: 40px;",
-        htmltools::tags$span("Observed accepted US NVC communities"),
+        htmltools::tags$span("Accepted US NVC communities on Plots"),
         htmltools::tags$span(
           class = "float-end text-muted",
           format(count_map["Observed accepted US NVC communities"], big.mark = ",")
@@ -442,62 +442,10 @@ render_latest_projects <- function(output, overview_data) {
         htmltools::tags$tr(
           htmltools::tags$th("Project"),
           htmltools::tags$th("Last Added", style = "width: 120px;"),
-          htmltools::tags$th("Obs", class = "text-end", style = "width: 80px;")
+          htmltools::tags$th("Plots", class = "text-end", style = "width: 80px;")
         )
       ),
       htmltools::tags$tbody(rows)
-    )
-  })
-}
-
-#' Render Data Summary
-#'
-#' Renders the introductory text and instructions for the Overview page.
-#'
-#' @param output Shiny output object
-#' @noRd
-render_data_summary <- function(output) {
-  output$dataSummary <- shiny::renderUI({
-    htmltools::tagList(
-      htmltools::tags$div(
-        htmltools::strong(
-          "Now with some filtering, some citations, and downloading plot observations!"
-        ),
-        htmltools::tags$p(
-          "If you're new to VegBank, check out our ",
-          htmltools::tags$a(
-            href = "?tab=Getting Started",
-            "getting started guide"
-          ),
-          " or our ",
-          htmltools::tags$a(
-            href = "?tab=FAQ",
-            "FAQ"
-          ),
-          " page for common questions and troubleshooting tips."
-        )
-      ),
-      htmltools::tags$p(
-        "For more information, see the previous ",
-        htmltools::tags$a(href = "http://vegbank.org", target = "_blank", " VegBank site"),
-        " or the ",
-        htmltools::tags$a(
-          href = "https://github.com/NCEAS/vegbankr",
-          target = "_blank",
-          "vegbankr R package"
-        ),
-        " for programmatic data access."
-      ),
-      htmltools::tags$br(),
-      htmltools::tags$h5("Beta Notice"),
-      htmltools::tags$p(
-        htmltools::tags$em(
-          " More features are coming soon and this page will change. This is still a beta release; ",
-          " things may be slow and buggy. Please ",
-          htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here"),
-          " with details about what you were doing when the problem occurred."
-        )
-      )
     )
   })
 }
@@ -523,7 +471,6 @@ init_overview <- function(output, state, session) {
   render_top_contributors(output, overview_data)
   render_top_plants(output, overview_data)
   render_latest_projects(output, overview_data)
-  render_data_summary(output)
 
   overview_data
 }

@@ -34,7 +34,7 @@ test_that("plant concept data includes plant-specific values", {
 
     expect_equal(colnames(result), c(
       "Actions", "Vegbank Code", "Plant Concept", "Status",
-      "Level", "Reference Source", "Observations", "Description"
+      "Level", "Reference Source", "Plots", "Description"
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
@@ -55,11 +55,11 @@ test_that("plant concept data includes plant-specific values", {
     # Reference source: all three have valid concept_rf_code → all links
     expect_true(all(grepl("<a ", result$`Reference Source`)))
     # Observations: ACRU=0→"0", Vaccinium=828→link, PSME=7475→link
-    expect_equal(result$Observations[1], "0")
-    expect_true(grepl(">828</a>",  result$Observations[2]))
-    expect_true(grepl("obs-count-link", result$Observations[2]))
-    expect_true(grepl(">7475</a>", result$Observations[3]))
-    expect_true(grepl("obs-count-link", result$Observations[3]))
+    expect_equal(result$Plots[1], "0")
+    expect_true(grepl(">828</a>",  result$Plots[2]))
+    expect_true(grepl("obs-count-link", result$Plots[2]))
+    expect_true(grepl(">7475</a>", result$Plots[3]))
+    expect_true(grepl("obs-count-link", result$Plots[3]))
     # Descriptions: all plant_description=NA → "Unspecified" in container
     expect_true(grepl("Unspecified", result$Description[1]) && grepl('data-value="pc.111478"', result$Description[1]))
     expect_true(grepl("Unspecified", result$Description[2]) && grepl('data-value="pc.389660"', result$Description[2]))
