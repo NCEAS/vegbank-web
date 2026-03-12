@@ -210,6 +210,13 @@ table.dataTable tbody tr.selected-entity:hover,
   background-color: #72B9A2 !important;
 }
 
+/* Map help control button — flex-center the SVG icon within the leaflet-bar <a> */
+.vb-map-help-control a.vb-map-help-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Description column in DataTables */
 .dt-description {
   display: -webkit-box;

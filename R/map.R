@@ -6,6 +6,21 @@
 #' @noRd
 MAP_DATA_FETCH_LIMIT <- 1000000L
 
+.MAP_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p("This map shows all VegBank plot observation locations. Each pin represents one or more observations at that coordinate."),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Navigate:"), " drag to pan; scroll or use the +/\u2212 buttons to zoom."),
+      htmltools::tags$li(htmltools::tags$strong("Clusters:"), " circles with a number indicate grouped nearby plots. Click a cluster to zoom in and expand it."),
+      htmltools::tags$li(htmltools::tags$strong("Markers:"), " author plot observation codes are listed in the label below each marker. Click a code link to open that plot\u2019s details."),
+      htmltools::tags$li(htmltools::tags$strong("Jump from table:"), " clicking the Map button on any row in the Plots table flies the map to that plot and points to its location."),
+      htmltools::tags$li(htmltools::tags$strong("Filtering:"), " is not supported. You can only view all of the plots in VegBank simultaneously."),
+    )
+  ))
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
 # ---- Data Fetching ----
 
 #' Fetch plot observations for the map
@@ -245,7 +260,8 @@ build_leaflet_map <- function(data_grouped, map_defaults, center_lng, center_lat
       labelOptions = create_marker_label_options(),
       clusterOptions = leaflet::markerClusterOptions(disableClusteringAtZoom = 17)
     ) |>
-    add_zoom_control()
+    add_zoom_control() |>
+    add_map_help_control()
 }
 
 #' Create marker label options for consistent styling
@@ -336,6 +352,49 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
 }
 
 # ---- Zoom Control ----
+
+#' Add a help instructions control to a leaflet map
+#'
+#' Injects a square \u24d8 button above the zoom controls (top-left corner).
+#' Clicking the button opens a Bootstrap popover with usage instructions;
+#' clicking again (or outside) dismisses it.
+#'
+#' @param map A leaflet map object
+#' @return The leaflet map object with a help control added
+#'
+#' @importFrom htmlwidgets onRender
+#' @noRd
+add_map_help_control <- function(map) {
+  btn_inner <- .BTN_ICON_INFO
+  content_html <- .MAP_HELP_CONTENT
+  map |> htmlwidgets::onRender(paste0(
+    "function(el, x) {",
+    "  var map = this;",
+    "  var helpControl = L.control({position: 'topleft'});",
+    "  helpControl.onAdd = function(map) {",
+    "    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control vb-map-help-control');",
+    "    var btn = L.DomUtil.create('a', 'vb-map-help-btn', container);",
+    "    btn.href = '#';",
+    "    btn.setAttribute('role', 'button');",
+    "    btn.setAttribute('title', 'About this map');",
+    "    btn.setAttribute('aria-label', 'About this map');",
+    "    btn.innerHTML = '", btn_inner, "';",
+    "    L.DomEvent.disableClickPropagation(container);",
+    "    L.DomEvent.on(btn, 'click', L.DomEvent.preventDefault);",
+    "    return container;",
+    "  };",
+    "  helpControl.addTo(map);",
+    "  var topLeft = el.querySelector('.leaflet-top.leaflet-left');",
+    "  if (topLeft && topLeft.children.length > 1) {",
+    "    topLeft.insertBefore(topLeft.lastChild, topLeft.firstChild);",
+    "  }",
+    "  var btnEl = el.querySelector('.vb-map-help-btn');",
+    "  if (btnEl && window.vbHelpButton) {",
+    "    window.vbHelpButton(btnEl, '<strong>Map</strong>', '", content_html, "');",
+    "  }",
+    "}"
+  ))
+}
 
 #' Add a custom zoom control to a leaflet map
 #'
