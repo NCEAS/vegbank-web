@@ -24,7 +24,7 @@ build_cover_method_details_view <- function(result) {
 
     htmltools::tags$div(
       htmltools::tags$h5(cover_type, style = "font-weight: 600; margin-bottom: 0px;"),
-      htmltools::tags$h5(cm_code, style = "color: var(--vegbank-green); font-weight: 600;")
+      htmltools::tags$h5(cm_code, style = "color: var(--vb-green); font-weight: 600;")
     )
   })
 
