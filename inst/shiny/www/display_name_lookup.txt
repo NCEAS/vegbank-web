@@ -628,8 +628,8 @@ userrecordowner_id,user_record_owner_id,User Record Owner ID
 userregionalexp_id,user_regional_exp_id,User Regional Exp ID
 usnvc_exp,usnvc_exp,USNVC Explaination
 usr_id,usr_id,USR ID
-vb_exp,vb_exp,Vegbank Explaination
-vb_intention,vb_intention,Vegbank Intention
+vb_exp,vb_exp,VegBank Explaination
+vb_intention,vb_intention,VegBank Intention
 veg_analysis_exp,veg_analysis_exp,Vegetation Analysis Explaination
 veg_sampling_exp,veg_sampling_exp,Vegetation Sampling Explaination
 vegetation,vegetation,Vegetation

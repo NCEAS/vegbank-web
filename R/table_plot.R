@@ -28,7 +28,7 @@ PLOT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 
 PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
   "Actions",
-  "Vegbank Code",
+  "VegBank Code",
   "Author Code",
   "Location",
   "Top Taxa",
@@ -45,7 +45,7 @@ PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
 create_plot_column_defs <- function() {
   list(
     list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
-    list(targets = 1, width = "10%", orderable = TRUE), # Vegbank Code
+    list(targets = 1, width = "10%", orderable = TRUE), # VegBank Code
     list(targets = 2, width = "10%", orderable = TRUE), # Author Code
     list(targets = 3, width = "15%", orderable = FALSE), # Location
     list(targets = 4, width = "25%", orderable = FALSE), # Top Taxa
@@ -184,7 +184,7 @@ process_plot_data <- function(plot_data) {
 
   data.frame(
     "Actions" = actions_html,
-    "Vegbank Code" = vapply(ob_codes, htmltools::htmlEscape, character(1)),
+    "VegBank Code" = vapply(ob_codes, htmltools::htmlEscape, character(1)),
     "Author Code" = vapply(author_codes, htmltools::htmlEscape, character(1)),
     "Location" = locations,
     "Top Taxa" = top_taxa_html,
@@ -504,7 +504,7 @@ coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
       "This table lists all plot observations in VegBank. Each row is a single observation."
     ),
     htmltools::tags$ul(
-      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box (top right) to filter by plant species, community type, author code, vegbank code, or location."),
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box (top right) to filter by plant species, community type, author code, VegBank code, or location."),
       htmltools::tags$li(htmltools::tags$strong("Filter by resource:"), " clicking a plot count link from a Project, Party, Community, or Plant view will pre-filter this table to contain only those plots. You can then filter further with the search bar."),
       htmltools::tags$li(htmltools::tags$strong("Download:"), " once the table is filtered to within 20,000 entries, the Download CSV button becomes active. Open the README.txt file after downloading or visit the Download page in the About menu to learn how to combine the data."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plot in an overlay."),
@@ -533,7 +533,7 @@ PLOT_TABLE_SPEC <- list(
     clean_rows_fn = sanitize_dt_rows,
     query = list(with_nested = "TRUE"),
     sort_field_map = list(
-      "1" = "default", # Vegbank Code
+      "1" = "default", # VegBank Code
       "2" = "author_obs_code"
     )
   ),

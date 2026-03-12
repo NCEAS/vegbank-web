@@ -1,4 +1,4 @@
-#' Shiny UI for Vegbank Web Application
+#' Shiny UI for VegBank Web Application
 #'
 #' Constructs the user interface for browsing vegetation plot data.
 #'
@@ -75,7 +75,7 @@ ui <- function(req) {
   )
 }
 
-#' Custom Bootstrap Theme for Vegbank Web Application
+#' Custom Bootstrap Theme for VegBank Web Application
 #'
 #' Defines a bslib theme with custom rules.
 #'
@@ -240,7 +240,7 @@ build_navbar <- function(initial_tab = "Home") {
   )
 }
 
-#' Build Detail Overlay for Vegbank UI
+#' Build Detail Overlay for VegBank UI
 #'
 #' Constructs the overlay panel that displays detailed plot information.
 #'

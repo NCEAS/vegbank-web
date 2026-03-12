@@ -17,13 +17,13 @@ PARTY_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 )
 
 PARTY_TABLE_DISPLAY_TEMPLATE <- build_display_template(
-  column_names = c("Actions", "Vegbank Code", "Party", "Organization", "Plots", "Contact")
+  column_names = c("Actions", "VegBank Code", "Party", "Organization", "Plots", "Contact")
 )
 
 create_party_column_defs <- function() {
   list(
     list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
-    list(targets = 1, width = "12%", orderable = TRUE), # py_code (Vegbank Code)
+    list(targets = 1, width = "12%", orderable = TRUE), # py_code (VegBank Code)
     list(targets = 2, width = "23%", orderable = TRUE), # Party Label (sortable by surname)
     list(targets = 3, width = "30%", orderable = TRUE), # Organization
     list(targets = 4, width = "10%", className = "dt-right", type = "num", orderable = TRUE), # Plots
@@ -75,7 +75,7 @@ process_party_data <- function(party_data) {
 
   data.frame(
     "Actions" = actions,
-    "Vegbank Code" = vapply(py_codes, htmltools::htmlEscape, character(1)),
+    "VegBank Code" = vapply(py_codes, htmltools::htmlEscape, character(1)),
     "Party" = vapply(party_labels, htmltools::htmlEscape, character(1)),
     "Organization" = vapply(organizations, htmltools::htmlEscape, character(1)),
     "Plots" = obs_count_links,
@@ -125,7 +125,7 @@ PARTY_TABLE_SPEC <- list(
     clean_names = FALSE,
     clean_rows_fn = sanitize_dt_rows,
     sort_field_map = list(
-      "1" = "default", # Vegbank Code
+      "1" = "default", # VegBank Code
       "2" = "surname", # Party (sort by surname)
       "3" = "organization_name", # Organization
       "4" = "obs_count" # Plots

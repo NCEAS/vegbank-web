@@ -28,10 +28,10 @@ test_that("process_party_data formats normalized rows", {
 
   result <- process_party_data(test_data)
 
-  expect_equal(colnames(result), c("Actions", "Vegbank Code", "Party", "Organization", "Plots", "Contact"))
+  expect_equal(colnames(result), c("Actions", "VegBank Code", "Party", "Organization", "Plots", "Contact"))
   expect_true(all(grepl("<button", result$Actions)))
   expect_equal(
-    result$`Vegbank Code`,
+    result$`VegBank Code`,
     vapply(c("py.415", "py.17", "py.199146"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE)
   )
   # Party labels

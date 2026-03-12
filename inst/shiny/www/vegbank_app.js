@@ -1,4 +1,4 @@
-// Vegbank Web Application JavaScript
+// VegBank Web Application JavaScript
 
 // Application constants - injected from R
 // window.DOWNLOAD_MAX_RECORDS is set inline in ui.R

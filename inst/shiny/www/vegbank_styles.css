@@ -1,4 +1,4 @@
-/* Vegbank Web Application Custom Styles */
+/* VegBank Web Application Custom Styles */
 
 :root {
   font-family: Inter, sans-serif !important;
@@ -8,7 +8,7 @@
   /* Navbar height - responsive to mobile collapse */
   --navbar-height: 56px;
 
-  /* Vegbank brand colors */
+  /* VegBank brand colors */
   --vb-green: hsl(153, 31%, 25%);
   --vb-green-medium: hsl(153, 31%, 45%);
 

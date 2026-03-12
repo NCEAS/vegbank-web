@@ -205,7 +205,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   result <- data.frame(
     Actions = actions,
-    `Vegbank Code` = vapply(concept_codes, htmltools::htmlEscape, character(1)),
+    `VegBank Code` = vapply(concept_codes, htmltools::htmlEscape, character(1)),
     Name = vapply(display_names, htmltools::htmlEscape, character(1)),
     Status = status_badges,
     Level = vapply(levels, htmltools::htmlEscape, character(1)),
@@ -239,7 +239,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 create_concept_column_defs <- function(detail_input_id) {
   list(
     list(targets = 0, width = "10%", orderable = FALSE, searchable = FALSE), # Actions
-    list(targets = 1, width = "12%", orderable = TRUE), # Vegbank Code
+    list(targets = 1, width = "12%", orderable = TRUE), # VegBank Code
     list(targets = 2, width = "23%", orderable = TRUE), # Name
     list(targets = 3, width = "10%", className = "dt-center", orderable = FALSE), # Status
     list(targets = 4, width = "10%", className = "dt-center", orderable = FALSE), # Level
@@ -348,7 +348,7 @@ CONCEPT_TABLE_SPECS <- local({
 
     # Map: col index -> field for sorting
     sort_field_map <- list(
-      "1" = "default", # Vegbank Code
+      "1" = "default", # VegBank Code
       "2" = config$name_field, # Name
       "6" = "obs_count" # Plots
     )

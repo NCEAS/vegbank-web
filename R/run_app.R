@@ -1,12 +1,12 @@
-#' Run Vegbank Web Application
+#' Run VegBank Web Application
 #'
-#' Launches the Vegbank Shiny application.
+#' Launches the VegBank Shiny application.
 #'
 #' Running the application requires:
 #'   - R (version 4.0 or higher) installed on the local machine
 #'   - The `vegbankweb` package and its dependencies installed in the R environment
 #'   - R_CONFIG_FILE environment variable set to the absolute path of a valid configuration file
-#'   - An active internet connection to access the Vegbank API
+#'   - An active internet connection to access the VegBank API
 #'   - A modern web browser to view the user interface
 #'
 #' @param options A list of options to pass to the Shiny application.
