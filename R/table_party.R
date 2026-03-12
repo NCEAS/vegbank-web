@@ -96,6 +96,20 @@ normalize_party_data <- create_normalizer(PARTY_TABLE_SCHEMA_TEMPLATE, na_to_zer
 #' @noRd
 coerce_party_page <- create_coercer(PARTY_TABLE_SCHEMA_TEMPLATE)
 
+.PARTY_TABLE_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p("This table lists parties \u2014 individuals and organizations who contributed observations to VegBank."),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, organization, or VegBank code."),
+      htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations contributed by this party."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; Party, Organization, and Plots support sorting. Sort by multiple columns by holding shift and clicking multiple headers."),
+      htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the party in an overlay."),
+    )
+  ))
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
 PARTY_TABLE_SPEC <- list(
   table_id = "party_table",
   resource = "parties",
@@ -118,7 +132,10 @@ PARTY_TABLE_SPEC <- list(
     )
   ),
   page_length = NULL,
-  options = list(),
-  datatable_args = list(),
+  options = list(
+    dom = "Bfrtip",
+    buttons = I(list(make_help_button_js("Parties Table", .PARTY_TABLE_HELP_CONTENT)))
+  ),
+  datatable_args = list(extensions = "Buttons"),
   initial_display = PARTY_TABLE_DISPLAY_TEMPLATE
 )

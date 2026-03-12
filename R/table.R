@@ -162,7 +162,31 @@ load_btn_icon <- function(name, size = 12, style = "margin-right:4px;flex-shrink
 .BTN_ICON_EYE <- load_btn_icon("eye")
 .BTN_ICON_PIN <- load_btn_icon("pin")
 .BTN_ICON_DOWNLOAD <- load_btn_icon("download", size = 14, style = "margin-right:6px;flex-shrink:0")
-.BTN_ICON_INFORMATION <- load_btn_icon("information", size = 16, style = "flex-shrink:0")
+.BTN_ICON_INFO <- paste0(
+  '<span class="vb-help-btn-icon">',
+  load_btn_icon("info_circle", size = 16, style = "flex-shrink:0"),
+  '</span>'
+)
+
+#' Generate a DT Buttons extension button definition for a toggleable help popover.
+#'
+#' @param title Plain-text table name shown bold in the popover header.
+#' @param content_html Pre-escaped single-line HTML string for the popover body.
+#'   Build with `htmltools::tagList`, collapse newlines, then escape single quotes.
+#' @return A `DT::JS` character object for inclusion in a `buttons` list.
+#' @noRd
+make_help_button_js <- function(title, content_html) {
+  safe_title <- gsub("'", "\\'", title, fixed = TRUE)
+  DT::JS(paste0(
+    "{text: '", .BTN_ICON_INFO, "',",
+    "className: 'btn btn-sm btn-outline-secondary',",
+    "titleAttr: 'About this table',",
+    "action: function() {},",
+    "init: function(api, node, config) {",
+    "window.vbHelpButton(node[0], '<strong>", safe_title, "</strong>', '",
+    content_html, "');}}"
+  ))
+}
 
 #' Create action buttons for each row (R version)
 #'
