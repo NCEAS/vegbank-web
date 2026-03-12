@@ -117,7 +117,7 @@ coerce_project_page <- create_coercer(PROJECT_TABLE_SCHEMA_TEMPLATE)
   html <- as.character(htmltools::tagList(
     htmltools::tags$p("This table lists all VegBank projects. Projects group related plot observations collected under a common study or survey."),
     htmltools::tags$ul(
-      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, date, description, or VegBank code."),
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, description, or VegBank code."),
       htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations belonging to this project."),
       htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; Project name and Plots support sorting. Sort by multiple columns by holding shift and clicking multiple headers."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the project in an overlay."),
@@ -148,6 +148,7 @@ PROJECT_TABLE_SPEC <- list(
     )
   ),
   page_length = NULL,
+  search_placeholder = "by name, description, or VegBank code…",
   options = list(
     dom = "Bfrtip",
     buttons = I(list(make_help_button_js("Projects Table", .PROJECT_TABLE_HELP_CONTENT)))

@@ -132,6 +132,7 @@ PARTY_TABLE_SPEC <- list(
     )
   ),
   page_length = NULL,
+  search_placeholder = "by name, organization, or VegBank code…",
   options = list(
     dom = "Bfrtip",
     buttons = I(list(make_help_button_js("Parties Table", .PARTY_TABLE_HELP_CONTENT)))

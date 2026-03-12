@@ -504,7 +504,7 @@ coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
       "This table lists all plot observations in VegBank. Each row is a single observation."
     ),
     htmltools::tags$ul(
-      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box (top right) to filter by plant species, community type, author code, VegBank code, or location."),
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box (top right) to filter by plant concept, community type, author code, VegBank code, or location."),
       htmltools::tags$li(htmltools::tags$strong("Filter by resource:"), " clicking a plot count link from a Project, Party, Community, or Plant view will pre-filter this table to contain only those plots. You can then filter further with the search bar."),
       htmltools::tags$li(htmltools::tags$strong("Download:"), " once the table is filtered to within 20,000 entries, the Download CSV button becomes active. Open the README.txt file after downloading or visit the Download page in the About menu to learn how to combine the data."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plot in an overlay."),
@@ -538,6 +538,7 @@ PLOT_TABLE_SPEC <- list(
     )
   ),
   page_length = NULL,
+  search_placeholder = "by plant, community, author code, VegBank code, or location…",
   options = list(
     scrollY = "calc(100vh - 235px)",
     dom = "Bfrtip",

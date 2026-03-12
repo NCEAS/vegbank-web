@@ -311,7 +311,7 @@ get_concept_config <- function(concept_type) {
   html <- as.character(htmltools::tagList(
     htmltools::tags$p("This table lists plant taxa in VegBank's taxonomic concept hierarchy. Each row is a single plant concept."),
     htmltools::tags$ul(
-      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by plant name or VegBank code."),
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description."),
       htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations containing this taxon."),
       htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; Name and Plots support sorting. Sort by multiple columns by holding shift and clicking multiple headers."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plant in an overlay."),
@@ -328,7 +328,7 @@ get_concept_config <- function(concept_type) {
   html <- as.character(htmltools::tagList(
     htmltools::tags$p("This table lists vegetation community concepts in VegBank's classification hierarchy. Each row is a single community type."),
     htmltools::tags$ul(
-      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description"),
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description."),
       htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations classified to this community."),
       htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; Name and Plots support sorting. Sort by multiple columns by holding shift and clicking multiple headers."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the community in an overlay."),
@@ -370,6 +370,11 @@ CONCEPT_TABLE_SPECS <- local({
         sort_field_map = sort_field_map
       ),
       page_length = config$page_length,
+      search_placeholder = if (config$concept_type == "plant") {
+        "by plant name, code, VegBank code, or description…"
+      } else {
+        "by community name, code, VegBank code, or description…"
+      },
       options = list(
         dom = "Bfrtip",
         buttons = I(list(make_help_button_js(

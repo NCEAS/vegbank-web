@@ -658,7 +658,8 @@ build_remote_table_config <- function(column_defs,
                                       loading_label = NULL,
                                       page_length = NULL,
                                       options = list(),
-                                      datatable_args = list()) {
+                                      datatable_args = list(),
+                                      search_placeholder = NULL) {
   if (is.null(data_source_spec) || !is.list(data_source_spec)) {
     stop("data_source_spec must be a list")
   }
@@ -679,12 +680,17 @@ build_remote_table_config <- function(column_defs,
     "Loading data..."
   }
 
+  lang <- list(processing = processing_label)
+  if (!is.null(search_placeholder)) {
+    lang$searchPlaceholder <- search_placeholder
+  }
+
   remote_defaults <- list(
     serverSide = TRUE,
     lengthChange = FALSE,
     ordering = TRUE,
     searching = TRUE,
-    language = list(processing = processing_label)
+    language = lang
   )
 
   ajax_factory <- data_source_spec$ajax_factory %||% function(session) {
@@ -834,7 +840,8 @@ build_table_config_from_spec <- function(spec) {
     loading_label = spec$loading_label,
     page_length = spec$page_length,
     options = spec$options %||% list(),
-    datatable_args = spec$datatable_args
+    datatable_args = spec$datatable_args,
+    search_placeholder = spec$search_placeholder
   )
 
   if (!is.null(spec$ajax_factory)) {
