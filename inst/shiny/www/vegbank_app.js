@@ -493,6 +493,70 @@ function setNavbarDisabled(disabled) {
 
 setNavbarDisabled(true);
 
+// Zoom indicator control — shows current zoom level in the bottom-left corner and
+// debounces map_zoom / map_center Shiny input updates.
+window.vbMapZoomControl = function(el) {
+  var map = HTMLWidgets.find(el).getMap();
+  var zoomControl = L.control({position: 'bottomleft'});
+  zoomControl.onAdd = function(map) {
+    var div = L.DomUtil.create('div', 'zoom-control');
+    div.style.background = 'white';
+    div.style.padding = '5px';
+    div.style.border = '1px solid #ccc';
+    div.innerHTML = 'Zoom: ' + map.getZoom();
+    return div;
+  };
+  zoomControl.addTo(map);
+
+  var updateTimeout;
+  map.on('zoomend', function() {
+    document.getElementsByClassName('zoom-control')[0].innerHTML = 'Zoom: ' + map.getZoom();
+    clearTimeout(updateTimeout);
+    updateTimeout = setTimeout(function() {
+      Shiny.setInputValue('map_zoom', map.getZoom(), {priority: 'event'});
+    }, 300);
+  });
+
+  map.on('moveend', function() {
+    var center = map.getCenter();
+    clearTimeout(updateTimeout);
+    updateTimeout = setTimeout(function() {
+      Shiny.setInputValue('map_center', {lat: center.lat, lng: center.lng}, {priority: 'event'});
+    }, 300);
+  });
+};
+
+// Help/instructions button control — adds a square ⓘ button above the zoom controls
+// (top-left) that opens a Bootstrap popover with usage instructions.
+window.vbMapHelpControl = function(el, btnInnerHtml, contentHtml) {
+  var map = HTMLWidgets.find(el).getMap();
+  var helpControl = L.control({position: 'topleft'});
+  helpControl.onAdd = function() {
+    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control vb-map-help-control');
+    var btn = L.DomUtil.create('a', 'vb-map-help-btn', container);
+    btn.href = '#';
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('title', 'About this map');
+    btn.setAttribute('aria-label', 'About this map');
+    btn.innerHTML = btnInnerHtml;
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.on(btn, 'click', L.DomEvent.preventDefault);
+    return container;
+  };
+  helpControl.addTo(map);
+
+  // Move the help control to the top of the top-left stack (above zoom +/-)
+  var topLeft = el.querySelector('.leaflet-top.leaflet-left');
+  if (topLeft && topLeft.children.length > 1) {
+    topLeft.insertBefore(topLeft.lastChild, topLeft.firstChild);
+  }
+
+  var btnEl = el.querySelector('.vb-map-help-btn');
+  if (btnEl && window.vbHelpButton) {
+    window.vbHelpButton(btnEl, '<strong>Map</strong>', contentHtml);
+  }
+};
+
 // Shared helper — set up a toggleable info popover on a DT help button.
 // Called from each table's DT button init callback.
 window.vbHelpButton = function(btn, title, contentHtml) {

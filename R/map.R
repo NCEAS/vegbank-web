@@ -365,35 +365,10 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
 #' @importFrom htmlwidgets onRender
 #' @noRd
 add_map_help_control <- function(map) {
-  btn_inner <- .BTN_ICON_INFO
-  content_html <- .MAP_HELP_CONTENT
-  map |> htmlwidgets::onRender(paste0(
-    "function(el, x) {",
-    "  var map = this;",
-    "  var helpControl = L.control({position: 'topleft'});",
-    "  helpControl.onAdd = function(map) {",
-    "    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control vb-map-help-control');",
-    "    var btn = L.DomUtil.create('a', 'vb-map-help-btn', container);",
-    "    btn.href = '#';",
-    "    btn.setAttribute('role', 'button');",
-    "    btn.setAttribute('title', 'About this map');",
-    "    btn.setAttribute('aria-label', 'About this map');",
-    "    btn.innerHTML = '", btn_inner, "';",
-    "    L.DomEvent.disableClickPropagation(container);",
-    "    L.DomEvent.on(btn, 'click', L.DomEvent.preventDefault);",
-    "    return container;",
-    "  };",
-    "  helpControl.addTo(map);",
-    "  var topLeft = el.querySelector('.leaflet-top.leaflet-left');",
-    "  if (topLeft && topLeft.children.length > 1) {",
-    "    topLeft.insertBefore(topLeft.lastChild, topLeft.firstChild);",
-    "  }",
-    "  var btnEl = el.querySelector('.vb-map-help-btn');",
-    "  if (btnEl && window.vbHelpButton) {",
-    "    window.vbHelpButton(btnEl, '<strong>Map</strong>', '", content_html, "');",
-    "  }",
-    "}"
-  ))
+  map |> htmlwidgets::onRender(
+    "function(el, x) { window.vbMapHelpControl(el, x.btnInnerHtml, x.contentHtml); }",
+    data = list(btnInnerHtml = .BTN_ICON_INFO, contentHtml = .MAP_HELP_CONTENT)
+  )
 }
 
 #' Add a custom zoom control to a leaflet map
@@ -404,47 +379,5 @@ add_map_help_control <- function(map) {
 #' @importFrom htmlwidgets onRender
 #' @noRd
 add_zoom_control <- function(map) {
-  map |> htmlwidgets::onRender("
-    function(el, x) {
-      // Create map reference
-      var map = this;
-
-      // Create zoom control
-      var zoomControl = L.control({position: 'bottomleft'});
-      zoomControl.onAdd = function(map) {
-        var div = L.DomUtil.create('div', 'zoom-control');
-        div.style.background = 'white';
-        div.style.padding = '5px';
-        div.style.border = '1px solid #ccc';
-        div.innerHTML = 'Zoom: ' + map.getZoom();
-        return div;
-      };
-      zoomControl.addTo(map);
-
-      // Add event listeners with debouncing
-      var updateTimeout;
-      map.on('zoomend', function() {
-        // Update UI immediately
-        document.getElementsByClassName('zoom-control')[0].innerHTML = 'Zoom: ' + map.getZoom();
-
-        // Debounce Shiny communication
-        clearTimeout(updateTimeout);
-        updateTimeout = setTimeout(function() {
-          Shiny.setInputValue('map_zoom', map.getZoom(), {priority: 'event'});
-        }, 300);
-      });
-
-      map.on('moveend', function() {
-        var center = map.getCenter();
-
-        // Debounce Shiny communication
-        clearTimeout(updateTimeout);
-        updateTimeout = setTimeout(function() {
-          Shiny.setInputValue('map_center',
-                          {lat: center.lat, lng: center.lng},
-                          {priority: 'event'});
-        }, 300);
-      });
-    }
-  ")
+  map |> htmlwidgets::onRender("function(el, x) { window.vbMapZoomControl(el); }")
 }
