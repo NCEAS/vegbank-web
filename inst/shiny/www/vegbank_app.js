@@ -48,6 +48,37 @@ var pendingHighlight = null; // { tableId, rowIndex }
 var currentHighlightTableId = null; // Track which table the highlight belongs to
 var currentHighlightRowIndex = null; // Track which row index is highlighted within the table
 
+// ==================== DETAIL BANNER ICONS ====================
+// Labels and pre-fetched SVG content for the detail overlay's sticky banner.
+// Icons are sourced from the icon_*.svg files served under /assets/,
+// so icon markup lives in one place (the SVG files) rather than inline here.
+// DETAIL_TYPE_LABELS is injected by R from RESOURCE_REGISTRY (see ui.R constants_script)
+var detailIconCache = {};
+(function() {
+  Object.keys(DETAIL_TYPE_LABELS).forEach(function(t) {
+    // Files are served at assets/ via shiny::addResourcePath("assets", ...)
+    var url = 'assets/icon_' + t.replace(/-/g, '_') + '.svg';
+    fetch(url)
+      .then(function(r) {
+        if (!r.ok) return null;
+        // Guard: only accept SVG/XML content to prevent injecting a Shiny catch-all HTML response
+        var ct = r.headers.get('content-type') || '';
+        if (!ct.includes('svg') && !ct.includes('xml')) return null;
+        return r.text();
+      })
+      .then(function(text) {
+        if (!text) return;
+        // Strip XML declaration and doctype; verify it starts with <svg
+        var clean = text.replace(/<\?xml[^?]*\?>/g, '').replace(/<!DOCTYPE[^>]*>/g, '').trim();
+        if (/^<svg\b/i.test(clean)) {
+          detailIconCache[t] = clean;
+        }
+      })
+      .catch(function() {});
+  });
+})();
+// ==================== END DETAIL BANNER ICONS ====================
+
 // Check for highlight params in URL and set as pending highlight
 (function() {
   var params = new URLSearchParams(window.location.search);
@@ -1070,6 +1101,17 @@ $(document).on('stateLoaded.dt', function(e, settings, data) {
 
 Shiny.addCustomMessageHandler('updateDetailType', function(message) {
   const type = message.type;
+
+  // Update the sticky banner with the pre-fetched icon and display label.
+  var iconEl = document.getElementById('detail-type-icon');
+  var labelEl = document.getElementById('detail-type-label');
+  if (iconEl && detailIconCache[type]) {
+    iconEl.innerHTML = detailIconCache[type];
+  }
+  if (labelEl && DETAIL_TYPE_LABELS[type]) {
+    labelEl.textContent = DETAIL_TYPE_LABELS[type];
+  }
+
   const plotCards = document.getElementById('plot-details-cards');
   const communityConceptCards = document.getElementById('community-concept-details-cards');
   const communityClassificationCards = document.getElementById('community-classification-details-cards');

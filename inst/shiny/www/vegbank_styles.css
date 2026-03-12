@@ -323,7 +323,7 @@ table.dataTable tbody tr.selected-entity:hover,
   border-left: 1px solid rgba(40, 70, 94, 0.15);
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12), -2px 0 8px rgba(0, 0, 0, 0.08);
   z-index: 1050;
-  padding: 20px;
+  padding: 0 20px 0;
   transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -331,15 +331,63 @@ table.dataTable tbody tr.selected-entity:hover,
   right: -100vw !important;
 }
 
-#detail-overlay::before {
-  content: '';
+#detail-type-banner {
   position: sticky;
-  top: -20px;
-  display: block;
-  margin: -20px -20px 12px;
-  height: 4px;
+  top: 0;
+  margin: 0 -20px 16px;
+  height: 46px;
+  padding: 0 10px 0 14px;
   background: linear-gradient(90deg, var(--vb-green), hsl(160, 29%, 58%));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
   z-index: 1;
+}
+
+#detail-type-banner .detail-type-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+#detail-type-banner .detail-type-icon > svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Classification tag is slightly wider and rendered 10% larger than other banner icons */
+#detail-type-banner .detail-type-icon > svg.detail-icon-classification {
+  width: 24px;
+  height: 24px;
+}
+
+#detail-type-banner .detail-type-label {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#detail-type-banner .btn-close {
+  margin-left: auto;
+  flex-shrink: 0;
+  /* Override Bootstrap's default black X with a white one, avoiding filter which
+     would also invert any background-color we set on hover. */
+  --bs-btn-close-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23ffffff' d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 13.293.293a1 1 0 1 1 1.414 1.414L9.414 8l5.293 5.293a1 1 0 0 1-1.414 1.414L8 9.414l-5.293 5.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 2.707a1 1 0 0 1 0-1.414z'/%3E%3C/svg%3E");
+  opacity: 0.85;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+#detail-type-banner .btn-close:hover,
+#detail-type-banner .btn-close:focus {
+  opacity: 1 !important;
+  background-color: var(--vb-green) !important;
+  box-shadow: none !important;
 }
 
 /* Mobile: full width */
