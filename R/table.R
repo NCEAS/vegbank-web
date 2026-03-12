@@ -162,6 +162,7 @@ load_btn_icon <- function(name, size = 12, style = "margin-right:4px;flex-shrink
 .BTN_ICON_EYE <- load_btn_icon("eye")
 .BTN_ICON_PIN <- load_btn_icon("pin")
 .BTN_ICON_DOWNLOAD <- load_btn_icon("download", size = 14, style = "margin-right:6px;flex-shrink:0")
+.BTN_ICON_INFORMATION <- load_btn_icon("information", size = 16, style = "flex-shrink:0")
 
 #' Create action buttons for each row (R version)
 #'

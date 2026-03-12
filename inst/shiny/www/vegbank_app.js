@@ -1158,7 +1158,7 @@ Shiny.addCustomMessageHandler('triggerDownload', function(message) {
   }
 });
 
-// Enable/disable the DT download button
+// Enable/disable the DT download button (target by class to be index-independent)
 Shiny.addCustomMessageHandler('setDownloadButtonState', function(message) {
   try {
     var wrapper = document.getElementById('plot_table');
@@ -1166,9 +1166,9 @@ Shiny.addCustomMessageHandler('setDownloadButtonState', function(message) {
       var table = $(wrapper).find('table').DataTable();
       if (table && table.buttons) {
         if (message.enabled) {
-          table.buttons(0).enable();
+          table.buttons('.vb-plot-download').enable();
         } else {
-          table.buttons(0).disable();
+          table.buttons('.vb-plot-download').disable();
         }
       }
     }

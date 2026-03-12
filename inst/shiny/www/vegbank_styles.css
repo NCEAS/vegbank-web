@@ -575,6 +575,20 @@ table.dataTable tbody tr.selected-entity:hover,
   }
 }
 
+/* Plots table help popover */
+.vb-table-help-popover {
+  max-width: 340px;
+}
+
+.vb-table-help-popover .popover-body ul {
+  padding-left: 1.1rem;
+  margin-bottom: 0;
+}
+
+.vb-table-help-popover .popover-body p {
+  margin-bottom: 0.5rem;
+}
+
 /* Partner / affiliation logos */
 .vb-partner-logos {
   display: flex;
