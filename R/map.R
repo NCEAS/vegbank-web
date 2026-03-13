@@ -365,10 +365,13 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
 #' @importFrom htmlwidgets onRender
 #' @noRd
 add_map_help_control <- function(map) {
-  map |> htmlwidgets::onRender(
-    "function(el, x) { window.vbMapHelpControl(el, x.btnInnerHtml, x.contentHtml); }",
-    data = list(btnInnerHtml = .BTN_ICON_INFO, contentHtml = .MAP_HELP_CONTENT)
-  )
+  map |> htmlwidgets::onRender(paste0(
+    "function(el, x) { window.vbMapHelpControl(this, el, '",
+    .BTN_ICON_INFO,
+    "', '",
+    .MAP_HELP_CONTENT,
+    "'); }"
+  ))
 }
 
 #' Add a custom zoom control to a leaflet map
@@ -379,5 +382,5 @@ add_map_help_control <- function(map) {
 #' @importFrom htmlwidgets onRender
 #' @noRd
 add_zoom_control <- function(map) {
-  map |> htmlwidgets::onRender("function(el, x) { window.vbMapZoomControl(el); }")
+  map |> htmlwidgets::onRender("function(el, x) { window.vbMapBindShinyInputs(this, el); }")
 }

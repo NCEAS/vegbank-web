@@ -493,24 +493,10 @@ function setNavbarDisabled(disabled) {
 
 setNavbarDisabled(true);
 
-// Zoom indicator control — shows current zoom level in the bottom-left corner and
-// debounces map_zoom / map_center Shiny input updates.
-window.vbMapZoomControl = function(el) {
-  var map = HTMLWidgets.find(el).getMap();
-  var zoomControl = L.control({position: 'bottomleft'});
-  zoomControl.onAdd = function(map) {
-    var div = L.DomUtil.create('div', 'zoom-control');
-    div.style.background = 'white';
-    div.style.padding = '5px';
-    div.style.border = '1px solid #ccc';
-    div.innerHTML = 'Zoom: ' + map.getZoom();
-    return div;
-  };
-  zoomControl.addTo(map);
-
+// Binds map_zoom and map_center Shiny inputs with debouncing.
+window.vbMapBindShinyInputs = function(map, el) {
   var updateTimeout;
   map.on('zoomend', function() {
-    document.getElementsByClassName('zoom-control')[0].innerHTML = 'Zoom: ' + map.getZoom();
     clearTimeout(updateTimeout);
     updateTimeout = setTimeout(function() {
       Shiny.setInputValue('map_zoom', map.getZoom(), {priority: 'event'});
@@ -528,19 +514,19 @@ window.vbMapZoomControl = function(el) {
 
 // Help/instructions button control — adds a square ⓘ button above the zoom controls
 // (top-left) that opens a Bootstrap popover with usage instructions.
-window.vbMapHelpControl = function(el, btnInnerHtml, contentHtml) {
-  var map = HTMLWidgets.find(el).getMap();
+window.vbMapHelpControl = function(map, el, btnInnerHtml, contentHtml) {
+  var helpBtn = null;
   var helpControl = L.control({position: 'topleft'});
   helpControl.onAdd = function() {
     var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control vb-map-help-control');
-    var btn = L.DomUtil.create('a', 'vb-map-help-btn', container);
-    btn.href = '#';
-    btn.setAttribute('role', 'button');
-    btn.setAttribute('title', 'About this map');
-    btn.setAttribute('aria-label', 'About this map');
-    btn.innerHTML = btnInnerHtml;
+    helpBtn = L.DomUtil.create('a', 'vb-map-help-btn', container);
+    helpBtn.href = '#';
+    helpBtn.setAttribute('role', 'button');
+    helpBtn.setAttribute('title', 'About this map');
+    helpBtn.setAttribute('aria-label', 'About this map');
+    helpBtn.innerHTML = btnInnerHtml;
     L.DomEvent.disableClickPropagation(container);
-    L.DomEvent.on(btn, 'click', L.DomEvent.preventDefault);
+    L.DomEvent.on(helpBtn, 'click', L.DomEvent.preventDefault);
     return container;
   };
   helpControl.addTo(map);
@@ -548,12 +534,11 @@ window.vbMapHelpControl = function(el, btnInnerHtml, contentHtml) {
   // Move the help control to the top of the top-left stack (above zoom +/-)
   var topLeft = el.querySelector('.leaflet-top.leaflet-left');
   if (topLeft && topLeft.children.length > 1) {
-    topLeft.insertBefore(topLeft.lastChild, topLeft.firstChild);
+    topLeft.insertBefore(topLeft.lastElementChild, topLeft.firstElementChild);
   }
 
-  var btnEl = el.querySelector('.vb-map-help-btn');
-  if (btnEl && window.vbHelpButton) {
-    window.vbHelpButton(btnEl, '<strong>Map</strong>', contentHtml);
+  if (helpBtn && window.vbHelpButton) {
+    window.vbHelpButton(helpBtn, '<strong>Map</strong>', contentHtml);
   }
 };
 
@@ -562,6 +547,7 @@ window.vbMapHelpControl = function(el, btnInnerHtml, contentHtml) {
 window.vbHelpButton = function(btn, title, contentHtml) {
   if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
   var iconSpan = btn.querySelector('.vb-help-btn-icon');
+  if (!iconSpan) return;
   var infoHtml = iconSpan.innerHTML;
   var closeHtml = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
   var pop = new bootstrap.Popover(btn, {
@@ -1297,7 +1283,9 @@ Shiny.addCustomMessageHandler('setDownloadButtonState', function(message) {
   try {
     var wrapper = document.getElementById('plot_table');
     if (wrapper) {
-      var table = $(wrapper).find('table').DataTable();
+      var tableEl = $(wrapper).find('table');
+      if (!tableEl.length || !$.fn.DataTable.isDataTable(tableEl)) return;
+      var table = tableEl.DataTable();
       if (table && table.buttons) {
         if (message.enabled) {
           table.buttons('.vb-plot-download').enable();
