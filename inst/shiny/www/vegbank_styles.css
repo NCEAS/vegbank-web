@@ -522,8 +522,6 @@ table.dataTable tbody tr.selected-entity:hover,
   overflow-wrap: break-word;
 }
 
-/* ==================== home PAGE ==================== */
-
 /* Strip horizontal padding from the two ancestor containers that constrain
    the Home tab's width (bslib gap-spacing wrapper and Bootstrap container-fluid).
    Scoped to the active Home tab so no other tab is affected.
@@ -663,7 +661,6 @@ table.dataTable tbody tr.selected-entity:hover,
   }
 }
 
-/* Plots table help popover */
 .vb-table-help-popover {
   max-width: 340px;
 }
@@ -677,7 +674,6 @@ table.dataTable tbody tr.selected-entity:hover,
   margin-bottom: 0.5rem;
 }
 
-/* Partner / affiliation logos */
 .vb-partner-logos {
   display: flex;
   justify-content: center;
@@ -685,7 +681,6 @@ table.dataTable tbody tr.selected-entity:hover,
   gap: 3rem;
   flex-wrap: wrap;
   padding: 2.5rem 0 3rem;
-  /* border-top: 1px solid var(--border-subtle); */
 }
 
 .vb-partner-logo-link {

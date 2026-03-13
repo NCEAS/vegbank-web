@@ -258,6 +258,11 @@ load_svg_icon <- function(name, style = NULL) {
   # surrounding text colour (button hover or banner white).
   svg <- gsub('fill="#[0-9A-Fa-f]{6}"', 'fill="currentColor"', svg, perl = TRUE)
   svg <- gsub('stroke="#[0-9A-Fa-f]{6}"', 'stroke="currentColor"', svg, perl = TRUE)
+  # Strip id= attributes — SVGs are inlined repeatedly (e.g. one per table row)
+  # so duplicate ids produce invalid HTML and can break getElementById / AT.
+  svg <- gsub(' id="[^"]*"', "", svg, perl = TRUE)
+  # Strip xmlns:xlink — deprecated in SVG 2 and unnecessary for inline use.
+  svg <- gsub(' xmlns:xlink="[^"]*"', "", svg, perl = TRUE)
   # Inject aria-hidden (and optional inline style) into the root <svg> element.
   style_attr <- if (is.null(style)) "" else sprintf(' style="%s"', style)
   svg <- sub("<svg ", sprintf('<svg aria-hidden="true"%s ', style_attr), svg, fixed = TRUE)
