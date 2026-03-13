@@ -10,9 +10,13 @@
 #' @noRd
 build_home_panel <- function() {
   hero_dir <- system.file("shiny", "www", "heros", package = "vegbankweb")
-  hero_files <- list.files(hero_dir, pattern = "^hero_", full.names = FALSE)
+  hero_files <- if (nzchar(hero_dir)) list.files(hero_dir, pattern = "^hero_", full.names = FALSE) else character(0)
   hero_images <- lapply(hero_files, function(f) {
-    list(src = paste0("assets/heros/", f), alt = tools::file_path_sans_ext(f))
+    stem <- tools::file_path_sans_ext(f)
+    stem <- sub("^hero_", "", stem)
+    stem <- gsub("[_-]", " ", stem)
+    alt  <- paste0(toupper(substring(stem, 1, 1)), substring(stem, 2))
+    list(src = paste0("assets/heros/", f), alt = alt)
   })
   if (length(hero_images) == 0L) {
     # Fallback: no hero images found, render without image
