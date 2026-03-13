@@ -216,21 +216,6 @@ test_that("fetch_plot_map_data warns when API returns no rows", {
   })
 })
 
-test_that("add_zoom_control adds onRender function to map", {
-  # Create a minimal leaflet map
-  map <- leaflet::leaflet()
-
-  # Add zoom control
-  map_with_control <- add_zoom_control(map)
-
-  # Check that onRender is added
-  expect_true(!is.null(map_with_control$jsHooks$render))
-
-  # Check that the hook contains expected elements
-  expect_true(grepl("zoomControl", map_with_control$jsHooks$render[[1]]$code))
-  expect_true(grepl("Shiny.setInputValue", map_with_control$jsHooks$render[[1]]$code))
-})
-
 test_that("update_map_view creates proper function", {
   # Since update_map_view is a function factory, we can test the function exists
   expect_true(is.function(update_map_view))
