@@ -514,8 +514,12 @@ window.vbMapHelpControl = function(map, el, btnInnerHtml, contentHtml) {
 
 // Shared helper — set up a toggleable info popover on a DT help button.
 // Called from each table's DT button init callback.
+var _vbClickHandlerRegistered = false;
 window.vbHelpButton = function(btn, title, contentHtml) {
   if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
+  // Normalise: DT Buttons passes a jQuery object; map help passes a plain element.
+  if (btn && typeof btn.querySelector !== 'function') btn = btn[0];
+  if (!btn) return;
   var iconSvg = btn.querySelector('svg');
   if (!iconSvg) return;
   var infoHtml = iconSvg.outerHTML;
@@ -535,10 +539,20 @@ window.vbHelpButton = function(btn, title, contentHtml) {
   btn.addEventListener('click', function(e) { e.stopPropagation(); pop.toggle(); });
   btn.addEventListener('shown.bs.popover', function() { iconSvg.outerHTML = closeHtml; iconSvg = btn.querySelector('svg'); });
   btn.addEventListener('hidden.bs.popover', function() { if (iconSvg) iconSvg.outerHTML = infoHtml; iconSvg = btn.querySelector('svg'); });
-  document.addEventListener('click', function(e) {
-    var popEl = document.querySelector('.vb-table-help-popover');
-    if (!btn.contains(e.target) && (!popEl || !popEl.contains(e.target))) pop.hide();
-  });
+  if (!_vbClickHandlerRegistered) {
+    _vbClickHandlerRegistered = true;
+    document.addEventListener('click', function(e) {
+      document.querySelectorAll('.vb-help-btn').forEach(function(helpBtn) {
+        var instance = bootstrap.Popover.getInstance(helpBtn);
+        if (!instance) return;
+        var popId = helpBtn.getAttribute('aria-describedby');
+        var popEl = popId ? document.getElementById(popId) : null;
+        if (!helpBtn.contains(e.target) && (!popEl || !popEl.contains(e.target))) {
+          instance.hide();
+        }
+      });
+    });
+  }
 };
 
 document.addEventListener('DOMContentLoaded', function() {

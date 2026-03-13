@@ -148,7 +148,7 @@ make_help_button_js <- function(title, content_html) {
     "titleAttr: 'About this table',",
     "action: function() {},",
     "init: function(api, node, config) {",
-    "window.vbHelpButton(node[0], '<strong>", safe_title, "</strong>', '",
+    "window.vbHelpButton(node, '<strong>", safe_title, "</strong>', '",
     content_html, "');}}"
   ))
 }
