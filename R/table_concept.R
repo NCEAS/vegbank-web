@@ -371,9 +371,9 @@ CONCEPT_TABLE_SPECS <- local({
       ),
       page_length = config$page_length,
       search_placeholder = if (config$concept_type == "plant") {
-        "by plant name, code, VegBank code, or description…"
+        "by plant name, code, VegBank code, or description\u2026"
       } else {
-        "by community name, code, VegBank code, or description…"
+        "by community name, code, VegBank code, or description\u2026"
       },
       options = list(
         dom = "Bfrtip",

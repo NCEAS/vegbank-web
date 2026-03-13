@@ -538,7 +538,7 @@ PLOT_TABLE_SPEC <- list(
     )
   ),
   page_length = NULL,
-  search_placeholder = "by plant, community, author code, VegBank code, or location…",
+  search_placeholder = "by plant, community, author code, VegBank code, or location\u2026",
   options = list(
     scrollY = "calc(100vh - 235px)",
     dom = "Bfrtip",
