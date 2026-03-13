@@ -375,14 +375,17 @@ table.dataTable tbody tr.selected-entity:hover,
 }
 
 #detail-type-banner .detail-type-icon > svg {
-  width: 22px;
-  height: 22px;
+  /* !important ensures these beat any width/height attributes on the SVG element
+     (e.g. potrace-generated icons with width="256pt"). Colour is handled via
+     currentColor, which inherits the banner's color: #fff. */
+  width: 22px !important;
+  height: 22px !important;
 }
 
 /* Classification tag is slightly wider and rendered 10% larger than other banner icons */
 #detail-type-banner .detail-type-icon > svg.detail-icon-classification {
-  width: 24px;
-  height: 24px;
+  width: 24px !important;
+  height: 24px !important;
 }
 
 #detail-type-banner .detail-type-label {

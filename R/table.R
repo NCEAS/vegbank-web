@@ -124,47 +124,16 @@ clean_column_dates <- function(data, column_name, default_value = "Unspecified",
 }
 
 
-#' Load and resize an SVG icon from the package www folder
-#'
-#' Reads an SVG file from inst/shiny/www/ (using the icon_<name>.svg naming
-#' convention), normalises its dimensions, maps hardcoded dark colours to
-#' currentColor so the icon inherits button text colour on hover, and injects
-#' aria-hidden plus an inline style into the root svg element.
-#'
-#' @param name Icon filename stem (e.g. "eye" for icon_eye.svg)
-#' @param size Icon width/height in pixels
-#' @param style Inline CSS applied to the svg element
-#' @return A plain character string of the processed SVG markup
-#' @noRd
-load_btn_icon <- function(name, size = 12, style = "margin-right:4px;flex-shrink:0") {
-  path <- system.file("shiny", "www", paste0("icon_", name, ".svg"), package = "vegbankweb")
-  if (!nzchar(path)) return("")
-  svg <- paste(readLines(path, warn = FALSE), collapse = "")
-  # Strip XML declaration
-  svg <- sub("<\\?xml[^?]*\\?>", "", svg)
-  # Normalise large pixel dimensions (e.g. 800px) to the desired icon size
-  svg <- gsub('(width|height)="[0-9]+px"', sprintf('\\1="%dpx"', size), svg, perl = TRUE)
-  # Also handle plain-number dimensions used by some icon sets (e.g. width="16")
-  svg <- gsub('width="16"', sprintf('width="%d"', size), svg, fixed = TRUE)
-  svg <- gsub('height="16"', sprintf('height="%d"', size), svg, fixed = TRUE)
-  # Map hardcoded dark fill/stroke colours to currentColor
-  svg <- gsub('fill="#[0-9A-Fa-f]{6}"', 'fill="currentColor"', svg, perl = TRUE)
-  svg <- gsub('stroke="#[0-9A-Fa-f]{6}"', 'stroke="currentColor"', svg, perl = TRUE)
-  # Strip class attributes
-  svg <- gsub(' class="[^"]*"', "", svg)
-  # Inject aria-hidden and style into the root svg element
-  svg <- sub("<svg ", sprintf('<svg aria-hidden="true" style="%s" ', style), svg, fixed = TRUE)
-  svg
-}
-
-# Package-level icon constants — read once when the package is loaded.
-# All SVGs use currentColor so they inherit button text colour on hover.
-.BTN_ICON_EYE <- load_btn_icon("eye")
-.BTN_ICON_PIN <- load_btn_icon("pin")
-.BTN_ICON_DOWNLOAD <- load_btn_icon("download", size = 14, style = "margin-right:6px;flex-shrink:0")
+# Package-level button icon constants — read once at package load time.
+# Sizing is embedded in the style string so CSS inline style beats any SVG
+# width/height attributes without needing per-attribute gsub transforms.
+# See load_svg_icon() in resource_registry.R.
+.BTN_ICON_EYE    <- load_svg_icon("eye",    "width:12px;height:12px;margin-right:4px;flex-shrink:0")
+.BTN_ICON_PIN    <- load_svg_icon("pin",    "width:12px;height:12px;margin-right:4px;flex-shrink:0")
+.BTN_ICON_DOWNLOAD <- load_svg_icon("download", "width:14px;height:14px;margin-right:6px;flex-shrink:0")
 .BTN_ICON_INFO <- paste0(
   '<span class="vb-help-btn-icon">',
-  load_btn_icon("info_circle", size = 16, style = "flex-shrink:0"),
+  load_svg_icon("info_circle", "width:16px;height:16px;flex-shrink:0"),
   '</span>'
 )
 

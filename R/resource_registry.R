@@ -222,3 +222,63 @@ convert_code_to_singular <- function(vb_code) {
 
   resource_info$singular
 }
+
+#' Load an SVG file from the package www folder for inline-HTML use
+#'
+#' Single loader for all icon SVGs. The two use cases differ only in whether
+#' an inline `style` is supplied:
+#' - Button icons supply a `style` string that includes explicit `width`/`height`
+#'   (e.g. `"width:12px;height:12px;margin-right:4px;flex-shrink:0"`), which
+#'   takes precedence over any `width`/`height` SVG attributes via CSS cascade.
+#' - Detail banner icons supply `style = NULL`; sizing is handled entirely by
+#'   the `#detail-type-banner .detail-type-icon > svg` CSS rule with `!important`.
+#'
+#' Classes on the root `<svg>` (e.g. `detail-icon-classification`) are always
+#' preserved so CSS rules that target them continue to work.
+#'
+#' @param name Icon filename stem (e.g. `"eye"` for `icon_eye.svg`)
+#' @param style Optional inline CSS string injected into the root `<svg>`, or `NULL`
+#' @return A plain character string of the processed SVG markup, or `""` if not found.
+#' @noRd
+load_svg_icon <- function(name, style = NULL) {
+  path <- system.file("shiny", "www", "icons", paste0("icon_", name, ".svg"), package = "vegbankweb")
+  if (!nzchar(path)) return("")
+  # Use " " so attributes split across lines (e.g. community_concept.svg has
+  # a newline mid-element-tag) remain whitespace-separated after joining,
+  # while the resulting string stays newline-free. Newlines would be fine in
+  # detail banner icons (set via innerHTML) but would break button icons that
+  # are embedded directly in DataTable JS config strings.
+  svg <- paste(readLines(path, warn = FALSE), collapse = " ")
+  # Strip XML declaration and DOCTYPE — not valid when SVG is inline in HTML.
+  svg <- sub("<\\?xml[^?]*\\?>", "", svg)
+  svg <- sub("<!DOCTYPE[^>]*>", "", svg)
+  svg <- trimws(svg)
+  # Map hardcoded dark fill/stroke colours to currentColor so icons inherit
+  # surrounding text colour (button hover or banner white).
+  svg <- gsub('fill="#[0-9A-Fa-f]{6}"', 'fill="currentColor"', svg, perl = TRUE)
+  svg <- gsub('stroke="#[0-9A-Fa-f]{6}"', 'stroke="currentColor"', svg, perl = TRUE)
+  # Inject aria-hidden (and optional inline style) into the root <svg> element.
+  style_attr <- if (is.null(style)) "" else sprintf(' style="%s"', style)
+  svg <- sub("<svg ", sprintf('<svg aria-hidden="true"%s ', style_attr), svg, fixed = TRUE)
+  svg
+}
+
+# Named list of processed SVG strings for every detail type, keyed by detail_type
+# (e.g. "plot-observation"). Injected into window.DETAIL_ICONS by ui.R.
+# Built once at package load — no per-session file I/O or browser fetches needed.
+DETAIL_ICONS <- local({
+  icons <- lapply(RESOURCE_REGISTRY, function(entry) {
+    dt <- entry$detail_type
+    if (is.null(dt)) return(NULL)
+    # File naming: dashes in detail_type become underscores in filename
+    file_stem <- gsub("-", "_", dt)
+    svg <- load_svg_icon(file_stem)
+    if (!nzchar(svg)) return(NULL)
+    list(detail_type = dt, svg = svg)
+  })
+  icons <- Filter(Negate(is.null), icons)
+  stats::setNames(
+    lapply(icons, `[[`, "svg"),
+    vapply(icons, `[[`, character(1), "detail_type")
+  )
+})
