@@ -225,13 +225,14 @@ convert_code_to_singular <- function(vb_code) {
 
 #' Load an SVG file from the package www folder for inline-HTML use
 #'
-#' Single loader for all icon SVGs. The two use cases differ only in whether
-#' an inline `style` is supplied:
-#' - Button icons supply a `style` string that includes explicit `width`/`height`
-#'   (e.g. `"width:12px;height:12px;margin-right:4px;flex-shrink:0"`), which
-#'   takes precedence over any `width`/`height` SVG attributes via CSS cascade.
-#' - Detail banner icons supply `style = NULL`; sizing is handled entirely by
-#'   the `#detail-type-banner .detail-type-icon > svg` CSS rule with `!important`.
+#' Single loader for all icon SVGs. Callers may optionally supply an inline
+#' `style` string:
+#' - When `style` includes explicit `width`/`height` (e.g.
+#'   `"width:12px;height:12px;margin-right:4px;flex-shrink:0"`), those values
+#'   take precedence over any `width`/`height` SVG attributes via the CSS cascade.
+#' - When `style` is `NULL` (the default), sizing is handled entirely by CSS
+#'   (e.g. the `#detail-type-banner .detail-type-icon > svg` rule with
+#'   `!important`, or button-icon CSS).
 #'
 #' Classes on the root `<svg>` (e.g. `detail-icon-classification`) are always
 #' preserved so CSS rules that target them continue to work.
