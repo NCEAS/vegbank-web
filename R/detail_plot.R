@@ -199,7 +199,7 @@ build_plot_obs_details_view <- function(result) {
           row <- sorted_taxa[i, , drop = FALSE]
 
           htmltools::tags$tr(
-            htmltools::tags$td(create_detail_link("plant_link_click", row$pc_code, row$plant_name)),
+            htmltools::tags$td(create_detail_link("to_link_click", row$to_code, row$plant_name)),
             htmltools::tags$td(row$stratum_label),
             htmltools::tags$td(style = "text-align: right;", row$cover_display)
           )

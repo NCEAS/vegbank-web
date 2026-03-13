@@ -1158,12 +1158,13 @@ Shiny.addCustomMessageHandler('updateDetailType', function(message) {
   const referenceCards = document.getElementById('reference-details-cards');
   const coverMethodCards = document.getElementById('cover-method-details-cards');
   const stratumMethodCards = document.getElementById('stratum-method-details-cards');
+  const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
 
   console.log('Updating detail type to:', type);
 
   if (plotCards && communityConceptCards && communityClassificationCards &&
       projectCards && partyCards && plantConceptCards && referenceCards && coverMethodCards &&
-      stratumMethodCards) {
+      stratumMethodCards && taxonObservationCards) {
     // Hide all card types first
     plotCards.style.display = 'none';
     communityConceptCards.style.display = 'none';
@@ -1174,6 +1175,7 @@ Shiny.addCustomMessageHandler('updateDetailType', function(message) {
     referenceCards.style.display = 'none';
     coverMethodCards.style.display = 'none';
     stratumMethodCards.style.display = 'none';
+    taxonObservationCards.style.display = 'none';
 
     // Show the requested type
     if (type === 'plot-observation') {
@@ -1203,6 +1205,9 @@ Shiny.addCustomMessageHandler('updateDetailType', function(message) {
     } else if (type === 'stratum-method') {
       console.log('Showing stratum method details');
       stratumMethodCards.style.display = 'block';
+    } else if (type === 'taxon-observation') {
+      console.log('Showing taxon observation details');
+      taxonObservationCards.style.display = 'block';
     }
   }
 });
