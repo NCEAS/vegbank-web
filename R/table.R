@@ -125,17 +125,13 @@ clean_column_dates <- function(data, column_name, default_value = "Unspecified",
 
 
 # Package-level button icon constants — read once at package load time.
-# Sizing is embedded in the style string so CSS inline style beats any SVG
-# width/height attributes without needing per-attribute gsub transforms.
-# See load_svg_icon() in resource_registry.R.
-.BTN_ICON_EYE    <- load_svg_icon("eye",    "width:12px;height:12px;margin-right:4px;flex-shrink:0")
-.BTN_ICON_PIN    <- load_svg_icon("pin",    "width:12px;height:12px;margin-right:4px;flex-shrink:0")
-.BTN_ICON_DOWNLOAD <- load_svg_icon("download", "width:14px;height:14px;margin-right:6px;flex-shrink:0")
-.BTN_ICON_INFO <- paste0(
-  '<span class="vb-help-btn-icon">',
-  load_svg_icon("info_circle", "width:16px;height:16px;flex-shrink:0"),
-  '</span>'
-)
+# Button icon constants — no inline styles needed; all sizing/spacing is
+# handled by CSS rules in vegbank_styles.css targeting .dt-icon-btn svg,
+# .vb-plot-download svg, and .vb-help-btn svg.
+.BTN_ICON_EYE      <- load_svg_icon("eye")
+.BTN_ICON_PIN      <- load_svg_icon("pin")
+.BTN_ICON_DOWNLOAD <- load_svg_icon("download")
+.BTN_ICON_INFO     <- load_svg_icon("info_circle")
 
 #' Generate a DT Buttons extension button definition for a toggleable help popover.
 #'
@@ -148,7 +144,7 @@ make_help_button_js <- function(title, content_html) {
   safe_title <- gsub("'", "\\'", title, fixed = TRUE)
   DT::JS(paste0(
     "{text: '", .BTN_ICON_INFO, "',",
-    "className: 'btn btn-sm btn-outline-secondary',",
+    "className: 'btn btn-sm btn-outline-secondary vb-help-btn',",
     "titleAttr: 'About this table',",
     "action: function() {},",
     "init: function(api, node, config) {",

@@ -180,6 +180,29 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   align-items: center;
 }
 
+/* SVG sizing for row action buttons (Details / Map) */
+.dt-icon-btn svg {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+/* SVG sizing for the toolbar download button */
+.vb-plot-download svg {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+/* SVG sizing for the toolbar help (ⓘ) button */
+.vb-help-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 .datatables .dataTables_wrapper div.dataTables_info {
   padding-top: 0.75rem;
   font-size: 0.875rem !important;
@@ -380,12 +403,6 @@ table.dataTable tbody tr.selected-entity:hover,
      currentColor, which inherits the banner's color: #fff. */
   width: 22px !important;
   height: 22px !important;
-}
-
-/* Classification tag is slightly wider and rendered 10% larger than other banner icons */
-#detail-type-banner .detail-type-icon > svg.detail-icon-classification {
-  width: 24px !important;
-  height: 24px !important;
 }
 
 #detail-type-banner .detail-type-label {

@@ -489,7 +489,7 @@ window.vbMapHelpControl = function(map, el, btnInnerHtml, contentHtml) {
   var helpControl = L.control({position: 'topleft'});
   helpControl.onAdd = function() {
     var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control vb-map-help-control');
-    helpBtn = L.DomUtil.create('a', 'vb-map-help-btn', container);
+    helpBtn = L.DomUtil.create('a', 'vb-map-help-btn vb-help-btn', container);
     helpBtn.href = '#';
     helpBtn.setAttribute('role', 'button');
     helpBtn.setAttribute('title', 'About this map');
@@ -516,9 +516,9 @@ window.vbMapHelpControl = function(map, el, btnInnerHtml, contentHtml) {
 // Called from each table's DT button init callback.
 window.vbHelpButton = function(btn, title, contentHtml) {
   if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
-  var iconSpan = btn.querySelector('.vb-help-btn-icon');
-  if (!iconSpan) return;
-  var infoHtml = iconSpan.innerHTML;
+  var iconSvg = btn.querySelector('svg');
+  if (!iconSvg) return;
+  var infoHtml = iconSvg.outerHTML;
   var closeHtml = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
   var pop = new bootstrap.Popover(btn, {
     trigger: 'manual',
@@ -533,8 +533,8 @@ window.vbHelpButton = function(btn, title, contentHtml) {
     content: contentHtml
   });
   btn.addEventListener('click', function(e) { e.stopPropagation(); pop.toggle(); });
-  btn.addEventListener('shown.bs.popover', function() { iconSpan.innerHTML = closeHtml; });
-  btn.addEventListener('hidden.bs.popover', function() { iconSpan.innerHTML = infoHtml; });
+  btn.addEventListener('shown.bs.popover', function() { iconSvg.outerHTML = closeHtml; iconSvg = btn.querySelector('svg'); });
+  btn.addEventListener('hidden.bs.popover', function() { if (iconSvg) iconSvg.outerHTML = infoHtml; iconSvg = btn.querySelector('svg'); });
   document.addEventListener('click', function(e) {
     var popEl = document.querySelector('.vb-table-help-popover');
     if (!btn.contains(e.target) && (!popEl || !popEl.contains(e.target))) pop.hide();
