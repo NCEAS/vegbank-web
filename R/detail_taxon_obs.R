@@ -93,8 +93,8 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
           interp <- interps[i, , drop = FALSE]
 
           # Plant concept link
-          pc_code <- if ("pc_code" %in% names(interp)) interp$pc_code else NULL
-          plant_label <- if ("plant_label" %in% names(interp)) interp$plant_label %|||% "Unspecified" else "Unspecified"
+          pc_code <- interp$pc_code %|||% NULL
+          plant_label <- interp$plant_label %|||% "Unspecified"
           plant_link <- if (!is.null(pc_code) && !is.na(pc_code)) {
             create_detail_link("plant_link_click", pc_code, plant_label)
           } else {
@@ -102,8 +102,8 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
           }
 
           # Party link
-          py_code <- if ("py_code" %in% names(interp)) interp$py_code else NULL
-          party_label <- if ("party_label" %in% names(interp)) interp$party_label %|||% "Unspecified" else "Unspecified"
+          py_code <- interp$py_code %|||% NULL
+          party_label <- interp$party_label %|||% "Unspecified"
           party_link <- if (!is.null(py_code) && !is.na(py_code)) {
             create_detail_link("party_link_click", py_code, party_label)
           } else {
@@ -111,7 +111,7 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
           }
 
           interp_date <- tryCatch({
-            date_val <- if ("interpretation_date" %in% names(interp)) interp$interpretation_date else NA
+            date_val <- interp$interpretation_date %|||% NA
             if (is.null(date_val) || (length(date_val) > 0 && is.na(date_val[1]))) {
               "Unspecified"
             } else if (inherits(date_val, c("POSIXct", "POSIXlt", "Date"))) {
@@ -121,12 +121,12 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
             }
           }, error = function(e) "Unspecified")
 
-          interp_type <- if ("interpretation_type" %in% names(interp)) interp$interpretation_type %|||% "Unspecified" else "Unspecified"
-          is_orig <- if ("is_orig" %in% names(interp)) format_boolean(interp$is_orig) else "Unspecified"
-          is_curr <- if ("is_curr" %in% names(interp)) format_boolean(interp$is_curr) else "Unspecified"
-          taxon_fit <- if ("taxon_fit" %in% names(interp)) interp$taxon_fit %|||% "Unspecified" else "Unspecified"
-          taxon_confidence <- if ("taxon_confidence" %in% names(interp)) interp$taxon_confidence %|||% "Unspecified" else "Unspecified"
-          group_type <- if ("group_type" %in% names(interp)) interp$group_type %|||% "Unspecified" else "Unspecified"
+          interp_type <- interp$interpretation_type %|||% "Unspecified"
+          is_orig <- format_boolean(interp$is_orig)
+          is_curr <- format_boolean(interp$is_curr)
+          taxon_fit <- interp$taxon_fit %|||% "Unspecified"
+          taxon_confidence <- interp$taxon_confidence %|||% "Unspecified"
+          group_type <- interp$group_type %|||% "Unspecified"
 
           separator_style <- if (i < n) {
             "margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;"
@@ -215,7 +215,7 @@ create_taxon_obs_details_ui <- function(obs, taxon_interps) {
         orig_rows <- taxon_interps[!is.na(taxon_interps$is_orig) & taxon_interps$is_orig == TRUE, , drop = FALSE]
         if (nrow(orig_rows) > 0) {
           pc_orig <- orig_rows$pc_code[1] %|||% NULL
-          label_orig <- if ("plant_label" %in% names(orig_rows)) orig_rows$plant_label[1] %|||% "Unspecified" else "Unspecified"
+          label_orig <- orig_rows$plant_label[1] %|||% "Unspecified"
           orig_link <- if (!is.null(pc_orig) && !is.na(pc_orig)) {
             create_detail_link("plant_link_click", pc_orig, label_orig)
           } else {
@@ -228,7 +228,7 @@ create_taxon_obs_details_ui <- function(obs, taxon_interps) {
         curr_rows <- taxon_interps[!is.na(taxon_interps$is_curr) & taxon_interps$is_curr == TRUE, , drop = FALSE]
         if (nrow(curr_rows) > 0) {
           pc_curr <- curr_rows$pc_code[1] %|||% NULL
-          label_curr <- if ("plant_label" %in% names(curr_rows)) curr_rows$plant_label[1] %|||% "Unspecified" else "Unspecified"
+          label_curr <- curr_rows$plant_label[1] %|||% "Unspecified"
           curr_link <- if (!is.null(pc_curr) && !is.na(pc_curr)) {
             create_detail_link("plant_link_click", pc_curr, label_curr)
           } else {
@@ -293,19 +293,18 @@ create_taxon_obs_importance_ui <- function(obs) {
         rows <- lapply(seq_len(nrow(importance)), function(i) {
           imp <- importance[i, , drop = FALSE]
 
-          stratum_name <- if ("stratum_name" %in% names(imp)) imp$stratum_name %|||% "Unspecified" else "Unspecified"
-
-          cover_val <- if ("cover" %in% names(imp)) imp$cover else NA
+          stratum_name <- imp$stratum_name %|||% "Unspecified"
+          cover_val <- imp$cover %|||% NA
           cover_display <- if (!is.null(cover_val) && !is.na(cover_val) && is.numeric(cover_val)) {
             sprintf("%.2f%%", cover_val)
           } else {
             "Unspecified"
           }
 
-          cover_code <- if ("cover_code" %in% names(imp)) imp$cover_code %|||% "Unspecified" else "Unspecified"
-          basal_area <- if ("basal_area" %in% names(imp)) imp$basal_area %|||% "Unspecified" else "Unspecified"
-          inference_area <- if ("inference_area" %in% names(imp)) imp$inference_area %|||% "Unspecified" else "Unspecified"
-          biomass <- if ("biomass" %in% names(imp)) imp$biomass %|||% "Unspecified" else "Unspecified"
+          cover_code <- imp$cover_code %|||% "Unspecified"
+          basal_area <- imp$basal_area %|||% "Unspecified"
+          inference_area <- imp$inference_area %|||% "Unspecified"
+          biomass <- imp$biomass %|||% "Unspecified"
 
           htmltools::tags$tr(
             htmltools::tags$td(as.character(stratum_name)),
