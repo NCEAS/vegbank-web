@@ -174,7 +174,7 @@ test_that("create_taxon_obs_importance_ui renders importance table", {
       expect_true(grepl("Stratum", html$html))
       expect_true(grepl("Cover", html$html))
       expect_true(grepl("Basal Area", html$html))
-      expect_true(grepl("Biomass", html$html))
+      expect_true(grepl("Bio-mass", html$html))
     }
   )
 })
