@@ -250,16 +250,16 @@ create_taxon_obs_details_ui <- function(obs, taxon_interps) {
 
     details <- list(
       taxon_inference_area = inference_area_display,
-      original_interpretation = orig_link,
       current_interpretation = curr_link,
+      original_interpretation = orig_link,
       reference = ref_display
     )
 
     col_names <- c(
       taxon_inference_area = "Taxon Inference Area",
-      original_interpretation = "Original Interpretation",
       current_interpretation = "Current Interpretation",
-      reference = "Reference"
+      original_interpretation = "Original Interpretation",
+      reference = "Original Reference"
     )
 
     create_detail_table(details, col_names = col_names)
@@ -287,31 +287,31 @@ create_taxon_obs_importance_ui <- function(obs) {
         rows <- lapply(seq_len(nrow(importance)), function(i) {
           imp <- importance[i, , drop = FALSE]
 
-          stratum_name <- imp$stratum_name %|||% "Unspecified"
+          stratum_name <- imp$stratum_name %|||% ""
           cover_val <- imp$cover %|||% NA
           cover_display <- if (!is.null(cover_val) && !is.na(cover_val) && is.numeric(cover_val)) {
             sprintf("%.2f%%", cover_val)
           } else {
-            "Unspecified"
+            ""
           }
 
-          cover_code <- imp$cover_code %|||% "Unspecified"
-          basal_area <- append_units("basal_area", imp$basal_area %|||% "Unspecified")
-          inference_area <- append_units("inference_area", imp$inference_area %|||% "Unspecified")
-          biomass <- imp$biomass %|||% "Unspecified"
+          cover_code <- imp$cover_code %|||% ""
+          basal_area <- append_units("basal_area", imp$basal_area %|||% "")
+          inference_area <- append_units("inference_area", imp$inference_area %|||% "")
+          biomass <- imp$biomass %|||% ""
 
           htmltools::tags$tr(
             htmltools::tags$td(as.character(stratum_name)),
             htmltools::tags$td(cover_display),
             htmltools::tags$td(as.character(cover_code)),
-            htmltools::tags$td(as.character(basal_area)),
             htmltools::tags$td(as.character(inference_area)),
+            htmltools::tags$td(as.character(basal_area)),
             htmltools::tags$td(as.character(biomass))
           )
         })
 
         create_detail_table_with_headers(
-          c("Stratum", "Cover", "Cover Code", "Basal Area", "Inference Area", "Biomass"),
+          c("Stratum", "Cover", "Cover Code", "Inf Area", "Basal Area", "Bio-mass"),
           rows,
           table_style = "width: 100%; table-layout: fixed; word-break: break-word;"
         )

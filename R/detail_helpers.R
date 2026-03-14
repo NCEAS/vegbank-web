@@ -92,7 +92,7 @@ get_field_display_names <- function() {
 #' @noRd
 append_units <- function(field_name, value) {
   # Skip if value is "Unspecified" or NA
-  if (is.null(value) || is.na(value) || identical(value, "Unspecified")) {
+  if (is.null(value) || is.na(value) || identical(value, "Unspecified") || value == "") {
     return(value)
   }
 
