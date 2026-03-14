@@ -198,13 +198,7 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
 #' @noRd
 create_taxon_obs_details_ui <- function(obs, taxon_interps) {
   shiny::renderUI({
-    # Taxon inference area with m² unit
-    inference_area_val <- obs$taxon_inference_area %|||% NA
-    inference_area_display <- if (!is.na(inference_area_val)) {
-      paste0(inference_area_val, " m\u00B2")
-    } else {
-      "Unspecified"
-    }
+    inference_area_display <- append_units("taxon_inference_area", obs$taxon_inference_area %|||% "Unspecified")
 
     # Original and current interpretation links from interpretations data
     orig_link <- "Unspecified"
@@ -302,8 +296,8 @@ create_taxon_obs_importance_ui <- function(obs) {
           }
 
           cover_code <- imp$cover_code %|||% "Unspecified"
-          basal_area <- imp$basal_area %|||% "Unspecified"
-          inference_area <- imp$inference_area %|||% "Unspecified"
+          basal_area <- append_units("basal_area", imp$basal_area %|||% "Unspecified")
+          inference_area <- append_units("inference_area", imp$inference_area %|||% "Unspecified")
           biomass <- imp$biomass %|||% "Unspecified"
 
           htmltools::tags$tr(
