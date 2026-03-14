@@ -536,3 +536,12 @@ extract_nested_table <- function(row_df, column_name) {
 
   bind_nested_rows(column[[1]])
 }
+
+#' Capitalize the First Letter of a String
+#'
+#' @param s A character string
+#' @return The input string with the first letter capitalized
+#' @noRd
+cap_first <- function(s) {
+  paste0(toupper(substring(s, 1, 1)), substring(s, 2))
+}

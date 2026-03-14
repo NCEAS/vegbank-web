@@ -80,10 +80,10 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
           return(htmltools::tags$p("No taxon interpretations recorded"))
         }
 
-        # Sort chronologically by interpretation_date
+        # Sort reverse-chronologically by interpretation_date (most recent first)
         interps <- taxon_interps
         if ("interpretation_date" %in% names(interps)) {
-          sorted_idx <- order(interps$interpretation_date, na.last = TRUE)
+          sorted_idx <- order(interps$interpretation_date, decreasing = TRUE, na.last = TRUE)
           interps <- interps[sorted_idx, , drop = FALSE]
         }
 
@@ -109,6 +109,7 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
           } else {
             party_label
           }
+          party_role <- interp$role %|||% "Unspecified"
 
           interp_date <- tryCatch({
             date_val <- interp$interpretation_date %|||% NA
@@ -122,59 +123,99 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
           }, error = function(e) "Unspecified")
 
           interp_type <- interp$interpretation_type %|||% "Unspecified"
-          is_orig <- format_boolean(interp$is_orig)
-          is_curr <- format_boolean(interp$is_curr)
+          interp_type_display <- if (interp_type == "author") "Authored" else cap_first(interp_type)
+          is_orig <- isTRUE(interp$is_orig)
+          is_curr <- isTRUE(interp$is_curr)
           taxon_fit <- interp$taxon_fit %|||% "Unspecified"
           taxon_confidence <- interp$taxon_confidence %|||% "Unspecified"
           group_type <- interp$group_type %|||% "Unspecified"
 
           separator_style <- if (i < n) {
-            "margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;"
+            "margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--bs-border-color);"
           } else {
             ""
           }
 
-          htmltools::tags$div(
-            style = separator_style,
-            htmltools::tags$div(style = "font-weight: 600;", plant_link),
+          # Badges for original / current flags
+          badges <- list(
+            if (is_orig) htmltools::tags$span(
+              class = "badge rounded-pill me-1",
+              style = "background-color: var(--no-status-bg); color: var(--no-status-text);",
+              "Original"
+            ),
+            if (is_curr) htmltools::tags$span(
+              class = "badge rounded-pill me-1",
+              style = "background-color: var(--accepted-bg); color: var(--accepted-text);",
+              "Current"
+            )
+          )
+          badges <- Filter(Negate(is.null), badges)
+
+          # Prose subtitle: "Type by Party" then "On date"
+          subtitle_by <- if (interp_type_display != "Unspecified" && party_label != "Unspecified") {
+            htmltools::tags$div(
+              htmltools::HTML(paste0(htmltools::htmlEscape(interp_type_display), " by ")),
+              party_link
+            )
+          } else if (party_label != "Unspecified") {
+            htmltools::tags$div("By ", party_link)
+          } else if (interp_type_display != "Unspecified") {
+            htmltools::tags$div(interp_type_display)
+          } else {
+            NULL
+          }
+
+          subtitle_role <- if (interp_type != "author" && party_role != "Unspecified") {
+            htmltools::tags$div(
+              paste("As", party_role)
+            )
+          } else {
+            NULL
+          }
+
+          subtitle_date <- if (interp_date != "Unspecified") {
+            htmltools::tags$div(
+              paste("On", interp_date)
+            )
+          } else {
+            NULL
+          }
+
+          # Small table for only the detail fields
+          detail_rows <- list(
+            if (taxon_fit != "Unspecified") htmltools::tags$tr(
+              htmltools::tags$td("Taxon Fit"),
+              htmltools::tags$td(class = "text-end", taxon_fit)
+            ),
+            if (taxon_confidence != "Unspecified") htmltools::tags$tr(
+              htmltools::tags$td("Taxon Confidence"),
+              htmltools::tags$td(class = "text-end", taxon_confidence)
+            ),
+            if (group_type != "Unspecified") htmltools::tags$tr(
+              htmltools::tags$td("Group Type"),
+              htmltools::tags$td(class = "text-end", as.character(group_type))
+            )
+          )
+          detail_rows <- Filter(Negate(is.null), detail_rows)
+
+          detail_table <- if (length(detail_rows) > 0) {
             htmltools::tags$table(
               class = "table table-sm table-striped table-hover",
               style = "margin-top: 5px; margin-bottom: 0; width: 100%; table-layout: fixed; word-break: break-word;",
-              htmltools::tags$tbody(
-                htmltools::tags$tr(
-                  htmltools::tags$td("Interpretation Date"),
-                  htmltools::tags$td(class = "text-end", interp_date)
-                ),
-                htmltools::tags$tr(
-                  htmltools::tags$td("Party"),
-                  htmltools::tags$td(class = "text-end", party_link)
-                ),
-                htmltools::tags$tr(
-                  htmltools::tags$td("Interpretation Type"),
-                  htmltools::tags$td(class = "text-end", interp_type)
-                ),
-                htmltools::tags$tr(
-                  htmltools::tags$td("Original Interpretation"),
-                  htmltools::tags$td(class = "text-end", is_orig)
-                ),
-                htmltools::tags$tr(
-                  htmltools::tags$td("Current Interpretation"),
-                  htmltools::tags$td(class = "text-end", is_curr)
-                ),
-                htmltools::tags$tr(
-                  htmltools::tags$td("Taxon Fit"),
-                  htmltools::tags$td(class = "text-end", taxon_fit)
-                ),
-                htmltools::tags$tr(
-                  htmltools::tags$td("Taxon Confidence"),
-                  htmltools::tags$td(class = "text-end", taxon_confidence)
-                ),
-                htmltools::tags$tr(
-                  htmltools::tags$td("Group Type"),
-                  htmltools::tags$td(class = "text-end", as.character(group_type))
-                )
-              )
+              htmltools::tags$tbody(detail_rows)
             )
+          } else {
+            NULL
+          }
+
+          htmltools::tags$div(
+            style = separator_style,
+            if (length(badges) > 0) htmltools::tags$div(style = "margin-bottom: 4px;", badges),
+            htmltools::tags$div(style = "font-size: 1.05em; font-weight: 700; margin-bottom: 2px;", plant_link),
+            subtitle_by,
+            subtitle_role,
+            subtitle_date,
+            detail_table
           )
         })
 
@@ -311,7 +352,7 @@ create_taxon_obs_importance_ui <- function(obs) {
         })
 
         create_detail_table_with_headers(
-          c("Stratum", "Cover", "Cover Code", "Inf Area", "Basal Area", "Bio-mass"),
+          c("Stratum", "Cover", "Cover Code", "Infer Area", "Basal Area", "Bio-mass"),
           rows,
           table_style = "width: 100%; table-layout: fixed; word-break: break-word;"
         )

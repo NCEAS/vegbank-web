@@ -62,27 +62,28 @@ test_that("create_taxon_obs_header_ui renders plant name, to_code, and ob_code l
   )
 })
 
-test_that("create_taxon_obs_interpretations_ui renders interpretations in order", {
+test_that("create_taxon_obs_interpretations_ui renders interpretations in reverse chronological order", {
   shiny::testServer(
     function(input, output, session) {
       output$test <- create_taxon_obs_interpretations_ui(mock_taxon_interps_to2178147)
     },
     {
       html <- session$getOutput("test")
-      # Plant labels present
-      expect_true(grepl("Bromus \\[Weakley Jan 1, 2006\\]", html$html))
+      # Most recent (Lee, Michael / Taxonomic revision / 2015) appears before oldest (Wagner, Gail / 2011)
+      expect_true(regexpr("Lee, Michael", html$html) < regexpr("Wagner, Gail", html$html))
       expect_true(grepl("Bromus pubescens \\[Weakley 2015\\]", html$html))
       # Party labels present
       expect_true(grepl("Wagner, Gail", html$html))
       expect_true(grepl("LeBlond, Richard", html$html))
       expect_true(grepl("Lee, Michael", html$html))
-      # Interpretation types
-      expect_true(grepl("author", html$html))
+      # Boolean flags shown as badges (not "Yes"/"No")
+      expect_true(grepl("Original", html$html))  # is_orig=TRUE for first interp
+      expect_true(grepl("Current", html$html))   # is_curr=TRUE for last interp
+      # Prose subtitle: type + party + date
+      expect_true(grepl("Authored", html$html))
       expect_true(grepl("Finer resolution", html$html))
       expect_true(grepl("Taxonomic revision", html$html))
-      # Boolean fields
-      expect_true(grepl("Yes", html$html))   # is_orig=TRUE or is_curr=TRUE
-      expect_true(grepl("No", html$html))    # other flags FALSE
+      expect_true(grepl("by", html$html))
       # Fit and confidence
       expect_true(grepl("Absolutely correct", html$html))
       expect_true(grepl("High", html$html))
