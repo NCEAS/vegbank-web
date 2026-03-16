@@ -123,7 +123,8 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
           }, error = function(e) "Unspecified")
 
           interp_type <- interp$interpretation_type %|||% "Unspecified"
-          interp_type_display <- if (interp_type == "author") "Authored" else cap_first(interp_type)
+          is_author <- interp_type == "Author" || interp_type == "author"
+          interp_type_display <- if (is_author) "Authored" else cap_first(interp_type)
           is_orig <- isTRUE(interp$is_orig)
           is_curr <- isTRUE(interp$is_curr)
           taxon_fit <- interp$taxon_fit %|||% "Unspecified"
@@ -165,7 +166,7 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
             NULL
           }
 
-          subtitle_role <- if (interp_type != "author" && party_role != "Unspecified") {
+          subtitle_role <- if (!is_author && party_role != "Unspecified") {
             htmltools::tags$div(
               paste("As", party_role)
             )
