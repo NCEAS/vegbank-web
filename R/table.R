@@ -150,7 +150,7 @@ make_help_button_js <- function(title, content_html) {
     "action: function() {},",
     "init: function(api, node, config) {",
     "window.vbHelpButton(node, '<strong>", safe_title, "</strong>', '",
-    content_html, "');}}"
+    content_html, "', '", .BTN_ICON_CLOSE, "');}}"
   ))
 }
 

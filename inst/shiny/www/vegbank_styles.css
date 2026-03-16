@@ -196,11 +196,43 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   flex-shrink: 0;
 }
 
-/* SVG sizing for the toolbar help (ⓘ) button */
+/* SVG sizing for the toolbar help (info) button */
 .vb-help-btn svg {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+}
+
+/* Info/close icon crossfade transition on help buttons */
+.vb-help-btn .vb-help-info-icon,
+.vb-help-btn .vb-help-close-icon {
+  display: inline-flex;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  transform-origin: center;
+}
+
+.vb-help-btn .vb-help-close-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: rotate(-45deg) scale(0.7);
+}
+
+.vb-help-btn {
+  position: relative;
+}
+
+.vb-help-btn.vb-help-open .vb-help-info-icon {
+  opacity: 0;
+  transform: rotate(45deg) scale(0.7);
+}
+
+.vb-help-btn.vb-help-open .vb-help-close-icon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
 }
 
 .datatables .dataTables_wrapper div.dataTables_info {

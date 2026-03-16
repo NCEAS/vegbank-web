@@ -482,9 +482,9 @@ window.vbMapBindShinyInputs = function(map, el) {
   });
 };
 
-// Help/instructions button control — adds a square ⓘ button above the zoom controls
+// Help/instructions button control — adds a square info button above the zoom controls
 // (top-left) that opens a Bootstrap popover with usage instructions.
-window.vbMapHelpControl = function(map, el, btnInnerHtml, contentHtml) {
+window.vbMapHelpControl = function(map, el, btnInnerHtml, closeIconHtml, contentHtml) {
   var helpBtn = null;
   var helpControl = L.control({position: 'topleft'});
   helpControl.onAdd = function() {
@@ -508,22 +508,28 @@ window.vbMapHelpControl = function(map, el, btnInnerHtml, contentHtml) {
   }
 
   if (helpBtn && window.vbHelpButton) {
-    window.vbHelpButton(helpBtn, '<strong>Map</strong>', contentHtml);
+    window.vbHelpButton(helpBtn, '<strong>Map</strong>', contentHtml, closeIconHtml);
   }
 };
 
 // Shared helper — set up a toggleable info popover on a DT help button.
 // Called from each table's DT button init callback.
 var _vbClickHandlerRegistered = false;
-window.vbHelpButton = function(btn, title, contentHtml) {
+window.vbHelpButton = function(btn, title, contentHtml, closeIconHtml) {
   if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
   // Normalise: DT Buttons passes a jQuery object; map help passes a plain element.
   if (btn && typeof btn.querySelector !== 'function') btn = btn[0];
   if (!btn) return;
-  var iconSvg = btn.querySelector('svg');
-  if (!iconSvg) return;
-  var infoHtml = iconSvg.outerHTML;
-  var closeHtml = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
+  var infoSvg = btn.querySelector('svg');
+  if (!infoSvg) return;
+  // Inject close SVG alongside info SVG; CSS controls visibility via .vb-help-open
+  if (closeIconHtml) {
+    var closeWrapper = document.createElement('span');
+    closeWrapper.className = 'vb-help-close-icon';
+    closeWrapper.innerHTML = closeIconHtml;
+    btn.appendChild(closeWrapper);
+  }
+  infoSvg.classList.add('vb-help-info-icon');
   var pop = new bootstrap.Popover(btn, {
     trigger: 'manual',
     html: true,
@@ -537,8 +543,8 @@ window.vbHelpButton = function(btn, title, contentHtml) {
     content: contentHtml
   });
   btn.addEventListener('click', function(e) { e.stopPropagation(); pop.toggle(); });
-  btn.addEventListener('shown.bs.popover', function() { iconSvg.outerHTML = closeHtml; iconSvg = btn.querySelector('svg'); });
-  btn.addEventListener('hidden.bs.popover', function() { if (iconSvg) iconSvg.outerHTML = infoHtml; iconSvg = btn.querySelector('svg'); });
+  btn.addEventListener('shown.bs.popover', function() { btn.classList.add('vb-help-open'); });
+  btn.addEventListener('hidden.bs.popover', function() { btn.classList.remove('vb-help-open'); });
   if (!_vbClickHandlerRegistered) {
     _vbClickHandlerRegistered = true;
     document.addEventListener('click', function(e) {
