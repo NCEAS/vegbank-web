@@ -132,6 +132,7 @@ clean_column_dates <- function(data, column_name, default_value = "Unspecified",
 .BTN_ICON_PIN      <- load_svg_icon("pin")
 .BTN_ICON_DOWNLOAD <- load_svg_icon("download")
 .BTN_ICON_INFO     <- load_svg_icon("info_circle")
+.BTN_ICON_CLOSE    <- load_svg_icon("close")
 
 #' Generate a DT Buttons extension button definition for a toggleable help popover.
 #'

@@ -272,12 +272,13 @@ build_detail_overlay <- function() {
         class = "detail-type-label",
         id = "detail-type-label"
       ),
-      shiny::actionButton("close_overlay", "",
+      shiny::actionButton("close_overlay",
+        htmltools::HTML(.BTN_ICON_CLOSE),
         onclick = "var overlay = document.getElementById('detail-overlay');
                    overlay.classList.add('closed');
                    document.body.classList.remove('overlay-open');
                    Shiny.setInputValue('close_details', true, {priority:'event'});",
-        class = "btn-close"
+        class = "vb-close-btn"
       )
     ),
     shiny::fluidRow(
