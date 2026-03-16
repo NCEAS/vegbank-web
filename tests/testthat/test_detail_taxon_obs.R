@@ -49,7 +49,6 @@ test_that("create_taxon_obs_header_ui renders plant name, to_code, and ob_code l
     }
   )
 
-  # Minimal: no ob_code → "Unspecified"
   shiny::testServer(
     function(input, output, session) {
       output$test <- create_taxon_obs_header_ui(mock_taxon_obs_minimal)

@@ -52,7 +52,7 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           vegbankr::vb_get_stratum_methods(vb_code, detail = "full", with_nested = TRUE),
         "taxon-observation" = {
           to_data <- vegbankr::vb_get_taxon_observations(vb_code, detail = "full", with_nested = TRUE)
-          if (is.null(to_data) || length(to_data) == 0) {
+          if (is.null(to_data) || NROW(to_data) == 0) {
             list()
           } else {
             ti_data <- vegbankr::vb_get_taxon_interpretations(vb_code, detail = "full")

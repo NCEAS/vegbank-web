@@ -66,7 +66,7 @@ create_taxon_obs_header_ui <- function(obs) {
 
 #' Create Taxon Interpretations UI
 #'
-#' Renders all taxon interpretations in chronological order, each section
+#' Renders all taxon interpretations in reverse chronological order, each section
 #' separated by a horizontal rule.
 #'
 #' @param taxon_interps Data frame of taxon interpretations
