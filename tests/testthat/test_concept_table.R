@@ -5,7 +5,7 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
     create_table = function(table_config) {
       expect_equal(length(table_config$column_defs), 8)
 
-      # Vegbank Code column
+      # VegBank Code column
       vegbank_col <- table_config$column_defs[[2]]
       expect_equal(vegbank_col$targets, 1)
       expect_equal(vegbank_col$width, "12%")
@@ -71,12 +71,12 @@ test_that("process_concept_data formats plant concepts", {
     result <- vegbankweb:::process_concept_data(list(plant_data = plant_test_data), concept_type = "plant")
 
     expect_equal(colnames(result), c(
-      "Actions", "Vegbank Code", "Plant Concept", "Status",
+      "Actions", "VegBank Code", "Plant Concept", "Status",
       "Level", "Reference Source", "Plots", "Description"
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
-    expect_equal(result$`Vegbank Code`, vapply(plant_test_data$pc_code, htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
+    expect_equal(result$`VegBank Code`, vapply(plant_test_data$pc_code, htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
     expect_equal(result$`Plant Concept`,
       c("Acer rubrum L.", "Vaccinium stamineum", "Pseudotsuga menziesii (Mirbel) Franco"))
     expect_true(grepl("Accepted",    result$Status[1]))  # ACRU: current_accepted=TRUE
@@ -102,12 +102,12 @@ test_that("process_concept_data formats community concepts", {
                                                 concept_type = "community")
 
     expect_equal(colnames(result), c(
-      "Actions", "Vegbank Code", "Community Concept", "Status",
+      "Actions", "VegBank Code", "Community Concept", "Status",
       "Level", "Reference Source", "Plots", "Description"
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
-    expect_equal(result$`Vegbank Code`, vapply(community_test_data$cc_code, htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
+    expect_equal(result$`VegBank Code`, vapply(community_test_data$cc_code, htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
     expect_equal(result$`Community Concept`, c(
       "Quercus alba - Quercus (rubra, montana) / Rhododendron calendulaceum - (Gaylussacia ursina) Forest",
       "Brachypodium distachyon \u2013 Bromus diandrus / Quercus douglasii Semi-natural Association",

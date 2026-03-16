@@ -1,14 +1,14 @@
-#' Loading Overlay Components for Vegbank UI
+#' Loading Overlay Components for VegBank UI
 #'
 #' This module provides functions for building full-screen loading overlays
 #' with animated spinners and rotating messages for various long-running
-#' operations in the Vegbank application.
+#' operations in the VegBank application.
 #'
 #' @name loaders
 #' @noRd
 NULL
 
-#' Build Loading Overlay for Vegbank UI
+#' Build Loading Overlay for VegBank UI
 #'
 #' Constructs a full-screen loading overlay with animated spinner and rotating messages.
 #' This is a generalized component that can be used for map loading, downloads, or other
@@ -71,7 +71,7 @@ build_loading_overlay <- function(overlay_type, default_title, messages, complet
   )
 }
 
-#' Build Map Loading Overlay for Vegbank UI
+#' Build Map Loading Overlay for VegBank UI
 #'
 #' Constructs a full-screen loading overlay for initial map loading with animated
 #' spinner and rotating plant puns.
@@ -106,7 +106,7 @@ build_map_loading_overlay <- function(visible = FALSE) {
   )
 }
 
-#' Build Overview Loading Overlay for Vegbank UI
+#' Build Overview Loading Overlay for VegBank UI
 #'
 #' Constructs a full-screen loading overlay for overview statistics with animated
 #' spinner and rotating messages.
@@ -139,7 +139,7 @@ build_overview_loading_overlay <- function(visible = FALSE) {
   )
 }
 
-#' Build Download Loading Overlay for Vegbank UI
+#' Build Download Loading Overlay for VegBank UI
 #'
 #' Constructs a full-screen loading overlay for data downloads with animated
 #' spinner and rotating messages.
@@ -164,7 +164,7 @@ build_download_loading_overlay <- function() {
   )
 }
 
-#' Build Citation Loading Overlay for Vegbank UI
+#' Build Citation Loading Overlay for VegBank UI
 #'
 #' Constructs a full-screen loading overlay for citation resolution with animated
 #' spinner and rotating messages.

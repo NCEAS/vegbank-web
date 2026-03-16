@@ -1,4 +1,4 @@
-#' Shiny UI for Vegbank Web Application
+#' Shiny UI for VegBank Web Application
 #'
 #' Constructs the user interface for browsing vegetation plot data.
 #'
@@ -54,9 +54,18 @@ ui <- function(req) {
   download_loading_overlay <- build_download_loading_overlay()
 
   # Inline script with application constants injected from R
+  detail_label_entries <- Filter(function(e) !is.null(e$detail_type), RESOURCE_REGISTRY)
+  detail_labels_js <- paste(
+    vapply(detail_label_entries, function(e) {
+      paste0("  '", e$detail_type, "': '", tools::toTitleCase(e$singular), "'")
+    }, character(1)),
+    collapse = ",\n"
+  )
   constants_script <- htmltools::tags$script(htmltools::HTML(paste0(
     "// Application constants - single source of truth from R\n",
-    "window.DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n"
+    "window.DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n",
+    "window.DETAIL_TYPE_LABELS = {\n", detail_labels_js, "\n};\n",
+    "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n"
   )))
 
   # External JavaScript file with main application logic
@@ -75,7 +84,7 @@ ui <- function(req) {
   )
 }
 
-#' Custom Bootstrap Theme for Vegbank Web Application
+#' Custom Bootstrap Theme for VegBank Web Application
 #'
 #' Defines a bslib theme with custom rules.
 #'
@@ -240,7 +249,7 @@ build_navbar <- function(initial_tab = "Home") {
   )
 }
 
-#' Build Detail Overlay for Vegbank UI
+#' Build Detail Overlay for VegBank UI
 #'
 #' Constructs the overlay panel that displays detailed plot information.
 #'
@@ -250,12 +259,26 @@ build_navbar <- function(initial_tab = "Home") {
 build_detail_overlay <- function() {
   htmltools::tags$div(
     id = "detail-overlay",
-    shiny::actionButton("close_overlay", "",
-      onclick = "var overlay = document.getElementById('detail-overlay');
-                 overlay.classList.add('closed');
-                 document.body.classList.remove('overlay-open');
-                 Shiny.setInputValue('close_details', true, {priority:'event'});",
-      class = "btn-close", style = "float:right; margin-bottom:10px;"
+    # Sticky gradient banner showing the detail type with icon — lets users keep
+    # context even after scrolling past the first card.
+    htmltools::tags$div(
+      id = "detail-type-banner",
+      htmltools::tags$span(
+        class = "detail-type-icon",
+        id = "detail-type-icon",
+        `aria-hidden` = "true"
+      ),
+      htmltools::tags$span(
+        class = "detail-type-label",
+        id = "detail-type-label"
+      ),
+      shiny::actionButton("close_overlay", "",
+        onclick = "var overlay = document.getElementById('detail-overlay');
+                   overlay.classList.add('closed');
+                   document.body.classList.remove('overlay-open');
+                   Shiny.setInputValue('close_details', true, {priority:'event'});",
+        class = "btn-close"
+      )
     ),
     shiny::fluidRow(
       shiny::column(
@@ -265,7 +288,7 @@ build_detail_overlay <- function() {
           id = "plot-details-cards",
           class = "detail-section",
           shiny::uiOutput("plot_notification"),
-          bslib::card(bslib::card_header("Plot Observation"), shiny::uiOutput("plot_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("plot_header")),
           bslib::card(bslib::card_header("Author Codes"), shiny::uiOutput("author_code_details")),
           bslib::card(bslib::card_header("Dates"), shiny::uiOutput("date_details")),
           bslib::card(bslib::card_header("Location"), shiny::uiOutput("location_details")),
@@ -285,7 +308,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "community-concept-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Community Concept"), shiny::uiOutput("community_concept_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("community_concept_header")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("community_concept_details")),
           bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("community_party_perspective"))
         ),
@@ -294,7 +317,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "community-classification-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Community Classification"), shiny::uiOutput("comm_class_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("comm_class_header")),
           bslib::card(bslib::card_header("Classification Details"), shiny::uiOutput("comm_class_details")),
           bslib::card(bslib::card_header("Community Interpretations"), shiny::uiOutput("comm_class_interpretations")),
           bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("comm_class_contributors"))
@@ -304,7 +327,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "project-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Project"), shiny::uiOutput("project_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("project_header")),
           bslib::card(bslib::card_header("Description"), shiny::uiOutput("project_description")),
           bslib::card(bslib::card_header("Dates"), shiny::uiOutput("project_dates")),
           bslib::card(bslib::card_header("Plot Observation Count"), shiny::uiOutput("project_observations")),
@@ -315,7 +338,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "party-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Party"), shiny::uiOutput("party_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("party_header")),
           bslib::card(bslib::card_header("Organization"), shiny::uiOutput("party_organization")),
           bslib::card(bslib::card_header("Contact Information"), shiny::uiOutput("party_contact")),
           bslib::card(bslib::card_header("Contributions"), shiny::uiOutput("party_contributions"))
@@ -325,7 +348,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "plant-concept-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("plant_concept_header")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("plant_concept_details")),
           bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("plant_party_perspective"))
         ),
@@ -334,7 +357,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "reference-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Reference"), shiny::uiOutput("reference_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("reference_header")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("reference_identifiers")),
           bslib::card(bslib::card_header("Publication"), shiny::uiOutput("reference_publication"))
         ),
@@ -343,7 +366,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "cover-method-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Cover Method"), shiny::uiOutput("cover_method_header")),
+          bslib::card(bslib::card_header("Name"), shiny::uiOutput("cover_method_header")),
           bslib::card(bslib::card_header("Details"), shiny::uiOutput("cover_method_details")),
           bslib::card(bslib::card_header("Cover Indexes"), shiny::uiOutput("cover_method_indexes"))
         ),
@@ -352,7 +375,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "stratum-method-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Stratum Method"), shiny::uiOutput("stratum_method_header")),
+          bslib::card(bslib::card_header("Name"), shiny::uiOutput("stratum_method_header")),
           bslib::card(bslib::card_header("Details"), shiny::uiOutput("stratum_method_details")),
           bslib::card(bslib::card_header("Stratum Types"), shiny::uiOutput("stratum_types"))
         )

@@ -146,7 +146,7 @@ test_that("process_plot_data returns correctly formatted display data", {
   expect_equal(nrow(result), 3)
   expect_equal(ncol(result), 7)
 
-  expected_cols <- c("Actions", "Vegbank Code", "Author Code", "Location", "Top Taxa", "Communities", "Survey Year")
+  expected_cols <- c("Actions", "VegBank Code", "Author Code", "Location", "Top Taxa", "Communities", "Survey Year")
   expect_equal(names(result), expected_cols)
 
   # Check action column contains HTML buttons with correct data attributes
@@ -158,9 +158,9 @@ test_that("process_plot_data returns correctly formatted display data", {
   # OLYM has no coordinates — map button is rendered but disabled (no dt-map-action class)
   expect_false(grepl("dt-map-action", result$Actions[3]))
 
-  # Vegbank Code and Author Code use real observation codes
+  # VegBank Code and Author Code use real observation codes
   expect_equal(
-    result$`Vegbank Code`,
+    result$`VegBank Code`,
     vapply(c("ob.2948", "ob.3776", "ob.206444"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE)
   )
   expect_equal(result$`Author Code`, c("ACAD.143", "GRSM.225", "OLYM.Z.681.0003"))

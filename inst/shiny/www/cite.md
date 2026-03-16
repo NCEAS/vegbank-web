@@ -24,15 +24,15 @@ To cite the VegBank database as a whole or a single entity in the database, use 
 
 #### Citing an entity in VegBank with a persistent URL
 
-The URL (web address) may be modified to cite a specific plot, community concept, or public dataset in VegBank. To do this, find its **Vegbank Code** (the unique identifier for VegBank data) which can be found on the table and detail views of different entities.
+The URL (web address) may be modified to cite a specific plot, community concept, or public dataset in VegBank. To do this, find its **VegBank Code** (the unique identifier for VegBank data) which can be found on the table and detail views of different entities.
 
-Once you know the Vegbank Code, use the following pattern to create a URL:
+Once you know the VegBank Code, use the following pattern to create a URL:
 
 ```
-http://vegbank.org/cite/[VegbankCode]
+http://vegbank.org/cite/[VegBankCode]
 ```
 
-Where `[VegbankCode]` is the Vegbank Code of the plot or other data to cite.
+Where `[VegBankCode]` is the VegBank Code of the plot or other data to cite.
 
 #### Examples
 

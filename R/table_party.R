@@ -17,13 +17,13 @@ PARTY_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 )
 
 PARTY_TABLE_DISPLAY_TEMPLATE <- build_display_template(
-  column_names = c("Actions", "Vegbank Code", "Party", "Organization", "Plots", "Contact")
+  column_names = c("Actions", "VegBank Code", "Party", "Organization", "Plots", "Contact")
 )
 
 create_party_column_defs <- function() {
   list(
     list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
-    list(targets = 1, width = "12%", orderable = TRUE), # py_code (Vegbank Code)
+    list(targets = 1, width = "12%", orderable = TRUE), # py_code (VegBank Code)
     list(targets = 2, width = "23%", orderable = TRUE), # Party Label (sortable by surname)
     list(targets = 3, width = "30%", orderable = TRUE), # Organization
     list(targets = 4, width = "10%", className = "dt-right", type = "num", orderable = TRUE), # Plots
@@ -75,7 +75,7 @@ process_party_data <- function(party_data) {
 
   data.frame(
     "Actions" = actions,
-    "Vegbank Code" = vapply(py_codes, htmltools::htmlEscape, character(1)),
+    "VegBank Code" = vapply(py_codes, htmltools::htmlEscape, character(1)),
     "Party" = vapply(party_labels, htmltools::htmlEscape, character(1)),
     "Organization" = vapply(organizations, htmltools::htmlEscape, character(1)),
     "Plots" = obs_count_links,
@@ -96,6 +96,20 @@ normalize_party_data <- create_normalizer(PARTY_TABLE_SCHEMA_TEMPLATE, na_to_zer
 #' @noRd
 coerce_party_page <- create_coercer(PARTY_TABLE_SCHEMA_TEMPLATE)
 
+.PARTY_TABLE_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p("This table lists parties \u2014 individuals and organizations who contributed observations to VegBank."),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, organization, or VegBank code."),
+      htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations contributed by this party."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code, Party name, Organization, and Plots support sorting."),
+      htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the party in an overlay."),
+    )
+  ))
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
 PARTY_TABLE_SPEC <- list(
   table_id = "party_table",
   resource = "parties",
@@ -111,14 +125,18 @@ PARTY_TABLE_SPEC <- list(
     clean_names = FALSE,
     clean_rows_fn = sanitize_dt_rows,
     sort_field_map = list(
-      "1" = "default", # Vegbank Code
+      "1" = "default", # VegBank Code
       "2" = "surname", # Party (sort by surname)
       "3" = "organization_name", # Organization
       "4" = "obs_count" # Plots
     )
   ),
   page_length = NULL,
-  options = list(),
-  datatable_args = list(),
+  search_placeholder = "by name, organization, or VegBank code\u2026",
+  options = list(
+    dom = "Bfrtip",
+    buttons = I(list(make_help_button_js("Parties Table", .PARTY_TABLE_HELP_CONTENT)))
+  ),
+  datatable_args = list(extensions = "Buttons"),
   initial_display = PARTY_TABLE_DISPLAY_TEMPLATE
 )

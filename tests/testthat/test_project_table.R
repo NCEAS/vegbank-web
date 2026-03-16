@@ -22,7 +22,7 @@ test_that("project table spec wires AJAX data source", {
   expect_equal(config$column_defs[[1]]$targets, 0)
   expect_s3_class(config$initial_data, "data.frame")
   expect_equal(nrow(config$initial_data), 0)
-  expect_equal(colnames(config$initial_data), c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
+  expect_equal(colnames(config$initial_data), c("Actions", "VegBank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
   expect_true(is.function(config$ajax))
   ajax_env <- environment(config$ajax)
   spec <- ajax_env$data_source_spec
@@ -50,7 +50,7 @@ test_that("process_project_data formats normalized data", {
   expect_equal(nrow(result), 3)
   expect_true(all(grepl("<button", result$Actions)))
   expect_equal(
-    result$`Vegbank Code`,
+    result$`VegBank Code`,
     vapply(c("pj.339", "pj.10559", "pj.11008"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE)
   )
   # Project names (clean_column_data capitalises first letter)
@@ -81,5 +81,5 @@ test_that("process_project_data handles empty input", {
   result <- process_project_data(vegbankweb:::PROJECT_TABLE_SCHEMA_TEMPLATE)
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
-  expect_equal(colnames(result), c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
+  expect_equal(colnames(result), c("Actions", "VegBank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
 })

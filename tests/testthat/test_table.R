@@ -1,18 +1,32 @@
 load_table_module_env <- function() {
-  candidates <- c(
-    testthat::test_path("..", "..", "R", "table.R"),
-    file.path(system.file("tests", package = "vegbankweb"), "..", "vegbankweb", "R", "table.R"),
-    file.path(system.file(package = "vegbankweb"), "R", "table.R")
-  )
+  r_dir <- testthat::test_path("..", "..", "R")
 
-  candidates <- unique(normalizePath(candidates[file.exists(candidates)], mustWork = FALSE))
+  find_r_file <- function(name) {
+    candidates <- c(
+      file.path(r_dir, name),
+      file.path(system.file("tests", package = "vegbankweb"), "..", "vegbankweb", "R", name),
+      file.path(system.file(package = "vegbankweb"), "R", name)
+    )
+    candidates <- unique(normalizePath(candidates[file.exists(candidates)], mustWork = FALSE))
+    candidates
+  }
 
-  if (!length(candidates)) {
+  table_candidates <- find_r_file("table.R")
+  if (!length(table_candidates)) {
     testthat::skip("table.R source not available for create_table tests")
   }
 
   table_env <- new.env(parent = baseenv())
-  sys.source(candidates[[1]], envir = table_env)
+
+  # resource_registry.R must be loaded first because load_svg_icon() and
+  # DETAIL_ICONS are defined there; table.R calls load_svg_icon() at source
+  # time to build the .BTN_ICON_* constants.
+  registry_candidates <- find_r_file("resource_registry.R")
+  if (length(registry_candidates)) {
+    sys.source(registry_candidates[[1]], envir = table_env)
+  }
+
+  sys.source(table_candidates[[1]], envir = table_env)
   table_env
 }
 

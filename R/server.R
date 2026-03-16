@@ -1,4 +1,4 @@
-#' Shiny Server for Vegbank Web Application
+#' Shiny Server for VegBank Web Application
 #'
 #' Initializes server-side functionality for data visualization and interactivity.
 #'

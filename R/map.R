@@ -6,6 +6,21 @@
 #' @noRd
 MAP_DATA_FETCH_LIMIT <- 1000000L
 
+.MAP_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p("This map shows all VegBank plot observation locations. Each pin represents one or more observations at that coordinate."),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Navigate:"), " drag to pan; scroll or use the +/\u2212 buttons to zoom."),
+      htmltools::tags$li(htmltools::tags$strong("Clusters:"), " circles with a number indicate grouped nearby plots. Click a cluster to zoom in and expand it."),
+      htmltools::tags$li(htmltools::tags$strong("Markers:"), " author plot observation codes are listed in the label below each marker. Click a code link to open that plot\u2019s details."),
+      htmltools::tags$li(htmltools::tags$strong("Jump from table:"), " clicking the Map button on any row in the Plots table flies the map to that plot and points to its location."),
+      htmltools::tags$li(htmltools::tags$strong("Filtering:"), " is not supported. You can only view all of the plots in VegBank simultaneously."),
+    )
+  ))
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
 # ---- Data Fetching ----
 
 #' Fetch plot observations for the map
@@ -245,7 +260,8 @@ build_leaflet_map <- function(data_grouped, map_defaults, center_lng, center_lat
       labelOptions = create_marker_label_options(),
       clusterOptions = leaflet::markerClusterOptions(disableClusteringAtZoom = 17)
     ) |>
-    add_zoom_control()
+    add_zoom_control() |>
+    add_map_help_control()
 }
 
 #' Create marker label options for consistent styling
@@ -337,6 +353,27 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
 
 # ---- Zoom Control ----
 
+#' Add a help instructions control to a leaflet map
+#'
+#' Injects a square \u24d8 button above the zoom controls (top-left corner).
+#' Clicking the button opens a Bootstrap popover with usage instructions;
+#' clicking again (or outside) dismisses it.
+#'
+#' @param map A leaflet map object
+#' @return The leaflet map object with a help control added
+#'
+#' @importFrom htmlwidgets onRender
+#' @noRd
+add_map_help_control <- function(map) {
+  map |> htmlwidgets::onRender(paste0(
+    "function(el, x) { window.vbMapHelpControl(this, el, '",
+    .BTN_ICON_INFO,
+    "', '",
+    .MAP_HELP_CONTENT,
+    "'); }"
+  ))
+}
+
 #' Add a custom zoom control to a leaflet map
 #'
 #' @param map A leaflet map object
@@ -345,47 +382,5 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
 #' @importFrom htmlwidgets onRender
 #' @noRd
 add_zoom_control <- function(map) {
-  map |> htmlwidgets::onRender("
-    function(el, x) {
-      // Create map reference
-      var map = this;
-
-      // Create zoom control
-      var zoomControl = L.control({position: 'bottomleft'});
-      zoomControl.onAdd = function(map) {
-        var div = L.DomUtil.create('div', 'zoom-control');
-        div.style.background = 'white';
-        div.style.padding = '5px';
-        div.style.border = '1px solid #ccc';
-        div.innerHTML = 'Zoom: ' + map.getZoom();
-        return div;
-      };
-      zoomControl.addTo(map);
-
-      // Add event listeners with debouncing
-      var updateTimeout;
-      map.on('zoomend', function() {
-        // Update UI immediately
-        document.getElementsByClassName('zoom-control')[0].innerHTML = 'Zoom: ' + map.getZoom();
-
-        // Debounce Shiny communication
-        clearTimeout(updateTimeout);
-        updateTimeout = setTimeout(function() {
-          Shiny.setInputValue('map_zoom', map.getZoom(), {priority: 'event'});
-        }, 300);
-      });
-
-      map.on('moveend', function() {
-        var center = map.getCenter();
-
-        // Debounce Shiny communication
-        clearTimeout(updateTimeout);
-        updateTimeout = setTimeout(function() {
-          Shiny.setInputValue('map_center',
-                          {lat: center.lat, lng: center.lng},
-                          {priority: 'event'});
-        }, 300);
-      });
-    }
-  ")
+  map |> htmlwidgets::onRender("function(el, x) { window.vbMapBindShinyInputs(this, el); }")
 }

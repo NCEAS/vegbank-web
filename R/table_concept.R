@@ -205,7 +205,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 
   result <- data.frame(
     Actions = actions,
-    `Vegbank Code` = vapply(concept_codes, htmltools::htmlEscape, character(1)),
+    `VegBank Code` = vapply(concept_codes, htmltools::htmlEscape, character(1)),
     Name = vapply(display_names, htmltools::htmlEscape, character(1)),
     Status = status_badges,
     Level = vapply(levels, htmltools::htmlEscape, character(1)),
@@ -239,7 +239,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 create_concept_column_defs <- function(detail_input_id) {
   list(
     list(targets = 0, width = "10%", orderable = FALSE, searchable = FALSE), # Actions
-    list(targets = 1, width = "12%", orderable = TRUE), # Vegbank Code
+    list(targets = 1, width = "12%", orderable = TRUE), # VegBank Code
     list(targets = 2, width = "23%", orderable = TRUE), # Name
     list(targets = 3, width = "10%", className = "dt-center", orderable = FALSE), # Status
     list(targets = 4, width = "10%", className = "dt-center", orderable = FALSE), # Level
@@ -307,6 +307,40 @@ get_concept_config <- function(concept_type) {
   config
 }
 
+.PLANT_TABLE_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p("This table lists plant taxa in VegBank's taxonomic concept hierarchy. Each row is a single plant concept."),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description."),
+      htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations containing this taxon."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code, Plant Concept name, and Plots support sorting."),
+      htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plant in an overlay."),
+      htmltools::tags$li(htmltools::tags$strong("Status:"), " indicates whether a concept is currently accepted, not current, or doesn't have a status."),
+      htmltools::tags$li(htmltools::tags$strong("Level:"), " the taxonomic rank (species, genus, family, etc.)."),
+      htmltools::tags$li(htmltools::tags$strong("Reference:"), " the authoritative classification source for this concept."),
+    )
+  ))
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
+.COMMUNITY_TABLE_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p("This table lists vegetation community concepts in VegBank's classification hierarchy. Each row is a single community type."),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description."),
+      htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations classified to this community."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code, Community Concept name, and Plots support sorting."),
+      htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the community in an overlay."),
+      htmltools::tags$li(htmltools::tags$strong("Status:"), " indicates whether a concept is currently accepted, not current, or doesn't have a status."),
+      htmltools::tags$li(htmltools::tags$strong("Level:"), " the vegetation hierarchy level (class, group, formation, alliance, association, etc.)."),
+      htmltools::tags$li(htmltools::tags$strong("Reference:"), " the authoritative classification source for this concept."),
+    )
+  ))
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
 CONCEPT_TABLE_SPECS <- local({
   specs <- lapply(CONCEPT_CONFIG, function(config) {
     schema_template <- build_schema_template(config$fields)
@@ -314,7 +348,7 @@ CONCEPT_TABLE_SPECS <- local({
 
     # Map: col index -> field for sorting
     sort_field_map <- list(
-      "1" = "default", # Vegbank Code
+      "1" = "default", # VegBank Code
       "2" = config$name_field, # Name
       "6" = "obs_count" # Plots
     )
@@ -336,8 +370,19 @@ CONCEPT_TABLE_SPECS <- local({
         sort_field_map = sort_field_map
       ),
       page_length = config$page_length,
-      options = list(),
-      datatable_args = list(),
+      search_placeholder = if (config$concept_type == "plant") {
+        "by plant name, code, VegBank code, or description\u2026"
+      } else {
+        "by community name, code, VegBank code, or description\u2026"
+      },
+      options = list(
+        dom = "Bfrtip",
+        buttons = I(list(make_help_button_js(
+          if (config$concept_type == "plant") "Plants Table" else "Communities Table",
+          if (config$concept_type == "plant") .PLANT_TABLE_HELP_CONTENT else .COMMUNITY_TABLE_HELP_CONTENT
+        )))
+      ),
+      datatable_args = list(extensions = "Buttons"),
       initial_display = process_concept_data(schema_template, concept_type = config$concept_type)
     )
   })

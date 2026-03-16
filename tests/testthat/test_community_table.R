@@ -4,7 +4,7 @@ test_that("build_community_table delegates to concept builder with community con
   with_mocked_bindings(
     create_table = function(table_config) {
       expect_equal(length(table_config$column_defs), 8)
-      expect_equal(table_config$column_defs[[2]]$targets, 1) # Vegbank Code
+      expect_equal(table_config$column_defs[[2]]$targets, 1) # VegBank Code
       expect_equal(table_config$column_defs[[2]]$width, "12%")
       expect_equal(table_config$column_defs[[3]]$targets, 2) # Name
       expect_true(is.function(table_config$ajax))
@@ -34,13 +34,13 @@ test_that("community concept data includes community-specific values", {
                                                 concept_type = "community")
 
     expect_equal(colnames(result), c(
-      "Actions", "Vegbank Code", "Community Concept", "Status",
+      "Actions", "VegBank Code", "Community Concept", "Status",
       "Level", "Reference Source", "Plots", "Description"
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
     expect_equal(
-      result$`Vegbank Code`,
+      result$`VegBank Code`,
       vapply(c("cc.47882", "cc.38611", "cc.133"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE)
     )
     # Community names

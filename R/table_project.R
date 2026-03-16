@@ -19,13 +19,13 @@ PROJECT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 )
 
 PROJECT_TABLE_DISPLAY_TEMPLATE <- build_display_template(
-  column_names = c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description")
+  column_names = c("Actions", "VegBank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description")
 )
 
 create_project_column_defs <- function() {
   list(
     list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
-    list(targets = 1, width = "12%", orderable = TRUE), # pj_code (Vegbank Code)
+    list(targets = 1, width = "12%", orderable = TRUE), # pj_code (VegBank Code)
     list(targets = 2, width = "23%", orderable = TRUE), # Project Name
     list(targets = 3, width = "8%", className = "dt-right", type = "num", orderable = TRUE), # Plots (obs_count)
     list(targets = 4, width = "12%", orderable = FALSE), # Started
@@ -83,7 +83,7 @@ process_project_data <- function(project_data) {
 
   data.frame(
     "Actions" = actions,
-    "Vegbank Code" = vapply(pj_codes, htmltools::htmlEscape, character(1)),
+    "VegBank Code" = vapply(pj_codes, htmltools::htmlEscape, character(1)),
     "Project" = vapply(names, htmltools::htmlEscape, character(1)),
     "Plots" = obs_count_links,
     "Started" = vapply(starts, htmltools::htmlEscape, character(1)),
@@ -113,6 +113,20 @@ normalize_project_data <- create_normalizer(PROJECT_TABLE_SCHEMA_TEMPLATE, na_to
 #' @noRd
 coerce_project_page <- create_coercer(PROJECT_TABLE_SCHEMA_TEMPLATE)
 
+.PROJECT_TABLE_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p("This table lists all VegBank projects. Projects group related plot observations collected under a common study or survey."),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, description, or VegBank code."),
+      htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations belonging to this project."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code, Project name, and Plots support sorting."),
+      htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the project in an overlay."),
+    )
+  ))
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
 PROJECT_TABLE_SPEC <- list(
   table_id = "proj_table",
   resource = "projects",
@@ -128,13 +142,17 @@ PROJECT_TABLE_SPEC <- list(
     clean_names = FALSE,
     clean_rows_fn = sanitize_dt_rows,
     sort_field_map = list(
-      "1" = "default",           # Vegbank Code
+      "1" = "default",           # VegBank Code
       "2" = "project_name",      # Project (sort by name)
       "3" = "obs_count"          # Plots (sort by obs_count)
     )
   ),
   page_length = NULL,
-  options = list(),
-  datatable_args = list(),
+  search_placeholder = "by name, description, or VegBank code\u2026",
+  options = list(
+    dom = "Bfrtip",
+    buttons = I(list(make_help_button_js("Projects Table", .PROJECT_TABLE_HELP_CONTENT)))
+  ),
+  datatable_args = list(extensions = "Buttons"),
   initial_display = PROJECT_TABLE_DISPLAY_TEMPLATE
 )

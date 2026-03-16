@@ -1,4 +1,4 @@
-/* Vegbank Web Application Custom Styles */
+/* VegBank Web Application Custom Styles */
 
 :root {
   font-family: Inter, sans-serif !important;
@@ -8,7 +8,7 @@
   /* Navbar height - responsive to mobile collapse */
   --navbar-height: 56px;
 
-  /* Vegbank brand colors */
+  /* VegBank brand colors */
   --vb-green: hsl(153, 31%, 25%);
   --vb-green-medium: hsl(153, 31%, 45%);
 
@@ -161,10 +161,46 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   font-weight: 500 !important;
 }
 
+/* Search bar width — mobile: default, tablet: 1.5×, large screens: 2× */
+@media (min-width: 768px) {
+  .dataTables_filter input {
+    width: 300px !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .dataTables_filter input {
+    width: 450px !important;
+  }
+}
+
 /* Icon buttons in DT cells — keeps SVG and label on the same baseline */
 .dt-icon-btn {
   display: inline-flex;
   align-items: center;
+}
+
+/* SVG sizing for row action buttons (Details / Map) */
+.dt-icon-btn svg {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+/* SVG sizing for the toolbar download button */
+.vb-plot-download svg {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+/* SVG sizing for the toolbar help (ⓘ) button */
+.vb-help-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .datatables .dataTables_wrapper div.dataTables_info {
@@ -195,6 +231,13 @@ table.dataTable tbody tr.selected-entity:hover,
 /* Target the nested divs that create the loading animation */
 .dataTables_processing > div > div {
   background-color: #72B9A2 !important;
+}
+
+/* Map help control button — flex-center the SVG icon within the leaflet-bar <a> */
+.vb-map-help-control a.vb-map-help-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Description column in DataTables */
@@ -323,7 +366,7 @@ table.dataTable tbody tr.selected-entity:hover,
   border-left: 1px solid rgba(40, 70, 94, 0.15);
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12), -2px 0 8px rgba(0, 0, 0, 0.08);
   z-index: 1050;
-  padding: 20px;
+  padding: 0 20px 0;
   transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -331,15 +374,60 @@ table.dataTable tbody tr.selected-entity:hover,
   right: -100vw !important;
 }
 
-#detail-overlay::before {
-  content: '';
+#detail-type-banner {
   position: sticky;
-  top: -20px;
-  display: block;
-  margin: -20px -20px 12px;
-  height: 4px;
+  top: 0;
+  margin: 0 -20px 16px;
+  height: 46px;
+  padding: 0 10px 0 14px;
   background: linear-gradient(90deg, var(--vb-green), hsl(160, 29%, 58%));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
   z-index: 1;
+}
+
+#detail-type-banner .detail-type-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+#detail-type-banner .detail-type-icon > svg {
+  /* !important ensures these beat any width/height attributes on the SVG element
+     (e.g. potrace-generated icons with width="256pt"). Colour is handled via
+     currentColor, which inherits the banner's color: #fff. */
+  width: 22px !important;
+  height: 22px !important;
+}
+
+#detail-type-banner .detail-type-label {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#detail-type-banner .btn-close {
+  margin-left: auto;
+  flex-shrink: 0;
+  /* Override Bootstrap's default black X with a white one, avoiding filter which
+     would also invert any background-color we set on hover. */
+  --bs-btn-close-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23ffffff' d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 13.293.293a1 1 0 1 1 1.414 1.414L9.414 8l5.293 5.293a1 1 0 0 1-1.414 1.414L8 9.414l-5.293 5.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 2.707a1 1 0 0 1 0-1.414z'/%3E%3C/svg%3E");
+  opacity: 0.85;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+#detail-type-banner .btn-close:hover,
+#detail-type-banner .btn-close:focus {
+  opacity: 1 !important;
+  background-color: var(--vb-green) !important;
+  box-shadow: none !important;
 }
 
 /* Mobile: full width */
@@ -433,8 +521,6 @@ table.dataTable tbody tr.selected-entity:hover,
   min-width: 0;
   overflow-wrap: break-word;
 }
-
-/* ==================== home PAGE ==================== */
 
 /* Strip horizontal padding from the two ancestor containers that constrain
    the Home tab's width (bslib gap-spacing wrapper and Bootstrap container-fluid).
@@ -575,7 +661,19 @@ table.dataTable tbody tr.selected-entity:hover,
   }
 }
 
-/* Partner / affiliation logos */
+.vb-table-help-popover {
+  max-width: 340px;
+}
+
+.vb-table-help-popover .popover-body ul {
+  padding-left: 1.1rem;
+  margin-bottom: 0;
+}
+
+.vb-table-help-popover .popover-body p {
+  margin-bottom: 0.5rem;
+}
+
 .vb-partner-logos {
   display: flex;
   justify-content: center;
@@ -583,7 +681,6 @@ table.dataTable tbody tr.selected-entity:hover,
   gap: 3rem;
   flex-wrap: wrap;
   padding: 2.5rem 0 3rem;
-  /* border-top: 1px solid var(--border-subtle); */
 }
 
 .vb-partner-logo-link {

@@ -1,4 +1,4 @@
-// Vegbank Web Application JavaScript
+// VegBank Web Application JavaScript
 
 // Application constants - injected from R
 // window.DOWNLOAD_MAX_RECORDS is set inline in ui.R
@@ -47,6 +47,7 @@ var pendingTableStates = [];
 var pendingHighlight = null; // { tableId, rowIndex }
 var currentHighlightTableId = null; // Track which table the highlight belongs to
 var currentHighlightRowIndex = null; // Track which row index is highlighted within the table
+
 
 // Check for highlight params in URL and set as pending highlight
 (function() {
@@ -461,6 +462,98 @@ function setNavbarDisabled(disabled) {
 }
 
 setNavbarDisabled(true);
+
+// Binds map_zoom and map_center Shiny inputs with debouncing.
+window.vbMapBindShinyInputs = function(map, el) {
+  var updateTimeout;
+  map.on('zoomend', function() {
+    clearTimeout(updateTimeout);
+    updateTimeout = setTimeout(function() {
+      Shiny.setInputValue('map_zoom', map.getZoom(), {priority: 'event'});
+    }, 300);
+  });
+
+  map.on('moveend', function() {
+    var center = map.getCenter();
+    clearTimeout(updateTimeout);
+    updateTimeout = setTimeout(function() {
+      Shiny.setInputValue('map_center', {lat: center.lat, lng: center.lng}, {priority: 'event'});
+    }, 300);
+  });
+};
+
+// Help/instructions button control — adds a square ⓘ button above the zoom controls
+// (top-left) that opens a Bootstrap popover with usage instructions.
+window.vbMapHelpControl = function(map, el, btnInnerHtml, contentHtml) {
+  var helpBtn = null;
+  var helpControl = L.control({position: 'topleft'});
+  helpControl.onAdd = function() {
+    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control vb-map-help-control');
+    helpBtn = L.DomUtil.create('a', 'vb-map-help-btn vb-help-btn', container);
+    helpBtn.href = '#';
+    helpBtn.setAttribute('role', 'button');
+    helpBtn.setAttribute('title', 'About this map');
+    helpBtn.setAttribute('aria-label', 'About this map');
+    helpBtn.innerHTML = btnInnerHtml;
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.on(helpBtn, 'click', L.DomEvent.preventDefault);
+    return container;
+  };
+  helpControl.addTo(map);
+
+  // Move the help control to the top of the top-left stack (above zoom +/-)
+  var topLeft = el.querySelector('.leaflet-top.leaflet-left');
+  if (topLeft && topLeft.children.length > 1) {
+    topLeft.insertBefore(topLeft.lastElementChild, topLeft.firstElementChild);
+  }
+
+  if (helpBtn && window.vbHelpButton) {
+    window.vbHelpButton(helpBtn, '<strong>Map</strong>', contentHtml);
+  }
+};
+
+// Shared helper — set up a toggleable info popover on a DT help button.
+// Called from each table's DT button init callback.
+var _vbClickHandlerRegistered = false;
+window.vbHelpButton = function(btn, title, contentHtml) {
+  if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
+  // Normalise: DT Buttons passes a jQuery object; map help passes a plain element.
+  if (btn && typeof btn.querySelector !== 'function') btn = btn[0];
+  if (!btn) return;
+  var iconSvg = btn.querySelector('svg');
+  if (!iconSvg) return;
+  var infoHtml = iconSvg.outerHTML;
+  var closeHtml = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>';
+  var pop = new bootstrap.Popover(btn, {
+    trigger: 'manual',
+    html: true,
+    placement: 'bottom',
+    popperConfig: function(defaultConfig) {
+      defaultConfig.placement = 'bottom-start';
+      return defaultConfig;
+    },
+    customClass: 'vb-table-help-popover',
+    title: title,
+    content: contentHtml
+  });
+  btn.addEventListener('click', function(e) { e.stopPropagation(); pop.toggle(); });
+  btn.addEventListener('shown.bs.popover', function() { iconSvg.outerHTML = closeHtml; iconSvg = btn.querySelector('svg'); });
+  btn.addEventListener('hidden.bs.popover', function() { if (iconSvg) iconSvg.outerHTML = infoHtml; iconSvg = btn.querySelector('svg'); });
+  if (!_vbClickHandlerRegistered) {
+    _vbClickHandlerRegistered = true;
+    document.addEventListener('click', function(e) {
+      document.querySelectorAll('.vb-help-btn').forEach(function(helpBtn) {
+        var instance = bootstrap.Popover.getInstance(helpBtn);
+        if (!instance) return;
+        var popId = helpBtn.getAttribute('aria-describedby');
+        var popEl = popId ? document.getElementById(popId) : null;
+        if (!helpBtn.contains(e.target) && (!popEl || !popEl.contains(e.target))) {
+          instance.hide();
+        }
+      });
+    });
+  }
+};
 
 document.addEventListener('DOMContentLoaded', function() {
   setNavbarDisabled(true);
@@ -1040,8 +1133,22 @@ $(document).on('stateLoaded.dt', function(e, settings, data) {
   }
 });
 
+// DETAIL_ICONS and DETAIL_TYPE_LABELS are injected by R from RESOURCE_REGISTRY
+// (see ui.R constants_script). Icons are processed at package load time — no
+// browser fetches needed.
 Shiny.addCustomMessageHandler('updateDetailType', function(message) {
   const type = message.type;
+
+  // Update the sticky banner with the R-injected icon and display label.
+  var iconEl = document.getElementById('detail-type-icon');
+  var labelEl = document.getElementById('detail-type-label');
+  if (iconEl && window.DETAIL_ICONS && window.DETAIL_ICONS[type]) {
+    iconEl.innerHTML = window.DETAIL_ICONS[type];
+  }
+  if (labelEl && DETAIL_TYPE_LABELS[type]) {
+    labelEl.textContent = DETAIL_TYPE_LABELS[type];
+  }
+
   const plotCards = document.getElementById('plot-details-cards');
   const communityConceptCards = document.getElementById('community-concept-details-cards');
   const communityClassificationCards = document.getElementById('community-classification-details-cards');
@@ -1158,17 +1265,19 @@ Shiny.addCustomMessageHandler('triggerDownload', function(message) {
   }
 });
 
-// Enable/disable the DT download button
+// Enable/disable the DT download button (target by class to be index-independent)
 Shiny.addCustomMessageHandler('setDownloadButtonState', function(message) {
   try {
     var wrapper = document.getElementById('plot_table');
     if (wrapper) {
-      var table = $(wrapper).find('table').DataTable();
+      var tableEl = $(wrapper).find('table');
+      if (!tableEl.length || !$.fn.DataTable.isDataTable(tableEl)) return;
+      var table = tableEl.DataTable();
       if (table && table.buttons) {
         if (message.enabled) {
-          table.buttons(0).enable();
+          table.buttons('.vb-plot-download').enable();
         } else {
-          table.buttons(0).disable();
+          table.buttons('.vb-plot-download').disable();
         }
       }
     }

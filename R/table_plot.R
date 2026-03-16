@@ -28,7 +28,7 @@ PLOT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 
 PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
   "Actions",
-  "Vegbank Code",
+  "VegBank Code",
   "Author Code",
   "Location",
   "Top Taxa",
@@ -45,7 +45,7 @@ PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
 create_plot_column_defs <- function() {
   list(
     list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
-    list(targets = 1, width = "10%", orderable = TRUE), # Vegbank Code
+    list(targets = 1, width = "10%", orderable = TRUE), # VegBank Code
     list(targets = 2, width = "10%", orderable = TRUE), # Author Code
     list(targets = 3, width = "15%", orderable = FALSE), # Location
     list(targets = 4, width = "25%", orderable = FALSE), # Top Taxa
@@ -72,7 +72,7 @@ build_plot_table <- function() {
 #' For collection citations (datasets), uses AJAX table with vb_code query parameter.
 #'
 #' @param vb_code Optional VegBank code for cross-resource filtering (e.g., "pj.340", "ob.2948")
-#' @param filter_type Optional filter type ("plant concept", "community concept", "project", 
+#' @param filter_type Optional filter type ("plant concept", "community concept", "project",
 #'                    "party", "single-entity-citation", "collection-citation")
 #' @return A DT::datatable object
 #' @noRd
@@ -116,14 +116,14 @@ build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL) {
             options = utils::modifyList(
               spec$options %||% list(),
               list(
-                scrollY = "calc(100vh - 300px)",  # Accommodate citation alert notification
-                serverSide = FALSE,  # Disable server-side processing
-                searching = FALSE,    # No need to search a single row
-                paging = FALSE        # No pagination for single row
+                scrollY = "calc(100vh - 300px)", # Accommodate citation alert notification
+                serverSide = FALSE, # Disable server-side processing
+                searching = FALSE, # No need to search a single row
+                paging = FALSE # No pagination for single row
               )
             ),
             datatable_args = spec$datatable_args,
-            escape = FALSE  # Allow HTML in cells (already escaped by process functions)
+            escape = FALSE # Allow HTML in cells (already escaped by process functions)
           )
 
           return(create_table(static_config))
@@ -184,7 +184,7 @@ process_plot_data <- function(plot_data) {
 
   data.frame(
     "Actions" = actions_html,
-    "Vegbank Code" = vapply(ob_codes, htmltools::htmlEscape, character(1)),
+    "VegBank Code" = vapply(ob_codes, htmltools::htmlEscape, character(1)),
     "Author Code" = vapply(author_codes, htmltools::htmlEscape, character(1)),
     "Location" = locations,
     "Top Taxa" = top_taxa_html,
@@ -497,6 +497,26 @@ normalize_plot_data <- create_normalizer(
 #' Coerce VegBank plot response to a data frame
 #' @noRd
 coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
+
+.PLOT_TABLE_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p(
+      "This table lists all plot observations in VegBank. Each row is a single observation."
+    ),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box (top right) to filter by plant concept, community type, author code, VegBank code, or location."),
+      htmltools::tags$li(htmltools::tags$strong("Filter by resource:"), " clicking a plot count link from a Project, Party, Community, or Plant view will pre-filter this table to contain only those plots. You can then filter further with the search bar."),
+      htmltools::tags$li(htmltools::tags$strong("Download:"), " once the table is filtered to within 20,000 entries, the Download CSV button becomes active. Open the README.txt file after downloading or visit the Download page in the About menu to learn how to combine the data."),
+      htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plot in an overlay."),
+      htmltools::tags$li(htmltools::tags$strong("Show on map:"), " click the Map button to jump to the plot location on the Map tab."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code and Author Code support sorting."),
+    )
+  ))
+  # Collapse to single line and escape single quotes for embedding in a JS single-quoted string
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
 PLOT_TABLE_SPEC <- list(
   table_id = "plot_table",
   resource = "plot-observations",
@@ -513,25 +533,26 @@ PLOT_TABLE_SPEC <- list(
     clean_rows_fn = sanitize_dt_rows,
     query = list(with_nested = "TRUE"),
     sort_field_map = list(
-      "1" = "default", # Vegbank Code
+      "1" = "default", # VegBank Code
       "2" = "author_obs_code"
     )
   ),
   page_length = NULL,
+  search_placeholder = "by plant, community, author code, VegBank code, or location\u2026",
   options = list(
     scrollY = "calc(100vh - 235px)",
     dom = "Bfrtip",
     buttons = I(list(
+      make_help_button_js("Plots Table", .PLOT_TABLE_HELP_CONTENT),
       list(
         extend = "csv",
         text = paste0(.BTN_ICON_DOWNLOAD, "Download CSV (up to ", format(DOWNLOAD_MAX_RECORDS, big.mark = ","), " entries)"),
-        className = "btn btn-sm btn-outline-info",
+        className = "btn btn-sm btn-outline-info vb-plot-download",
         action = DT::JS("function(e, dt, node, config) { Shiny.setInputValue('plot_download_trigger', Math.random()); }")
       )
     )),
     initComplete = DT::JS(
       "function(settings, json) {
-        // Signal that table is ready so server can set button state
         Shiny.setInputValue('plot_table_ready', Math.random());
       }"
     )

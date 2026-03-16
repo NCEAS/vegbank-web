@@ -9,13 +9,21 @@
 #'
 #' @noRd
 build_home_panel <- function() {
-  hero_images <- list(
-    list(src = "assets/hero_chiso_mountains.jpg",  alt = "Chisos Mountains landscape"),
-    list(src = "assets/hero_crater_lake.jpg",      alt = "Crater Lake surrounded by forest"),
-    list(src = "assets/hero_joshua_tree.jpg",      alt = "Joshua Tree desert landscape"),
-    list(src = "assets/hero_sage_brush.jpg",       alt = "Sage brush steppe landscape")
-  )
-  hero <- hero_images[[sample(length(hero_images), 1L)]]
+  hero_dir <- system.file("shiny", "www", "heros", package = "vegbankweb")
+  hero_files <- if (nzchar(hero_dir)) list.files(hero_dir, pattern = "^hero_", full.names = FALSE) else character(0)
+  hero_images <- lapply(hero_files, function(f) {
+    stem <- tools::file_path_sans_ext(f)
+    stem <- sub("^hero_", "", stem)
+    stem <- gsub("[_-]", " ", stem)
+    alt  <- paste0(toupper(substring(stem, 1, 1)), substring(stem, 2))
+    list(src = paste0("assets/heros/", f), alt = alt)
+  })
+  if (length(hero_images) == 0L) {
+    # Fallback: no hero images found, render without image
+    hero <- NULL
+  } else {
+    hero <- hero_images[[sample(length(hero_images), 1L)]]
+  }
 
   bslib::nav_panel(
     title = "Home",
@@ -25,7 +33,7 @@ build_home_panel <- function() {
       # Hero image with gradient overlay and text
       htmltools::tags$div(
         class = "vb-hero",
-        htmltools::tags$img(
+        if (!is.null(hero)) htmltools::tags$img(
           src = hero$src,
           alt = hero$alt,
           class = "vb-hero-img"

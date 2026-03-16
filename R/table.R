@@ -124,44 +124,34 @@ clean_column_dates <- function(data, column_name, default_value = "Unspecified",
 }
 
 
-#' Load and resize an SVG icon from the package www folder
-#'
-#' Reads an SVG file from inst/shiny/www/ (using the icon_<name>.svg naming
-#' convention), normalises its dimensions, maps hardcoded dark colours to
-#' currentColor so the icon inherits button text colour on hover, and injects
-#' aria-hidden plus an inline style into the root svg element.
-#'
-#' @param name Icon filename stem (e.g. "eye" for icon_eye.svg)
-#' @param size Icon width/height in pixels
-#' @param style Inline CSS applied to the svg element
-#' @return A plain character string of the processed SVG markup
-#' @noRd
-load_btn_icon <- function(name, size = 12, style = "margin-right:4px;flex-shrink:0") {
-  path <- system.file("shiny", "www", paste0("icon_", name, ".svg"), package = "vegbankweb")
-  if (!nzchar(path)) return("")
-  svg <- paste(readLines(path, warn = FALSE), collapse = "")
-  # Strip XML declaration
-  svg <- sub("<\\?xml[^?]*\\?>", "", svg)
-  # Normalise large pixel dimensions (e.g. 800px) to the desired icon size
-  svg <- gsub('(width|height)="[0-9]+px"', sprintf('\\1="%dpx"', size), svg, perl = TRUE)
-  # Also handle plain-number dimensions used by some icon sets (e.g. width="16")
-  svg <- gsub('width="16"', sprintf('width="%d"', size), svg, fixed = TRUE)
-  svg <- gsub('height="16"', sprintf('height="%d"', size), svg, fixed = TRUE)
-  # Map hardcoded dark fill/stroke colours to currentColor
-  svg <- gsub('fill="#[0-9A-Fa-f]{6}"', 'fill="currentColor"', svg, perl = TRUE)
-  svg <- gsub('stroke="#[0-9A-Fa-f]{6}"', 'stroke="currentColor"', svg, perl = TRUE)
-  # Strip class attributes
-  svg <- gsub(' class="[^"]*"', "", svg)
-  # Inject aria-hidden and style into the root svg element
-  svg <- sub("<svg ", sprintf('<svg aria-hidden="true" style="%s" ', style), svg, fixed = TRUE)
-  svg
-}
+# Package-level button icon constants — read once at package load time.
+# Button icon constants — no inline styles needed; all sizing/spacing is
+# handled by CSS rules in vegbank_styles.css targeting .dt-icon-btn svg,
+# .vb-plot-download svg, and .vb-help-btn svg.
+.BTN_ICON_EYE      <- load_svg_icon("eye")
+.BTN_ICON_PIN      <- load_svg_icon("pin")
+.BTN_ICON_DOWNLOAD <- load_svg_icon("download")
+.BTN_ICON_INFO     <- load_svg_icon("info_circle")
 
-# Package-level icon constants — read once when the package is loaded.
-# All SVGs use currentColor so they inherit button text colour on hover.
-.BTN_ICON_EYE <- load_btn_icon("eye")
-.BTN_ICON_PIN <- load_btn_icon("pin")
-.BTN_ICON_DOWNLOAD <- load_btn_icon("download", size = 14, style = "margin-right:6px;flex-shrink:0")
+#' Generate a DT Buttons extension button definition for a toggleable help popover.
+#'
+#' @param title Plain-text table name shown bold in the popover header.
+#' @param content_html Pre-escaped single-line HTML string for the popover body.
+#'   Build with `htmltools::tagList`, collapse newlines, then escape single quotes.
+#' @return A `DT::JS` character object for inclusion in a `buttons` list.
+#' @noRd
+make_help_button_js <- function(title, content_html) {
+  safe_title <- gsub("'", "\\'", title, fixed = TRUE)
+  DT::JS(paste0(
+    "{text: '", .BTN_ICON_INFO, "',",
+    "className: 'btn btn-sm btn-outline-secondary vb-help-btn',",
+    "titleAttr: 'About this table',",
+    "action: function() {},",
+    "init: function(api, node, config) {",
+    "window.vbHelpButton(node, '<strong>", safe_title, "</strong>', '",
+    content_html, "');}}"
+  ))
+}
 
 #' Create action buttons for each row (R version)
 #'
@@ -633,7 +623,8 @@ build_remote_table_config <- function(column_defs,
                                       loading_label = NULL,
                                       page_length = NULL,
                                       options = list(),
-                                      datatable_args = list()) {
+                                      datatable_args = list(),
+                                      search_placeholder = NULL) {
   if (is.null(data_source_spec) || !is.list(data_source_spec)) {
     stop("data_source_spec must be a list")
   }
@@ -654,12 +645,17 @@ build_remote_table_config <- function(column_defs,
     "Loading data..."
   }
 
+  lang <- list(processing = processing_label)
+  if (!is.null(search_placeholder)) {
+    lang$searchPlaceholder <- search_placeholder
+  }
+
   remote_defaults <- list(
     serverSide = TRUE,
     lengthChange = FALSE,
     ordering = TRUE,
     searching = TRUE,
-    language = list(processing = processing_label)
+    language = lang
   )
 
   ajax_factory <- data_source_spec$ajax_factory %||% function(session) {
@@ -809,7 +805,8 @@ build_table_config_from_spec <- function(spec) {
     loading_label = spec$loading_label,
     page_length = spec$page_length,
     options = spec$options %||% list(),
-    datatable_args = spec$datatable_args
+    datatable_args = spec$datatable_args,
+    search_placeholder = spec$search_placeholder
   )
 
   if (!is.null(spec$ajax_factory)) {

@@ -626,12 +626,12 @@ userpreference_id,user_preference_id,User Preference ID
 userquery_id,user_query_id,User Query ID
 userrecordowner_id,user_record_owner_id,User Record Owner ID
 userregionalexp_id,user_regional_exp_id,User Regional Exp ID
-usnvc_exp,usnvc_exp,USNVC Explaination
+usnvc_exp,usnvc_exp,USNVC Explanation
 usr_id,usr_id,USR ID
-vb_exp,vb_exp,Vegbank Explaination
-vb_intention,vb_intention,Vegbank Intention
-veg_analysis_exp,veg_analysis_exp,Vegetation Analysis Explaination
-veg_sampling_exp,veg_sampling_exp,Vegetation Sampling Explaination
+vb_exp,vb_exp,VegBank Explanation
+vb_intention,vb_intention,VegBank Intention
+veg_analysis_exp,veg_analysis_exp,Vegetation Analysis Explanation
+veg_sampling_exp,veg_sampling_exp,Vegetation Sampling Explanation
 vegetation,vegetation,Vegetation
 versionimplemented,version_implemented,Version Implemented
 versiontext,version_text,Version Text
