@@ -665,6 +665,19 @@ table.dataTable tbody tr.selected-entity:hover,
   max-width: 340px;
 }
 
+.vb-table-help-popover {
+  border: none !important;
+}
+
+.vb-table-help-popover .popover-header {
+  color: var(--text-primary);
+  padding-top: 0.75rem;
+}
+
+.vb-table-help-popover .popover-header strong {
+  font-weight: 600 !important;
+}
+
 .vb-table-help-popover .popover-body ul {
   padding-left: 1.1rem;
   margin-bottom: 0;
