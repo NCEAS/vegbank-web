@@ -509,7 +509,7 @@ coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
       htmltools::tags$li(htmltools::tags$strong("Download:"), " once the table is filtered to within 20,000 entries, the Download CSV button becomes active. Open the README.txt file after downloading or visit the Download page in the About menu to learn how to combine the data."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plot in an overlay."),
       htmltools::tags$li(htmltools::tags$strong("Show on map:"), " click the Map button to jump to the plot location on the Map tab."),
-      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code and Author Code support sorting. Sort by multiple columns by holding shift and clicking multiple headers."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code and Author Code support sorting."),
     )
   ))
   # Collapse to single line and escape single quotes for embedding in a JS single-quoted string

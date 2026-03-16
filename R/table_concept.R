@@ -313,7 +313,7 @@ get_concept_config <- function(concept_type) {
     htmltools::tags$ul(
       htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description."),
       htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations containing this taxon."),
-      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; Name and Plots support sorting. Sort by multiple columns by holding shift and clicking multiple headers."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code, Plant Concept name, and Plots support sorting."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plant in an overlay."),
       htmltools::tags$li(htmltools::tags$strong("Status:"), " indicates whether a concept is currently accepted, not current, or doesn't have a status."),
       htmltools::tags$li(htmltools::tags$strong("Level:"), " the taxonomic rank (species, genus, family, etc.)."),
@@ -330,7 +330,7 @@ get_concept_config <- function(concept_type) {
     htmltools::tags$ul(
       htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description."),
       htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations classified to this community."),
-      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; Name and Plots support sorting. Sort by multiple columns by holding shift and clicking multiple headers."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code, Community Concept name, and Plots support sorting."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the community in an overlay."),
       htmltools::tags$li(htmltools::tags$strong("Status:"), " indicates whether a concept is currently accepted, not current, or doesn't have a status."),
       htmltools::tags$li(htmltools::tags$strong("Level:"), " the vegetation hierarchy level (class, group, formation, alliance, association, etc.)."),
