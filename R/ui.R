@@ -278,7 +278,9 @@ build_detail_overlay <- function() {
                    overlay.classList.add('closed');
                    document.body.classList.remove('overlay-open');
                    Shiny.setInputValue('close_details', true, {priority:'event'});",
-        class = "vb-close-btn"
+        class = "vb-close-btn",
+        `aria-label` = "Close details",
+        title = "Close details"
       )
     ),
     shiny::fluidRow(

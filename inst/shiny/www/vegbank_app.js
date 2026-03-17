@@ -520,6 +520,9 @@ window.vbHelpButton = function(btn, title, contentHtml, closeIconHtml) {
   // Normalise: DT Buttons passes a jQuery object; map help passes a plain element.
   if (btn && typeof btn.querySelector !== 'function') btn = btn[0];
   if (!btn) return;
+  // Guard against re-initialization on the same node (e.g. DataTable redraw).
+  if (btn.dataset.vbHelpInit === '1') return;
+  btn.dataset.vbHelpInit = '1';
   var infoSvg = btn.querySelector('svg');
   if (!infoSvg) return;
   // Inject close SVG alongside info SVG; CSS controls visibility via .vb-help-open
