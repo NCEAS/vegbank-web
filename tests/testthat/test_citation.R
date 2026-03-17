@@ -50,7 +50,8 @@ test_that("RESOURCE_REGISTRY detail types match show_detail_view switch cases", 
   # These are the resource_type values accepted by show_detail_view() in detail_view.R
   valid_detail_types <- c(
     "community-classification", "community-concept", "plot-observation",
-    "project", "party", "plant-concept", "reference", "cover-method", "stratum-method"
+    "project", "party", "plant-concept", "reference", "cover-method", "stratum-method",
+    "taxon-observation"
   )
   for (type in names(RESOURCE_REGISTRY)) {
     detail_type <- RESOURCE_REGISTRY[[type]]$detail_type

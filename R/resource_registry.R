@@ -116,6 +116,14 @@ RESOURCE_REGISTRY <- list(
     tab = "Plots",
     singular = "dataset",
     plural = "datasets"
+  ),
+  "taxon-observations" = list(
+    api_type = "taxon-observations",
+    detail_type = "taxon-observation",
+    vb_prefix = "to",
+    tab = "Plots",  # Taxon observations are accessed via the Plots tab (plot context)
+    singular = "taxon observation",
+    plural = "taxon observations"
   )
 )
 

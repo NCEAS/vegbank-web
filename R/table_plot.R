@@ -273,11 +273,11 @@ format_plot_taxa_list <- function(taxa_list, taxon_counts) {
     }
     links <- vapply(seq_len(nrow(taxa)), function(j) {
       name <- taxa[j, "name", drop = TRUE]
-      pc_code <- taxa[j, "pc_code", drop = TRUE]
+      to_code_val <- if ("to_code" %in% names(taxa)) taxa[j, "to_code", drop = TRUE] else NA_character_
       max_cover <- taxa[j, "max_cover", drop = TRUE]
       safe_name <- htmltools::htmlEscape(name)
-      name_link <- if (!is.null(pc_code) && nzchar(pc_code)) {
-        sprintf('<a href="#" class="dt-shiny-action" data-input-id="plant_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(pc_code, attribute = TRUE), safe_name)
+      name_link <- if (!is.null(to_code_val) && !is.na(to_code_val) && nzchar(to_code_val)) {
+        sprintf('<a href="#" class="dt-shiny-action" data-input-id="to_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(to_code_val, attribute = TRUE), safe_name)
       } else {
         sprintf("<span>%s</span>", safe_name)
       }

@@ -112,19 +112,21 @@ create_comm_class_details_ui <- function(result) {
       )
     )
 
-    if (has_valid_field_value(result, "class_notes")) {
-      rows <- append(rows, list(
-        htmltools::tags$tr(
-          htmltools::tags$td("Notes"),
-          htmltools::tags$td(class = "text-end", result$class_notes)
+    htmltools::tagList(
+      htmltools::tags$table(
+        class = "table table-sm table-striped table-hover",
+        style = "width: 100%; table-layout: fixed; word-break: break-word;",
+        htmltools::tags$tbody(rows)
+      ),
+      if (has_valid_field_value(result, "class_notes")) {
+        htmltools::tags$div(
+          style = "margin-top: 15px;",
+          create_section_header("Notes", "10px"),
+          htmltools::tags$div(
+            htmltools::htmlEscape(result$class_notes)
+          )
         )
-      ))
-    }
-
-    htmltools::tags$table(
-      class = "table table-sm table-striped table-hover",
-      style = "width: 100%; table-layout: fixed; word-break: break-word;",
-      htmltools::tags$tbody(rows)
+      }
     )
   })
 }
@@ -178,6 +180,13 @@ create_comm_class_interpretations_ui <- function(result) {
                 comm_name
               }
             ),
+            if ("notes" %in% names(interp) && has_valid_field_value(interp, "notes")) {
+              htmltools::tags$div(
+                style = "margin-top: 10px;",
+                create_section_header("Notes", "6px"),
+                htmltools::tags$div(htmltools::htmlEscape(interp$notes))
+              )
+            },
             htmltools::tags$table(
               class = "table table-sm table-striped table-hover",
               style = "margin-top: 5px; margin-bottom: 0; width: 100%; table-layout: fixed; word-break: break-word;",
@@ -210,12 +219,6 @@ create_comm_class_interpretations_ui <- function(result) {
                   htmltools::tags$tr(
                     htmltools::tags$td("Nomenclatural Type"),
                     htmltools::tags$td(class = "text-end", format_boolean(interp$nomenclatural_type))
-                  )
-                },
-                if ("notes" %in% names(interp) && has_valid_field_value(interp, "notes")) {
-                  htmltools::tags$tr(
-                    htmltools::tags$td("Notes"),
-                    htmltools::tags$td(class = "text-end", interp$notes)
                   )
                 }
               )

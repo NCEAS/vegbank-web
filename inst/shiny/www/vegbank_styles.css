@@ -196,11 +196,43 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   flex-shrink: 0;
 }
 
-/* SVG sizing for the toolbar help (ⓘ) button */
+/* SVG sizing for the toolbar help (info) button */
 .vb-help-btn svg {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+}
+
+/* Info/close icon crossfade transition on help buttons */
+.vb-help-btn .vb-help-info-icon,
+.vb-help-btn .vb-help-close-icon {
+  display: inline-flex;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  transform-origin: center;
+}
+
+.vb-help-btn .vb-help-close-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: rotate(-45deg) scale(0.7);
+}
+
+.vb-help-btn {
+  position: relative;
+}
+
+.vb-help-btn.vb-help-open .vb-help-info-icon {
+  opacity: 0;
+  transform: rotate(45deg) scale(0.7);
+}
+
+.vb-help-btn.vb-help-open .vb-help-close-icon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
 }
 
 .datatables .dataTables_wrapper div.dataTables_info {
@@ -412,19 +444,28 @@ table.dataTable tbody tr.selected-entity:hover,
   text-overflow: ellipsis;
 }
 
-#detail-type-banner .btn-close {
+#detail-type-banner .vb-close-btn {
   margin-left: auto;
   flex-shrink: 0;
-  /* Override Bootstrap's default black X with a white one, avoiding filter which
-     would also invert any background-color we set on hover. */
-  --bs-btn-close-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23ffffff' d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 13.293.293a1 1 0 1 1 1.414 1.414L9.414 8l5.293 5.293a1 1 0 0 1-1.414 1.414L8 9.414l-5.293 5.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 2.707a1 1 0 0 1 0-1.414z'/%3E%3C/svg%3E");
+  background: none;
+  border: none;
+  color: #ffffff;
+  line-height: 1;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.85;
   border-radius: 4px;
   transition: background-color 0.15s ease, opacity 0.15s ease;
+  cursor: pointer;
+  box-shadow: none !important;
 }
 
-#detail-type-banner .btn-close:hover,
-#detail-type-banner .btn-close:focus {
+#detail-type-banner .vb-close-btn:hover,
+#detail-type-banner .vb-close-btn:focus {
   opacity: 1 !important;
   background-color: var(--vb-green) !important;
   box-shadow: none !important;
@@ -663,6 +704,19 @@ table.dataTable tbody tr.selected-entity:hover,
 
 .vb-table-help-popover {
   max-width: 340px;
+}
+
+.vb-table-help-popover {
+  border: none !important;
+}
+
+.vb-table-help-popover .popover-header {
+  color: var(--text-primary);
+  padding-top: 0.75rem;
+}
+
+.vb-table-help-popover .popover-header strong {
+  font-weight: 600 !important;
 }
 
 .vb-table-help-popover .popover-body ul {

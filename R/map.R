@@ -369,6 +369,8 @@ add_map_help_control <- function(map) {
     "function(el, x) { window.vbMapHelpControl(this, el, '",
     .BTN_ICON_INFO,
     "', '",
+    .BTN_ICON_CLOSE,
+    "', '",
     .MAP_HELP_CONTENT,
     "'); }"
   ))

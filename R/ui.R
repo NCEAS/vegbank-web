@@ -272,12 +272,15 @@ build_detail_overlay <- function() {
         class = "detail-type-label",
         id = "detail-type-label"
       ),
-      shiny::actionButton("close_overlay", "",
+      shiny::actionButton("close_overlay",
+        htmltools::HTML(.BTN_ICON_CLOSE),
         onclick = "var overlay = document.getElementById('detail-overlay');
                    overlay.classList.add('closed');
                    document.body.classList.remove('overlay-open');
                    Shiny.setInputValue('close_details', true, {priority:'event'});",
-        class = "btn-close"
+        class = "vb-close-btn",
+        `aria-label` = "Close details",
+        title = "Close details"
       )
     ),
     shiny::fluidRow(
@@ -378,6 +381,16 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Name"), shiny::uiOutput("stratum_method_header")),
           bslib::card(bslib::card_header("Details"), shiny::uiOutput("stratum_method_details")),
           bslib::card(bslib::card_header("Stratum Types"), shiny::uiOutput("stratum_types"))
+        ),
+
+        # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "taxon-observation-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("taxon_obs_header")),
+          bslib::card(bslib::card_header("Observation Details"), shiny::uiOutput("taxon_obs_details")),
+          bslib::card(bslib::card_header("Taxon Importance"), shiny::uiOutput("taxon_obs_importance")),
+          bslib::card(bslib::card_header("Taxon Interpretations"), shiny::uiOutput("taxon_obs_interpretations"))
         )
       )
     )

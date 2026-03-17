@@ -49,7 +49,16 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
         "cover-method" =
           vegbankr::vb_get_cover_methods(vb_code, detail = "full", with_nested = TRUE),
         "stratum-method" =
-          vegbankr::vb_get_stratum_methods(vb_code, detail = "full", with_nested = TRUE)
+          vegbankr::vb_get_stratum_methods(vb_code, detail = "full", with_nested = TRUE),
+        "taxon-observation" = {
+          to_data <- vegbankr::vb_get_taxon_observations(vb_code, detail = "full", with_nested = TRUE)
+          if (is.null(to_data) || NROW(to_data) == 0) {
+            list()
+          } else {
+            ti_data <- vegbankr::vb_get_taxon_interpretations(vb_code, detail = "full")
+            list(taxon_obs = to_data, taxon_interps = ti_data)
+          }
+        }
       )
 
       if (length(result) == 0) {
@@ -108,6 +117,10 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$stratum_method_header <- shiny::renderUI(NULL)
       output$stratum_method_details <- shiny::renderUI(NULL)
       output$stratum_types <- shiny::renderUI(NULL)
+      output$taxon_obs_header <- shiny::renderUI(NULL)
+      output$taxon_obs_interpretations <- shiny::renderUI(NULL)
+      output$taxon_obs_details <- shiny::renderUI(NULL)
+      output$taxon_obs_importance <- shiny::renderUI(NULL)
 
       shiny::incProgress(0.5, "Processing details")
 
@@ -181,6 +194,13 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           output$stratum_method_header <- details$stratum_method_header
           output$stratum_method_details <- details$stratum_method_details
           output$stratum_types <- details$stratum_types
+        },
+        "taxon-observation" = {
+          details <- build_taxon_obs_details_view(result$taxon_obs, result$taxon_interps)
+          output$taxon_obs_header <- details$taxon_obs_header
+          output$taxon_obs_interpretations <- details$taxon_obs_interpretations
+          output$taxon_obs_details <- details$taxon_obs_details
+          output$taxon_obs_importance <- details$taxon_obs_importance
         }
       )
 

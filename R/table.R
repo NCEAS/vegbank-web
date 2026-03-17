@@ -93,7 +93,7 @@ clean_column_data <- function(data, column_name, default_value = "Unspecified") 
     cleaned <- ifelse(
       cleaned == default_value,
       cleaned,
-      paste0(toupper(substring(cleaned, 1, 1)), substring(cleaned, 2))
+      cap_first(cleaned)
     )
     cleaned
     # Column not present, return vector of default values
@@ -132,6 +132,7 @@ clean_column_dates <- function(data, column_name, default_value = "Unspecified",
 .BTN_ICON_PIN      <- load_svg_icon("pin")
 .BTN_ICON_DOWNLOAD <- load_svg_icon("download")
 .BTN_ICON_INFO     <- load_svg_icon("info_circle")
+.BTN_ICON_CLOSE    <- load_svg_icon("close")
 
 #' Generate a DT Buttons extension button definition for a toggleable help popover.
 #'
@@ -149,7 +150,7 @@ make_help_button_js <- function(title, content_html) {
     "action: function() {},",
     "init: function(api, node, config) {",
     "window.vbHelpButton(node, '<strong>", safe_title, "</strong>', '",
-    content_html, "');}}"
+    content_html, "', '", .BTN_ICON_CLOSE, "');}}"
   ))
 }
 

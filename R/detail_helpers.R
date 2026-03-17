@@ -92,7 +92,7 @@ get_field_display_names <- function() {
 #' @noRd
 append_units <- function(field_name, value) {
   # Skip if value is "Unspecified" or NA
-  if (is.null(value) || is.na(value) || identical(value, "Unspecified")) {
+  if (is.null(value) || is.na(value) || identical(value, "Unspecified") || identical(value, "")) {
     return(value)
   }
 
@@ -108,8 +108,11 @@ append_units <- function(field_name, value) {
     nonvascular_ht = " m",
     submerged_ht = " m",
     area = " m\u00B2",
+    taxon_inference_area = " m\u00B2",
     taxon_observation_area = " m\u00B2",
     stem_observation_area = " m\u00B2",
+    inference_area = " m\u00B2",
+    basal_area = " m\u00B2",
     azimuth = "\u00B0",
     slope_aspect = "\u00B0",
     min_slope_aspect = "\u00B0",
@@ -532,4 +535,13 @@ extract_nested_table <- function(row_df, column_name) {
   }
 
   bind_nested_rows(column[[1]])
+}
+
+#' Capitalize the First Letter of a String
+#'
+#' @param s A character string
+#' @return The input string with the first letter capitalized
+#' @noRd
+cap_first <- function(s) {
+  paste0(toupper(substring(s, 1, 1)), substring(s, 2))
 }

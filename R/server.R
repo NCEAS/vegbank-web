@@ -1072,6 +1072,13 @@ server <- function(input, output, session) {
     open_detail("stratum-method", vb_code)
   })
 
+  shiny::observeEvent(input$to_link_click, {
+    vb_code <- input$to_link_click
+    if (!is.null(vb_code) && nchar(vb_code) > 0) {
+      open_detail("taxon-observation", vb_code)
+    }
+  })
+
   # URL STATE SYNCHRONIZATION OBSERVER ----------------------------------------------------------------
 
   # This observer runs whenever the browser URL changes (back/forward, refresh, direct link).

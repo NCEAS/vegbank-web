@@ -126,6 +126,7 @@ test_that("process_plot_data returns correctly formatted display data", {
     data.frame(
       name      = c("Aronia melanocarpa", "Bryophyta", "Danthonia spicata"),
       pc_code   = c("pc.10653", "pc.92211", "pc.22506"),
+      to_code   = c("to.64984", "to.64983", "to.64985"),
       max_cover = c(0.1875, 0.5625, 0.0625),
       stringsAsFactors = FALSE
     ),
@@ -133,6 +134,7 @@ test_that("process_plot_data returns correctly formatted display data", {
     data.frame(
       name      = c("Acer saccharum", "Acer pensylvanicum"),
       pc_code   = c("pc.7191", "pc.7186"),
+      to_code   = c("to.71001", "to.71002"),
       max_cover = c(62.5, 0.55),
       stringsAsFactors = FALSE
     ),
@@ -183,9 +185,10 @@ test_that("process_plot_data returns correctly formatted display data", {
   expect_true(grepl("dt-shiny-action", result$`Top Taxa`[1]))
   expect_true(grepl("<a", result$`Top Taxa`[1]))
   expect_true(grepl("Aronia melanocarpa", result$`Top Taxa`[1]))
-  expect_true(grepl("pc.10653", result$`Top Taxa`[1]))
+  expect_true(grepl("to.64984", result$`Top Taxa`[1]))
+  expect_true(grepl("to_link_click", result$`Top Taxa`[1]))
   expect_true(grepl("Acer saccharum", result$`Top Taxa`[2]))
-  expect_true(grepl("pc.7191", result$`Top Taxa`[2]))
+  expect_true(grepl("to.71001", result$`Top Taxa`[2]))
   # OLYM has no taxa — produces the "No taxa recorded" placeholder
   expect_true(grepl("No taxa recorded", result$`Top Taxa`[3]))
 
