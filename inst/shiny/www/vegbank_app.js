@@ -482,6 +482,31 @@ window.vbMapBindShinyInputs = function(map, el) {
   });
 };
 
+// Set up the status filter dropdown in the Communities table toolbar.
+// Injected via the table's initComplete callback so it sits to the left of the
+// search bar, inside the DT Buttons bar.
+// window.vbCommStatus persists the selected value across table re-renders.
+window.vbSetupCommStatusDropdown = function(nTableWrapper) {
+  var btnBar = $(nTableWrapper).find('.dt-buttons');
+  if (!btnBar.length || btnBar.find('.vb-status-select-wrapper').length) return;
+  var currentVal = window.vbCommStatus || 'current_accepted';
+  var $wrapper = $('<label class="vb-status-select-wrapper">' +
+    '<span class="vb-status-select-label">Status:</span>' +
+    '<select class="vb-status-select">' +
+      '<option value="current_accepted">Current &amp; Accepted</option>' +
+      '<option value="current">Current</option>' +
+      '<option value="accepted">Accepted</option>' +
+      '<option value="any">Any</option>' +
+    '</select>' +
+    '</label>');
+  $wrapper.find('select').val(currentVal);
+  btnBar.append($wrapper);
+  $wrapper.find('select').on('change', function() {
+    window.vbCommStatus = this.value;
+    Shiny.setInputValue('comm_status', this.value, {priority: 'event'});
+  });
+};
+
 // Help/instructions button control — adds a square info button above the zoom controls
 // (top-left) that opens a Bootstrap popover with usage instructions.
 window.vbMapHelpControl = function(map, el, btnInnerHtml, closeIconHtml, contentHtml) {

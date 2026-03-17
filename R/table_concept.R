@@ -79,13 +79,22 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
 #' @param filter_type Optional filter type ("single-entity-citation")
 #' @return A DT::datatable object
 #' @noRd
-build_concept_table_with_filter <- function(concept_type = c("plant", "community"), 
-                                            vb_code = NULL, 
-                                            filter_type = NULL) {
+build_concept_table_with_filter <- function(concept_type = c("plant", "community"),
+                                            vb_code = NULL,
+                                            filter_type = NULL,
+                                            status = NULL) {
   concept_type <- match.arg(concept_type)
   spec <- CONCEPT_TABLE_SPECS[[concept_type]]
   if (is.null(spec)) {
     stop("No concept table spec registered for type: ", concept_type)
+  }
+
+  # Inject status filter query param (e.g. "current_accepted" or "any")
+  if (!is.null(status)) {
+    spec$data_source <- utils::modifyList(
+      spec$data_source %||% list(),
+      list(query = list(status = status))
+    )
   }
 
   has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
@@ -324,6 +333,10 @@ get_concept_config <- function(concept_type) {
   gsub("'", "\\'", html, fixed = TRUE)
 })
 
+#' Build a DT Buttons JS definition for the "Show archival data" toggle.
+#'
+#' When active, sets `window.vbCommShowArchival = true` and fires the Shiny
+#' input `comm_show_archival` so the server can rebuild the table with
 .COMMUNITY_TABLE_HELP_CONTENT <- local({
   html <- as.character(htmltools::tagList(
     htmltools::tags$p("This table lists vegetation community concepts in VegBank's classification hierarchy. Each row is a single community type."),
@@ -375,13 +388,19 @@ CONCEPT_TABLE_SPECS <- local({
       } else {
         "by community name, code, VegBank code, or description\u2026"
       },
-      options = list(
-        dom = "Bfrtip",
-        buttons = I(list(make_help_button_js(
+      options = local({
+        help_btn <- make_help_button_js(
           if (config$concept_type == "plant") "Plants Table" else "Communities Table",
           if (config$concept_type == "plant") .PLANT_TABLE_HELP_CONTENT else .COMMUNITY_TABLE_HELP_CONTENT
-        )))
-      ),
+        )
+        opts <- list(dom = "Bfrtip", buttons = I(list(help_btn)))
+        if (config$concept_type == "community") {
+          opts$initComplete <- DT::JS(
+            "function(settings) { if (window.vbSetupCommStatusDropdown) window.vbSetupCommStatusDropdown(settings.nTableWrapper); }"
+          )
+        }
+        opts
+      }),
       datatable_args = list(extensions = "Buttons"),
       initial_display = process_concept_data(schema_template, concept_type = config$concept_type)
     )

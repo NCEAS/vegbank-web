@@ -611,11 +611,22 @@ server <- function(input, output, session) {
   output$download_plot_table <- create_table_download_handler("plot_table", input, state, session)
 
   output$comm_table <- DT::renderDataTable({
-    # Rebuild table when filter changes for citation filtering
+    # Rebuild table when filter changes or status dropdown selection changes
     filter <- state$community_filter()
+    status_input <- input$comm_status
+    status <- if (!is.null(status_input) && status_input %in% c("any", "current", "accepted", "current_accepted")) {
+      status_input
+    } else {
+      "current_accepted"
+    }
     vb_code <- if (!is.null(filter)) filter$code else NULL
     filter_type <- if (!is.null(filter)) filter$type else NULL
-    build_concept_table_with_filter(concept_type = "community", vb_code = vb_code, filter_type = filter_type)
+    build_concept_table_with_filter(
+      concept_type = "community",
+      vb_code = vb_code,
+      filter_type = filter_type,
+      status = status
+    )
   })
 
   output$proj_table <- DT::renderDataTable({

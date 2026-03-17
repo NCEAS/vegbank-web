@@ -235,6 +235,30 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   transform: rotate(0deg) scale(1);
 }
 
+/* Status filter dropdown — sits inline to the right of DT Buttons */
+.dt-buttons .vb-status-select-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.dt-buttons .vb-status-select-label {
+  font-size: 0.875rem;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.dt-buttons .vb-status-select {
+  font-size: 0.875rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+}
+
 .datatables .dataTables_wrapper div.dataTables_info {
   padding-top: 0.75rem;
   font-size: 0.875rem !important;
