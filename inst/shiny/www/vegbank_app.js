@@ -522,7 +522,6 @@ window.vbHelpButton = function(btn, title, contentHtml, closeIconHtml) {
   if (!btn) return;
   // Guard against re-initialization on the same node (e.g. DataTable redraw).
   if (btn.dataset.vbHelpInit === '1') return;
-  btn.dataset.vbHelpInit = '1';
   var infoSvg = btn.querySelector('svg');
   if (!infoSvg) return;
   // Inject close SVG alongside info SVG; CSS controls visibility via .vb-help-open
@@ -532,6 +531,7 @@ window.vbHelpButton = function(btn, title, contentHtml, closeIconHtml) {
     closeWrapper.innerHTML = closeIconHtml;
     btn.appendChild(closeWrapper);
   }
+  btn.dataset.vbHelpInit = '1';
   infoSvg.classList.add('vb-help-info-icon');
   var pop = new bootstrap.Popover(btn, {
     trigger: 'manual',
