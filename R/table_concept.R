@@ -88,24 +88,20 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
 build_concept_table_with_filter <- function(concept_type = c("plant", "community"),
                                             vb_code = NULL,
                                             filter_type = NULL,
-                                            status = NULL) {
+                                            status_fn = NULL) {
   concept_type <- match.arg(concept_type)
   spec <- CONCEPT_TABLE_SPECS[[concept_type]]
   if (is.null(spec)) {
     stop("No concept table spec registered for type: ", concept_type)
   }
 
-  # Inject status filter query param. Supports a reactive function (called per AJAX
-  # request) or a plain scalar (used once at render time).
-  if (!is.null(status)) {
-    status_query <- if (is.function(status)) {
-      function() list(status = shiny::isolate(status()))
-    } else {
-      list(status = status)
-    }
+  # Inject status as a query function evaluated per AJAX request via shiny::isolate().
+  # Always a zero-argument function so the AJAX handler reads the current value at
+  # draw time without creating a reactive dependency inside renderDataTable.
+  if (!is.null(status_fn)) {
     spec$data_source <- utils::modifyList(
       spec$data_source %||% list(),
-      list(query = status_query)
+      list(query = function() list(status = shiny::isolate(status_fn())))
     )
   }
 

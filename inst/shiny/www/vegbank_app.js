@@ -493,7 +493,9 @@ var vbConceptStatusConfigs = {
 window.vbConceptStatusInit = function(nTableWrapper, tableId) {
   var config = vbConceptStatusConfigs[tableId];
   if (!config) return;
-  var validStatuses = ['current_accepted', 'current', 'accepted', 'any'];
+  // Guard against double-injection (e.g. if initComplete fires twice on the same wrapper).
+  if ($(nTableWrapper).find('.vb-status-label').length) return;
+  var validStatuses = window.VB_VALID_CONCEPT_STATUSES || ['current_accepted', 'current', 'accepted', 'any'];
   var urlVal    = new URLSearchParams(window.location.search).get(config.urlKey);
   var storedVal = window[config.windowVar];
   var initVal   = (storedVal && validStatuses.indexOf(storedVal) !== -1)

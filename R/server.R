@@ -654,7 +654,7 @@ server <- function(input, output, session) {
       concept_type = "community",
       vb_code = vb_code,
       filter_type = filter_type,
-      status = state$community_status  # function ref, not a call — no reactive dependency
+      status_fn = state$community_status
     )
   })
 
@@ -670,7 +670,7 @@ server <- function(input, output, session) {
     # Status changes handled via proxy reload — no dependency here.
     build_concept_table_with_filter(
       concept_type = "plant",
-      status = state$plant_status  # function ref, not a call
+      status_fn = state$plant_status
     )
   })
 
