@@ -289,9 +289,6 @@ URLStateManager <- R6::R6Class(
       length <- self$parse_numeric_param(params[[paste0(prefix, "_length")]])
       order <- self$deserialize_order_from_query(params[[paste0(prefix, "_order")]])
       search <- self$first_param(params[[paste0(prefix, "_search")]]) %||% ""
-      status <- if (identical(key, "communities")) {
-        self$first_param(params["communities_status"])
-      } else NULL
 
       if (is.null(start) && is.null(length) && is.null(order) && !nzchar(search)) {
         return(NULL)
