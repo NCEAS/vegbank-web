@@ -406,6 +406,11 @@ CONCEPT_TABLE_SPECS <- local({
             "function(settings) { if (window.vbSetupCommStatusDropdown) window.vbSetupCommStatusDropdown(settings.nTableWrapper); }"
           )
         }
+        if (config$concept_type == "plant") {
+          opts$initComplete <- DT::JS(
+            "function(settings) { if (window.vbSetupPlantStatusDropdown) window.vbSetupPlantStatusDropdown(settings.nTableWrapper); }"
+          )
+        }
         opts
       }),
       datatable_args = list(extensions = "Buttons"),

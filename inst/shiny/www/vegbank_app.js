@@ -488,8 +488,8 @@ window.vbMapBindShinyInputs = function(map, el) {
 // The selected value is persisted in the URL as `communities_status` and
 // restored on page reload via window.vbCommStatus (set by setCommStatus handler).
 window.vbSetupCommStatusDropdown = function(nTableWrapper) {
-  var btnBar = $(nTableWrapper).find('.dt-buttons');
-  if (!btnBar.length || btnBar.find('.vb-status-select-wrapper').length) return;
+  var $filter = $(nTableWrapper).find('.dataTables_filter');
+  if (!$filter.length || $(nTableWrapper).find('.vb-status-select-wrapper').length) return;
   // Prefer the in-memory value (set by setCommStatus on URL restore) over the URL
   // directly, to stay in sync with what the server has already applied.
   var urlParams = new URLSearchParams(window.location.search);
@@ -500,7 +500,7 @@ window.vbSetupCommStatusDropdown = function(nTableWrapper) {
     : (urlStatus && validStatuses.indexOf(urlStatus) !== -1 ? urlStatus : 'current_accepted');
   var $wrapper = $('<label class="vb-status-select-wrapper">' +
     '<span class="vb-status-select-label">Status:</span>' +
-    '<select class="vb-status-select">' +
+    '<select class="vb-comm-status-select vb-status-select">' +
       '<option value="current_accepted">Currently Accepted</option>' +
       '<option value="current">Current</option>' +
       '<option value="accepted">Accepted</option>' +
@@ -508,7 +508,7 @@ window.vbSetupCommStatusDropdown = function(nTableWrapper) {
     '</select>' +
     '</label>');
   $wrapper.find('select').val(currentVal);
-  btnBar.append($wrapper);
+  $filter.after($wrapper);
   $wrapper.find('select').on('change', function() {
     window.vbCommStatus = this.value;
     // Write communities_status to the URL and reset pagination before Shiny rebuilds.
@@ -533,38 +533,54 @@ Shiny.addCustomMessageHandler('setCommStatus', function(message) {
   var val = message.value;
   window.vbCommStatus = val;
   // Update any rendered dropdown immediately
-  $('.vb-status-select').val(val);
+  $('.vb-comm-status-select').val(val);
 });
 
-// Help/instructions button control — adds a square info button above the zoom controls
-// (top-left) that opens a Bootstrap popover with usage instructions.
-window.vbMapHelpControl = function(map, el, btnInnerHtml, closeIconHtml, contentHtml) {
-  var helpBtn = null;
-  var helpControl = L.control({position: 'topleft'});
-  helpControl.onAdd = function() {
-    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control vb-map-help-control');
-    helpBtn = L.DomUtil.create('a', 'vb-map-help-btn vb-help-btn', container);
-    helpBtn.href = '#';
-    helpBtn.setAttribute('role', 'button');
-    helpBtn.setAttribute('title', 'About this map');
-    helpBtn.setAttribute('aria-label', 'About this map');
-    helpBtn.innerHTML = btnInnerHtml;
-    L.DomEvent.disableClickPropagation(container);
-    L.DomEvent.on(helpBtn, 'click', L.DomEvent.preventDefault);
-    return container;
-  };
-  helpControl.addTo(map);
-
-  // Move the help control to the top of the top-left stack (above zoom +/-)
-  var topLeft = el.querySelector('.leaflet-top.leaflet-left');
-  if (topLeft && topLeft.children.length > 1) {
-    topLeft.insertBefore(topLeft.lastElementChild, topLeft.firstElementChild);
-  }
-
-  if (helpBtn && window.vbHelpButton) {
-    window.vbHelpButton(helpBtn, '<strong>Map</strong>', contentHtml, closeIconHtml);
-  }
+// Set up the status filter dropdown in the Plants table toolbar.
+window.vbSetupPlantStatusDropdown = function(nTableWrapper) {
+  var $filter = $(nTableWrapper).find('.dataTables_filter');
+  if (!$filter.length || $(nTableWrapper).find('.vb-status-select-wrapper').length) return;
+  var urlParams = new URLSearchParams(window.location.search);
+  var validStatuses = ['current_accepted', 'current', 'accepted', 'any'];
+  var urlStatus = urlParams.get('plants_status');
+  var currentVal = (window.vbPlantStatus && validStatuses.indexOf(window.vbPlantStatus) !== -1)
+    ? window.vbPlantStatus
+    : (urlStatus && validStatuses.indexOf(urlStatus) !== -1 ? urlStatus : 'current_accepted');
+  var $wrapper = $('<label class="vb-status-select-wrapper">' +
+    '<span class="vb-status-select-label">Status:</span>' +
+    '<select class="vb-plant-status-select vb-status-select">' +
+      '<option value="current_accepted">Currently Accepted</option>' +
+      '<option value="current">Current</option>' +
+      '<option value="accepted">Accepted</option>' +
+      '<option value="any">Any</option>' +
+    '</select>' +
+    '</label>');
+  $wrapper.find('select').val(currentVal);
+  $filter.after($wrapper);
+  $wrapper.find('select').on('change', function() {
+    window.vbPlantStatus = this.value;
+    var params = new URLSearchParams(window.location.search);
+    if (this.value === 'current_accepted') {
+      params.delete('plants_status');
+    } else {
+      params.set('plants_status', this.value);
+    }
+    if (params.has('plants_start')) {
+      params.set('plants_start', '0');
+    }
+    var newSearch = params.toString();
+    history.replaceState(null, '', newSearch ? '?' + newSearch : window.location.pathname);
+    Shiny.setInputValue('plant_status', this.value, {priority: 'event'});
+  });
 };
+
+// Receive the current plants status from the server (e.g. on URL restore)
+// and update the dropdown to match without triggering a redundant Shiny input.
+Shiny.addCustomMessageHandler('setPlantStatus', function(message) {
+  var val = message.value;
+  window.vbPlantStatus = val;
+  $('.vb-plant-status-select').val(val);
+});
 
 // Shared helper — set up a toggleable info popover on a DT help button.
 // Called from each table's DT button init callback.

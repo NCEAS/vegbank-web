@@ -53,6 +53,7 @@ server <- function(input, output, session) {
     plot_filter = shiny::reactiveVal(NULL), # Cross-resource / citation filter: list(type, code, label)
     community_filter = shiny::reactiveVal(NULL), # Citation filter for cc: list(type, code, label)
     community_status = shiny::reactiveVal("current_accepted"), # Status filter for community concepts table
+    plant_status = shiny::reactiveVal("current_accepted"), # Status filter for plant concepts table
     table_states = shiny::reactiveValues(),
     table_sync_pending = shiny::reactiveValues(),
     table_sync_completed_at = shiny::reactiveValues()
@@ -311,7 +312,8 @@ server <- function(input, output, session) {
       highlight_row = state$highlighted_row(),
       plot_filter = state$plot_filter(),
       community_filter = state$community_filter(),
-      community_status = state$community_status()
+      community_status = state$community_status(),
+      plant_status = state$plant_status()
     )
 
     url_manager$update_query_string(target_query, mode = mode)
@@ -620,6 +622,14 @@ server <- function(input, output, session) {
     }
   })
 
+  # Keep state$plant_status in sync with the dropdown input
+  shiny::observeEvent(input$plant_status, {
+    val <- input$plant_status
+    if (!is.null(val) && val %in% c("any", "current", "accepted", "current_accepted")) {
+      state$plant_status(val)
+    }
+  })
+
   output$comm_table <- DT::renderDataTable({
     # Rebuild table when filter changes or status changes
     filter <- state$community_filter()
@@ -643,7 +653,10 @@ server <- function(input, output, session) {
   })
 
   output$plant_table <- DT::renderDataTable({
-    build_plant_table()
+    build_concept_table_with_filter(
+      concept_type = "plant",
+      status = state$plant_status()
+    )
   })
 
   output$map <- leaflet::renderLeaflet({
@@ -1267,6 +1280,21 @@ server <- function(input, output, session) {
         if (!identical(state$community_status(), "current_accepted")) {
           state$community_status("current_accepted")
           session$sendCustomMessage("setCommStatus", list(value = "current_accepted"))
+        }
+      }
+
+      # Parse and apply plant status filter
+      plant_status_param <- url_manager$first_param(params$plants_status)
+      if (!is.null(plant_status_param) && plant_status_param %in% valid_statuses) {
+        if (!identical(state$plant_status(), plant_status_param)) {
+          state$plant_status(plant_status_param)
+          session$sendCustomMessage("setPlantStatus", list(value = plant_status_param))
+        }
+      } else {
+        # Default to current_accepted when not in URL
+        if (!identical(state$plant_status(), "current_accepted")) {
+          state$plant_status("current_accepted")
+          session$sendCustomMessage("setPlantStatus", list(value = "current_accepted"))
         }
       }
 
