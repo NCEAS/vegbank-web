@@ -617,7 +617,7 @@ server <- function(input, output, session) {
   # Keep state$community_status in sync with the dropdown input
   shiny::observeEvent(input$comm_status, {
     val <- input$comm_status
-    if (!is.null(val) && val %in% c("any", "current", "accepted", "current_accepted")) {
+    if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) {
       state$community_status(val)
     }
   })
@@ -625,7 +625,7 @@ server <- function(input, output, session) {
   # Keep state$plant_status in sync with the dropdown input
   shiny::observeEvent(input$plant_status, {
     val <- input$plant_status
-    if (!is.null(val) && val %in% c("any", "current", "accepted", "current_accepted")) {
+    if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) {
       state$plant_status(val)
     }
   })
@@ -1267,36 +1267,18 @@ server <- function(input, output, session) {
         }
       }
 
-      # Parse and apply community status filter
-      valid_statuses <- c("any", "current", "accepted", "current_accepted")
-      comm_status_param <- url_manager$first_param(params$communities_status)
-      if (!is.null(comm_status_param) && comm_status_param %in% valid_statuses) {
-        if (!identical(state$community_status(), comm_status_param)) {
-          state$community_status(comm_status_param)
-          session$sendCustomMessage("setCommStatus", list(value = comm_status_param))
-        }
-      } else {
-        # Default to current_accepted when not in URL
-        if (!identical(state$community_status(), "current_accepted")) {
-          state$community_status("current_accepted")
-          session$sendCustomMessage("setCommStatus", list(value = "current_accepted"))
+      # Restore concept status filters from URL.
+      # `status_reactive` is a reactiveVal — calling it reads, calling it with a value sets.
+      restore_status_param <- function(url_param, status_reactive, msg_type) {
+        val <- url_manager$first_param(url_param)
+        target <- if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) val else "current_accepted"
+        if (!identical(status_reactive(), target)) {
+          status_reactive(target)
+          session$sendCustomMessage(msg_type, list(value = target))
         }
       }
-
-      # Parse and apply plant status filter
-      plant_status_param <- url_manager$first_param(params$plants_status)
-      if (!is.null(plant_status_param) && plant_status_param %in% valid_statuses) {
-        if (!identical(state$plant_status(), plant_status_param)) {
-          state$plant_status(plant_status_param)
-          session$sendCustomMessage("setPlantStatus", list(value = plant_status_param))
-        }
-      } else {
-        # Default to current_accepted when not in URL
-        if (!identical(state$plant_status(), "current_accepted")) {
-          state$plant_status("current_accepted")
-          session$sendCustomMessage("setPlantStatus", list(value = "current_accepted"))
-        }
-      }
+      restore_status_param(params$communities_status, state$community_status, "setCommStatus")
+      restore_status_param(params$plants_status, state$plant_status, "setPlantStatus")
 
       # Parse and apply map view state
       map_lat_param <- params$map_lat

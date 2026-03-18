@@ -482,25 +482,23 @@ window.vbMapBindShinyInputs = function(map, el) {
   });
 };
 
-// Set up the status filter dropdown in the Communities table toolbar.
-// Injected via the table's initComplete callback so it sits to the left of the
-// search bar, inside the DT Buttons bar.
-// The selected value is persisted in the URL as `communities_status` and
-// restored on page reload via window.vbCommStatus (set by setCommStatus handler).
-window.vbSetupCommStatusDropdown = function(nTableWrapper) {
+// Shared factory for the concept status dropdown.
+// Injected via each table's initComplete callback, just to the left of the search bar.
+// config: { urlKey, windowVar, cssClass, shinyInput, paginationKey }
+function vbSetupConceptStatusDropdown(nTableWrapper, config) {
   var $filter = $(nTableWrapper).find('.dataTables_filter');
   if (!$filter.length || $(nTableWrapper).find('.vb-status-select-wrapper').length) return;
-  // Prefer the in-memory value (set by setCommStatus on URL restore) over the URL
-  // directly, to stay in sync with what the server has already applied.
-  var urlParams = new URLSearchParams(window.location.search);
+  // Prefer the in-memory value (set by the server on URL restore) over the raw URL param
+  // so the dropdown always reflects what the server has already applied.
   var validStatuses = ['current_accepted', 'current', 'accepted', 'any'];
-  var urlStatus = urlParams.get('communities_status');
-  var currentVal = (window.vbCommStatus && validStatuses.indexOf(window.vbCommStatus) !== -1)
-    ? window.vbCommStatus
+  var urlStatus = new URLSearchParams(window.location.search).get(config.urlKey);
+  var storedVal = window[config.windowVar];
+  var currentVal = (storedVal && validStatuses.indexOf(storedVal) !== -1)
+    ? storedVal
     : (urlStatus && validStatuses.indexOf(urlStatus) !== -1 ? urlStatus : 'current_accepted');
   var $wrapper = $('<label class="vb-status-select-wrapper">' +
     '<span class="vb-status-select-label">Status:</span>' +
-    '<select class="vb-comm-status-select vb-status-select">' +
+    '<select class="' + config.cssClass + ' vb-status-select">' +
       '<option value="current_accepted">Currently Accepted</option>' +
       '<option value="current">Current</option>' +
       '<option value="accepted">Accepted</option>' +
@@ -510,76 +508,50 @@ window.vbSetupCommStatusDropdown = function(nTableWrapper) {
   $wrapper.find('select').val(currentVal);
   $filter.after($wrapper);
   $wrapper.find('select').on('change', function() {
-    window.vbCommStatus = this.value;
-    // Write communities_status to the URL and reset pagination before Shiny rebuilds.
+    window[config.windowVar] = this.value;
     var params = new URLSearchParams(window.location.search);
     if (this.value === 'current_accepted') {
-      params.delete('communities_status');
+      params.delete(config.urlKey);
     } else {
-      params.set('communities_status', this.value);
+      params.set(config.urlKey, this.value);
     }
-    if (params.has('communities_start')) {
-      params.set('communities_start', '0');
+    if (params.has(config.paginationKey)) {
+      params.set(config.paginationKey, '0');
     }
     var newSearch = params.toString();
     history.replaceState(null, '', newSearch ? '?' + newSearch : window.location.pathname);
-    Shiny.setInputValue('comm_status', this.value, {priority: 'event'});
+    Shiny.setInputValue(config.shinyInput, this.value, {priority: 'event'});
+  });
+}
+
+window.vbSetupCommStatusDropdown = function(nTableWrapper) {
+  vbSetupConceptStatusDropdown(nTableWrapper, {
+    urlKey: 'communities_status',
+    windowVar: 'vbCommStatus',
+    cssClass: 'vb-comm-status-select',
+    shinyInput: 'comm_status',
+    paginationKey: 'communities_start'
   });
 };
 
-// Receive the current communities status from the server (e.g. on URL restore)
-// and update the dropdown to match without triggering a redundant Shiny input.
+window.vbSetupPlantStatusDropdown = function(nTableWrapper) {
+  vbSetupConceptStatusDropdown(nTableWrapper, {
+    urlKey: 'plants_status',
+    windowVar: 'vbPlantStatus',
+    cssClass: 'vb-plant-status-select',
+    shinyInput: 'plant_status',
+    paginationKey: 'plants_start'
+  });
+};
+
 Shiny.addCustomMessageHandler('setCommStatus', function(message) {
-  var val = message.value;
-  window.vbCommStatus = val;
-  // Update any rendered dropdown immediately
-  $('.vb-comm-status-select').val(val);
+  window.vbCommStatus = message.value;
+  $('.vb-comm-status-select').val(message.value);
 });
 
-// Set up the status filter dropdown in the Plants table toolbar.
-window.vbSetupPlantStatusDropdown = function(nTableWrapper) {
-  var $filter = $(nTableWrapper).find('.dataTables_filter');
-  if (!$filter.length || $(nTableWrapper).find('.vb-status-select-wrapper').length) return;
-  var urlParams = new URLSearchParams(window.location.search);
-  var validStatuses = ['current_accepted', 'current', 'accepted', 'any'];
-  var urlStatus = urlParams.get('plants_status');
-  var currentVal = (window.vbPlantStatus && validStatuses.indexOf(window.vbPlantStatus) !== -1)
-    ? window.vbPlantStatus
-    : (urlStatus && validStatuses.indexOf(urlStatus) !== -1 ? urlStatus : 'current_accepted');
-  var $wrapper = $('<label class="vb-status-select-wrapper">' +
-    '<span class="vb-status-select-label">Status:</span>' +
-    '<select class="vb-plant-status-select vb-status-select">' +
-      '<option value="current_accepted">Currently Accepted</option>' +
-      '<option value="current">Current</option>' +
-      '<option value="accepted">Accepted</option>' +
-      '<option value="any">Any</option>' +
-    '</select>' +
-    '</label>');
-  $wrapper.find('select').val(currentVal);
-  $filter.after($wrapper);
-  $wrapper.find('select').on('change', function() {
-    window.vbPlantStatus = this.value;
-    var params = new URLSearchParams(window.location.search);
-    if (this.value === 'current_accepted') {
-      params.delete('plants_status');
-    } else {
-      params.set('plants_status', this.value);
-    }
-    if (params.has('plants_start')) {
-      params.set('plants_start', '0');
-    }
-    var newSearch = params.toString();
-    history.replaceState(null, '', newSearch ? '?' + newSearch : window.location.pathname);
-    Shiny.setInputValue('plant_status', this.value, {priority: 'event'});
-  });
-};
-
-// Receive the current plants status from the server (e.g. on URL restore)
-// and update the dropdown to match without triggering a redundant Shiny input.
 Shiny.addCustomMessageHandler('setPlantStatus', function(message) {
-  var val = message.value;
-  window.vbPlantStatus = val;
-  $('.vb-plant-status-select').val(val);
+  window.vbPlantStatus = message.value;
+  $('.vb-plant-status-select').val(message.value);
 });
 
 // Shared helper — set up a toggleable info popover on a DT help button.
