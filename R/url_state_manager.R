@@ -289,6 +289,9 @@ URLStateManager <- R6::R6Class(
       length <- self$parse_numeric_param(params[[paste0(prefix, "_length")]])
       order <- self$deserialize_order_from_query(params[[paste0(prefix, "_order")]])
       search <- self$first_param(params[[paste0(prefix, "_search")]]) %||% ""
+      status <- if (identical(key, "communities")) {
+        self$first_param(params["communities_status"])
+      } else NULL
 
       if (is.null(start) && is.null(length) && is.null(order) && !nzchar(search)) {
         return(NULL)
@@ -345,7 +348,8 @@ URLStateManager <- R6::R6Class(
                                   map_lat = NULL, map_lng = NULL, map_zoom = NULL,
                                   map_has_custom_state = FALSE, table_states = list(),
                                   highlight_table = NULL, highlight_row = NULL,
-                                  plot_filter = NULL, community_filter = NULL) {
+                                  plot_filter = NULL, community_filter = NULL,
+                                  community_status = NULL) {
       if (is.null(tab) || !nzchar(tab)) {
         tab <- "Overview"
       }
@@ -391,6 +395,12 @@ URLStateManager <- R6::R6Class(
         if (!is.null(community_filter$label) && nzchar(community_filter$label)) {
           params$comm_filter_label <- community_filter$label
         }
+      }
+
+      # Include community status filter (omit when it's the default)
+      if (!is.null(community_status) && nzchar(community_status) &&
+          !identical(community_status, "current_accepted")) {
+        params$communities_status <- community_status
       }
 
       include_map_params <- identical(tab, "Map") || isTRUE(map_has_custom_state)

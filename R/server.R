@@ -52,6 +52,7 @@ server <- function(input, output, session) {
     map_request = shiny::reactiveVal(NULL),
     plot_filter = shiny::reactiveVal(NULL), # Cross-resource / citation filter: list(type, code, label)
     community_filter = shiny::reactiveVal(NULL), # Citation filter for cc: list(type, code, label)
+    community_status = shiny::reactiveVal("current_accepted"), # Status filter for community concepts table
     table_states = shiny::reactiveValues(),
     table_sync_pending = shiny::reactiveValues(),
     table_sync_completed_at = shiny::reactiveValues()
@@ -309,7 +310,8 @@ server <- function(input, output, session) {
       highlight_table = state$highlighted_table(),
       highlight_row = state$highlighted_row(),
       plot_filter = state$plot_filter(),
-      community_filter = state$community_filter()
+      community_filter = state$community_filter(),
+      community_status = state$community_status()
     )
 
     url_manager$update_query_string(target_query, mode = mode)
@@ -610,15 +612,18 @@ server <- function(input, output, session) {
   # Download handler for plot table
   output$download_plot_table <- create_table_download_handler("plot_table", input, state, session)
 
-  output$comm_table <- DT::renderDataTable({
-    # Rebuild table when filter changes or status dropdown selection changes
-    filter <- state$community_filter()
-    status_input <- input$comm_status
-    status <- if (!is.null(status_input) && status_input %in% c("any", "current", "accepted", "current_accepted")) {
-      status_input
-    } else {
-      "current_accepted"
+  # Keep state$community_status in sync with the dropdown input
+  shiny::observeEvent(input$comm_status, {
+    val <- input$comm_status
+    if (!is.null(val) && val %in% c("any", "current", "accepted", "current_accepted")) {
+      state$community_status(val)
     }
+  })
+
+  output$comm_table <- DT::renderDataTable({
+    # Rebuild table when filter changes or status changes
+    filter <- state$community_filter()
+    status <- state$community_status()
     vb_code <- if (!is.null(filter)) filter$code else NULL
     filter_type <- if (!is.null(filter)) filter$type else NULL
     build_concept_table_with_filter(
@@ -1246,6 +1251,22 @@ server <- function(input, output, session) {
         # No community filter params in URL, clear filter state
         if (!is.null(state$community_filter())) {
           state$community_filter(NULL)
+        }
+      }
+
+      # Parse and apply community status filter
+      valid_statuses <- c("any", "current", "accepted", "current_accepted")
+      comm_status_param <- url_manager$first_param(params$communities_status)
+      if (!is.null(comm_status_param) && comm_status_param %in% valid_statuses) {
+        if (!identical(state$community_status(), comm_status_param)) {
+          state$community_status(comm_status_param)
+          session$sendCustomMessage("setCommStatus", list(value = comm_status_param))
+        }
+      } else {
+        # Default to current_accepted when not in URL
+        if (!identical(state$community_status(), "current_accepted")) {
+          state$community_status("current_accepted")
+          session$sendCustomMessage("setCommStatus", list(value = "current_accepted"))
         }
       }
 

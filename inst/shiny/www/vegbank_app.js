@@ -485,11 +485,19 @@ window.vbMapBindShinyInputs = function(map, el) {
 // Set up the status filter dropdown in the Communities table toolbar.
 // Injected via the table's initComplete callback so it sits to the left of the
 // search bar, inside the DT Buttons bar.
-// window.vbCommStatus persists the selected value across table re-renders.
+// The selected value is persisted in the URL as `communities_status` and
+// restored on page reload via window.vbCommStatus (set by setCommStatus handler).
 window.vbSetupCommStatusDropdown = function(nTableWrapper) {
   var btnBar = $(nTableWrapper).find('.dt-buttons');
   if (!btnBar.length || btnBar.find('.vb-status-select-wrapper').length) return;
-  var currentVal = window.vbCommStatus || 'current_accepted';
+  // Prefer the in-memory value (set by setCommStatus on URL restore) over the URL
+  // directly, to stay in sync with what the server has already applied.
+  var urlParams = new URLSearchParams(window.location.search);
+  var validStatuses = ['current_accepted', 'current', 'accepted', 'any'];
+  var urlStatus = urlParams.get('communities_status');
+  var currentVal = (window.vbCommStatus && validStatuses.indexOf(window.vbCommStatus) !== -1)
+    ? window.vbCommStatus
+    : (urlStatus && validStatuses.indexOf(urlStatus) !== -1 ? urlStatus : 'current_accepted');
   var $wrapper = $('<label class="vb-status-select-wrapper">' +
     '<span class="vb-status-select-label">Status:</span>' +
     '<select class="vb-status-select">' +
@@ -503,17 +511,30 @@ window.vbSetupCommStatusDropdown = function(nTableWrapper) {
   btnBar.append($wrapper);
   $wrapper.find('select').on('change', function() {
     window.vbCommStatus = this.value;
-    // Reset communities_start to 0 in the URL so that when Shiny rebuilds the
-    // table and vegbankLoadTableState re-reads the URL during init, it starts
-    // at page 1 instead of a potentially out-of-range offset.
+    // Write communities_status to the URL and reset pagination before Shiny rebuilds.
     var params = new URLSearchParams(window.location.search);
+    if (this.value === 'current_accepted') {
+      params.delete('communities_status');
+    } else {
+      params.set('communities_status', this.value);
+    }
     if (params.has('communities_start')) {
       params.set('communities_start', '0');
-      history.replaceState(null, '', '?' + params.toString());
     }
+    var newSearch = params.toString();
+    history.replaceState(null, '', newSearch ? '?' + newSearch : window.location.pathname);
     Shiny.setInputValue('comm_status', this.value, {priority: 'event'});
   });
 };
+
+// Receive the current communities status from the server (e.g. on URL restore)
+// and update the dropdown to match without triggering a redundant Shiny input.
+Shiny.addCustomMessageHandler('setCommStatus', function(message) {
+  var val = message.value;
+  window.vbCommStatus = val;
+  // Update any rendered dropdown immediately
+  $('.vb-status-select').val(val);
+});
 
 // Help/instructions button control — adds a square info button above the zoom controls
 // (top-left) that opens a Bootstrap popover with usage instructions.
