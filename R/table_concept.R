@@ -12,12 +12,13 @@ CONCEPT_CONFIG <- list(
     fields = c(
       "pc_code",
       "plant_name",
-      "current_accepted",
       "plant_level",
       "concept_rf_code",
       "concept_rf_label",
       "obs_count",
-      "plant_description"
+      "plant_description",
+      "status",
+      "stop_date"
     ),
     extra = list(
       concept_type = "plant",
@@ -37,12 +38,13 @@ CONCEPT_CONFIG <- list(
     fields = c(
       "cc_code",
       "comm_name",
-      "current_accepted",
       "comm_level",
       "concept_rf_code",
       "concept_rf_label",
       "obs_count",
-      "comm_description"
+      "comm_description",
+      "status",
+      "stop_date"
     ),
     extra = list(
       concept_type = "community",
@@ -178,7 +180,8 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   display_names <- clean_column_data(concept_data, config$name_field)
   concept_codes <- concept_data[[config$code_field]]
 
-  statuses <- concept_data$current_accepted
+  raw_status   <- concept_data$status
+  raw_stopdate <- concept_data$stop_date
   levels <- clean_column_data(concept_data, config$level_field)
   reference_codes <- concept_data$concept_rf_code
   reference_names <- clean_column_data(concept_data, "concept_rf_label")
@@ -210,7 +213,11 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     }
   }, character(1))
 
-  status_badges <- vapply(statuses, create_status_badge, character(1))
+  status_badges <- vapply(
+    seq_along(raw_status),
+    function(i) create_status_badges(raw_status[[i]], raw_stopdate[[i]]),
+    character(1)
+  )
 
   result <- data.frame(
     Actions = actions,

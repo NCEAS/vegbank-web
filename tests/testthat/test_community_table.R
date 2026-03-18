@@ -21,8 +21,9 @@ test_that("build_community_table delegates to concept builder with community con
 })
 
 test_that("community concept data includes community-specific values", {
-  cols <- c("cc_code", "comm_name", "comm_level", "current_accepted",
-            "concept_rf_code", "concept_rf_label", "obs_count", "comm_description")
+  cols <- c("cc_code", "comm_name", "comm_level",
+            "concept_rf_code", "concept_rf_label", "obs_count", "comm_description",
+            "status", "stop_date")
   community_data <- rbind(
     mock_comm_concept_cegl007230[, cols],
     mock_comm_concept_brachypodium[, cols],
@@ -47,10 +48,12 @@ test_that("community concept data includes community-specific values", {
     expect_true(grepl("Quercus alba",  result$`Community Concept`[1]))
     expect_true(grepl("Brachypodium",  result$`Community Concept`[2]))
     expect_equal(result$`Community Concept`[3], "VII")
-    # Status: CEGL=Accepted (TRUE), Brachypodium=Not Current (FALSE), VII=Not Current (FALSE)
-    expect_true(grepl("Accepted",    result$Status[1]))
-    expect_true(grepl("Not Current", result$Status[2]))
-    expect_true(grepl("Not Current", result$Status[3]))
+    # Status: CEGL=Currently Accepted, Brachypodium=Not Accepted+Current, VII=Accepted+Not Current
+    expect_true(grepl("Currently Accepted", result$Status[1]))
+    expect_true(grepl("Not Accepted",         result$Status[2]))
+    expect_false(grepl("Not Current",       result$Status[2]))
+    expect_true(grepl("Not Current",        result$Status[3]))
+    expect_true(grepl("Accepted",           result$Status[3]))
     # Level
     expect_equal(result$Level, c("Association", "Association", "Class"))
     # Reference source: all three have valid concept_rf_code → all links

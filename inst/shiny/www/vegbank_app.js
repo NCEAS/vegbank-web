@@ -493,7 +493,7 @@ window.vbSetupCommStatusDropdown = function(nTableWrapper) {
   var $wrapper = $('<label class="vb-status-select-wrapper">' +
     '<span class="vb-status-select-label">Status:</span>' +
     '<select class="vb-status-select">' +
-      '<option value="current_accepted">Current &amp; Accepted</option>' +
+      '<option value="current_accepted">Currently Accepted</option>' +
       '<option value="current">Current</option>' +
       '<option value="accepted">Accepted</option>' +
       '<option value="any">Any</option>' +

@@ -45,8 +45,9 @@ test_that("build_concept_table configures datatable with hidden sort columns", {
 })
 
 # Real API data: ACRU (accepted, 0 obs), Vaccinium (no status, 828 obs), PSME (not current, 7475 obs)
-.pc_fields <- c("pc_code", "plant_name", "current_accepted", "plant_level",
-                "concept_rf_code", "concept_rf_label", "obs_count", "plant_description")
+.pc_fields <- c("pc_code", "plant_name", "plant_level",
+                "concept_rf_code", "concept_rf_label", "obs_count", "plant_description",
+                "status", "stop_date")
 plant_test_data <- rbind(
   mock_plant_concept_acru[, .pc_fields],
   mock_plant_concept_vaccinium[, .pc_fields],
@@ -54,11 +55,12 @@ plant_test_data <- rbind(
 )
 rm(.pc_fields)
 
-# Real API data: CEGL007230 (accepted, 294 obs, has description),
-#                Brachypodium (not current/undetermined, 17 obs, no description),
-#                VII (not current, 0 obs, no description)
-.cc_fields <- c("cc_code", "comm_name", "current_accepted", "comm_level",
-                "concept_rf_code", "concept_rf_label", "obs_count", "comm_description")
+# Real API data: CEGL007230 (accepted + current, 294 obs, has description),
+#                Brachypodium (Not Accepted + current, 17 obs, no description),
+#                VII (accepted + not current, 0 obs, no description)
+.cc_fields <- c("cc_code", "comm_name", "comm_level",
+                "concept_rf_code", "concept_rf_label", "obs_count", "comm_description",
+                "status", "stop_date")
 community_test_data <- rbind(
   mock_comm_concept_cegl007230[, .cc_fields],
   mock_comm_concept_brachypodium[, .cc_fields],
@@ -79,9 +81,10 @@ test_that("process_concept_data formats plant concepts", {
     expect_equal(result$`VegBank Code`, vapply(plant_test_data$pc_code, htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
     expect_equal(result$`Plant Concept`,
       c("Acer rubrum L.", "Vaccinium stamineum", "Pseudotsuga menziesii (Mirbel) Franco"))
-    expect_true(grepl("Accepted",    result$Status[1]))  # ACRU: current_accepted=TRUE
-    expect_true(grepl("No Status",   result$Status[2]))  # Vaccinium: current_accepted=NA
-    expect_true(grepl("Not Current", result$Status[3]))  # PSME: current_accepted=FALSE
+    expect_true(grepl("Currently Accepted", result$Status[1]))  # ACRU: accepted + current
+    expect_true(grepl("No Status",          result$Status[2]))  # Vaccinium: status=NA
+    expect_true(grepl("Not Current",        result$Status[3]))  # PSME: accepted + not current
+    expect_true(grepl("Accepted",           result$Status[3]))  # PSME: still has Accepted badge
     expect_equal(result$Level, c("Species", "Unspecified", "Species"))
     expect_true(all(grepl("<a ", result$`Reference Source`)))  # all three have valid ref codes
     expect_equal(result$Plots[1], "0")                  # ACRU: obs_count=0 (no link)
@@ -113,9 +116,11 @@ test_that("process_concept_data formats community concepts", {
       "Brachypodium distachyon \u2013 Bromus diandrus / Quercus douglasii Semi-natural Association",
       "VII"
     ))
-    expect_true(grepl("Accepted",    result$Status[1]))  # CEGL007230: current_accepted=TRUE
-    expect_true(grepl("Not Current", result$Status[2]))  # Brachypodium: current_accepted=FALSE
-    expect_true(grepl("Not Current", result$Status[3]))  # VII: current_accepted=FALSE
+    expect_true(grepl("Currently Accepted", result$Status[1]))  # CEGL007230: accepted + current
+    expect_true(grepl("Not Accepted",         result$Status[2]))  # Brachypodium: Not Accepted + current
+    expect_false(grepl("Not Current",       result$Status[2]))  # Brachypodium: IS current
+    expect_true(grepl("Not Current",        result$Status[3]))  # VII: accepted + not current
+    expect_true(grepl("Accepted",           result$Status[3]))  # VII: still has Accepted badge
     expect_equal(result$Level, c("Association", "Association", "Class"))
     expect_true(all(grepl("<a ", result$`Reference Source`)))  # all three have valid ref codes
     expect_true(grepl(">294</a>",  result$Plots[1]))   # CEGL007230: 294
