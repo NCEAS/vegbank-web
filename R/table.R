@@ -259,11 +259,11 @@ create_status_badges <- function(status, stop_date) {
   if (is_accepted && is_current) {
     green_badge("Currently Accepted")
   } else if (is_accepted) {
-    paste0(green_badge("Accepted"), yellow_badge("Not Current"))
+    paste(green_badge("Accepted"), yellow_badge("Not Current"))
   } else if (is_current) {
-    paste0(yellow_badge("Not Accepted"), green_badge("Current"))
+    paste(yellow_badge("Not Accepted"), green_badge("Current"))
   } else {
-    paste0(yellow_badge("Not Accepted"), yellow_badge("Not Current"))
+    paste(yellow_badge("Not Accepted"), yellow_badge("Not Current"))
   }
 }
 
