@@ -503,6 +503,14 @@ window.vbSetupCommStatusDropdown = function(nTableWrapper) {
   btnBar.append($wrapper);
   $wrapper.find('select').on('change', function() {
     window.vbCommStatus = this.value;
+    // Reset communities_start to 0 in the URL so that when Shiny rebuilds the
+    // table and vegbankLoadTableState re-reads the URL during init, it starts
+    // at page 1 instead of a potentially out-of-range offset.
+    var params = new URLSearchParams(window.location.search);
+    if (params.has('communities_start')) {
+      params.set('communities_start', '0');
+      history.replaceState(null, '', '?' + params.toString());
+    }
     Shiny.setInputValue('comm_status', this.value, {priority: 'event'});
   });
 };
