@@ -224,6 +224,8 @@ create_all_obs_count_links <- function(obs_counts, entity_codes, entity_labels) 
 #'   \item{accepted: \code{status starts with "accepted"} (case-insensitive)}
 #'   \item{current: \code{stop_date} is NA, blank, or a date in the future}
 #' }
+#' Uses sprintf and paste because htmltools have too much overhead and cause
+#' the tables to load slower when we do this for each row in a large dataset.
 #'
 #' @param status Character; the concept's status value (e.g. "accepted",
 #'   "undetermined", \code{NA})
@@ -242,12 +244,12 @@ create_status_badges <- function(status, stop_date) {
   is_accepted <- startsWith(tolower(status), "accepted")
   is_current <- is.null(stop_date) || identical(stop_date, "") ||
     (length(stop_date) == 1 && is.na(stop_date)) ||
-    tryCatch(
-      !is.na(stop_date) && as.POSIXct(stop_date, tryFormats = c(
+    tryCatch({
+      parsed_stop <- suppressWarnings(as.POSIXct(stop_date, tryFormats = c(
         "%a, %d %b %Y %H:%M:%S GMT", "%Y-%m-%d"
-      ), tz = "UTC") > Sys.time(),
-      error = function(e) FALSE
-    )
+      ), tz = "UTC"))
+      !is.na(parsed_stop) && parsed_stop > Sys.time()
+    }, error = function(e) FALSE)
 
   green_badge <- function(label) {
     sprintf('<span class="badge rounded-pill" style="background-color: var(--green-bg); color: var(--green-text);">%s</span>', label)
