@@ -630,17 +630,31 @@ server <- function(input, output, session) {
     }
   })
 
+  # Proxies for status filter reloads. When status changes we do a tbody-only
+  # ajax.reload() so the DT wrapper DOM (including initComplete-injected elements)
+  # is never destroyed.
+  comm_proxy  <- DT::dataTableProxy("comm_table",  session = session)
+  plant_proxy <- DT::dataTableProxy("plant_table", session = session)
+
+  shiny::observeEvent(state$community_status(), {
+    DT::reloadData(comm_proxy, resetPaging = TRUE)
+  }, ignoreInit = TRUE)
+
+  shiny::observeEvent(state$plant_status(), {
+    DT::reloadData(plant_proxy, resetPaging = TRUE)
+  }, ignoreInit = TRUE)
+
   output$comm_table <- DT::renderDataTable({
-    # Rebuild table when filter changes or status changes
+    # Rebuild table when citation filter changes.
+    # Status changes are handled via proxy reload above — no dependency here.
     filter <- state$community_filter()
-    status <- state$community_status()
     vb_code <- if (!is.null(filter)) filter$code else NULL
     filter_type <- if (!is.null(filter)) filter$type else NULL
     build_concept_table_with_filter(
       concept_type = "community",
       vb_code = vb_code,
       filter_type = filter_type,
-      status = status
+      status = state$community_status  # function ref, not a call — no reactive dependency
     )
   })
 
@@ -653,9 +667,10 @@ server <- function(input, output, session) {
   })
 
   output$plant_table <- DT::renderDataTable({
+    # Status changes handled via proxy reload — no dependency here.
     build_concept_table_with_filter(
       concept_type = "plant",
-      status = state$plant_status()
+      status = state$plant_status  # function ref, not a call
     )
   })
 

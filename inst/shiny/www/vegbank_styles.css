@@ -235,18 +235,15 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   transform: rotate(0deg) scale(1);
 }
 
-/* Status filter dropdown — floats right, just to the left of the DT search bar */
-.vb-status-select-wrapper {
+.vb-status-label {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   float: right;
-  margin-top: 0.3rem;
+  margin-top: 0.25rem;
   margin-right: 0.75rem;
-}
-
-.vb-status-select-label {
   font-size: 0.875rem;
+  cursor: default;
   user-select: none;
   white-space: nowrap;
 }

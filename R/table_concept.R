@@ -95,11 +95,17 @@ build_concept_table_with_filter <- function(concept_type = c("plant", "community
     stop("No concept table spec registered for type: ", concept_type)
   }
 
-  # Inject status filter query param (e.g. "current_accepted" or "any")
+  # Inject status filter query param. Supports a reactive function (called per AJAX
+  # request) or a plain scalar (used once at render time).
   if (!is.null(status)) {
+    status_query <- if (is.function(status)) {
+      function() list(status = shiny::isolate(status()))
+    } else {
+      list(status = status)
+    }
     spec$data_source <- utils::modifyList(
       spec$data_source %||% list(),
-      list(query = list(status = status))
+      list(query = status_query)
     )
   }
 
@@ -405,16 +411,12 @@ CONCEPT_TABLE_SPECS <- local({
           if (config$concept_type == "plant") .PLANT_TABLE_HELP_CONTENT else .COMMUNITY_TABLE_HELP_CONTENT
         )
         opts <- list(dom = "Bfrtip", buttons = I(list(help_btn)))
-        if (config$concept_type == "community") {
-          opts$initComplete <- DT::JS(
-            "function(settings) { if (window.vbSetupCommStatusDropdown) window.vbSetupCommStatusDropdown(settings.nTableWrapper); }"
-          )
-        }
-        if (config$concept_type == "plant") {
-          opts$initComplete <- DT::JS(
-            "function(settings) { if (window.vbSetupPlantStatusDropdown) window.vbSetupPlantStatusDropdown(settings.nTableWrapper); }"
-          )
-        }
+        opts$initComplete <- DT::JS(paste0(
+          "function(settings) {",
+          "var id = $(settings.nTable).closest('.datatables')[0].id;",
+          "if (window.vbConceptStatusInit) window.vbConceptStatusInit(settings.nTableWrapper, id);",
+          "}"
+        ))
         opts
       }),
       datatable_args = list(extensions = "Buttons"),
