@@ -346,10 +346,6 @@ get_concept_config <- function(concept_type) {
   gsub("'", "\\'", html, fixed = TRUE)
 })
 
-#' Build a DT Buttons JS definition for the "Show archival data" toggle.
-#'
-#' When active, sets `window.vbCommShowArchival = true` and fires the Shiny
-#' input `comm_show_archival` so the server can rebuild the table with
 .COMMUNITY_TABLE_HELP_CONTENT <- local({
   html <- as.character(htmltools::tagList(
     htmltools::tags$p("This table lists vegetation community concepts in VegBank's classification hierarchy. Each row is a single community type."),
