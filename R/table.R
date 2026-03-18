@@ -236,7 +236,7 @@ create_status_badges <- function(status, stop_date) {
     (length(status) == 1 && is.na(status))
 
   if (status_na) {
-    return('<span class="badge rounded-pill" style="background-color: var(--no-status-bg); color: var(--no-status-text);">No Status</span>')
+    return('<span class="badge rounded-pill" style="background-color: var(--monochrome-bg); color: var(--monochrome-text);">No Status</span>')
   }
 
   is_accepted <- startsWith(tolower(status), "accepted")
@@ -250,10 +250,10 @@ create_status_badges <- function(status, stop_date) {
     )
 
   green_badge <- function(label) {
-    sprintf('<span class="badge rounded-pill" style="background-color: var(--accepted-bg); color: var(--accepted-text);">%s</span>', label)
+    sprintf('<span class="badge rounded-pill" style="background-color: var(--green-bg); color: var(--green-text);">%s</span>', label)
   }
   yellow_badge <- function(label) {
-    sprintf('<span class="badge rounded-pill" style="background-color: var(--not-current-bg); color: var(--not-current-text);">%s</span>', label)
+    sprintf('<span class="badge rounded-pill" style="background-color: var(--yellow-bg); color: var(--yellow-text);">%s</span>', label)
   }
 
   if (is_accepted && is_current) {
