@@ -787,46 +787,58 @@ table.dataTable tbody tr.selected-entity:hover,
 
 .vb-map-search-row {
   display: flex;
+  align-items: baseline;
+  padding: 6px 8px;
+  gap: 6px;
+}
+
+.vb-map-search-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: #333;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.vb-map-search-input-wrap {
+  flex: 1;
+  display: flex;
   align-items: center;
-  padding: 3px;
+  border-bottom: 1px solid #aaa;
+  min-width: 0;
+  transition: border-color 0.15s;
+}
+
+.vb-map-search-input-wrap:focus-within {
+  border-bottom-color: #333;
 }
 
 .vb-map-search-input {
   flex: 1;
-  border: 1px solid #ccc;
+  border: none;
   outline: none;
-  padding: 5px 8px;
+  padding: 2px 0;
   font-size: 13px;
-  border-radius: 4px;
+  background: transparent;
   min-width: 0;
 }
 
-.vb-map-search-input:focus {
-  border-color: #5a9e87;
-}
-
-.vb-map-search-btn {
+.vb-map-search-clear {
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
-  background: #5a9e87;
-  color: white;
-  padding: 5px 7px;
-  cursor: pointer;
-  border-radius: 4px;
+  background: none;
+  color: #999;
+  font-size: 16px;
   line-height: 1;
-  margin-left: 3px;
+  padding: 0 2px;
+  cursor: pointer;
   flex-shrink: 0;
 }
 
-.vb-map-search-btn:hover {
-  background: #4a8a74;
-}
-
-.vb-map-search-btn:disabled {
-  background: #aaa;
-  cursor: default;
+.vb-map-search-clear:hover {
+  color: #333;
 }
 
 .vb-map-search-results {

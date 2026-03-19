@@ -852,7 +852,8 @@ server <- function(input, output, session) {
           status = "single",
           lat = matches$latitude[1],
           lng = matches$longitude[1],
-          label = matches$author_obs_code[1]
+          label = matches$author_obs_code[1],
+          ob_code = matches$ob_code[1]
         ))
         return()
       }

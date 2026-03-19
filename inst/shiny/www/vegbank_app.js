@@ -1293,30 +1293,46 @@ window.vbMapSearchControl = function(map, el) {
 
     // Search input row
     var inputRow = L.DomUtil.create('div', 'vb-map-search-row', container);
-    var input = L.DomUtil.create('input', 'vb-map-search-input', inputRow);
+
+    var label = L.DomUtil.create('label', 'vb-map-search-label', inputRow);
+    label.textContent = 'Search:';
+
+    var inputWrap = L.DomUtil.create('div', 'vb-map-search-input-wrap', inputRow);
+    var input = L.DomUtil.create('input', 'vb-map-search-input', inputWrap);
     input.type = 'text';
-    input.placeholder = 'Search by VegBank or author code...';
+    input.placeholder = 'by VegBank or author code...';
     input.setAttribute('aria-label', 'Search plot by code');
 
-    var btn = L.DomUtil.create('button', 'vb-map-search-btn', inputRow);
-    btn.type = 'button';
-    btn.setAttribute('aria-label', 'Search');
-    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+    var clearBtn = L.DomUtil.create('button', 'vb-map-search-clear', inputWrap);
+    clearBtn.type = 'button';
+    clearBtn.setAttribute('aria-label', 'Clear search');
+    clearBtn.innerHTML = '\u00d7';
+    clearBtn.style.display = 'none';
 
     // Disambiguation / no-results list
     var resultsList = L.DomUtil.create('div', 'vb-map-search-results', container);
     resultsList.style.display = 'none';
+
+    function updateClearBtn() {
+      clearBtn.style.display = input.value.length > 0 ? '' : 'none';
+    }
 
     function clearResults() {
       resultsList.innerHTML = '';
       resultsList.style.display = 'none';
     }
 
+    function clearAll() {
+      input.value = '';
+      updateClearBtn();
+      clearResults();
+      input.focus();
+    }
+
     function doSearch() {
       var query = input.value.trim();
       if (!query) return;
       clearResults();
-      btn.disabled = true;
       input.disabled = true;
       Shiny.setInputValue('map_search_query', {
         query: query,
@@ -1324,15 +1340,16 @@ window.vbMapSearchControl = function(map, el) {
       }, {priority: 'event'});
     }
 
-    btn.addEventListener('click', doSearch);
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
-      if (e.key === 'Escape') { clearResults(); }
+      if (e.key === 'Escape') { clearAll(); }
     });
+    input.addEventListener('input', updateClearBtn);
+    clearBtn.addEventListener('click', clearAll);
 
     // Store references on the container for the message handler
     container._vbInput = input;
-    container._vbBtn = btn;
+    container._vbBtn = null;
     container._vbResults = resultsList;
     container._vbClearResults = clearResults;
     container._vbMap = map;
@@ -1349,12 +1366,10 @@ Shiny.addCustomMessageHandler('map_search_results', function(message) {
   if (!controlEl) return;
 
   var input = controlEl._vbInput;
-  var btn = controlEl._vbBtn;
   var resultsList = controlEl._vbResults;
   var clearResults = controlEl._vbClearResults;
   var map = controlEl._vbMap;
 
-  btn.disabled = false;
   input.disabled = false;
 
   if (!message || !message.status) return;
@@ -1376,7 +1391,7 @@ Shiny.addCustomMessageHandler('map_search_results', function(message) {
     map.flyTo([message.lat, message.lng], 18);
     L.popup()
       .setLatLng([message.lat, message.lng])
-      .setContent('<strong>' + message.label + '</strong>')
+      .setContent('Plot ' + message.label + ' (' + message.ob_code + ') is here!')
       .openOn(map);
     return;
   }
@@ -1399,7 +1414,7 @@ Shiny.addCustomMessageHandler('map_search_results', function(message) {
         map.flyTo([m.lat, m.lng], 18);
         L.popup()
           .setLatLng([m.lat, m.lng])
-          .setContent('<strong>' + m.author_obs_code + '</strong> (' + m.ob_code + ')')
+          .setContent('Plot ' + m.author_obs_code + ' (' + m.ob_code + ') is here!')
           .openOn(map);
       });
       resultsList.appendChild(item);
