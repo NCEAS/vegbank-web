@@ -804,13 +804,8 @@ table.dataTable tbody tr.selected-entity:hover,
   flex: 1;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #aaa;
+  border-bottom: 1px solid var(--bs-body-color);
   min-width: 0;
-  transition: border-color 0.15s;
-}
-
-.vb-map-search-input-wrap:focus-within {
-  border-bottom-color: #333;
 }
 
 .vb-map-search-input {

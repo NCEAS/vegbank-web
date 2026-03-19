@@ -1300,7 +1300,7 @@ window.vbMapSearchControl = function(map, el) {
     var inputWrap = L.DomUtil.create('div', 'vb-map-search-input-wrap', inputRow);
     var input = L.DomUtil.create('input', 'vb-map-search-input', inputWrap);
     input.type = 'text';
-    input.placeholder = 'by VegBank or author code...';
+    input.placeholder = 'by plot VegBank or author code...';
     input.setAttribute('aria-label', 'Search plot by code');
 
     var clearBtn = L.DomUtil.create('button', 'vb-map-search-clear', inputWrap);
