@@ -226,3 +226,55 @@ test_that("update_map_view creates proper function", {
   expect_equal(names(fn_args), c("map_proxy", "lng", "lat", "label", "zoom"))
   expect_null(fn_args$zoom)
 })
+
+# ---- add_search_control / onRender hook tests ----
+
+# Helper: collect all `code` strings from $jsHooks$render
+render_hook_codes <- function(map) {
+  vapply(map$jsHooks$render, `[[`, character(1), "code")
+}
+
+test_that("add_search_control attaches a render hook to the map", {
+  m <- htmlwidgets::onRender(create_empty_map(),
+    "function(el, x) { window.vbMapSearchControl(this, el); }")
+  hooks <- m$jsHooks$render
+  expect_true(length(hooks) >= 1)
+})
+
+test_that("add_search_control render hook invokes vbMapSearchControl", {
+  m <- create_empty_map()
+  m <- vegbankweb:::add_search_control(m)
+  codes <- render_hook_codes(m)
+  expect_true(any(grepl("vbMapSearchControl", codes, fixed = TRUE)))
+})
+
+test_that("add_search_control render hook passes map and element arguments", {
+  m <- create_empty_map()
+  m <- vegbankweb:::add_search_control(m)
+  codes <- render_hook_codes(m)
+  search_code <- codes[grepl("vbMapSearchControl", codes, fixed = TRUE)]
+  expect_match(search_code, "function\\(el,\\s*x\\)")
+  expect_match(search_code, "window\\.vbMapSearchControl\\(this,\\s*el\\)")
+})
+
+test_that("build_leaflet_map includes the vbMapSearchControl render hook", {
+  defaults <- get_map_defaults()
+  test_data <- mock_plot_data[1, c("latitude", "longitude", "author_obs_code", "ob_code")]
+  with_mock_shiny_notifications({
+    map <- process_map_data(test_data, defaults$lng, defaults$lat, defaults$zoom)
+    codes <- render_hook_codes(map)
+    expect_true(any(grepl("vbMapSearchControl", codes, fixed = TRUE)))
+  })
+})
+
+test_that("build_leaflet_map render hooks include all three control callbacks", {
+  defaults <- get_map_defaults()
+  test_data <- mock_plot_data[1, c("latitude", "longitude", "author_obs_code", "ob_code")]
+  with_mock_shiny_notifications({
+    map <- process_map_data(test_data, defaults$lng, defaults$lat, defaults$zoom)
+    codes <- render_hook_codes(map)
+    expect_true(any(grepl("vbMapBindShinyInputs", codes, fixed = TRUE)))
+    expect_true(any(grepl("vbMapHelpControl",     codes, fixed = TRUE)))
+    expect_true(any(grepl("vbMapSearchControl",   codes, fixed = TRUE)))
+  })
+})
