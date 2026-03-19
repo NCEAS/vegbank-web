@@ -482,6 +482,36 @@ window.vbMapBindShinyInputs = function(map, el) {
   });
 };
 
+// Help/instructions button control — adds a square info button above the zoom controls
+// (top-left) that opens a Bootstrap popover with usage instructions.
+window.vbMapHelpControl = function(map, el, btnInnerHtml, closeIconHtml, contentHtml) {
+  var helpBtn = null;
+  var helpControl = L.control({position: 'topleft'});
+  helpControl.onAdd = function() {
+    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control vb-map-help-control');
+    helpBtn = L.DomUtil.create('a', 'vb-map-help-btn vb-help-btn', container);
+    helpBtn.href = '#';
+    helpBtn.setAttribute('role', 'button');
+    helpBtn.setAttribute('title', 'About this map');
+    helpBtn.setAttribute('aria-label', 'About this map');
+    helpBtn.innerHTML = btnInnerHtml;
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.on(helpBtn, 'click', L.DomEvent.preventDefault);
+    return container;
+  };
+  helpControl.addTo(map);
+
+  // Move the help control to the top of the top-left stack (above zoom +/-)
+  var topLeft = el.querySelector('.leaflet-top.leaflet-left');
+  if (topLeft && topLeft.children.length > 1) {
+    topLeft.insertBefore(topLeft.lastElementChild, topLeft.firstElementChild);
+  }
+
+  if (helpBtn && window.vbHelpButton) {
+    window.vbHelpButton(helpBtn, '<strong>Map</strong>', contentHtml, closeIconHtml);
+  }
+};
+
 // Inject the status <label> into the .dataTables_filter area on table init.
 // Called from each concept table's initComplete callback. Uses the Shiny
 // output div id (same resolution as registerDataTableMapping) to look up config.
