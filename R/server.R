@@ -75,6 +75,7 @@ server <- function(input, output, session) {
   map_observations <- shiny::reactiveVal(NULL)
   map_fetch_in_progress <- shiny::reactiveVal(FALSE)
   map_initialized <- shiny::reactiveVal(FALSE)
+  map_filter_notice_shown <- shiny::reactiveVal(FALSE)
 
   # Overview data state so we can lazy load that page once a session
   overview_initialized <- shiny::reactiveVal(FALSE)
@@ -816,6 +817,45 @@ server <- function(input, output, session) {
         map_initialized(TRUE)
         session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
         session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+
+        # Show filter notice if the user had a filter active when they first
+        # navigated to the Map tab (hidden behind the loading overlay until now)
+        if (!isTRUE(map_filter_notice_shown())) {
+          plots_search <- shiny::isolate(state$table_states[["plots"]]$search)
+          has_table_search <- !is.null(plots_search) && nzchar(plots_search)
+          has_cross_filter <- !is.null(shiny::isolate(state$plot_filter()))
+          if (has_table_search || has_cross_filter) {
+            map_filter_notice_shown(TRUE)
+            shiny::showNotification(
+              "Filters applied to the Plots table don't affect the Map. You can only view all of the plots in VegBank simultaneously.",
+              type = "message",
+              duration = 10
+            )
+          }
+        }
+      }
+    },
+    ignoreInit = TRUE
+  )
+
+  # When returning to an already-loaded map with an active Plots filter, show
+  # the notice once so the user isn't confused by the unfiltered marker set.
+  shiny::observeEvent(state$current_tab(),
+    {
+      if (!identical(state$current_tab(), "Map")) return()
+      if (!isTRUE(map_initialized())) return()
+      if (isTRUE(map_filter_notice_shown())) return()
+
+      plots_search <- shiny::isolate(state$table_states[["plots"]]$search)
+      has_table_search <- !is.null(plots_search) && nzchar(plots_search)
+      has_cross_filter <- !is.null(shiny::isolate(state$plot_filter()))
+      if (has_table_search || has_cross_filter) {
+        map_filter_notice_shown(TRUE)
+        shiny::showNotification(
+          "Filters applied to the Plots table don't affect the Map. You can only view all of the plots in VegBank simultaneously.",
+          type = "message",
+          duration = 10
+        )
       }
     },
     ignoreInit = TRUE
