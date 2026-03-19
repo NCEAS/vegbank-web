@@ -10,6 +10,7 @@ MAP_DATA_FETCH_LIMIT <- 1000000L
   html <- as.character(htmltools::tagList(
     htmltools::tags$p("This map shows all VegBank plot observation locations. Each pin represents one or more observations at that coordinate."),
     htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box (top right) to find a plot by VegBank or author observation code."),
       htmltools::tags$li(htmltools::tags$strong("Navigate:"), " drag to pan; scroll or use the +/\u2212 buttons to zoom."),
       htmltools::tags$li(htmltools::tags$strong("Clusters:"), " circles with a number indicate grouped nearby plots. Click a cluster to zoom in and expand it."),
       htmltools::tags$li(htmltools::tags$strong("Markers:"), " author plot observation codes are listed in the label below each marker. Click a code link to open that plot\u2019s details."),
