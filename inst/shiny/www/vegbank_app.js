@@ -1389,20 +1389,28 @@ Shiny.addCustomMessageHandler('map_search_results', function(message) {
   // Fly to a location and show a popup once the animation finishes.
   // Opening a popup during flyTo or cluster expansion can interrupt
   // the animation, so we defer it to a one-time moveend listener.
-  function flyAndPopup(lat, lng, content) {
+  // `contentNode` must be a DOM node; text is set via textContent to
+  // prevent HTML injection from API-sourced field values.
+  function flyAndPopup(lat, lng, contentNode) {
     map.once('moveend', function() {
       L.popup()
         .setLatLng([lat, lng])
-        .setContent(content)
+        .setContent(contentNode)
         .openOn(map);
     });
     map.flyTo([lat, lng], 18);
   }
 
+  function buildPopupNode(authorCode, obCode) {
+    var span = document.createElement('span');
+    span.textContent = 'Plot ' + authorCode + ' (' + obCode + ') is here!';
+    return span;
+  }
+
   if (message.status === 'single') {
     clearResults();
     flyAndPopup(message.lat, message.lng,
-      'Plot ' + message.label + ' (' + message.ob_code + ') is here!');
+      buildPopupNode(message.label, message.ob_code));
     return;
   }
 
@@ -1422,7 +1430,7 @@ Shiny.addCustomMessageHandler('map_search_results', function(message) {
         e.preventDefault();
         clearResults();
         flyAndPopup(m.lat, m.lng,
-          'Plot ' + m.author_obs_code + ' (' + m.ob_code + ') is here!');
+          buildPopupNode(m.author_obs_code, m.ob_code));
       });
       resultsList.appendChild(item);
     });
