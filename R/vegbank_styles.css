@@ -770,18 +770,19 @@ table.dataTable tbody tr.selected-entity:hover,
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
   font-family: inherit;
   font-size: 13px;
-  width: 320px;
+  min-width: 260px;
+  max-width: 340px;
 }
 
-@media (max-width: 768px) {
+@media (min-width: 768px) {
   .vb-map-search-control {
-    width: 240px;
+    width: 300px !important;
   }
 }
 
-@media (max-width: 480px) {
-  .vb-map-search-control {
-    width: 180px;
+@media (min-width: 992px) {
+  .vb-map-search-controlt {
+    width: 360px !important;
   }
 }
 
@@ -865,13 +866,6 @@ table.dataTable tbody tr.selected-entity:hover,
 .vb-map-search-match:hover {
   background: #f0f7f4;
   color: #2a6e54;
-}
-
-/* Override Leaflet .leaflet-bar a hover styles on match items */
-.leaflet-bar.vb-map-search-control a.vb-map-search-match:hover,
-.leaflet-touch .leaflet-bar.vb-map-search-control a.vb-map-search-match:hover {
-  background-color: rgba(0, 0, 0, 0.075) !important;
-  color: #333 !important;
 }
 
 .vb-map-search-info {

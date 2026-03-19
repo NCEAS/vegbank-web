@@ -1279,6 +1279,136 @@ Shiny.addCustomMessageHandler('triggerDownload', function(message) {
   }
 });
 
+// ---- Map Search Control ----
+// Self-contained Leaflet control for searching by vb_code or author_obs_code.
+// Placed in the top-right corner. Sends the query to Shiny and receives
+// results via a custom message handler.
+window.vbMapSearchControl = function(map, el) {
+  var searchControl = L.control({position: 'topright'});
+
+  searchControl.onAdd = function() {
+    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control vb-map-search-control');
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.disableScrollPropagation(container);
+
+    // Search input row
+    var inputRow = L.DomUtil.create('div', 'vb-map-search-row', container);
+    var input = L.DomUtil.create('input', 'vb-map-search-input', inputRow);
+    input.type = 'text';
+    input.placeholder = 'Search by VegBank or author code...';
+    input.setAttribute('aria-label', 'Search plot by code');
+
+    var btn = L.DomUtil.create('button', 'vb-map-search-btn', inputRow);
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Search');
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+
+    // Disambiguation / no-results list
+    var resultsList = L.DomUtil.create('div', 'vb-map-search-results', container);
+    resultsList.style.display = 'none';
+
+    function clearResults() {
+      resultsList.innerHTML = '';
+      resultsList.style.display = 'none';
+    }
+
+    function doSearch() {
+      var query = input.value.trim();
+      if (!query) return;
+      clearResults();
+      btn.disabled = true;
+      input.disabled = true;
+      Shiny.setInputValue('map_search_query', {
+        query: query,
+        ts: Date.now()
+      }, {priority: 'event'});
+    }
+
+    btn.addEventListener('click', doSearch);
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+      if (e.key === 'Escape') { clearResults(); }
+    });
+
+    // Store references on the container for the message handler
+    container._vbInput = input;
+    container._vbBtn = btn;
+    container._vbResults = resultsList;
+    container._vbClearResults = clearResults;
+    container._vbMap = map;
+
+    return container;
+  };
+
+  searchControl.addTo(map);
+};
+
+// Handler for search results sent from the server
+Shiny.addCustomMessageHandler('map_search_results', function(message) {
+  var controlEl = document.querySelector('.vb-map-search-control');
+  if (!controlEl) return;
+
+  var input = controlEl._vbInput;
+  var btn = controlEl._vbBtn;
+  var resultsList = controlEl._vbResults;
+  var clearResults = controlEl._vbClearResults;
+  var map = controlEl._vbMap;
+
+  btn.disabled = false;
+  input.disabled = false;
+
+  if (!message || !message.status) return;
+
+  if (message.status === 'no_data') {
+    resultsList.innerHTML = '<div class="vb-map-search-item vb-map-search-info">Map data not loaded yet.</div>';
+    resultsList.style.display = 'block';
+    return;
+  }
+
+  if (message.status === 'none') {
+    resultsList.innerHTML = '<div class="vb-map-search-item vb-map-search-info">No matching plots found.</div>';
+    resultsList.style.display = 'block';
+    return;
+  }
+
+  if (message.status === 'single') {
+    clearResults();
+    map.flyTo([message.lat, message.lng], 18);
+    L.popup()
+      .setLatLng([message.lat, message.lng])
+      .setContent('<strong>' + message.label + '</strong>')
+      .openOn(map);
+    return;
+  }
+
+  if (message.status === 'multiple') {
+    resultsList.innerHTML = '';
+    var header = document.createElement('div');
+    header.className = 'vb-map-search-item vb-map-search-info';
+    header.textContent = message.matches.length + ' matches \u2014 select one:';
+    resultsList.appendChild(header);
+
+    message.matches.forEach(function(m) {
+      var item = document.createElement('a');
+      item.href = '#';
+      item.className = 'vb-map-search-item vb-map-search-match';
+      item.textContent = m.author_obs_code + ' (' + m.ob_code + ')';
+      item.addEventListener('click', function(e) {
+        e.preventDefault();
+        clearResults();
+        map.flyTo([m.lat, m.lng], 18);
+        L.popup()
+          .setLatLng([m.lat, m.lng])
+          .setContent('<strong>' + m.author_obs_code + '</strong> (' + m.ob_code + ')')
+          .openOn(map);
+      });
+      resultsList.appendChild(item);
+    });
+    resultsList.style.display = 'block';
+    return;
+  }
+});
+
 // Enable/disable the DT download button (target by class to be index-independent)
 Shiny.addCustomMessageHandler('setDownloadButtonState', function(message) {
   try {

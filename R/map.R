@@ -261,7 +261,8 @@ build_leaflet_map <- function(data_grouped, map_defaults, center_lng, center_lat
       clusterOptions = leaflet::markerClusterOptions(disableClusteringAtZoom = 17)
     ) |>
     add_zoom_control() |>
-    add_map_help_control()
+    add_map_help_control() |>
+    add_search_control()
 }
 
 #' Create marker label options for consistent styling
@@ -385,4 +386,18 @@ add_map_help_control <- function(map) {
 #' @noRd
 add_zoom_control <- function(map) {
   map |> htmlwidgets::onRender("function(el, x) { window.vbMapBindShinyInputs(this, el); }")
+}
+
+#' Add a search-by-code control to a leaflet map
+#'
+#' Injects a search input in the top-right corner that allows users to
+#' look up plots by VegBank code or author observation code.
+#'
+#' @param map A leaflet map object
+#' @return The leaflet map object with a search control added
+#'
+#' @importFrom htmlwidgets onRender
+#' @noRd
+add_search_control <- function(map) {
+  map |> htmlwidgets::onRender("function(el, x) { window.vbMapSearchControl(this, el); }")
 }

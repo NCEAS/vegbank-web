@@ -821,6 +821,61 @@ server <- function(input, output, session) {
     ignoreInit = TRUE
   )
 
+  # Handle search-by-code from the map search control
+  shiny::observeEvent(input$map_search_query,
+    {
+      query <- trimws(input$map_search_query$query)
+      if (is.null(query) || !nzchar(query)) return()
+
+      obs <- map_observations()
+      if (is.null(obs) || nrow(obs) == 0) {
+        session$sendCustomMessage("map_search_results", list(status = "no_data"))
+        return()
+      }
+
+      # Case-insensitive match on ob_code (vb_code) or author_obs_code
+      query_lower <- tolower(query)
+      matches <- obs[
+        tolower(obs$ob_code) == query_lower |
+        tolower(obs$author_obs_code) == query_lower, ,
+        drop = FALSE
+      ]
+      matches <- matches[!is.na(matches$latitude) & !is.na(matches$longitude), , drop = FALSE]
+
+      if (nrow(matches) == 0) {
+        session$sendCustomMessage("map_search_results", list(status = "none"))
+        return()
+      }
+
+      if (nrow(matches) == 1) {
+        session$sendCustomMessage("map_search_results", list(
+          status = "single",
+          lat = matches$latitude[1],
+          lng = matches$longitude[1],
+          label = matches$author_obs_code[1]
+        ))
+        return()
+      }
+
+      # Multiple matches — send disambiguation list (cap at 50 for sanity)
+      matches <- utils::head(matches, 50)
+      match_list <- lapply(seq_len(nrow(matches)), function(i) {
+        list(
+          lat = matches$latitude[i],
+          lng = matches$longitude[i],
+          author_obs_code = matches$author_obs_code[i],
+          ob_code = matches$ob_code[i]
+        )
+      })
+      session$sendCustomMessage("map_search_results", list(
+        status = "multiple",
+        matches = match_list
+      ))
+    },
+    ignoreNULL = TRUE,
+    ignoreInit = TRUE
+  )
+
   # Track map state changes without triggering redraws
   shiny::observeEvent(input$map_zoom,
     {
