@@ -239,6 +239,9 @@ format_plot_action_buttons <- function(ob_codes, author_codes, latitudes, longit
       if (!is.null(code) && nzchar(code)) {
         map_attrs[["data-code"]] <- htmltools::htmlEscape(code, attribute = TRUE)
       }
+      if (!is.null(detail_code) && nzchar(detail_code)) {
+        map_attrs[["data-ob-code"]] <- htmltools::htmlEscape(detail_code, attribute = TRUE)
+      }
       do.call(htmltools::tags$button, map_attrs)
     } else {
       htmltools::tags$button(

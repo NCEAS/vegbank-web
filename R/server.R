@@ -1058,6 +1058,7 @@ server <- function(input, output, session) {
       lat <- as.numeric(map_data$lat)
       lng <- as.numeric(map_data$lng)
       code <- map_data$code
+      ob_code <- map_data$ob_code
 
       # Check for valid coordinates
       if (is.na(lat) || is.na(lng) || !is.numeric(lat) || !is.numeric(lng)) {
@@ -1074,7 +1075,7 @@ server <- function(input, output, session) {
       state$map_zoom(target_zoom)
       update_map_custom_flag(lat, lng, target_zoom)
 
-      state$map_request(list(lat = lat, lng = lng, code = code, zoom = target_zoom))
+      state$map_request(list(lat = lat, lng = lng, code = code, ob_code = ob_code, zoom = target_zoom))
 
       state$current_tab("Map")
 
@@ -1096,11 +1097,16 @@ server <- function(input, output, session) {
           # map fogrets its size when hidden and needs to be recalculated to render properly.
           # See https://github.com/NCEAS/vegbank-web/issues/28
           session$sendCustomMessage("invalidateMapSize", list())
+          label <- if (!is.null(map_req$ob_code) && nzchar(map_req$ob_code %||% "")) {
+            paste0("Plot ", map_req$code, " (", map_req$ob_code, ") is here!")
+          } else {
+            paste("Plot", map_req$code, "is here!")
+          }
           move_map_to_obs(
             session,
             map_req$lat,
             map_req$lng,
-            paste("Plot", map_req$code, "is here!")
+            label
           )
           state$map_request(NULL)
 

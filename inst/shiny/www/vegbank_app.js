@@ -618,6 +618,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var code = btn.data('code');
+    var obCode = btn.data('ob-code');
     var payload = {
       lat: lat,
       lng: lng
@@ -625,6 +626,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (code) {
       payload.code = code;
+    }
+
+    if (obCode) {
+      payload.ob_code = obCode;
     }
 
     Shiny.setInputValue('show_on_map', payload, {priority: 'event'});
