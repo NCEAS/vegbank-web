@@ -881,3 +881,12 @@ table.dataTable tbody tr.selected-entity:hover,
   color: #666;
   font-style: italic;
 }
+
+/* ---- Map marker label elevation ----------------------------------------- */
+/* Labels have pointer-events:all (clickable:TRUE), so :hover and :focus-within */
+/* work. Raising z-index within .leaflet-tooltip-pane brings the active label  */
+/* above overlapping siblings so no content is fully obscured.                 */
+.leaflet-tooltip:hover,
+.leaflet-tooltip:focus-within {
+  z-index: 1000 !important;
+}
