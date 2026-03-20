@@ -99,6 +99,35 @@ filter_valid_map_points <- function(map_data) {
            is.numeric(map_data$longitude))
 }
 
+#' Build a case-insensitive search index for map observations
+#'
+#' Vectorized: each column is lowercased once, then \code{split()} groups row
+#' indices by key.  The result is a named list (key → integer row indices) that
+#' allows O(1) lookup per query instead of O(n) \code{tolower()} scans.
+#'
+#' Both \code{ob_code} and \code{author_obs_code} are indexed under the same
+#' structure so a single \code{[[query_lower]]} call covers both columns.
+#' Rows where a code is \code{NA} are silently omitted from the index.
+#'
+#' @param obs Data frame with \code{ob_code} and \code{author_obs_code} columns
+#' @return Named list mapping lowercase code strings to integer row-index vectors
+#' @noRd
+build_map_search_index <- function(obs) {
+  n <- nrow(obs)
+  if (n == 0L) return(list())
+
+  row_seq  <- seq_len(n)
+  ob_lower <- tolower(obs$ob_code)
+  auth_lower <- tolower(obs$author_obs_code)
+
+  # Combine both columns: each row contributes up to two (key, index) pairs
+  keys <- c(ob_lower, auth_lower)
+  rows <- c(row_seq,  row_seq)
+
+  valid <- !is.na(keys)
+  split(rows[valid], keys[valid])
+}
+
 # ---- Error Notifications ----
 
 #' Show appropriate error notification for map validation failure

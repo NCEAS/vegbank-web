@@ -77,6 +77,15 @@ server <- function(input, output, session) {
   map_initialized <- shiny::reactiveVal(FALSE)
   map_filter_notice_shown <- shiny::reactiveVal(FALSE)
 
+  # Pre-built search index: rebuilt once whenever map_observations changes.
+  # Maps lowercase ob_code / author_obs_code -> integer row indices so each
+  # search query is an O(1) list lookup rather than two O(n) tolower() scans.
+  map_search_index <- shiny::reactive({
+    obs <- map_observations()
+    if (is.null(obs) || nrow(obs) == 0L) return(NULL)
+    build_map_search_index(obs)
+  })
+
   # Overview data state so we can lazy load that page once a session
   overview_initialized <- shiny::reactiveVal(FALSE)
 
@@ -863,19 +872,22 @@ server <- function(input, output, session) {
       query <- trimws(input$map_search_query$query)
       if (is.null(query) || !nzchar(query)) return()
 
-      obs <- map_observations()
-      if (is.null(obs) || nrow(obs) == 0) {
+      # Use the pre-built index for O(1) lookup instead of per-search tolower scans
+      idx <- map_search_index()
+      if (is.null(idx)) {
         session$sendCustomMessage("map_search_results", list(status = "no_data"))
         return()
       }
 
-      # Case-insensitive match on ob_code (vb_code) or author_obs_code
       query_lower <- tolower(query)
-      matches <- obs[
-        tolower(obs$ob_code) == query_lower |
-        tolower(obs$author_obs_code) == query_lower, ,
-        drop = FALSE
-      ]
+      row_indices <- idx[[query_lower]]
+      if (is.null(row_indices)) {
+        session$sendCustomMessage("map_search_results", list(status = "none"))
+        return()
+      }
+
+      obs <- map_observations()
+      matches <- obs[unique(row_indices), , drop = FALSE]
       matches <- matches[!is.na(matches$latitude) & !is.na(matches$longitude), , drop = FALSE]
 
       if (nrow(matches) == 0) {
