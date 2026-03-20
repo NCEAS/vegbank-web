@@ -571,7 +571,7 @@ server <- function(input, output, session) {
         session$sendCustomMessage("showLoadingOverlay", list(type = "map"))
         session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
         map_fetch_in_progress(TRUE)
-        observations <- fetch_plot_map_data()
+        observations <- do_map_fetch_with_feedback()
         map_fetch_in_progress(FALSE)
         if (!is.null(observations)) {
           map_observations(observations)
@@ -787,7 +787,7 @@ server <- function(input, output, session) {
 
       # Fetch data
       map_fetch_in_progress(TRUE)
-      observations <- fetch_plot_map_data()
+      observations <- do_map_fetch_with_feedback()
       map_fetch_in_progress(FALSE)
 
       if (!is.null(observations)) {
@@ -795,7 +795,8 @@ server <- function(input, output, session) {
         # Note: map_initialized flag and loading screen will be hidden
         # by the onRender callback in output$map after map fully renders
       } else {
-        # If data fetch failed, still unlock nav and hide loading screen
+        # Loading screen and nav interactivity are reset regardless of error type;
+        # do_map_fetch_with_feedback() already surfaced the right notification.
         session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
         session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
       }
@@ -1611,6 +1612,39 @@ open_code_details <- function(
 is_valid_vb_code <- function(vb_code) {
   !is.null(vb_code) && !is.na(vb_code) &&
     nchar(as.character(vb_code)) > 0 && vb_code != "NA"
+}
+
+#' Fetch map data and notify the user on failure
+#'
+#' Wraps `fetch_plot_map_data()` in error handling so that both the Shiny
+#' notification and the loading-screen teardown always happen in the same
+#' call site that manages the loading overlay. Returns the data frame on
+#' success, or NULL on any failure (after showing the appropriate notification).
+#'
+#' @return Data frame of plot observations, or NULL
+#' @noRd
+do_map_fetch_with_feedback <- function() {
+  tryCatch(
+    {
+      obs <- fetch_plot_map_data()
+      if (is.null(obs)) {
+        shiny::showNotification(
+          "Map data is currently unavailable. Please try again later.",
+          type = "warning",
+          duration = NULL
+        )
+      }
+      obs
+    },
+    error = function(err) {
+      shiny::showNotification(
+        paste("Failed to load map data:", conditionMessage(err)),
+        type = "error",
+        duration = NULL
+      )
+      NULL
+    }
+  )
 }
 
 #' Build the popup label for a plot observation

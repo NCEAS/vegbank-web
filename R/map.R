@@ -27,42 +27,22 @@ MAP_DATA_FETCH_LIMIT <- 1000000L
 #' Fetch plot observations for the map
 #'
 #' Downloads plot observation data for the leaflet map using the VegBank API.
-#' Handles its own progress indicator and error notifications.
+#' Returns NULL if the API succeeds but provides no rows. API-level errors
+#' propagate to the caller, which is responsible for user notification and
+#' loading screen management.
 #'
 #' @param limit Maximum number of records to request (defaults to 1,000,000)
 #' @param detail VegBank detail level to request (defaults to "geo")
-#' @return Data frame of plot observations or NULL on failure
+#' @return Data frame of plot observations, or NULL if the API returns no data
 #' @noRd
 fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
-  error_occurred <- FALSE
-
-  data <- tryCatch(
-    vegbankr::vb_get_plot_observations(
-      limit = limit,
-      detail = detail,
-      with_nested = FALSE
-    ),
-    error = function(err) {
-      error_occurred <<- TRUE
-      shiny::showNotification(
-        paste("Failed to load map data:", conditionMessage(err)),
-        type = "error",
-        duration = NULL
-      )
-      NULL
-    }
+  data <- vegbankr::vb_get_plot_observations(
+    limit = limit,
+    detail = detail,
+    with_nested = FALSE
   )
 
-  if (isTRUE(error_occurred)) {
-    return(NULL)
-  }
-
   if (is.null(data) || nrow(data) == 0) {
-    shiny::showNotification(
-      "Map data is currently unavailable. Please try again later.",
-      type = "warning",
-      duration = NULL
-    )
     return(NULL)
   }
 

@@ -186,34 +186,24 @@ test_that("fetch_plot_map_data returns data when API succeeds", {
   })
 })
 
-test_that("fetch_plot_map_data surfaces API errors", {
-  with_mock_shiny_notifications({
-    result <- testthat::with_mocked_bindings(
+test_that("fetch_plot_map_data propagates API errors to the caller", {
+  expect_error(
+    testthat::with_mocked_bindings(
       fetch_plot_map_data(),
       vb_get_plot_observations = function(...) stop("API offline"),
       .package = "vegbankr"
-    )
-
-    expect_null(result)
-    last_notification <- get_last_notification()
-    expect_match(last_notification$message, "Failed to load map data")
-    expect_equal(last_notification$type, "error")
-  })
+    ),
+    "API offline"
+  )
 })
 
-test_that("fetch_plot_map_data warns when API returns no rows", {
-  with_mock_shiny_notifications({
-    result <- testthat::with_mocked_bindings(
-      fetch_plot_map_data(),
-      vb_get_plot_observations = function(...) data.frame(),
-      .package = "vegbankr"
-    )
-
-    expect_null(result)
-    last_notification <- get_last_notification()
-    expect_match(last_notification$message, "Map data is currently unavailable")
-    expect_equal(last_notification$type, "warning")
-  })
+test_that("fetch_plot_map_data returns NULL when API returns no rows", {
+  result <- testthat::with_mocked_bindings(
+    fetch_plot_map_data(),
+    vb_get_plot_observations = function(...) data.frame(),
+    .package = "vegbankr"
+  )
+  expect_null(result)
 })
 
 test_that("update_map_view creates proper function", {
