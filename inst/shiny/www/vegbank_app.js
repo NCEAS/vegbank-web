@@ -1391,18 +1391,17 @@ Shiny.addCustomMessageHandler('map_search_results', function(message) {
     return;
   }
 
-  // Fly to a location and show a popup once the animation finishes.
-  // Opening a popup during flyTo or cluster expansion can interrupt
-  // the animation, so we defer it to a one-time moveend listener.
+  // Fly to a location and show a popup immediately, before the animation starts.
+  // We open the popup with autoPan:false so Leaflet does not call panTo/setView
+  // internally, which would interrupt the flyTo animation.  The popup sits at
+  // the target coordinates and becomes visible as the camera arrives there.
   // `contentNode` must be a DOM node; text is set via textContent to
   // prevent HTML injection from API-sourced field values.
   function flyAndPopup(lat, lng, contentNode) {
-    map.once('moveend', function() {
-      L.popup()
-        .setLatLng([lat, lng])
-        .setContent(contentNode)
-        .openOn(map);
-    });
+    L.popup({ autoPan: false })
+      .setLatLng([lat, lng])
+      .setContent(contentNode)
+      .openOn(map);
     map.flyTo([lat, lng], 18);
   }
 
