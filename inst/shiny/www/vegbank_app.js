@@ -673,6 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var code = btn.data('code');
+    var obCode = btn.data('ob-code');
     var payload = {
       lat: lat,
       lng: lng
@@ -680,6 +681,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (code) {
       payload.code = code;
+    }
+
+    if (obCode) {
+      payload.ob_code = obCode;
     }
 
     Shiny.setInputValue('show_on_map', payload, {priority: 'event'});
@@ -1331,6 +1336,167 @@ Shiny.addCustomMessageHandler('triggerDownload', function(message) {
     document.body.appendChild(tempLink);
     tempLink.click();
     document.body.removeChild(tempLink);
+  }
+});
+
+// ---- Map Search Control ----
+// Self-contained Leaflet control for searching by vb_code or author_obs_code.
+// Placed in the top-right corner. Sends the query to Shiny and receives
+// results via a custom message handler.
+window.vbMapSearchControl = function(map, el) {
+  var searchControl = L.control({position: 'topright'});
+
+  searchControl.onAdd = function() {
+    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control vb-map-search-control');
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.disableScrollPropagation(container);
+
+    // Search input row
+    var inputRow = L.DomUtil.create('div', 'vb-map-search-row', container);
+
+    var label = L.DomUtil.create('label', 'vb-map-search-label', inputRow);
+    label.textContent = 'Search:';
+
+    var inputWrap = L.DomUtil.create('div', 'vb-map-search-input-wrap', inputRow);
+    var input = L.DomUtil.create('input', 'vb-map-search-input', inputWrap);
+    input.type = 'text';
+    input.placeholder = 'by plot VegBank or author code...';
+    input.setAttribute('aria-label', 'Search plot by code');
+
+    var clearBtn = L.DomUtil.create('button', 'vb-map-search-clear', inputWrap);
+    clearBtn.type = 'button';
+    clearBtn.setAttribute('aria-label', 'Clear search');
+    clearBtn.innerHTML = '\u00d7';
+    clearBtn.style.display = 'none';
+
+    // Disambiguation / no-results list
+    var resultsList = L.DomUtil.create('div', 'vb-map-search-results', container);
+    resultsList.style.display = 'none';
+
+    function updateClearBtn() {
+      clearBtn.style.display = input.value.length > 0 ? '' : 'none';
+    }
+
+    function clearResults() {
+      resultsList.innerHTML = '';
+      resultsList.style.display = 'none';
+    }
+
+    function clearAll() {
+      input.value = '';
+      updateClearBtn();
+      clearResults();
+      input.focus();
+    }
+
+    function doSearch() {
+      var query = input.value.trim();
+      if (!query) return;
+      clearResults();
+      input.disabled = true;
+      Shiny.setInputValue('map_search_query', {
+        query: query,
+        ts: Date.now()
+      }, {priority: 'event'});
+    }
+
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+      if (e.key === 'Escape') { clearAll(); }
+    });
+    input.addEventListener('input', updateClearBtn);
+    clearBtn.addEventListener('click', clearAll);
+
+    // Store references on the container for the message handler
+    container._vbInput = input;
+    container._vbResults = resultsList;
+    container._vbClearResults = clearResults;
+    container._vbMap = map;
+
+    return container;
+  };
+
+  searchControl.addTo(map);
+};
+
+// Handler for search results sent from the server
+Shiny.addCustomMessageHandler('map_search_results', function(message) {
+  var controlEl = document.querySelector('.vb-map-search-control');
+  if (!controlEl) return;
+
+  var input = controlEl._vbInput;
+  var resultsList = controlEl._vbResults;
+  var clearResults = controlEl._vbClearResults;
+  var map = controlEl._vbMap;
+
+  input.disabled = false;
+
+  if (!message || !message.status) return;
+
+  if (message.status === 'no_data') {
+    resultsList.innerHTML = '<div class="vb-map-search-item vb-map-search-info">Map data not loaded yet.</div>';
+    resultsList.style.display = 'block';
+    return;
+  }
+
+  if (message.status === 'none') {
+    resultsList.innerHTML = '<div class="vb-map-search-item vb-map-search-info">No matching plots found.</div>';
+    resultsList.style.display = 'block';
+    return;
+  }
+
+  // Fly to a location and show a popup immediately, before the animation starts.
+  // We open the popup with autoPan:false so Leaflet does not call panTo/setView
+  // internally, which would interrupt the flyTo animation.  The popup sits at
+  // the target coordinates and becomes visible as the camera arrives there.
+  // `contentNode` must be a DOM node; text is set via textContent to
+  // prevent HTML injection from API-sourced field values.
+  function flyAndPopup(lat, lng, contentNode) {
+    L.popup({ autoPan: false })
+      .setLatLng([lat, lng])
+      .setContent(contentNode)
+      .openOn(map);
+    map.flyTo([lat, lng], 18);
+  }
+
+  // Wraps a pre-built label string in a DOM node so flyAndPopup can use
+  // textContent (XSS-safe). The label text is produced by build_plot_popup_label()
+  // in server.R and sent as message.popup_label / m.popup_label.
+  function makePopupNode(label) {
+    var span = document.createElement('span');
+    span.textContent = label;
+    return span;
+  }
+
+  if (message.status === 'single') {
+    clearResults();
+    flyAndPopup(message.lat, message.lng,
+      makePopupNode(message.popup_label));
+    return;
+  }
+
+  if (message.status === 'multiple') {
+    resultsList.innerHTML = '';
+    var header = document.createElement('div');
+    header.className = 'vb-map-search-item vb-map-search-info';
+    header.textContent = message.matches.length + ' matches \u2014 select one:';
+    resultsList.appendChild(header);
+
+    message.matches.forEach(function(m) {
+      var item = document.createElement('a');
+      item.href = '#';
+      item.className = 'vb-map-search-item vb-map-search-match';
+      item.textContent = m.author_obs_code + ' (' + m.ob_code + ')';
+      item.addEventListener('click', function(e) {
+        e.preventDefault();
+        clearResults();
+        flyAndPopup(m.lat, m.lng,
+          makePopupNode(m.popup_label));
+      });
+      resultsList.appendChild(item);
+    });
+    resultsList.style.display = 'block';
+    return;
   }
 });
 

@@ -77,6 +77,16 @@ server <- function(input, output, session) {
   map_observations <- shiny::reactiveVal(NULL)
   map_fetch_in_progress <- shiny::reactiveVal(FALSE)
   map_initialized <- shiny::reactiveVal(FALSE)
+  map_filter_notice_shown <- shiny::reactiveVal(FALSE)
+
+  # Pre-built search index: rebuilt once whenever map_observations changes.
+  # Maps lowercase ob_code / author_obs_code -> integer row indices so each
+  # search query is an O(1) list lookup rather than two O(n) tolower() scans.
+  map_search_index <- shiny::reactive({
+    obs <- map_observations()
+    if (is.null(obs) || nrow(obs) == 0L) return(NULL)
+    build_map_search_index(obs)
+  })
 
   # Overview data state so we can lazy load that page once a session
   overview_initialized <- shiny::reactiveVal(FALSE)
@@ -536,6 +546,25 @@ server <- function(input, output, session) {
     )
   }
 
+  MAP_FILTER_NOTICE_MSG <- paste0(
+    "Filters applied to the Plots table don't affect the Map. ",
+    "You can only view all of the plots in VegBank simultaneously."
+  )
+
+  # Show the map-filter notification once per session, if the Plots table
+  # currently has an active search or cross-resource filter.
+  # No-ops when already shown or when no filter is active.
+  maybe_show_map_filter_notice <- function() {
+    if (isTRUE(map_filter_notice_shown())) return()
+    plots_search <- shiny::isolate(state$table_states[["plots"]]$search)
+    has_table_search <- !is.null(plots_search) && nzchar(plots_search)
+    has_cross_filter <- !is.null(shiny::isolate(state$plot_filter()))
+    if (has_table_search || has_cross_filter) {
+      map_filter_notice_shown(TRUE)
+      shiny::showNotification(MAP_FILTER_NOTICE_MSG, type = "message", duration = 10)
+    }
+  }
+
   # RENDER UI ELEMENTS --------------------------------------------------------------------------------
 
 
@@ -555,7 +584,7 @@ server <- function(input, output, session) {
         session$sendCustomMessage("showLoadingOverlay", list(type = "map"))
         session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
         map_fetch_in_progress(TRUE)
-        observations <- fetch_plot_map_data()
+        observations <- do_map_fetch_with_feedback()
         map_fetch_in_progress(FALSE)
         if (!is.null(observations)) {
           map_observations(observations)
@@ -811,7 +840,7 @@ server <- function(input, output, session) {
 
       # Fetch data
       map_fetch_in_progress(TRUE)
-      observations <- fetch_plot_map_data()
+      observations <- do_map_fetch_with_feedback()
       map_fetch_in_progress(FALSE)
 
       if (!is.null(observations)) {
@@ -819,7 +848,8 @@ server <- function(input, output, session) {
         # Note: map_initialized flag and loading screen will be hidden
         # by the onRender callback in output$map after map fully renders
       } else {
-        # If data fetch failed, still unlock nav and hide loading screen
+        # Loading screen and nav interactivity are reset regardless of error type;
+        # do_map_fetch_with_feedback() already surfaced the right notification.
         session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
         session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
       }
@@ -860,8 +890,82 @@ server <- function(input, output, session) {
         map_initialized(TRUE)
         session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
         session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+
+        # Show filter notice if the user had a filter active when they first
+        # navigated to the Map tab (hidden behind the loading overlay until now)
+        maybe_show_map_filter_notice()
       }
     },
+    ignoreInit = TRUE
+  )
+
+  # When returning to an already-loaded map with an active Plots filter, show
+  # the notice once so the user isn't confused by the unfiltered marker set.
+  shiny::observeEvent(state$current_tab(),
+    {
+      if (!identical(state$current_tab(), "Map")) return()
+      if (!isTRUE(map_initialized())) return()
+      maybe_show_map_filter_notice()
+    },
+    ignoreInit = TRUE
+  )
+
+  # Handle search-by-code from the map search control
+  shiny::observeEvent(input$map_search_query,
+    {
+      query <- trimws(input$map_search_query$query)
+      if (is.null(query) || !nzchar(query)) return()
+
+      # Use the pre-built index for O(1) lookup instead of per-search tolower scans
+      idx <- map_search_index()
+      if (is.null(idx)) {
+        session$sendCustomMessage("map_search_results", list(status = "no_data"))
+        return()
+      }
+
+      query_lower <- tolower(query)
+      row_indices <- idx[[query_lower]]
+      if (is.null(row_indices)) {
+        session$sendCustomMessage("map_search_results", list(status = "none"))
+        return()
+      }
+
+      obs <- map_observations()
+      matches <- obs[unique(row_indices), , drop = FALSE]
+      matches <- matches[!is.na(matches$latitude) & !is.na(matches$longitude), , drop = FALSE]
+
+      if (nrow(matches) == 0) {
+        session$sendCustomMessage("map_search_results", list(status = "none"))
+        return()
+      }
+
+      if (nrow(matches) == 1) {
+        session$sendCustomMessage("map_search_results", list(
+          status = "single",
+          lat = matches$latitude[1],
+          lng = matches$longitude[1],
+          popup_label = build_plot_popup_label(matches$author_obs_code[1], matches$ob_code[1])
+        ))
+        return()
+      }
+
+      # Multiple matches — send disambiguation list (cap at 50 for sanity)
+      matches <- utils::head(matches, 50)
+      match_list <- lapply(seq_len(nrow(matches)), function(i) {
+        list(
+          lat = matches$latitude[i],
+          lng = matches$longitude[i],
+          author_obs_code = matches$author_obs_code[i],
+          ob_code = matches$ob_code[i],
+          popup_label = build_plot_popup_label(matches$author_obs_code[i], matches$ob_code[i])
+        )
+      })
+      session$sendCustomMessage("map_search_results", list(
+        status = "multiple",
+        matches = match_list
+      ))
+    },
+    ignoreNULL = TRUE,
     ignoreInit = TRUE
   )
 
@@ -1011,6 +1115,7 @@ server <- function(input, output, session) {
       lat <- as.numeric(map_data$lat)
       lng <- as.numeric(map_data$lng)
       code <- map_data$code
+      ob_code <- map_data$ob_code
 
       # Check for valid coordinates
       if (is.na(lat) || is.na(lng) || !is.numeric(lat) || !is.numeric(lng)) {
@@ -1027,7 +1132,7 @@ server <- function(input, output, session) {
       state$map_zoom(target_zoom)
       update_map_custom_flag(lat, lng, target_zoom)
 
-      state$map_request(list(lat = lat, lng = lng, code = code, zoom = target_zoom))
+      state$map_request(list(lat = lat, lng = lng, code = code, ob_code = ob_code, zoom = target_zoom))
 
       state$current_tab("Map")
 
@@ -1049,11 +1154,12 @@ server <- function(input, output, session) {
           # map fogrets its size when hidden and needs to be recalculated to render properly.
           # See https://github.com/NCEAS/vegbank-web/issues/28
           session$sendCustomMessage("invalidateMapSize", list())
+          label <- build_plot_popup_label(map_req$code, map_req$ob_code)
           move_map_to_obs(
             session,
             map_req$lat,
             map_req$lng,
-            paste("Plot", map_req$code, "is here!")
+            label
           )
           state$map_request(NULL)
 
@@ -1575,6 +1681,57 @@ open_code_details <- function(
 is_valid_vb_code <- function(vb_code) {
   !is.null(vb_code) && !is.na(vb_code) &&
     nchar(as.character(vb_code)) > 0 && vb_code != "NA"
+}
+
+#' Fetch map data and notify the user on failure
+#'
+#' Wraps `fetch_plot_map_data()` in error handling so that both the Shiny
+#' notification and the loading-screen teardown always happen in the same
+#' call site that manages the loading overlay. Returns the data frame on
+#' success, or NULL on any failure (after showing the appropriate notification).
+#'
+#' @return Data frame of plot observations, or NULL
+#' @noRd
+do_map_fetch_with_feedback <- function() {
+  tryCatch(
+    {
+      obs <- fetch_plot_map_data()
+      if (is.null(obs)) {
+        shiny::showNotification(
+          "Map data is currently unavailable. Please try again later.",
+          type = "warning",
+          duration = NULL
+        )
+      }
+      obs
+    },
+    error = function(err) {
+      shiny::showNotification(
+        paste("Failed to load map data:", conditionMessage(err)),
+        type = "error",
+        duration = NULL
+      )
+      NULL
+    }
+  )
+}
+
+#' Build the popup label for a plot observation
+#'
+#' Produces the human-readable string shown in the leaflet popup when the map
+#' flies to a plot. The JavaScript mirror of this function is `buildPopupNode()`
+#' in `vegbank_app.js`.
+#'
+#' @param code Author observation code (author_obs_code)
+#' @param ob_code VegBank observation code (ob_code), or NULL / empty string
+#' @return A character string
+#' @noRd
+build_plot_popup_label <- function(code, ob_code = NULL) {
+  if (!is.null(ob_code) && nzchar(ob_code %||% "")) {
+    paste0("Plot ", code, " (", ob_code, ") is here!")
+  } else {
+    paste("Plot", code, "is here!")
+  }
 }
 
 #' Move the map to the specified latitude and longitude with a popup message

@@ -10,6 +10,7 @@ MAP_DATA_FETCH_LIMIT <- 1000000L
   html <- as.character(htmltools::tagList(
     htmltools::tags$p("This map shows all VegBank plot observation locations. Each pin represents one or more observations at that coordinate."),
     htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box (top right) to find a plot by VegBank or author observation code."),
       htmltools::tags$li(htmltools::tags$strong("Navigate:"), " drag to pan; scroll or use the +/\u2212 buttons to zoom."),
       htmltools::tags$li(htmltools::tags$strong("Clusters:"), " circles with a number indicate grouped nearby plots. Click a cluster to zoom in and expand it."),
       htmltools::tags$li(htmltools::tags$strong("Markers:"), " author plot observation codes are listed in the label below each marker. Click a code link to open that plot\u2019s details."),
@@ -26,42 +27,22 @@ MAP_DATA_FETCH_LIMIT <- 1000000L
 #' Fetch plot observations for the map
 #'
 #' Downloads plot observation data for the leaflet map using the VegBank API.
-#' Handles its own progress indicator and error notifications.
+#' Returns NULL if the API succeeds but provides no rows. API-level errors
+#' propagate to the caller, which is responsible for user notification and
+#' loading screen management.
 #'
 #' @param limit Maximum number of records to request (defaults to 1,000,000)
 #' @param detail VegBank detail level to request (defaults to "geo")
-#' @return Data frame of plot observations or NULL on failure
+#' @return Data frame of plot observations, or NULL if the API returns no data
 #' @noRd
 fetch_plot_map_data <- function(limit = MAP_DATA_FETCH_LIMIT, detail = "geo") {
-  error_occurred <- FALSE
-
-  data <- tryCatch(
-    vegbankr::vb_get_plot_observations(
-      limit = limit,
-      detail = detail,
-      with_nested = FALSE
-    ),
-    error = function(err) {
-      error_occurred <<- TRUE
-      shiny::showNotification(
-        paste("Failed to load map data:", conditionMessage(err)),
-        type = "error",
-        duration = NULL
-      )
-      NULL
-    }
+  data <- vegbankr::vb_get_plot_observations(
+    limit = limit,
+    detail = detail,
+    with_nested = FALSE
   )
 
-  if (isTRUE(error_occurred)) {
-    return(NULL)
-  }
-
   if (is.null(data) || nrow(data) == 0) {
-    shiny::showNotification(
-      "Map data is currently unavailable. Please try again later.",
-      type = "warning",
-      duration = NULL
-    )
     return(NULL)
   }
 
@@ -116,6 +97,35 @@ filter_valid_map_points <- function(map_data) {
            !is.na(map_data$longitude) &
            is.numeric(map_data$latitude) &
            is.numeric(map_data$longitude))
+}
+
+#' Build a case-insensitive search index for map observations
+#'
+#' Vectorized: each column is lowercased once, then \code{split()} groups row
+#' indices by key.  The result is a named list (key → integer row indices) that
+#' allows O(1) lookup per query instead of O(n) \code{tolower()} scans.
+#'
+#' Both \code{ob_code} and \code{author_obs_code} are indexed under the same
+#' structure so a single \code{[[query_lower]]} call covers both columns.
+#' Rows where a code is \code{NA} are silently omitted from the index.
+#'
+#' @param obs Data frame with \code{ob_code} and \code{author_obs_code} columns
+#' @return Named list mapping lowercase code strings to integer row-index vectors
+#' @noRd
+build_map_search_index <- function(obs) {
+  n <- nrow(obs)
+  if (n == 0L) return(list())
+
+  row_seq  <- seq_len(n)
+  ob_lower <- tolower(obs$ob_code)
+  auth_lower <- tolower(obs$author_obs_code)
+
+  # Combine both columns: each row contributes up to two (key, index) pairs
+  keys <- c(ob_lower, auth_lower)
+  rows <- c(row_seq,  row_seq)
+
+  valid <- !is.na(keys)
+  split(rows[valid], keys[valid])
 }
 
 # ---- Error Notifications ----
@@ -261,7 +271,8 @@ build_leaflet_map <- function(data_grouped, map_defaults, center_lng, center_lat
       clusterOptions = leaflet::markerClusterOptions(disableClusteringAtZoom = 17)
     ) |>
     add_zoom_control() |>
-    add_map_help_control()
+    add_map_help_control() |>
+    add_search_control()
 }
 
 #' Create marker label options for consistent styling
@@ -335,8 +346,8 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
       safe_ob <- htmltools::htmlEscape(ob_code, attribute = TRUE)
       safe_author <- htmltools::htmlEscape(author_obs_code)
       sprintf(
-        "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click', '%s', {priority: 'event'}); return false;\">%s</a>",
-        safe_ob, safe_author
+        "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click', '%s', {priority: 'event'}); return false;\">%s (%s)</a>",
+        safe_ob, safe_author, safe_ob
       )
     },
     author_obs_codes, ob_codes
@@ -385,4 +396,18 @@ add_map_help_control <- function(map) {
 #' @noRd
 add_zoom_control <- function(map) {
   map |> htmlwidgets::onRender("function(el, x) { window.vbMapBindShinyInputs(this, el); }")
+}
+
+#' Add a search-by-code control to a leaflet map
+#'
+#' Injects a search input in the top-right corner that allows users to
+#' look up plots by VegBank code or author observation code.
+#'
+#' @param map A leaflet map object
+#' @return The leaflet map object with a search control added
+#'
+#' @importFrom htmlwidgets onRender
+#' @noRd
+add_search_control <- function(map) {
+  map |> htmlwidgets::onRender("function(el, x) { window.vbMapSearchControl(this, el); }")
 }
