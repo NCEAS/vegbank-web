@@ -869,10 +869,6 @@ table.dataTable tbody tr.selected-entity:hover,
   border-bottom: none;
 }
 
-.vb-map-search-match:hover {
-  background: #f0f7f4;
-  color: #2a6e54;
-}
 
 /* Override Leaflet .leaflet-bar a hover styles on match items */
 .leaflet-bar.vb-map-search-control a.vb-map-search-match:hover,

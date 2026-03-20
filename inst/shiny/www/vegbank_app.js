@@ -1354,7 +1354,6 @@ window.vbMapSearchControl = function(map, el) {
 
     // Store references on the container for the message handler
     container._vbInput = input;
-    container._vbBtn = null;
     container._vbResults = resultsList;
     container._vbClearResults = clearResults;
     container._vbMap = map;

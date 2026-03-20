@@ -224,13 +224,6 @@ render_hook_codes <- function(map) {
   vapply(map$jsHooks$render, `[[`, character(1), "code")
 }
 
-test_that("add_search_control attaches a render hook to the map", {
-  m <- htmlwidgets::onRender(create_empty_map(),
-    "function(el, x) { window.vbMapSearchControl(this, el); }")
-  hooks <- m$jsHooks$render
-  expect_true(length(hooks) >= 1)
-})
-
 test_that("add_search_control render hook invokes vbMapSearchControl", {
   m <- create_empty_map()
   m <- vegbankweb:::add_search_control(m)
