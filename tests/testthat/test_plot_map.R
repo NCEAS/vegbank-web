@@ -18,7 +18,7 @@ test_that("create_marker_popup creates correct HTML", {
   expect_true(grepl("<strong>1 Observation</strong>", single_popup))
   # Single quotes are safe within double-quoted attributes
   expect_true(grepl("onclick=\"Shiny.setInputValue\\('plot_link_click',\\s*'ACC1'", single_popup))
-  expect_true(grepl(">Plot1</a>", single_popup))
+  expect_true(grepl(">Plot1 (ACC1)</a>", single_popup, fixed = TRUE))
 
   # Multiple observations
   multi_popup <- create_marker_popup(
@@ -27,8 +27,8 @@ test_that("create_marker_popup creates correct HTML", {
     2
   )
   expect_true(grepl("<strong>2 Observations</strong>", multi_popup))
-  expect_true(grepl(">Plot1</a>", multi_popup))
-  expect_true(grepl(">Plot2</a>", multi_popup))
+  expect_true(grepl(">Plot1 (ACC1)</a>", multi_popup, fixed = TRUE))
+  expect_true(grepl(">Plot2 (ACC2)</a>", multi_popup, fixed = TRUE))
   expect_true(grepl("<br>", multi_popup))
 })
 
