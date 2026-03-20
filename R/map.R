@@ -317,8 +317,8 @@ create_marker_popup <- function(author_obs_codes, ob_codes, count) {
       safe_ob <- htmltools::htmlEscape(ob_code, attribute = TRUE)
       safe_author <- htmltools::htmlEscape(author_obs_code)
       sprintf(
-        "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click', '%s', {priority: 'event'}); return false;\">%s</a>",
-        safe_ob, safe_author
+        "<a href=\"#\" onclick=\"Shiny.setInputValue('plot_link_click', '%s', {priority: 'event'}); return false;\">%s (%s)</a>",
+        safe_ob, safe_author, safe_ob
       )
     },
     author_obs_codes, ob_codes
