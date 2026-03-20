@@ -887,8 +887,7 @@ server <- function(input, output, session) {
           status = "single",
           lat = matches$latitude[1],
           lng = matches$longitude[1],
-          label = matches$author_obs_code[1],
-          ob_code = matches$ob_code[1]
+          popup_label = build_plot_popup_label(matches$author_obs_code[1], matches$ob_code[1])
         ))
         return()
       }
@@ -900,7 +899,8 @@ server <- function(input, output, session) {
           lat = matches$latitude[i],
           lng = matches$longitude[i],
           author_obs_code = matches$author_obs_code[i],
-          ob_code = matches$ob_code[i]
+          ob_code = matches$ob_code[i],
+          popup_label = build_plot_popup_label(matches$author_obs_code[i], matches$ob_code[i])
         )
       })
       session$sendCustomMessage("map_search_results", list(
@@ -1097,11 +1097,7 @@ server <- function(input, output, session) {
           # map fogrets its size when hidden and needs to be recalculated to render properly.
           # See https://github.com/NCEAS/vegbank-web/issues/28
           session$sendCustomMessage("invalidateMapSize", list())
-          label <- if (!is.null(map_req$ob_code) && nzchar(map_req$ob_code %||% "")) {
-            paste0("Plot ", map_req$code, " (", map_req$ob_code, ") is here!")
-          } else {
-            paste("Plot", map_req$code, "is here!")
-          }
+          label <- build_plot_popup_label(map_req$code, map_req$ob_code)
           move_map_to_obs(
             session,
             map_req$lat,
@@ -1615,6 +1611,24 @@ open_code_details <- function(
 is_valid_vb_code <- function(vb_code) {
   !is.null(vb_code) && !is.na(vb_code) &&
     nchar(as.character(vb_code)) > 0 && vb_code != "NA"
+}
+
+#' Build the popup label for a plot observation
+#'
+#' Produces the human-readable string shown in the leaflet popup when the map
+#' flies to a plot. The JavaScript mirror of this function is `buildPopupNode()`
+#' in `vegbank_app.js`.
+#'
+#' @param code Author observation code (author_obs_code)
+#' @param ob_code VegBank observation code (ob_code), or NULL / empty string
+#' @return A character string
+#' @noRd
+build_plot_popup_label <- function(code, ob_code = NULL) {
+  if (!is.null(ob_code) && nzchar(ob_code %||% "")) {
+    paste0("Plot ", code, " (", ob_code, ") is here!")
+  } else {
+    paste("Plot", code, "is here!")
+  }
 }
 
 #' Move the map to the specified latitude and longitude with a popup message

@@ -1406,16 +1406,19 @@ Shiny.addCustomMessageHandler('map_search_results', function(message) {
     map.flyTo([lat, lng], 18);
   }
 
-  function buildPopupNode(authorCode, obCode) {
+  // Wraps a pre-built label string in a DOM node so flyAndPopup can use
+  // textContent (XSS-safe). The label text is produced by build_plot_popup_label()
+  // in server.R and sent as message.popup_label / m.popup_label.
+  function makePopupNode(label) {
     var span = document.createElement('span');
-    span.textContent = 'Plot ' + authorCode + ' (' + obCode + ') is here!';
+    span.textContent = label;
     return span;
   }
 
   if (message.status === 'single') {
     clearResults();
     flyAndPopup(message.lat, message.lng,
-      buildPopupNode(message.label, message.ob_code));
+      makePopupNode(message.popup_label));
     return;
   }
 
@@ -1435,7 +1438,7 @@ Shiny.addCustomMessageHandler('map_search_results', function(message) {
         e.preventDefault();
         clearResults();
         flyAndPopup(m.lat, m.lng,
-          buildPopupNode(m.author_obs_code, m.ob_code));
+          makePopupNode(m.popup_label));
       });
       resultsList.appendChild(item);
     });

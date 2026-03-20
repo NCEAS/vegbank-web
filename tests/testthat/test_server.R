@@ -1,5 +1,23 @@
 # Tests for server.R
 
+# ===========================================================================
+# build_plot_popup_label
+# ===========================================================================
+test_that("build_plot_popup_label includes ob_code when provided", {
+  expect_equal(
+    build_plot_popup_label("SITE-A", "VB.OB.1001"),
+    "Plot SITE-A (VB.OB.1001) is here!"
+  )
+})
+
+test_that("build_plot_popup_label omits parenthesised ob_code when it is NULL", {
+  expect_equal(build_plot_popup_label("SITE-A", NULL), "Plot SITE-A is here!")
+})
+
+test_that("build_plot_popup_label omits parenthesised ob_code when it is empty string", {
+  expect_equal(build_plot_popup_label("SITE-A", ""), "Plot SITE-A is here!")
+})
+
 test_that("server initializes state correctly", {
   # Use testServer to test Shiny server logic
   shiny::testServer(server, {
@@ -99,27 +117,25 @@ test_that("map search returns none when no codes match", {
 
 test_that("map search returns single match by ob_code with correct payload", {
   msg <- run_map_search("VB.OB.1001")
-  expect_equal(msg$message$status, "single")
-  expect_equal(msg$message$ob_code, "VB.OB.1001")
-  expect_equal(msg$message$label,   "SITE-A")
-  expect_equal(msg$message$lat,     37.5)
-  expect_equal(msg$message$lng,     -120.0)
+  expect_equal(msg$message$status,      "single")
+  expect_equal(msg$message$popup_label, "Plot SITE-A (VB.OB.1001) is here!")
+  expect_equal(msg$message$lat,         37.5)
+  expect_equal(msg$message$lng,         -120.0)
 })
 
 test_that("map search returns single match by author_obs_code", {
   msg <- run_map_search("SITE-A")
-  expect_equal(msg$message$status,  "single")
-  expect_equal(msg$message$ob_code, "VB.OB.1001")
-  expect_equal(msg$message$label,   "SITE-A")
+  expect_equal(msg$message$status,      "single")
+  expect_equal(msg$message$popup_label, "Plot SITE-A (VB.OB.1001) is here!")
 })
 
 test_that("map search is case-insensitive", {
   msg_lower <- run_map_search("vb.ob.1001")
   msg_mixed <- run_map_search("Vb.Ob.1001")
-  expect_equal(msg_lower$message$status,  "single")
-  expect_equal(msg_mixed$message$status,  "single")
-  expect_equal(msg_lower$message$ob_code, "VB.OB.1001")
-  expect_equal(msg_mixed$message$ob_code, "VB.OB.1001")
+  expect_equal(msg_lower$message$status,      "single")
+  expect_equal(msg_mixed$message$status,      "single")
+  expect_equal(msg_lower$message$popup_label, "Plot SITE-A (VB.OB.1001) is here!")
+  expect_equal(msg_mixed$message$popup_label, "Plot SITE-A (VB.OB.1001) is here!")
 })
 
 test_that("map search returns multiple when author_obs_code matches more than one plot", {
@@ -133,7 +149,7 @@ test_that("map search returns multiple when author_obs_code matches more than on
 test_that("map search multiple result items contain required fields", {
   msg <- run_map_search("SITE-B")
   m <- msg$message$matches[[1]]
-  expect_true(all(c("lat", "lng", "author_obs_code", "ob_code") %in% names(m)))
+  expect_true(all(c("lat", "lng", "author_obs_code", "ob_code", "popup_label") %in% names(m)))
 })
 
 test_that("map search excludes rows with missing coordinates", {
