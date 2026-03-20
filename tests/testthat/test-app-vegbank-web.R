@@ -125,3 +125,158 @@ test_that("drills from plot ob.3410 through cl.1946 and cc.42770 to filter plots
     label = "cc.42770 filter should persist after closing the detail panel"
   )
 })
+
+
+test_that("project pj.340: filter plots, navigate to map for ob.2950, search for ob.154622", {
+  skip_on_cran()
+
+  app <- AppDriver$new(
+    test_path("../.."),
+    name = "project-map-filter-search",
+    height = 1054,
+    width = 1619,
+    timeout = 30000
+  )
+  on.exit(app$stop(), add = TRUE)
+
+  # --- Step 1: App starts on Home ---
+  app$wait_for_idle(timeout = 15000)
+  expect_equal(app$get_value(input = "page"), "Home")
+
+  # --- Step 2: Navigate to the Projects tab ---
+  app$set_inputs(page = "Projects")
+  app$wait_for_idle(timeout = 30000)
+  expect_equal(app$get_value(input = "page"), "Projects")
+
+
+  # --- Step 3: Click the obs_count link to cross-filter Plots by pj.340 ---
+  # obs_count_click carries {code, label}; the server sets plot_filter and navigates to Plots.
+  app$set_inputs(
+    obs_count_click = list(code = "pj.340", label = "Acadia National Park"),
+    allow_no_input_binding_ = TRUE
+  )
+  app$wait_for_idle(timeout = 15000)
+
+  expect_equal(
+    app$get_value(input = "page"), "Plots",
+    label = "obs_count_click should navigate to Plots tab"
+  )
+  expect_true(
+    grepl("pj.340", app_output_html(app, "plot_filter_alert"), fixed = TRUE),
+    label = "Plot filter alert should reference pj.340"
+  )
+
+  # --- Step 4: Search the DT for ACAD.145 to bring ob.2950 into view ---
+  # The server-side table search narrows the pj.340 results to the single row
+  # whose author_obs_code matches "ACAD.145".
+  app$set_inputs(
+    plot_table_state = list(start = 0L, length = 100L, search = "ACAD.145", order = list()),
+    allow_no_input_binding_ = TRUE
+  )
+  app$wait_for_idle(timeout = 30000)
+
+  expect_true(
+    isTRUE(app$get_js(
+      "!!document.querySelector('.dt-map-action[data-ob-code=\"ob.2950\"]')"
+    )),
+    label = "Map button for ob.2950 should be rendered after DT search for ACAD.145"
+  )
+
+  # --- Step 5: Click the Map button for ob.2950 ---
+  # The .dt-map-action click handler reads data-lat/lng/code/ob-code and fires
+  # Shiny.setInputValue('show_on_map', payload); the server navigates to the Map tab.
+  app$get_js("document.querySelector('.dt-map-action[data-ob-code=\"ob.2950\"]').click()")
+  app$wait_for_idle(timeout = 30000)
+
+  expect_equal(
+    app$get_value(input = "page"), "Map",
+    label = "Clicking the Map button should navigate to the Map tab"
+  )
+
+  # --- Step 6: Wait for the map to fully initialize ---
+  # The JS onRender callback polls until tiles are loaded and clusters visible,
+  # then fires Shiny.setInputValue('map_ready', true).  This triggers
+  # map_initialized(TRUE) and maybe_show_map_filter_notice() on the server.
+  app$wait_for_value(input = "map_ready", timeout = 90000)
+  app$wait_for_idle(timeout = 15000)
+
+  # --- Step 7: Verify the map filter notice notification ---
+  # maybe_show_map_filter_notice() calls showNotification(MAP_FILTER_NOTICE_MSG)
+  # when navigating to the Map tab while an active Plots filter exists.
+  # The notification DOM element persists for 10 seconds.
+  notice_text <- app$get_js(
+    "var el = document.querySelector('.shiny-notification-content-text'); el ? el.textContent : ''"
+  )
+  expect_true(
+    grepl("Filters applied to the Plots table", notice_text, fixed = TRUE),
+    label = "Map filter notice should appear when navigating to Map with an active Plots filter"
+  )
+
+  # --- Step 8: Search the map for "5" ---
+  # map_search_query is a virtual input {query, ts}; the server looks up the
+  # pre-built search index and sends back a map_search_results custom message
+  # with status = "multiple" when several plots match.
+  app$set_inputs(
+    map_search_query = list(query = "5", ts = 0L),
+    allow_no_input_binding_ = TRUE
+  )
+  app$wait_for_idle(timeout = 15000)
+
+  # --- Step 9: Verify search results list contains ob.154622 ---
+  # The map_search_results JS handler appends .vb-map-search-match <a> elements
+  # to the control's _vbResults node; each item shows "AUTHOR_CODE (ob_code)".
+  results_html <- app$get_js(paste0(
+    "var ctrl = document.querySelector('.vb-map-search-control');",
+    "ctrl && ctrl._vbResults ? ctrl._vbResults.innerHTML : ''"
+  ))
+  expect_true(
+    grepl("ob.154622", results_html, fixed = TRUE),
+    label = "Map search results for '5' should include ob.154622"
+  )
+
+  # --- Step 10: Click the ob.154622 result ---
+  # Clicking a result calls flyAndPopup(lat, lng, makePopupNode(popup_label)), which
+  # opens a Leaflet popup at the target coordinates.  No Shiny input is fired;
+  # verification is done by inspecting the DOM popup directly.
+  app$get_js(paste0(
+    "var ctrl = document.querySelector('.vb-map-search-control');",
+    "var items = ctrl ? ctrl.querySelectorAll('.vb-map-search-match') : [];",
+    "for (var i = 0; i < items.length; i++) {",
+    "  if (items[i].textContent.indexOf('ob.154622') !== -1) {",
+    "    items[i].click(); break;",
+    "  }",
+    "}"
+  ))
+  # flyAndPopup() calls openOn(map) which only closes map._popup, but the ob.2950
+  # popup was added via R's leaflet::addPopups() (popup.addTo(map)) and is not
+  # tracked as map._popup.  Both popups coexist in the DOM; wait until ANY
+  # .leaflet-popup-content node contains "ob.154622" rather than just the first.
+  app$wait_for_js(
+    paste0(
+      "(function() {",
+      "  var els = document.querySelectorAll('.leaflet-popup-content');",
+      "  for (var i = 0; i < els.length; i++) {",
+      "    if (els[i].textContent.indexOf('ob.154622') !== -1) return true;",
+      "  }",
+      "  return false;",
+      "})()"
+    ),
+    timeout = 10000
+  )
+
+  # --- Step 11: Verify the Leaflet popup shows the ob.154622 label ---
+  # build_plot_popup_label(author_obs_code, "ob.154622") → "Plot <code> (ob.154622) is here!"
+  popup_text <- app$get_js(paste0(
+    "(function() {",
+    "  var els = document.querySelectorAll('.leaflet-popup-content');",
+    "  for (var i = 0; i < els.length; i++) {",
+    "    if (els[i].textContent.indexOf('ob.154622') !== -1) return els[i].textContent;",
+    "  }",
+    "  return '';",
+    "})()"
+  ))
+  expect_true(
+    grepl("ob.154622", popup_text, fixed = TRUE),
+    label = "Leaflet popup should reference ob.154622 after clicking the search result"
+  )
+})
