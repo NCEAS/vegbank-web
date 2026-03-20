@@ -52,6 +52,8 @@ server <- function(input, output, session) {
     map_request = shiny::reactiveVal(NULL),
     plot_filter = shiny::reactiveVal(NULL), # Cross-resource / citation filter: list(type, code, label)
     community_filter = shiny::reactiveVal(NULL), # Citation filter for cc: list(type, code, label)
+    community_status = shiny::reactiveVal("current_accepted"), # Status filter for community concepts table
+    plant_status = shiny::reactiveVal("current_accepted"), # Status filter for plant concepts table
     table_states = shiny::reactiveValues(),
     table_sync_pending = shiny::reactiveValues(),
     table_sync_completed_at = shiny::reactiveValues()
@@ -319,7 +321,9 @@ server <- function(input, output, session) {
       highlight_table = state$highlighted_table(),
       highlight_row = state$highlighted_row(),
       plot_filter = state$plot_filter(),
-      community_filter = state$community_filter()
+      community_filter = state$community_filter(),
+      community_status = state$community_status(),
+      plant_status = state$plant_status()
     )
 
     url_manager$update_query_string(target_query, mode = mode)
@@ -639,12 +643,48 @@ server <- function(input, output, session) {
   # Download handler for plot table
   output$download_plot_table <- create_table_download_handler("plot_table", input, state, session)
 
+  # Keep state$community_status in sync with the dropdown input
+  shiny::observeEvent(input$comm_status, {
+    val <- input$comm_status
+    if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) {
+      state$community_status(val)
+    }
+  })
+
+  # Keep state$plant_status in sync with the dropdown input
+  shiny::observeEvent(input$plant_status, {
+    val <- input$plant_status
+    if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) {
+      state$plant_status(val)
+    }
+  })
+
+  # Proxies for status filter reloads. When status changes we do a tbody-only
+  # ajax.reload() so the DT wrapper DOM (including initComplete-injected elements)
+  # is never destroyed.
+  comm_proxy  <- DT::dataTableProxy("comm_table",  session = session)
+  plant_proxy <- DT::dataTableProxy("plant_table", session = session)
+
+  shiny::observeEvent(state$community_status(), {
+    DT::reloadData(comm_proxy, resetPaging = TRUE)
+  }, ignoreInit = TRUE)
+
+  shiny::observeEvent(state$plant_status(), {
+    DT::reloadData(plant_proxy, resetPaging = TRUE)
+  }, ignoreInit = TRUE)
+
   output$comm_table <- DT::renderDataTable({
-    # Rebuild table when filter changes for citation filtering
+    # Rebuild table when citation filter changes.
+    # Status changes are handled via proxy reload above — no dependency here.
     filter <- state$community_filter()
     vb_code <- if (!is.null(filter)) filter$code else NULL
     filter_type <- if (!is.null(filter)) filter$type else NULL
-    build_concept_table_with_filter(concept_type = "community", vb_code = vb_code, filter_type = filter_type)
+    build_concept_table_with_filter(
+      concept_type = "community",
+      vb_code = vb_code,
+      filter_type = filter_type,
+      status_fn = state$community_status
+    )
   })
 
   output$proj_table <- DT::renderDataTable({
@@ -656,7 +696,11 @@ server <- function(input, output, session) {
   })
 
   output$plant_table <- DT::renderDataTable({
-    build_plant_table()
+    # Status changes handled via proxy reload — no dependency here.
+    build_concept_table_with_filter(
+      concept_type = "plant",
+      status_fn = state$plant_status
+    )
   })
 
   output$map <- leaflet::renderLeaflet({
@@ -1343,6 +1387,19 @@ server <- function(input, output, session) {
           state$community_filter(NULL)
         }
       }
+
+      # Restore concept status filters from URL.
+      # `status_reactive` is a reactiveVal — calling it reads, calling it with a value sets.
+      restore_status_param <- function(url_param, status_reactive, msg_type) {
+        val <- url_manager$first_param(url_param)
+        target <- if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) val else "current_accepted"
+        if (!identical(status_reactive(), target)) {
+          status_reactive(target)
+          session$sendCustomMessage(msg_type, list(value = target))
+        }
+      }
+      restore_status_param(params$communities_status, state$community_status, "setCommStatus")
+      restore_status_param(params$plants_status, state$plant_status, "setPlantStatus")
 
       # Parse and apply map view state
       map_lat_param <- params$map_lat

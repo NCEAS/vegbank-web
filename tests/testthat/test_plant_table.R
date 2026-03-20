@@ -21,8 +21,9 @@ test_that("build_plant_table delegates to concept builder with plant config", {
 })
 
 test_that("plant concept data includes plant-specific values", {
-  cols <- c("pc_code", "plant_name", "plant_level", "current_accepted",
-            "concept_rf_code", "concept_rf_label", "obs_count", "plant_description")
+  cols <- c("pc_code", "plant_name", "plant_level",
+            "concept_rf_code", "concept_rf_label", "obs_count", "plant_description",
+            "status", "stop_date")
   plant_data <- rbind(
     mock_plant_concept_acru[, cols],
     mock_plant_concept_vaccinium[, cols],
@@ -46,10 +47,11 @@ test_that("plant concept data includes plant-specific values", {
     expect_equal(result$`Plant Concept`[1], "Acer rubrum L.")
     expect_true(grepl("Vaccinium stamineum", result$`Plant Concept`[2]))
     expect_true(grepl("Pseudotsuga menziesii", result$`Plant Concept`[3]))
-    # Status: ACRU=Accepted (TRUE), Vaccinium=No Status (NA), PSME=Not Current (FALSE)
-    expect_true(grepl("Accepted",   result$Status[1]))
-    expect_true(grepl("No Status",  result$Status[2]))
-    expect_true(grepl("Not Current", result$Status[3]))
+    # Status: ACRU=Currently Accepted, Vaccinium=No Status, PSME=Accepted + Not Current
+    expect_true(grepl("Currently Accepted", result$Status[1]))
+    expect_true(grepl("No Status",          result$Status[2]))
+    expect_true(grepl("Not Current",        result$Status[3]))
+    expect_true(grepl("Accepted",           result$Status[3]))
     # Level
     expect_equal(result$Level, c("Species", "Unspecified", "Species"))
     # Reference source: all three have valid concept_rf_code → all links

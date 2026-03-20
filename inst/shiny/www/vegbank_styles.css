@@ -26,13 +26,13 @@
   --border-subtle: hsl(0, 0%, 92%);
   --text-muted: #333;
 
-  /* Status badge colors */
-  --no-status-bg: hsl(204, 6%, 90%);
-  --no-status-text: hsl(0, 0%, 20%);
-  --accepted-bg: hsl(153, 31%, 79%);
-  --accepted-text: hsl(152, 69%, 19%);
-  --not-current-bg: hsl(45, 100%, 85%);
-  --not-current-text: hsl(45, 94%, 21%);
+  /* Badge colors */
+  --monochrome-bg: hsl(204, 6%, 90%);
+  --monochrome-text: hsl(0, 0%, 20%);
+  --green-bg: hsl(153, 31%, 79%);
+  --green-text: hsl(152, 69%, 19%);
+  --yellow-bg: hsl(45, 100%, 85%);
+  --yellow-text: hsl(45, 94%, 21%);
 }
 
 /* Adjust navbar height for mobile when toggler is visible */
@@ -235,6 +235,28 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   transform: rotate(0deg) scale(1);
 }
 
+.vb-status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  float: right;
+  margin-top: 0.25rem;
+  margin-right: 0.75rem;
+  font-size: 0.875rem;
+  cursor: default;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.vb-status-select {
+  font-size: 0.875rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+}
+
 .datatables .dataTables_wrapper div.dataTables_info {
   padding-top: 0.75rem;
   font-size: 0.875rem !important;
@@ -371,7 +393,7 @@ table.dataTable tbody tr.selected-entity:hover,
 
 .loading-title {
   font-size: 0.875rem;
-  color: var(--no-status-text);
+  color: var(--monochrome-text);
   margin: 0 1.5rem 1.5rem;
 }
 
@@ -384,7 +406,7 @@ table.dataTable tbody tr.selected-entity:hover,
 
 .loading-detail {
   font-size: 0.875rem;
-  color: var(--no-status-text);
+  color: var(--monochrome-text);
   margin-bottom: 1.5rem;
 }
 
