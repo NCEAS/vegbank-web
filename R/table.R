@@ -216,18 +216,56 @@ create_all_obs_count_links <- function(obs_counts, entity_codes, entity_labels) 
   }, character(1))
 }
 
-#' Create a status badge for concept status
+#' Create status badges for a concept row
 #'
-#' @param status Logical or NA; TRUE for accepted, FALSE for not accepted, NA for unknown
-#' @return HTML string for the badge
+#' Produces one or two badge spans reflecting both acceptance status and
+#' currency independently, mirroring the API filter semantics:
+#' \itemize{
+#'   \item{accepted: \code{status starts with "accepted"} (case-insensitive)}
+#'   \item{current: \code{stop_date} is NA, blank, or a date in the future}
+#' }
+#' Uses sprintf and paste because htmltools have too much overhead and cause
+#' the tables to load slower when we do this for each row in a large dataset.
+#'
+#' @param status Character; the concept's status value (e.g. "accepted",
+#'   "undetermined", \code{NA})
+#' @param stop_date Character or NA; the concept's stop_date from the API
+#'   (\code{NA}, blank, or a future date means still active / current)
+#' @return HTML string with one or two badge \code{<span>} elements
 #' @noRd
-create_status_badge <- function(status) {
-  if (is.null(status) || identical(status, "") || is.na(status)) {
-    '<span class="badge rounded-pill" style="background-color: var(--no-status-bg); color: var(--no-status-text);">No Status</span>'
-  } else if (isTRUE(status) || identical(status, "true") || identical(status, "TRUE")) {
-    '<span class="badge rounded-pill" style="background-color: var(--accepted-bg); color: var(--accepted-text);">Accepted</span>'
+create_status_badges <- function(status, stop_date) {
+  status_na <- is.null(status) || identical(status, "") ||
+    (length(status) == 1 && is.na(status))
+
+  if (status_na) {
+    return('<span class="badge rounded-pill" style="background-color: var(--monochrome-bg); color: var(--monochrome-text);">No Status</span>')
+  }
+
+  is_accepted <- startsWith(tolower(status), "accepted")
+  is_current <- is.null(stop_date) || identical(stop_date, "") ||
+    (length(stop_date) == 1 && is.na(stop_date)) ||
+    tryCatch({
+      parsed_stop <- suppressWarnings(as.POSIXct(stop_date, tryFormats = c(
+        "%a, %d %b %Y %H:%M:%S GMT", "%Y-%m-%d"
+      ), tz = "UTC"))
+      !is.na(parsed_stop) && parsed_stop > Sys.time()
+    }, error = function(e) FALSE)
+
+  green_badge <- function(label) {
+    sprintf('<span class="badge rounded-pill" style="background-color: var(--green-bg); color: var(--green-text);">%s</span>', label)
+  }
+  yellow_badge <- function(label) {
+    sprintf('<span class="badge rounded-pill" style="background-color: var(--yellow-bg); color: var(--yellow-text);">%s</span>', label)
+  }
+
+  if (is_accepted && is_current) {
+    green_badge("Currently Accepted")
+  } else if (is_accepted) {
+    paste(green_badge("Accepted"), yellow_badge("Not Current"))
+  } else if (is_current) {
+    paste(yellow_badge("Not Accepted"), green_badge("Current"))
   } else {
-    '<span class="badge rounded-pill" style="background-color: var(--not-current-bg); color: var(--not-current-text);">Not Current</span>'
+    paste(yellow_badge("Not Accepted"), yellow_badge("Not Current"))
   }
 }
 

@@ -141,12 +141,12 @@ create_taxon_obs_interpretations_ui <- function(taxon_interps) {
           badges <- list(
             if (is_orig) htmltools::tags$span(
               class = "badge rounded-pill me-1",
-              style = "background-color: var(--no-status-bg); color: var(--no-status-text);",
+              style = "background-color: var(--monochrome-bg); color: var(--monochrome-text);",
               "Original"
             ),
             if (is_curr) htmltools::tags$span(
               class = "badge rounded-pill me-1",
-              style = "background-color: var(--accepted-bg); color: var(--accepted-text);",
+              style = "background-color: var(--green-bg); color: var(--green-text);",
               "Current"
             )
           )

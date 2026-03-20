@@ -512,6 +512,61 @@ window.vbMapHelpControl = function(map, el, btnInnerHtml, closeIconHtml, content
   }
 };
 
+// Inject the status <label> into the .dataTables_filter area on table init.
+// Called from each concept table's initComplete callback. Uses the Shiny
+// output div id (same resolution as registerDataTableMapping) to look up config.
+var vbConceptStatusConfigs = {
+  plant_table: { urlKey: 'plants_status',      windowVar: 'vbPlantStatus', cssClass: 'vb-plant-status-select', shinyInput: 'plant_status', paginationKey: 'plants_start' },
+  comm_table:  { urlKey: 'communities_status', windowVar: 'vbCommStatus',  cssClass: 'vb-comm-status-select',  shinyInput: 'comm_status',  paginationKey: 'communities_start' }
+};
+
+window.vbConceptStatusInit = function(nTableWrapper, tableId) {
+  var config = vbConceptStatusConfigs[tableId];
+  if (!config) return;
+  // Guard against double-injection (e.g. if initComplete fires twice on the same wrapper).
+  if ($(nTableWrapper).find('.vb-status-label').length) return;
+  var validStatuses = window.VB_VALID_CONCEPT_STATUSES || ['current_accepted', 'current', 'accepted', 'any'];
+  var urlVal    = new URLSearchParams(window.location.search).get(config.urlKey);
+  var storedVal = window[config.windowVar];
+  var initVal   = (storedVal && validStatuses.indexOf(storedVal) !== -1)
+    ? storedVal
+    : (urlVal && validStatuses.indexOf(urlVal) !== -1 ? urlVal : 'current_accepted');
+  var $label = $(
+    '<label class="vb-status-label">' +
+      'Status:' +
+      '<select class="' + config.cssClass + ' vb-status-select">' +
+        '<option value="current_accepted">Currently Accepted</option>' +
+        '<option value="current">Current</option>' +
+        '<option value="accepted">Accepted</option>' +
+        '<option value="any">Any</option>' +
+      '</select>' +
+    '</label>'
+  );
+  $label.find('select').val(initVal);
+  $(nTableWrapper).find('.dataTables_filter').after($label[0]);
+  $label.find('select').on('change', function() {
+    var val = this.value;
+    window[config.windowVar] = val;
+    var params = new URLSearchParams(window.location.search);
+    if (val === 'current_accepted') { params.delete(config.urlKey); } else { params.set(config.urlKey, val); }
+    if (params.has(config.paginationKey)) { params.set(config.paginationKey, '0'); }
+    var newSearch = params.toString();
+    history.replaceState(null, '', newSearch ? '?' + newSearch : window.location.pathname);
+    Shiny.setInputValue(config.shinyInput, val, {priority: 'event'});
+  });
+};
+
+// Update the status select when the server restores the value from URL.
+Shiny.addCustomMessageHandler('setCommStatus', function(message) {
+  window.vbCommStatus = message.value;
+  $('.vb-comm-status-select').val(message.value);
+});
+
+Shiny.addCustomMessageHandler('setPlantStatus', function(message) {
+  window.vbPlantStatus = message.value;
+  $('.vb-plant-status-select').val(message.value);
+});
+
 // Shared helper — set up a toggleable info popover on a DT help button.
 // Called from each table's DT button init callback.
 var _vbClickHandlerRegistered = false;

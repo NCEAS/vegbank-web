@@ -65,7 +65,8 @@ ui <- function(req) {
     "// Application constants - single source of truth from R\n",
     "window.DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n",
     "window.DETAIL_TYPE_LABELS = {\n", detail_labels_js, "\n};\n",
-    "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n"
+    "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n",
+    "window.VB_VALID_CONCEPT_STATUSES = ", jsonlite::toJSON(VALID_CONCEPT_STATUSES), ";\n"
   )))
 
   # External JavaScript file with main application logic

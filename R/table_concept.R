@@ -2,6 +2,10 @@
 #'
 #' Provides server-side DataTable builders for plant and community concepts.
 #' @noRd
+
+# Valid values for the concept status filter, shared between server logic and URL restore.
+VALID_CONCEPT_STATUSES <- c("any", "current", "accepted", "current_accepted")
+
 CONCEPT_CONFIG <- list(
   plant = build_table_module_config(
     type = "plant",
@@ -12,12 +16,13 @@ CONCEPT_CONFIG <- list(
     fields = c(
       "pc_code",
       "plant_name",
-      "current_accepted",
       "plant_level",
       "concept_rf_code",
       "concept_rf_label",
       "obs_count",
-      "plant_description"
+      "plant_description",
+      "status",
+      "stop_date"
     ),
     extra = list(
       concept_type = "plant",
@@ -37,12 +42,13 @@ CONCEPT_CONFIG <- list(
     fields = c(
       "cc_code",
       "comm_name",
-      "current_accepted",
       "comm_level",
       "concept_rf_code",
       "concept_rf_label",
       "obs_count",
-      "comm_description"
+      "comm_description",
+      "status",
+      "stop_date"
     ),
     extra = list(
       concept_type = "community",
@@ -79,13 +85,24 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
 #' @param filter_type Optional filter type ("single-entity-citation")
 #' @return A DT::datatable object
 #' @noRd
-build_concept_table_with_filter <- function(concept_type = c("plant", "community"), 
-                                            vb_code = NULL, 
-                                            filter_type = NULL) {
+build_concept_table_with_filter <- function(concept_type = c("plant", "community"),
+                                            vb_code = NULL,
+                                            filter_type = NULL,
+                                            status_fn = NULL) {
   concept_type <- match.arg(concept_type)
   spec <- CONCEPT_TABLE_SPECS[[concept_type]]
   if (is.null(spec)) {
     stop("No concept table spec registered for type: ", concept_type)
+  }
+
+  # Inject status as a query function evaluated per AJAX request via shiny::isolate().
+  # Always a zero-argument function so the AJAX handler reads the current value at
+  # draw time without creating a reactive dependency inside renderDataTable.
+  if (!is.null(status_fn)) {
+    spec$data_source <- utils::modifyList(
+      spec$data_source %||% list(),
+      list(query = function() list(status = shiny::isolate(status_fn())))
+    )
   }
 
   has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
@@ -169,7 +186,8 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   display_names <- clean_column_data(concept_data, config$name_field)
   concept_codes <- concept_data[[config$code_field]]
 
-  statuses <- concept_data$current_accepted
+  raw_status   <- concept_data$status
+  raw_stopdate <- concept_data$stop_date
   levels <- clean_column_data(concept_data, config$level_field)
   reference_codes <- concept_data$concept_rf_code
   reference_names <- clean_column_data(concept_data, "concept_rf_label")
@@ -201,7 +219,11 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     }
   }, character(1))
 
-  status_badges <- vapply(statuses, create_status_badge, character(1))
+  status_badges <- vapply(
+    seq_along(raw_status),
+    function(i) create_status_badges(raw_status[[i]], raw_stopdate[[i]]),
+    character(1)
+  )
 
   result <- data.frame(
     Actions = actions,
@@ -375,13 +397,20 @@ CONCEPT_TABLE_SPECS <- local({
       } else {
         "by community name, code, VegBank code, or description\u2026"
       },
-      options = list(
-        dom = "Bfrtip",
-        buttons = I(list(make_help_button_js(
+      options = local({
+        help_btn <- make_help_button_js(
           if (config$concept_type == "plant") "Plants Table" else "Communities Table",
           if (config$concept_type == "plant") .PLANT_TABLE_HELP_CONTENT else .COMMUNITY_TABLE_HELP_CONTENT
-        )))
-      ),
+        )
+        opts <- list(dom = "Bfrtip", buttons = I(list(help_btn)))
+        opts$initComplete <- DT::JS(paste0(
+          "function(settings) {",
+          "var id = $(settings.nTable).closest('.datatables')[0].id;",
+          "if (window.vbConceptStatusInit) window.vbConceptStatusInit(settings.nTableWrapper, id);",
+          "}"
+        ))
+        opts
+      }),
       datatable_args = list(extensions = "Buttons"),
       initial_display = process_concept_data(schema_template, concept_type = config$concept_type)
     )
