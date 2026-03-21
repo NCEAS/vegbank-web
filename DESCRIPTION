@@ -21,7 +21,7 @@ Imports:
     R6 (>= 2.6.1),
     rlang (>= 1.0.0),
     shiny (>= 1.11.1),
-    vegbankr
+    vegbankr (>= 0.9.0)
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
