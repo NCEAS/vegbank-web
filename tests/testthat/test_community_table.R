@@ -4,7 +4,7 @@ test_that("build_community_table delegates to concept builder with community con
   with_mocked_bindings(
     create_table = function(table_config) {
       expect_equal(length(table_config$column_defs), 8)
-      expect_equal(table_config$column_defs[[2]]$targets, 1) # Vegbank Code
+      expect_equal(table_config$column_defs[[2]]$targets, 1) # VegBank Code
       expect_equal(table_config$column_defs[[2]]$width, "12%")
       expect_equal(table_config$column_defs[[3]]$targets, 2) # Name
       expect_true(is.function(table_config$ajax))
@@ -21,16 +21,13 @@ test_that("build_community_table delegates to concept builder with community con
 })
 
 test_that("community concept data includes community-specific values", {
-  community_data <- data.frame(
-    cc_code = c("cc.101", "cc.102"),
-    comm_name = c("Prairie", "Wetland"),
-    comm_level = c("Alliance", NA),
-    current_accepted = c(FALSE, NA),
-    concept_rf_code = c("cr.5", ""),
-    concept_rf_label = c("Prairie Ref", "Not provided"),
-    obs_count = c("8", "0"),
-    comm_description = c("Grassland", "Marsh"),
-    stringsAsFactors = FALSE
+  cols <- c("cc_code", "comm_name", "comm_level",
+            "concept_rf_code", "concept_rf_label", "obs_count", "comm_description",
+            "status", "stop_date")
+  community_data <- rbind(
+    mock_comm_concept_cegl007230[, cols],
+    mock_comm_concept_brachypodium[, cols],
+    mock_comm_concept_vii[, cols]
   )
 
   with_mock_shiny_notifications({
@@ -38,21 +35,38 @@ test_that("community concept data includes community-specific values", {
                                                 concept_type = "community")
 
     expect_equal(colnames(result), c(
-      "Actions", "Vegbank Code", "Community Concept", "Status",
-      "Level", "Reference Source", "Observations", "Description"
+      "Actions", "VegBank Code", "Community Concept", "Status",
+      "Level", "Reference Source", "Plots", "Description"
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
-    expect_equal(result$`Vegbank Code`, vapply(community_data$cc_code, htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
-    expect_equal(result$`Community Concept`, c("Prairie", "Wetland"))
-    expect_true(grepl("Not Current", result$Status[1]))
-    expect_true(grepl("No Status", result$Status[2]))
-    expect_equal(result$Level, c("Alliance", "Not provided"))
-    expect_true(grepl("<a ", result$`Reference Source`[1]))
-    expect_equal(result$`Reference Source`[2], "Not provided")
-    expect_true(grepl(">8</a>", result$Observations[1]))
-    expect_true(grepl("obs-count-link", result$Observations[1]))
-    expect_equal(result$Observations[2], "0")
-    expect_equal(result$Description, c("Grassland", "Marsh"))
+    expect_equal(
+      result$`VegBank Code`,
+      vapply(c("cc.47882", "cc.38611", "cc.133"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE)
+    )
+    # Community names
+    expect_true(grepl("Quercus alba",  result$`Community Concept`[1]))
+    expect_true(grepl("Brachypodium",  result$`Community Concept`[2]))
+    expect_equal(result$`Community Concept`[3], "VII")
+    # Status: CEGL=Currently Accepted, Brachypodium=Not Accepted+Current, VII=Accepted+Not Current
+    expect_true(grepl("Currently Accepted", result$Status[1]))
+    expect_true(grepl("Not Accepted",         result$Status[2]))
+    expect_false(grepl("Not Current",       result$Status[2]))
+    expect_true(grepl("Not Current",        result$Status[3]))
+    expect_true(grepl("Accepted",           result$Status[3]))
+    # Level
+    expect_equal(result$Level, c("Association", "Association", "Class"))
+    # Reference source: all three have valid concept_rf_code → all links
+    expect_true(all(grepl("<a ", result$`Reference Source`)))
+    # Observations: CEGL=294→link, Brachypodium=17→link, VII=0→"0"
+    expect_true(grepl(">294</a>", result$Plots[1]))
+    expect_true(grepl("obs-count-link", result$Plots[1]))
+    expect_true(grepl(">17</a>",  result$Plots[2]))
+    expect_true(grepl("obs-count-link", result$Plots[2]))
+    expect_equal(result$Plots[3], "0")
+    # Descriptions
+    expect_true(grepl("forests occur", result$Description[1]) && grepl('data-value="cc.47882"', result$Description[1]))
+    expect_true(grepl("Unspecified",   result$Description[2]) && grepl('data-value="cc.38611"', result$Description[2]))
+    expect_true(grepl("Unspecified",   result$Description[3]) && grepl('data-value="cc.133"',   result$Description[3]))
   })
 })

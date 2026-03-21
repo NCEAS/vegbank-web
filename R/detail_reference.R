@@ -20,7 +20,7 @@ build_reference_details_view <- function(result) {
   summary_ui <- shiny::renderUI({
     reference_type <- ref$reference_type
     vb_code <- ref$rf_code
-    label <- ref$rf_label %|||% "Reference not recorded"
+    label <- ref$rf_label %|||% "Unnamed Reference"
     htmltools::tags$div(
       if (has_valid_field_value(result, "reference_type")) {
         htmltools::tags$i(tools::toTitleCase(reference_type))
@@ -62,7 +62,7 @@ build_reference_identifiers_ui <- function(ref) {
 
   if (length(fields_with_values) == 0) {
     return(shiny::renderUI({
-      htmltools::tags$p("No DOI, ISBN, or URL provided")
+      htmltools::tags$p("No DOI, ISBN, or URL recorded")
     }))
   }
 
@@ -72,25 +72,32 @@ build_reference_identifiers_ui <- function(ref) {
     formatted_values <- lapply(fields_with_values, function(field_name) {
       raw_value <- ref[[field_name]]
 
-      # Return "Not recorded" for missing/empty values
+      # Return "Unspecified" for missing/empty values
       if (is.null(raw_value) || length(raw_value) == 0 || all(is.na(raw_value))) {
-        return("Not recorded")
+        return("Unspecified")
       }
 
       field_value <- raw_value[1]
       if (is.na(field_value) || trimws(as.character(field_value)) == "") {
-        return("Not recorded")
+        return("Unspecified")
       }
 
-      # Render URLs as clickable links
+      # Render URLs as clickable links only for safe schemes (http/https).
+      # Reject other schemes (e.g. javascript:, data:) to prevent stored XSS.
       if (field_name == "url") {
         url_string <- as.character(field_value)
-        return(htmltools::tags$a(
-          href = url_string,
-          target = "_blank",
-          rel = "noopener noreferrer",
-          url_string
-        ))
+        url_lower <- tolower(trimws(url_string))
+        is_safe_url <- startsWith(url_lower, "http://") || startsWith(url_lower, "https://")
+        if (is_safe_url) {
+          return(htmltools::tags$a(
+            href = url_string,
+            target = "_blank",
+            rel = "noopener noreferrer",
+            url_string
+          ))
+        } else {
+          return(url_string)
+        }
       }
 
       field_value
@@ -110,7 +117,7 @@ build_reference_identifiers_ui <- function(ref) {
 #' @noRd
 build_reference_publication_ui <- function(ref) {
   shiny::renderUI({
-    citation_text <- ref$full_citation %|||% "Not recorded"
+    citation_text <- ref$full_citation %|||% "No citation recorded"
 
     publication_fields <- c(
       "title", "publisher", "publication_place", "publication_date",

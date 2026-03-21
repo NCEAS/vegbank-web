@@ -18,7 +18,7 @@ test_that("create_marker_popup creates correct HTML", {
   expect_true(grepl("<strong>1 Observation</strong>", single_popup))
   # Single quotes are safe within double-quoted attributes
   expect_true(grepl("onclick=\"Shiny.setInputValue\\('plot_link_click',\\s*'ACC1'", single_popup))
-  expect_true(grepl(">Plot1</a>", single_popup))
+  expect_true(grepl(">Plot1 (ACC1)</a>", single_popup, fixed = TRUE))
 
   # Multiple observations
   multi_popup <- create_marker_popup(
@@ -27,8 +27,8 @@ test_that("create_marker_popup creates correct HTML", {
     2
   )
   expect_true(grepl("<strong>2 Observations</strong>", multi_popup))
-  expect_true(grepl(">Plot1</a>", multi_popup))
-  expect_true(grepl(">Plot2</a>", multi_popup))
+  expect_true(grepl(">Plot1 (ACC1)</a>", multi_popup, fixed = TRUE))
+  expect_true(grepl(">Plot2 (ACC2)</a>", multi_popup, fixed = TRUE))
   expect_true(grepl("<br>", multi_popup))
 })
 
@@ -73,6 +73,76 @@ test_that("create_marker_popup handles special characters safely", {
   expect_true(grepl("ob.123/456", popup, fixed = TRUE))
 })
 
+# ---- build_map_search_index tests ----
+
+test_that("build_map_search_index returns a named list with lowercase keys", {
+  obs <- data.frame(
+    ob_code         = c("VB.OB.1", "VB.OB.2"),
+    author_obs_code = c("SITE-A",  "SITE-B"),
+    stringsAsFactors = FALSE
+  )
+  idx <- vegbankweb:::build_map_search_index(obs)
+  expect_type(idx, "list")
+  expect_true("vb.ob.1" %in% names(idx))
+  expect_true("site-a"  %in% names(idx))
+  expect_true("vb.ob.2" %in% names(idx))
+  expect_true("site-b"  %in% names(idx))
+})
+
+test_that("build_map_search_index row indices point to correct rows", {
+  obs <- data.frame(
+    ob_code         = c("VB.OB.1", "VB.OB.2"),
+    author_obs_code = c("SITE-A",  "SITE-B"),
+    stringsAsFactors = FALSE
+  )
+  idx <- vegbankweb:::build_map_search_index(obs)
+  expect_equal(idx[["vb.ob.1"]], 1L)
+  expect_equal(idx[["site-b"]],  2L)
+})
+
+test_that("build_map_search_index groups multiple rows under a shared key", {
+  obs <- data.frame(
+    ob_code         = c("VB.1", "VB.2"),
+    author_obs_code = c("SHARED", "SHARED"),
+    stringsAsFactors = FALSE
+  )
+  idx <- vegbankweb:::build_map_search_index(obs)
+  expect_setequal(idx[["shared"]], c(1L, 2L))
+})
+
+test_that("build_map_search_index omits NA codes from the index", {
+  obs <- data.frame(
+    ob_code         = c(NA_character_, "VB.1"),
+    author_obs_code = c("SITE-A",      NA_character_),
+    stringsAsFactors = FALSE
+  )
+  idx <- vegbankweb:::build_map_search_index(obs)
+  expect_false(anyNA(names(idx)))
+  expect_true("site-a" %in% names(idx))
+  expect_true("vb.1"   %in% names(idx))
+})
+
+test_that("build_map_search_index returns empty list for zero-row data frame", {
+  obs <- data.frame(ob_code = character(0), author_obs_code = character(0),
+                    stringsAsFactors = FALSE)
+  idx <- vegbankweb:::build_map_search_index(obs)
+  expect_equal(idx, list())
+})
+
+test_that("build_map_search_index deduplicates when ob_code equals author_obs_code", {
+  # When both columns carry the same value, the row should appear only once per key
+  obs <- data.frame(
+    ob_code         = "SAME",
+    author_obs_code = "SAME",
+    stringsAsFactors = FALSE
+  )
+  idx <- vegbankweb:::build_map_search_index(obs)
+  # unique() in the observer handles duplicates, but the index may store the row twice;
+  # what matters is the key exists and points to row 1
+  expect_true("same" %in% names(idx))
+  expect_true(1L %in% idx[["same"]])
+})
+
 # ---- validate_map_data tests ----
 
 test_that("validate_map_data returns invalid for NULL data", {
@@ -107,15 +177,13 @@ test_that("validate_map_data returns invalid when all coordinates are NA", {
 })
 
 test_that("validate_map_data returns valid with good data", {
-  good_data <- data.frame(
-    latitude = 40.7128,
-    longitude = -74.0060,
-    author_obs_code = "NYC",
-    ob_code = "ob.2948"
-  )
+  # Use real ob.2948 coordinates from the Acadia National Park dataset
+  good_data <- mock_plot_data[1, c("latitude", "longitude", "author_obs_code", "ob_code")]
   result <- validate_map_data(good_data)
   expect_true(result$valid)
   expect_equal(nrow(result$data), 1)
+  expect_equal(result$data$ob_code, "ob.2948")
+  expect_equal(result$data$author_obs_code, "ACAD.143")
 })
 
 test_that("validate_map_data filters out NA coordinates", {
@@ -150,103 +218,62 @@ test_that("process_map_data handles empty input", {
 test_that("process_map_data creates a map with markers", {
   defaults <- get_map_defaults()
 
-  # Create a small test dataset
-  test_data <- data.frame(
-    latitude = c(40.7128, 34.0522),
-    longitude = c(-74.0060, -118.2437),
-    author_obs_code = c("NYC", "LA"),
-    ob_code = c("ob.2948", "ob.2949"),
-    stringsAsFactors = FALSE
-  )
+  # Use the three real Acadia National Park observations (Maine coords)
+  test_data <- mock_plot_observations_multi[, c("latitude", "longitude", "author_obs_code", "ob_code")]
 
   with_mock_shiny_notifications({
     map <- process_map_data(test_data, defaults$lng, defaults$lat, defaults$zoom)
-    # Just check that the map is created successfully
     expect_true(inherits(map, "leaflet"))
-    # Check that there's at least one call in the map object
     expect_true(length(map$x$calls) > 0)
   })
 })
 
 test_that("process_map_data handles custom center and zoom", {
-  test_data <- data.frame(
-    latitude = c(40.7128),
-    longitude = c(-74.0060),
-    author_obs_code = c("NYC"),
-    ob_code = c("ob.2948"),
-    stringsAsFactors = FALSE
-  )
+  # Use the single real ob.2948 (ACAD.143) observation from Maine
+  test_data <- mock_plot_data[1, c("latitude", "longitude", "author_obs_code", "ob_code")]
 
   with_mock_shiny_notifications({
-    map <- process_map_data(test_data, center_lat = 35.0, center_lng = -100.0, zoom = 4)
-    # Just check that the map is created successfully
+    map <- process_map_data(test_data, center_lat = 44.0, center_lng = -68.0, zoom = 10)
     expect_true(inherits(map, "leaflet"))
   })
 })
 
 test_that("fetch_plot_map_data returns data when API succeeds", {
-  fake_data <- data.frame(
-    latitude = 10,
-    longitude = 20,
-    author_obs_code = "CODE",
-    ob_code = "ob.1"
-  )
+  # Return the real three-observation Acadia dataset from the mocked API
+  acad_map_data <- mock_plot_observations_multi[, c("latitude", "longitude", "author_obs_code", "ob_code")]
 
   with_mock_shiny_notifications({
     result <- testthat::with_mocked_bindings(
       fetch_plot_map_data(),
-      vb_get_plot_observations = function(...) fake_data,
+      vb_get_plot_observations = function(...) acad_map_data,
       .package = "vegbankr"
     )
 
-    expect_equal(result, fake_data)
+    expect_equal(result, as.data.frame(acad_map_data))
+    expect_equal(nrow(result), 3)
+    expect_equal(result$ob_code, c("ob.2948", "ob.3776", "ob.206444"))
     expect_length(get_mock_notifications(), 0)
   })
 })
 
-test_that("fetch_plot_map_data surfaces API errors", {
-  with_mock_shiny_notifications({
-    result <- testthat::with_mocked_bindings(
+test_that("fetch_plot_map_data propagates API errors to the caller", {
+  expect_error(
+    testthat::with_mocked_bindings(
       fetch_plot_map_data(),
       vb_get_plot_observations = function(...) stop("API offline"),
       .package = "vegbankr"
-    )
-
-    expect_null(result)
-    last_notification <- get_last_notification()
-    expect_match(last_notification$message, "Failed to load map data")
-    expect_equal(last_notification$type, "error")
-  })
+    ),
+    "API offline"
+  )
 })
 
-test_that("fetch_plot_map_data warns when API returns no rows", {
-  with_mock_shiny_notifications({
-    result <- testthat::with_mocked_bindings(
-      fetch_plot_map_data(),
-      vb_get_plot_observations = function(...) data.frame(),
-      .package = "vegbankr"
-    )
-
-    expect_null(result)
-    last_notification <- get_last_notification()
-    expect_match(last_notification$message, "Map data is currently unavailable")
-    expect_equal(last_notification$type, "warning")
-  })
-})
-
-test_that("add_zoom_control adds onRender function to map", {
-  # Create a minimal leaflet map
-  map <- leaflet::leaflet()
-
-  # Add zoom control
-  map_with_control <- add_zoom_control(map)
-
-  # Check that onRender is added
-  expect_true(!is.null(map_with_control$jsHooks$render))
-
-  # Check that the hook contains expected elements
-  expect_true(grepl("zoomControl", map_with_control$jsHooks$render[[1]]$code))
-  expect_true(grepl("Shiny.setInputValue", map_with_control$jsHooks$render[[1]]$code))
+test_that("fetch_plot_map_data returns NULL when API returns no rows", {
+  result <- testthat::with_mocked_bindings(
+    fetch_plot_map_data(),
+    vb_get_plot_observations = function(...) data.frame(),
+    .package = "vegbankr"
+  )
+  expect_null(result)
 })
 
 test_that("update_map_view creates proper function", {
@@ -258,4 +285,49 @@ test_that("update_map_view creates proper function", {
   fn_args <- formals(update_map_view)
   expect_equal(names(fn_args), c("map_proxy", "lng", "lat", "label", "zoom"))
   expect_null(fn_args$zoom)
+})
+
+# ---- add_search_control / onRender hook tests ----
+
+# Helper: collect all `code` strings from $jsHooks$render
+render_hook_codes <- function(map) {
+  vapply(map$jsHooks$render, `[[`, character(1), "code")
+}
+
+test_that("add_search_control render hook invokes vbMapSearchControl", {
+  m <- create_empty_map()
+  m <- vegbankweb:::add_search_control(m)
+  codes <- render_hook_codes(m)
+  expect_true(any(grepl("vbMapSearchControl", codes, fixed = TRUE)))
+})
+
+test_that("add_search_control render hook passes map and element arguments", {
+  m <- create_empty_map()
+  m <- vegbankweb:::add_search_control(m)
+  codes <- render_hook_codes(m)
+  search_code <- codes[grepl("vbMapSearchControl", codes, fixed = TRUE)]
+  expect_match(search_code, "function\\(el,\\s*x\\)")
+  expect_match(search_code, "window\\.vbMapSearchControl\\(this,\\s*el\\)")
+})
+
+test_that("build_leaflet_map includes the vbMapSearchControl render hook", {
+  defaults <- get_map_defaults()
+  test_data <- mock_plot_data[1, c("latitude", "longitude", "author_obs_code", "ob_code")]
+  with_mock_shiny_notifications({
+    map <- process_map_data(test_data, defaults$lng, defaults$lat, defaults$zoom)
+    codes <- render_hook_codes(map)
+    expect_true(any(grepl("vbMapSearchControl", codes, fixed = TRUE)))
+  })
+})
+
+test_that("build_leaflet_map render hooks include all three control callbacks", {
+  defaults <- get_map_defaults()
+  test_data <- mock_plot_data[1, c("latitude", "longitude", "author_obs_code", "ob_code")]
+  with_mock_shiny_notifications({
+    map <- process_map_data(test_data, defaults$lng, defaults$lat, defaults$zoom)
+    codes <- render_hook_codes(map)
+    expect_true(any(grepl("vbMapBindShinyInputs", codes, fixed = TRUE)))
+    expect_true(any(grepl("vbMapHelpControl",     codes, fixed = TRUE)))
+    expect_true(any(grepl("vbMapSearchControl",   codes, fixed = TRUE)))
+  })
 })

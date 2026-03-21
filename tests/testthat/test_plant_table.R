@@ -4,7 +4,7 @@ test_that("build_plant_table delegates to concept builder with plant config", {
   with_mocked_bindings(
     create_table = function(table_config) {
       expect_equal(length(table_config$column_defs), 8)
-      expect_equal(table_config$column_defs[[2]]$targets, 1) # Vegbank Code
+      expect_equal(table_config$column_defs[[2]]$targets, 1) # VegBank Code
       expect_equal(table_config$column_defs[[2]]$width, "12%")
       expect_equal(table_config$column_defs[[3]]$targets, 2) # Name
       expect_true(is.function(table_config$ajax))
@@ -21,37 +21,50 @@ test_that("build_plant_table delegates to concept builder with plant config", {
 })
 
 test_that("plant concept data includes plant-specific values", {
-  plant_data <- data.frame(
-    pc_code = c("pc.101", "pc.102"),
-    plant_name = c("Oak", "Maple"),
-    plant_level = c("Species", NA),
-    current_accepted = c(TRUE, FALSE),
-    concept_rf_code = c("rf.9", ""),
-    concept_rf_label = c("Oak Ref", "Not provided"),
-    obs_count = c("15", "7"),
-    plant_description = c("Deciduous tree", "Deciduous tree"),
-    stringsAsFactors = FALSE
+  cols <- c("pc_code", "plant_name", "plant_level",
+            "concept_rf_code", "concept_rf_label", "obs_count", "plant_description",
+            "status", "stop_date")
+  plant_data <- rbind(
+    mock_plant_concept_acru[, cols],
+    mock_plant_concept_vaccinium[, cols],
+    mock_plant_concept_psme[, cols]
   )
 
   with_mock_shiny_notifications({
     result <- vegbankweb:::process_concept_data(list(plant_data = plant_data), concept_type = "plant")
 
     expect_equal(colnames(result), c(
-      "Actions", "Vegbank Code", "Plant Concept", "Status",
-      "Level", "Reference Source", "Observations", "Description"
+      "Actions", "VegBank Code", "Plant Concept", "Status",
+      "Level", "Reference Source", "Plots", "Description"
     ))
 
     expect_true(all(grepl("<button", result$Actions)))
-    expect_equal(result$`Vegbank Code`, vapply(plant_data$pc_code, htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
-    expect_equal(result$`Plant Concept`, c("Oak", "Maple"))
-    expect_true(grepl("Accepted", result$Status[1]))
-    expect_true(grepl("Not Current", result$Status[2]))
-    expect_equal(result$Level, c("Species", "Not provided"))
-    expect_true(grepl("<a ", result$`Reference Source`[1]))
-    expect_equal(result$`Reference Source`[2], "Not provided")
-    expect_true(grepl(">15</a>", result$Observations[1]))
-    expect_true(grepl(">7</a>", result$Observations[2]))
-    expect_true(all(grepl("obs-count-link", result$Observations)))
-    expect_equal(result$Description, plant_data$plant_description)
+    expect_equal(
+      result$`VegBank Code`,
+      vapply(c("pc.111478", "pc.389660", "pc.47659"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE)
+    )
+    # Plant names
+    expect_equal(result$`Plant Concept`[1], "Acer rubrum L.")
+    expect_true(grepl("Vaccinium stamineum", result$`Plant Concept`[2]))
+    expect_true(grepl("Pseudotsuga menziesii", result$`Plant Concept`[3]))
+    # Status: ACRU=Currently Accepted, Vaccinium=No Status, PSME=Accepted + Not Current
+    expect_true(grepl("Currently Accepted", result$Status[1]))
+    expect_true(grepl("No Status",          result$Status[2]))
+    expect_true(grepl("Not Current",        result$Status[3]))
+    expect_true(grepl("Accepted",           result$Status[3]))
+    # Level
+    expect_equal(result$Level, c("Species", "Unspecified", "Species"))
+    # Reference source: all three have valid concept_rf_code → all links
+    expect_true(all(grepl("<a ", result$`Reference Source`)))
+    # Observations: ACRU=0→"0", Vaccinium=828→link, PSME=7475→link
+    expect_equal(result$Plots[1], "0")
+    expect_true(grepl(">828</a>",  result$Plots[2]))
+    expect_true(grepl("obs-count-link", result$Plots[2]))
+    expect_true(grepl(">7475</a>", result$Plots[3]))
+    expect_true(grepl("obs-count-link", result$Plots[3]))
+    # Descriptions: all plant_description=NA → "Unspecified" in container
+    expect_true(grepl("Unspecified", result$Description[1]) && grepl('data-value="pc.111478"', result$Description[1]))
+    expect_true(grepl("Unspecified", result$Description[2]) && grepl('data-value="pc.389660"', result$Description[2]))
+    expect_true(grepl("Unspecified", result$Description[3]) && grepl('data-value="pc.47659"',  result$Description[3]))
   })
 })

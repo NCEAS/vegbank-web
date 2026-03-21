@@ -82,7 +82,7 @@ create_table <- function(table_config = list()) {
 #' @param default_value Value to use for NA/empty values
 #' @returns A character vector with cleaned data
 #' @noRd
-clean_column_data <- function(data, column_name, default_value = "Not provided") {
+clean_column_data <- function(data, column_name, default_value = "Unspecified") {
   if (column_name %in% colnames(data)) {
     cleaned <- dplyr::coalesce(dplyr::na_if(as.character(data[[column_name]]), ""), default_value)
     # Return early if the cleaned vector is empty (avoids unnecessary processing)
@@ -93,7 +93,7 @@ clean_column_data <- function(data, column_name, default_value = "Not provided")
     cleaned <- ifelse(
       cleaned == default_value,
       cleaned,
-      paste0(toupper(substring(cleaned, 1, 1)), substring(cleaned, 2))
+      cap_first(cleaned)
     )
     cleaned
     # Column not present, return vector of default values
@@ -111,7 +111,7 @@ clean_column_data <- function(data, column_name, default_value = "Not provided")
 #' @param date_format Format string for output dates
 #' @returns A character vector with cleaned data
 #' @noRd
-clean_column_dates <- function(data, column_name, default_value = "Not provided", date_format = "%Y-%m-%d") {
+clean_column_dates <- function(data, column_name, default_value = "Unspecified", date_format = "%Y-%m-%d") {
   if (!(column_name %in% colnames(data))) {
     return(rep(default_value, nrow(data)))
   }
@@ -123,6 +123,36 @@ clean_column_dates <- function(data, column_name, default_value = "Not provided"
   )
 }
 
+
+# Package-level button icon constants — read once at package load time.
+# Button icon constants — no inline styles needed; all sizing/spacing is
+# handled by CSS rules in vegbank_styles.css targeting .dt-icon-btn svg,
+# .vb-plot-download svg, and .vb-help-btn svg.
+.BTN_ICON_EYE      <- load_svg_icon("eye")
+.BTN_ICON_PIN      <- load_svg_icon("pin")
+.BTN_ICON_DOWNLOAD <- load_svg_icon("download")
+.BTN_ICON_INFO     <- load_svg_icon("info_circle")
+.BTN_ICON_CLOSE    <- load_svg_icon("close")
+
+#' Generate a DT Buttons extension button definition for a toggleable help popover.
+#'
+#' @param title Plain-text table name shown bold in the popover header.
+#' @param content_html Pre-escaped single-line HTML string for the popover body.
+#'   Build with `htmltools::tagList`, collapse newlines, then escape single quotes.
+#' @return A `DT::JS` character object for inclusion in a `buttons` list.
+#' @noRd
+make_help_button_js <- function(title, content_html) {
+  safe_title <- gsub("'", "\\'", title, fixed = TRUE)
+  DT::JS(paste0(
+    "{text: '", .BTN_ICON_INFO, "',",
+    "className: 'btn btn-sm btn-outline-secondary vb-help-btn',",
+    "titleAttr: 'About this table',",
+    "action: function() {},",
+    "init: function(api, node, config) {",
+    "window.vbHelpButton(node, '<strong>", safe_title, "</strong>', '",
+    content_html, "', '", .BTN_ICON_CLOSE, "');}}"
+  ))
+}
 
 #' Create action buttons for each row (R version)
 #'
@@ -140,10 +170,10 @@ create_action_buttons <- function(input_id, button_label = "Details", code_value
         class = "btn-group btn-group-sm", role = "group",
         htmltools::tags$button(
           type = "button",
-          class = "btn btn-sm btn-outline-primary dt-shiny-action",
+          class = "btn btn-sm btn-outline-primary dt-icon-btn dt-shiny-action",
           `data-input-id` = input_id,
           `data-value` = safe_code,
-          safe_label
+          htmltools::HTML(paste0(.BTN_ICON_EYE, safe_label))
         )
       ))
     } else {
@@ -186,18 +216,56 @@ create_all_obs_count_links <- function(obs_counts, entity_codes, entity_labels) 
   }, character(1))
 }
 
-#' Create a status badge for concept status
+#' Create status badges for a concept row
 #'
-#' @param status Logical or NA; TRUE for accepted, FALSE for not accepted, NA for unknown
-#' @return HTML string for the badge
+#' Produces one or two badge spans reflecting both acceptance status and
+#' currency independently, mirroring the API filter semantics:
+#' \itemize{
+#'   \item{accepted: \code{status starts with "accepted"} (case-insensitive)}
+#'   \item{current: \code{stop_date} is NA, blank, or a date in the future}
+#' }
+#' Uses sprintf and paste because htmltools have too much overhead and cause
+#' the tables to load slower when we do this for each row in a large dataset.
+#'
+#' @param status Character; the concept's status value (e.g. "accepted",
+#'   "undetermined", \code{NA})
+#' @param stop_date Character or NA; the concept's stop_date from the API
+#'   (\code{NA}, blank, or a future date means still active / current)
+#' @return HTML string with one or two badge \code{<span>} elements
 #' @noRd
-create_status_badge <- function(status) {
-  if (is.null(status) || identical(status, "") || is.na(status)) {
-    '<span class="badge rounded-pill" style="background-color: var(--no-status-bg); color: var(--no-status-text);">No Status</span>'
-  } else if (isTRUE(status) || identical(status, "true") || identical(status, "TRUE")) {
-    '<span class="badge rounded-pill" style="background-color: var(--accepted-bg); color: var(--accepted-text);">Accepted</span>'
+create_status_badges <- function(status, stop_date) {
+  status_na <- is.null(status) || identical(status, "") ||
+    (length(status) == 1 && is.na(status))
+
+  if (status_na) {
+    return('<span class="badge rounded-pill" style="background-color: var(--monochrome-bg); color: var(--monochrome-text);">No Status</span>')
+  }
+
+  is_accepted <- startsWith(tolower(status), "accepted")
+  is_current <- is.null(stop_date) || identical(stop_date, "") ||
+    (length(stop_date) == 1 && is.na(stop_date)) ||
+    tryCatch({
+      parsed_stop <- suppressWarnings(as.POSIXct(stop_date, tryFormats = c(
+        "%a, %d %b %Y %H:%M:%S GMT", "%Y-%m-%d"
+      ), tz = "UTC"))
+      !is.na(parsed_stop) && parsed_stop > Sys.time()
+    }, error = function(e) FALSE)
+
+  green_badge <- function(label) {
+    sprintf('<span class="badge rounded-pill" style="background-color: var(--green-bg); color: var(--green-text);">%s</span>', label)
+  }
+  yellow_badge <- function(label) {
+    sprintf('<span class="badge rounded-pill" style="background-color: var(--yellow-bg); color: var(--yellow-text);">%s</span>', label)
+  }
+
+  if (is_accepted && is_current) {
+    green_badge("Currently Accepted")
+  } else if (is_accepted) {
+    paste(green_badge("Accepted"), yellow_badge("Not Current"))
+  } else if (is_current) {
+    paste(yellow_badge("Not Accepted"), green_badge("Current"))
   } else {
-    '<span class="badge rounded-pill" style="background-color: var(--not-current-bg); color: var(--not-current-text);">Not Current</span>'
+    paste(yellow_badge("Not Accepted"), yellow_badge("Not Current"))
   }
 }
 
@@ -594,7 +662,8 @@ build_remote_table_config <- function(column_defs,
                                       loading_label = NULL,
                                       page_length = NULL,
                                       options = list(),
-                                      datatable_args = list()) {
+                                      datatable_args = list(),
+                                      search_placeholder = NULL) {
   if (is.null(data_source_spec) || !is.list(data_source_spec)) {
     stop("data_source_spec must be a list")
   }
@@ -615,12 +684,17 @@ build_remote_table_config <- function(column_defs,
     "Loading data..."
   }
 
+  lang <- list(processing = processing_label)
+  if (!is.null(search_placeholder)) {
+    lang$searchPlaceholder <- search_placeholder
+  }
+
   remote_defaults <- list(
     serverSide = TRUE,
     lengthChange = FALSE,
     ordering = TRUE,
     searching = TRUE,
-    language = list(processing = processing_label)
+    language = lang
   )
 
   ajax_factory <- data_source_spec$ajax_factory %||% function(session) {
@@ -770,7 +844,8 @@ build_table_config_from_spec <- function(spec) {
     loading_label = spec$loading_label,
     page_length = spec$page_length,
     options = spec$options %||% list(),
-    datatable_args = spec$datatable_args
+    datatable_args = spec$datatable_args,
+    search_placeholder = spec$search_placeholder
   )
 
   if (!is.null(spec$ajax_factory)) {
@@ -828,31 +903,6 @@ parse_logical_vector <- function(x) {
   parsed
 }
 
-# TODO: Eventually should add a link to see details with full text at the end of truncated text
-#' Truncate long text values and append ellipses
-#'
-#' Limits string length for table display, appending "..." when values exceed
-#' the maximum number of characters. Preserves NA and empty values.
-#'
-#' @param values Character vector to truncate
-#' @param max_chars Maximum number of characters to keep before appending ellipses
-#' @returns Character vector with truncated values where needed
-#' @noRd
-truncate_text_with_ellipsis <- function(values, max_chars = 680L) {
-  if (is.null(values) || !length(values)) {
-    return(values)
-  }
-
-  values <- as.character(values)
-  char_counts <- nchar(values, allowNA = TRUE, type = "chars")
-  needs_truncation <- !is.na(char_counts) & char_counts > max_chars
-
-  if (any(needs_truncation)) {
-    values[needs_truncation] <- paste0(substr(values[needs_truncation], 1, max_chars), "...")
-  }
-
-  values
-}
 
 #' Coerce API response to a data frame with standard unwrapping
 #'

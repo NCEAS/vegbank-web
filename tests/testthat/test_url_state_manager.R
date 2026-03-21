@@ -331,6 +331,112 @@ test_that("build_query_string constructs valid URLs", {
   expect_match(query_table, "plots_search=test")
 })
 
+test_that("build_query_string serializes plot_filter parameters", {
+  mock_session <- list(clientData = list(url_search = ""))
+  manager <- URLStateManager$new(mock_session)
+
+  plot_filter <- list(type = "project", code = "pj.340", label = "My Project")
+  query <- manager$build_query_string(tab = "Plots", plot_filter = plot_filter)
+
+  # Verify the exact parameter names used in the URL
+  expect_match(query, "plot_filter_code=pj\\.340")
+  expect_match(query, "plot_filter_type=project")
+  expect_match(query, "plot_filter_label=")
+
+  # Ensure old parameter names are NOT used
+  expect_no_match(query, "(?<![a-z_])filter_code=", perl = TRUE)
+  expect_no_match(query, "(?<![a-z_])filter_type=", perl = TRUE)
+  expect_no_match(query, "(?<![a-z_])filter_label=", perl = TRUE)
+})
+
+test_that("build_query_string serializes community_filter parameters", {
+  mock_session <- list(clientData = list(url_search = ""))
+  manager <- URLStateManager$new(mock_session)
+
+  comm_filter <- list(type = "citation", code = "cc.1234", label = "Citation identifier: VB.CC.1234")
+  query <- manager$build_query_string(tab = "Communities", community_filter = comm_filter)
+
+  # Verify the exact parameter names used in the URL
+  expect_match(query, "comm_filter_code=cc\\.1234")
+  expect_match(query, "comm_filter_type=citation")
+  expect_match(query, "comm_filter_label=")
+
+  # Ensure plot filter params are NOT present
+  expect_no_match(query, "plot_filter_code=")
+})
+
+test_that("build_query_string omits filter params when filters are NULL", {
+  mock_session <- list(clientData = list(url_search = ""))
+  manager <- URLStateManager$new(mock_session)
+
+  query <- manager$build_query_string(tab = "Plots", plot_filter = NULL, community_filter = NULL)
+
+  expect_no_match(query, "plot_filter_")
+  expect_no_match(query, "comm_filter_")
+})
+
+test_that("plot_filter URL params roundtrip through build and parse", {
+  # Build a query string with a plot filter
+  build_session <- list(clientData = list(url_search = ""))
+  builder <- URLStateManager$new(build_session)
+
+  original_filter <- list(type = "party", code = "py.200", label = "Smith, J.")
+  query <- builder$build_query_string(tab = "Plots", plot_filter = original_filter)
+
+  # Parse it back using a new manager seeded with the built query
+  parse_session <- list(clientData = list(url_search = query))
+  parser <- URLStateManager$new(parse_session)
+  params <- parser$parse_query_string()
+
+  # Verify the parsed parameter names match what server.R's URL observer reads
+  expect_equal(parser$first_param(params$plot_filter_code), "py.200")
+  expect_equal(parser$first_param(params$plot_filter_type), "party")
+  expect_true(parser$is_valid_param(params$plot_filter_label))
+})
+
+test_that("community_filter URL params roundtrip through build and parse", {
+  # Build a query string with a community filter
+  build_session <- list(clientData = list(url_search = ""))
+  builder <- URLStateManager$new(build_session)
+
+  original_filter <- list(type = "citation", code = "cc.5678", label = "Citation identifier: VB.CC.5678")
+  query <- builder$build_query_string(tab = "Communities", community_filter = original_filter)
+
+  # Parse it back using a new manager seeded with the built query
+  parse_session <- list(clientData = list(url_search = query))
+  parser <- URLStateManager$new(parse_session)
+  params <- parser$parse_query_string()
+
+  # Verify the parsed parameter names match what server.R's URL observer reads
+  expect_equal(parser$first_param(params$comm_filter_code), "cc.5678")
+  expect_equal(parser$first_param(params$comm_filter_type), "citation")
+  expect_true(parser$is_valid_param(params$comm_filter_label))
+})
+
+test_that("both filters can coexist in the same query string", {
+  mock_session <- list(clientData = list(url_search = ""))
+  builder <- URLStateManager$new(mock_session)
+
+  plot_filter <- list(type = "project", code = "pj.100", label = "Project A")
+  comm_filter <- list(type = "citation", code = "cc.200", label = "Cited concept")
+  query <- builder$build_query_string(
+    tab = "Plots",
+    plot_filter = plot_filter,
+    community_filter = comm_filter
+  )
+
+  # Parse back
+  parse_session <- list(clientData = list(url_search = query))
+  parser <- URLStateManager$new(parse_session)
+  params <- parser$parse_query_string()
+
+  # Both should be independently retrievable
+  expect_equal(parser$first_param(params$plot_filter_code), "pj.100")
+  expect_equal(parser$first_param(params$comm_filter_code), "cc.200")
+  expect_equal(parser$first_param(params$plot_filter_type), "project")
+  expect_equal(parser$first_param(params$comm_filter_type), "citation")
+})
+
 test_that("parse_query_string extracts parameters", {
   mock_session <- list(
     clientData = list(url_search = "?tab=Plots&detail=plot-observation&code=VB.123")

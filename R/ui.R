@@ -1,4 +1,4 @@
-#' Shiny UI for Vegbank Web Application
+#' Shiny UI for VegBank Web Application
 #'
 #' Constructs the user interface for browsing vegetation plot data.
 #'
@@ -6,1250 +6,174 @@
 #' @return A Shiny tag list.
 #'
 #' @noRd
-#' @param req A Shiny request object.
-#' @return A Shiny tag list.
-#'
-#' @noRd
 ui <- function(req) {
+  # Handle /cite/IDENTIFIER paths: --> HTTP 302 redirect --> /?cite=IDENTIFIER
+  # Old VegBank had citation URLs like http://vegbank.org/cite/VB.Ob.22743.INW32086
+  # This redirect converts path-based citations to query parameter form for server processing.
+  # after the app loads.
+  identifier <- extract_citation_identifier(req)
+  if (!is.null(identifier)) {
+    return(build_citation_redirect(identifier))
+  }
+
+  # Parse initial state from URL query parameters
+  query_string <- req$QUERY_STRING
+  initial_tab <- "Home"
+  has_cite_param <- FALSE
+
+  if (!is.null(query_string) && nzchar(query_string)) {
+    query_params <- shiny::parseQueryString(query_string)
+    if (!is.null(query_params$cite) && nzchar(query_params$cite)) {
+      # Citation will be resolved server-side; start on Home with loading overlay
+      has_cite_param <- TRUE
+    } else if (!is.null(query_params$tab) && nzchar(query_params$tab)) {
+      initial_tab <- query_params$tab
+    }
+  }
+
   shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
 
   # Ensure Inter font loads from CDN before any CSS
   font_head <- htmltools::tags$head(
     htmltools::tags$link(rel = "preconnect", href = "https://rsms.me/"),
-    htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css")
+    htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css"),
+    htmltools::tags$link(rel = "stylesheet", href = "assets/vegbank_styles.css")
   )
 
-  navbar <- build_navbar()
+  navbar <- build_navbar(initial_tab)
   overlay <- build_detail_overlay()
-  map_loading_overlay <- build_map_loading_overlay()
-
-  script <- htmltools::tags$script(htmltools::HTML(
-    "Shiny.addCustomMessageHandler('openOverlay', function(message) {
-      if (document.getElementById('detail-overlay')) {
-        document.getElementById('detail-overlay').style.right = '0px';
-      }
-    });
-
-    Shiny.addCustomMessageHandler('closeOverlay', function(message) {
-      var overlay = document.getElementById('detail-overlay');
-      if (overlay) {
-        // Use responsive close position based on screen width
-        var closePosition = window.innerWidth < 768 ? '-100vw' : '-420px';
-        overlay.style.right = closePosition;
-      }
-    });
-
-    Shiny.addCustomMessageHandler('invalidateMapSize', function(message) {
-      var mapWidget = HTMLWidgets.find('#map');
-      if (mapWidget) {
-        var map = mapWidget.getMap();
-        if(map) {
-          map.invalidateSize();
-        }
-      }
-    });
-
-    // DataTables/Shiny state synchronization overview:
-    // 1. DataTables calls `stateLoadCallback` (vegbankLoadTableState) during init,
-    //    which pulls values from URL params so pagination/search/order are set
-    //    before the first draw.
-    // 2. Subsequent user interactions trigger `stateSaveCallback`
-    //    (vegbankSaveTableState) which emits `<tableId>_state` inputs back to
-    //    Shiny; the server may then update the encoded URL.
-    // 3. When the server needs to push state down later (e.g., browser history
-    //    navigation) it sends an `applyTableState` custom message, which uses the
-    //    same `applyTableState` helper below to drive the DataTables API.
-
-    // Track pending table state application and pending highlight for initial loads
-    var pendingTableStates = [];
-    var pendingHighlight = null; // { tableId, rowIndex }
-    var currentHighlightTableId = null; // Track which table the highlight belongs to
-    var currentHighlightRowIndex = null; // Track which row index is highlighted within the table
-
-    // Check for highlight params in URL and set as pending highlight
-    (function() {
-      var params = new URLSearchParams(window.location.search);
-      var hlTable = params.get('hl_table');
-      var hlRow = params.get('hl_row');
-      if (hlTable && hlRow !== null) {
-        var rowNum = parseInt(hlRow, 10);
-        if (!isNaN(rowNum)) {
-          pendingHighlight = { tableId: hlTable, rowIndex: rowNum };
-        }
-      }
-    })();
-
-    // Track expected start offsets (pagination) per table so we only highlight
-    // after the table has actually navigated to the intended page.
-    // Exposed on window for access from DataTables initComplete callback.
-    var expectedStartByTable = window.expectedStartByTable = {};
-
-    var tableIdToKey = {
-      'plot_table': 'plots',
-      'plant_table': 'plants',
-      'comm_table': 'communities',
-      'party_table': 'parties',
-      'proj_table': 'projects'
-    };
-
-    var tableInitialUrlState = {};
-    var tableStateLoadComplete = {};
-    var dataTableIdToWidgetId = {};
-    var widgetIdToDataTableId = {};
-
-    Object.keys(tableIdToKey).forEach(function(id) {
-      tableStateLoadComplete[id] = true;
-    });
-
-    function resolveWidgetId(tableId) {
-      if (!tableId) {
-        return null;
-      }
-
-      if (Object.prototype.hasOwnProperty.call(tableIdToKey, tableId)) {
-        return tableId;
-      }
-
-      if (Object.prototype.hasOwnProperty.call(dataTableIdToWidgetId, tableId)) {
-        return dataTableIdToWidgetId[tableId];
-      }
-
-      return tableId;
-    }
-
-    function registerDataTableMapping(settings) {
-      if (!settings || !settings.nTable || !settings.sTableId) {
-        return null;
-      }
-
-      var widgetId = $(settings.nTable).closest('.datatables').attr('id');
-      if (!widgetId) {
-        return null;
-      }
-
-      dataTableIdToWidgetId[settings.sTableId] = widgetId;
-      widgetIdToDataTableId[widgetId] = settings.sTableId;
-
-      if (!Object.prototype.hasOwnProperty.call(tableStateLoadComplete, widgetId)) {
-        tableStateLoadComplete[widgetId] = true;
-      }
-
-      return widgetId;
-    }
-
-    function getResolvedTableIdentifiers(settings) {
-      if (!settings || !settings.sTableId) {
-        return null;
-      }
-
-      var widgetId = resolveWidgetId(settings.sTableId);
-
-      return {
-        widgetId: widgetId,
-        dataTableId: settings.sTableId,
-        effectiveId: widgetId || settings.sTableId
-      };
-    }
-
-    function clearPendingTableStates(tableId) {
-      if (!tableId) {
-        return;
-      }
-
-      var widgetId = resolveWidgetId(tableId) || tableId;
-      for (var i = pendingTableStates.length - 1; i >= 0; i--) {
-        if (pendingTableStates[i].tableId === widgetId) {
-          pendingTableStates.splice(i, 1);
-        }
-      }
-    }
-
-    function enqueuePendingTableState(tableId, state) {
-      if (!tableId || !state) {
-        return;
-      }
-
-      var widgetId = resolveWidgetId(tableId) || tableId;
-
-      for (var i = pendingTableStates.length - 1; i >= 0; i--) {
-        if (pendingTableStates[i].tableId === widgetId) {
-          pendingTableStates.splice(i, 1);
-        }
-      }
-
-      pendingTableStates.push({ tableId: widgetId, state: state });
-    }
-
-    function getDataTableNode(tableId) {
-      if (!tableId) {
-        return $();
-      }
-
-      var rawNode = $('#' + tableId);
-      if (rawNode.length && rawNode.is('table')) {
-        return rawNode;
-      }
-
-      var widgetId = resolveWidgetId(tableId);
-      var widgetNode = widgetId ? $('#' + widgetId) : $();
-      if (widgetNode.length) {
-        var nestedTable = widgetNode.find('table.dataTable').first();
-        if (nestedTable.length) {
-          return nestedTable;
-        }
-        nestedTable = widgetNode.find('table').first();
-        if (nestedTable.length) {
-          return nestedTable;
-        }
-      }
-
-      if (rawNode.length && !rawNode.is('table')) {
-        var fallback = rawNode.find('table.dataTable').first();
-        if (fallback.length) {
-          return fallback;
-        }
-        fallback = rawNode.find('table').first();
-        if (fallback.length) {
-          return fallback;
-        }
-      }
-
-      return rawNode;
-    }
-
-
-    function buildDefaultDtState(settings) {
-      var columns = Array.isArray(settings.aoColumns)
-        ? settings.aoColumns.map(function(col) {
-            return {
-              visible: col.bVisible !== undefined ? col.bVisible : true,
-              search: {
-                search: col.sSearch || '',
-                smart: true,
-                regex: false,
-                caseInsensitive: true
-              }
-            };
-          })
-        : [];
-
-      return {
-        time: Date.now(),
-        start: settings._iDisplayStart || 0,
-        length: settings._iDisplayLength || 10,
-        order: Array.isArray(settings.aaSorting) ? settings.aaSorting.slice() : [],
-        search: {
-          search: settings.oPreviousSearch ? settings.oPreviousSearch.sSearch || '' : '',
-          smart: true,
-          regex: false,
-          caseInsensitive: true
-        },
-        columns: columns
-      };
-    }
-
-    function parseOrderParam(orderParam) {
-      if (typeof orderParam !== 'string' || orderParam.length === 0) {
-        return [];
-      }
-
-      return orderParam.split(',').map(function(token) {
-        var parts = token.split(':');
-        if (parts.length !== 2) {
-          return null;
-        }
-        var column = parseInt(parts[0], 10);
-        var dir = parts[1];
-        if (isNaN(column) || !dir) {
-          return null;
-        }
-        dir = dir.toLowerCase() === 'desc' ? 'desc' : 'asc';
-        return [column, dir];
-      }).filter(Boolean);
-    }
-
-    function getTableKeyFromId(tableId) {
-      var widgetId = resolveWidgetId(tableId);
-      return tableIdToKey[widgetId] || null;
-    }
-
-    function getUrlTableState(tableId) {
-      if (!tableId) {
-        return null;
-      }
-
-      var widgetId = resolveWidgetId(tableId);
-      var tableKey = getTableKeyFromId(widgetId);
-      if (!tableKey) {
-        return null;
-      }
-
-      var params = new URLSearchParams(window.location.search);
-      var startParam = params.get(tableKey + '_start');
-      var lengthParam = params.get(tableKey + '_length');
-      var orderParam = params.get(tableKey + '_order');
-      var searchParam = params.get(tableKey + '_search');
-
-      if (!startParam && !lengthParam && !orderParam && !searchParam) {
-        return null;
-      }
-
-      var state = {};
-      var startValue = parseInt(startParam, 10);
-      if (!isNaN(startValue) && startValue >= 0) {
-        state.start = startValue;
-      }
-
-      var lengthValue = parseInt(lengthParam, 10);
-      if (!isNaN(lengthValue) && lengthValue > 0) {
-        state.length = lengthValue;
-      }
-
-      var orderValue = parseOrderParam(orderParam);
-      if (orderValue.length > 0) {
-        state.order = orderValue;
-      }
-
-      if (typeof searchParam === 'string') {
-        state.search = searchParam;
-      }
-
-      return state;
-    }
-
-    function getInitialUrlState(tableId) {
-      if (!tableId) {
-        return null;
-      }
-
-      var widgetId = resolveWidgetId(tableId);
-      if (!widgetId) {
-        return null;
-      }
-
-      if (!Object.prototype.hasOwnProperty.call(tableInitialUrlState, widgetId)) {
-        var parsed = getUrlTableState(widgetId);
-        tableInitialUrlState[widgetId] = parsed;
-
-        if (parsed && typeof parsed.start === 'number') {
-          expectedStartByTable[widgetId] = parsed.start;
-        }
-
-        if (parsed) {
-          tableStateLoadComplete[widgetId] = false;
-        }
-      }
-
-      return tableInitialUrlState[widgetId];
-    }
-
-    window.vegbankLoadTableState = function(settings) {
-      registerDataTableMapping(settings);
-
-      var tableId = resolveWidgetId(settings && settings.sTableId);
-      console.log('vegbankLoadTableState called for table:', tableId, 'URL:', window.location.search);
-      if (!tableId) {
-        console.log('vegbankLoadTableState: no tableId, returning null');
-        return null;
-      }
-
-      var urlState = getInitialUrlState(tableId);
-      console.log('vegbankLoadTableState: urlState for', tableId, '=', JSON.stringify(urlState));
-      if (!urlState) {
-        tableStateLoadComplete[tableId] = true;
-        console.log('vegbankLoadTableState: no urlState, returning null');
-        return null;
-      }
-
-      tableStateLoadComplete[tableId] = false;
-
-      var state = buildDefaultDtState(settings);
-      var hasOverride = false;
-
-      if (typeof urlState.start === 'number') {
-        state.start = urlState.start;
-        hasOverride = true;
-      }
-
-      if (typeof urlState.length === 'number') {
-        state.length = urlState.length;
-        hasOverride = true;
-      }
-
-      if (Array.isArray(urlState.order) && urlState.order.length > 0) {
-        state.order = urlState.order;
-        hasOverride = true;
-      }
-
-      if (typeof urlState.search === 'string') {
-        state.search.search = urlState.search;
-        hasOverride = hasOverride || urlState.search.length > 0;
-      }
-
-      console.log('vegbankLoadTableState: returning state with start=', state.start, 'hasOverride=', hasOverride);
-      return hasOverride ? state : null;
-    };
-
-    function sanitizeStatePayload(settings, data) {
-      if (!data) {
-        return null;
-      }
-
-      var payload = {
-        start: typeof data.start === 'number' ? data.start : 0,
-        length: typeof data.length === 'number' ? data.length : (settings && settings._iDisplayLength) || 10,
-        order: Array.isArray(data.order) ? data.order : [],
-        search: data.search && typeof data.search.search === 'string' ? data.search.search : ''
-      };
-
-      return payload;
-    }
-
-    window.vegbankSaveTableState = function(settings, data) {
-      if (!window.Shiny || typeof Shiny.setInputValue !== 'function') {
-        return;
-      }
-
-      var tableInfo = getResolvedTableIdentifiers(settings);
-      if (!tableInfo) {
-        return;
-      }
-
-      if (tableStateLoadComplete[tableInfo.effectiveId] === false) {
-        return;
-      }
-
-      var payload = sanitizeStatePayload(settings, data);
-      if (!payload) {
-        return;
-      }
-
-      clearPendingTableStates(tableInfo.effectiveId);
-
-      var targetInputId = tableInfo.widgetId || tableInfo.dataTableId;
-      if (targetInputId) {
-        Shiny.setInputValue(targetInputId + '_state', payload, {priority: 'event'});
-      }
-    };
-
-    function setNavbarDisabled(disabled) {
-      var navbar = document.querySelector('.navbar');
-      if (!navbar) {
-        return;
-      }
-
-      navbar.classList.toggle('nav-disabled', Boolean(disabled));
-
-      var navLinks = navbar.querySelectorAll('.navbar-nav .nav-link');
-      navLinks.forEach(function(link) {
-        if (disabled) {
-          link.setAttribute('aria-disabled', 'true');
-          link.setAttribute('tabindex', '-1');
-          link.classList.add('disabled');
-          if (link.tagName === 'BUTTON') {
-            link.disabled = true;
-          }
-        } else {
-          link.removeAttribute('aria-disabled');
-          link.removeAttribute('tabindex');
-          link.classList.remove('disabled');
-          if (link.tagName === 'BUTTON') {
-            link.disabled = false;
-          }
-        }
-      });
-
-      var toggler = document.querySelector('.navbar-toggler');
-      if (toggler) {
-        toggler.disabled = Boolean(disabled);
-        if (disabled) {
-          toggler.setAttribute('aria-disabled', 'true');
-        } else {
-          toggler.removeAttribute('aria-disabled');
-        }
-      }
-    }
-
-    setNavbarDisabled(true);
-
-    document.addEventListener('DOMContentLoaded', function() {
-      setNavbarDisabled(true);
-      
-      // Delegated event handlers for DataTable action buttons
-      $(document).on('click', '.dt-shiny-action', function(e) {
-        e.preventDefault();
-        var btn = $(this);
-        var inputId = btn.data('input-id');
-        var value = btn.data('value');
-        var label = btn.data('label'); // For obs_count links
-        var rowIndex = null;
-        var row = btn.closest('tr');
-        if (row && row.length) {
-          rowIndex = row.index();
-        }
-        
-        // Immediately highlight the clicked row
-        $('table tbody tr').removeClass('selected-entity');
-        row.addClass('selected-entity');
-        var containingTable = btn.closest('table');
-        var wrapperId = btn.closest('.datatables').attr('id');
-        // Use wrapperId (widget ID) preferentially, as it's consistent across page loads
-        // The internal DataTables ID (e.g., DataTables_Table_0) can vary
-        var rawTableId = (containingTable && containingTable.attr('id')) || null;
-        currentHighlightTableId = wrapperId || resolveWidgetId(rawTableId) || rawTableId;
-        currentHighlightRowIndex = rowIndex;
-
-        Shiny.setInputValue('row_highlight', {
-          tableId: currentHighlightTableId,
-          rowIndex: rowIndex,
-          timestamp: Date.now()
-        }, {priority: 'event'});
-
-        if (inputId && value) {
-          // For obs_count links, send both code and label
-          if (label) {
-            Shiny.setInputValue(inputId, {code: value, label: label}, {priority: 'event'});
-          } else {
-            Shiny.setInputValue(inputId, value, {priority: 'event'});
-          }
-        }
-      });
-
-      $(document).on('click', '.dt-map-action', function(e) {
-        e.preventDefault();
-        var btn = $(this);
-        var lat = parseFloat(btn.data('lat'));
-        var lng = parseFloat(btn.data('lng'));
-
-        if (!isFinite(lat) || !isFinite(lng)) {
-          return;
-        }
-
-        var code = btn.data('code');
-        var payload = {
-          lat: lat,
-          lng: lng
-        };
-
-        if (code) {
-          payload.code = code;
-        }
-
-        Shiny.setInputValue('show_on_map', payload, {priority: 'event'});
-      });
-    });
-
-    Shiny.addCustomMessageHandler('setNavInteractivity', function(message) {
-      var disabled = Boolean(message && message.disabled);
-      setNavbarDisabled(disabled);
-    });
-
-    // Map loading overlay management
-    var mapLoadingPuns = [
-      'Planting seeds...',
-      'Branching out...',
-      'Rooting through the database...',
-      'Monitoring mycelial networks...',
-      'Disturbing the substrate...',
-      'Planning successful succession...',
-      'Last bud not leaf...'
-    ];
-    var mapLoadingPunIndex = 0;
-    var mapLoadingPunInterval = null;
-
-    function rotatePlantPun() {
-      var punElement = document.getElementById('map-loading-pun');
-      if (punElement) {
-        punElement.textContent = mapLoadingPuns[mapLoadingPunIndex];
-        mapLoadingPunIndex = (mapLoadingPunIndex + 1) % mapLoadingPuns.length;
-      }
-    }
-
-    Shiny.addCustomMessageHandler('showMapLoading', function(message) {
-      var overlay = document.getElementById('map-loading-overlay');
-      if (overlay) {
-        overlay.style.display = 'flex';
-        overlay.classList.remove('fade-out');
-        mapLoadingPunIndex = 0;
-        rotatePlantPun();
-        if (mapLoadingPunInterval) {
-          clearInterval(mapLoadingPunInterval);
-        }
-        mapLoadingPunInterval = setInterval(rotatePlantPun, 2500);
-      }
-    });
-
-    Shiny.addCustomMessageHandler('hideMapLoading', function(message) {
-      var overlay = document.getElementById('map-loading-overlay');
-      var punElement = document.getElementById('map-loading-pun');
-      
-      if (mapLoadingPunInterval) {
-        clearInterval(mapLoadingPunInterval);
-        mapLoadingPunInterval = null;
-      }
-      
-      if (overlay && punElement) {
-        punElement.textContent = 'Go fir launch!';
-        
-        setTimeout(function() {
-          // Allow interaction immediately by removing pointer events
-          overlay.style.pointerEvents = 'none';
-          overlay.classList.add('fade-out');
-          setTimeout(function() {
-            overlay.style.display = 'none';
-          }, 500);
-        }, 500);
-      }
-    });
-
-    function getDataTableApi(tableId, settings) {
-      if (settings && $.fn && $.fn.dataTable) {
-        try {
-          return new $.fn.dataTable.Api(settings);
-        } catch (error) {
-          console.warn('Failed to build DataTables API from settings for', tableId, error);
-        }
-      }
-
-      var tableNode = getDataTableNode(tableId);
-      if (tableNode.length === 0 || !$.fn.dataTable || !$.fn.dataTable.isDataTable(tableNode)) {
-        return null;
-      }
-
-      return tableNode.DataTable();
-    }
-
-    function isDataTableReady(table) {
-      return Boolean(table && Array.isArray(table.context) && table.context.length > 0);
-    }
-
-    function applyTableState(tableId, state, settings) {
-      var widgetId = resolveWidgetId(tableId);
-      var targetId = widgetId || tableId;
-      console.log('Applying state to table:', targetId, state);
-
-      if (state && typeof state.start === 'number') {
-        expectedStartByTable[targetId] = state.start;
-      }
-
-      var table = getDataTableApi(targetId, settings);
-      if (!table) {
-        return false;
-      }
-
-      if (!isDataTableReady(table)) {
-        console.warn('DataTable API not ready for table:', targetId, 'deferring state application');
-        return false;
-      }
-
-      var hasChanges = false;
-
-      if (state.search !== undefined && state.search !== null) {
-        var targetSearch = String(state.search);
-        if (table.search() !== targetSearch) {
-          table.search(targetSearch);
-          hasChanges = true;
-        }
-      }
-
-      if (Array.isArray(state.order)) {
-        var targetOrder = state.order.map(function(item) {
-          return [parseInt(item.column, 10), item.dir];
-        }).filter(function(pair) {
-          return !isNaN(pair[0]) && pair[1];
-        });
-
-        var currentOrder = table.order();
-        if (!Array.isArray(currentOrder)) {
-          if (currentOrder && typeof currentOrder.toArray === 'function') {
-            currentOrder = currentOrder.toArray();
-          } else {
-            currentOrder = [];
-          }
-        }
-        var orderDiffers = targetOrder.length !== currentOrder.length ||
-          targetOrder.some(function(pair, index) {
-            var currentPair = currentOrder[index];
-            return !currentPair || currentPair[0] !== pair[0] || currentPair[1] !== pair[1];
-          });
-
-        if (orderDiffers) {
-          table.order(targetOrder);
-          hasChanges = true;
-        }
-      }
-
-      var pageApiAvailable = table.page && typeof table.page === 'function';
-      var targetLength = null;
-      if (state.length !== undefined && state.length !== null) {
-        targetLength = parseInt(state.length, 10);
-        if (
-          pageApiAvailable &&
-          typeof table.page.len === 'function' &&
-          !isNaN(targetLength) &&
-          table.page.len() !== targetLength
-        ) {
-          table.page.len(targetLength);
-          hasChanges = true;
-        }
-      }
-
-      var targetPage = null;
-      if (state.page !== undefined && state.page !== null) {
-        targetPage = parseInt(state.page, 10);
-      } else if (state.start !== undefined && state.start !== null && targetLength) {
-        targetPage = Math.floor(parseInt(state.start, 10) / targetLength);
-      }
-
-      if (pageApiAvailable && targetPage !== null && !isNaN(targetPage)) {
-        if (typeof table.page.info === 'function') {
-          var pageInfo = table.page.info();
-          if (pageInfo && typeof pageInfo.pages === 'number') {
-            var maxPageIndex = Math.max(0, pageInfo.pages - 1);
-            if (targetPage > maxPageIndex) {
-              targetPage = maxPageIndex;
-            }
-          }
-        }
-        if (targetPage < 0) {
-          targetPage = 0;
-        }
-
-        if (table.page() !== targetPage) {
-          table.page(targetPage);
-          hasChanges = true;
-        }
-      }
-
-      if (hasChanges) {
-        table.draw(false);
-      }
-
-      return true;
-    }
-
-    Shiny.addCustomMessageHandler('applyTableState', function(message) {
-      if (!message || !message.tableId || !message.state) {
-        return;
-      }
-
-      var widgetId = resolveWidgetId(message.tableId);
-      if (!applyTableState(widgetId, message.state)) {
-        enqueuePendingTableState(widgetId, message.state);
-      }
-    });
-
-    $(document).on('init.dt', function(e, settings) {
-      if (!settings || !settings.sTableId) {
-        return;
-      }
-
-      registerDataTableMapping(settings);
-      var tableInfo = getResolvedTableIdentifiers(settings);
-      if (!tableInfo) {
-        return;
-      }
-
-      var urlState = getInitialUrlState(tableInfo.effectiveId);
-      if (!urlState && !Object.prototype.hasOwnProperty.call(tableStateLoadComplete, tableInfo.effectiveId)) {
-        tableStateLoadComplete[tableInfo.effectiveId] = true;
-      }
-    });
-
-    $(document).on('draw.dt', function(e, settings) {
-      var widgetId = resolveWidgetId(settings.sTableId);
-      console.log('DataTable draw event for:', widgetId || settings.sTableId);
-
-      // Restore current highlight after table redraw (e.g., sorting, filtering)
-      if (currentHighlightTableId && currentHighlightRowIndex !== null && !pendingHighlight) {
-        console.log('Restoring current highlight after table redraw:', currentHighlightTableId, currentHighlightRowIndex);
-        attemptRowHighlight(false, currentHighlightTableId, currentHighlightRowIndex);
-      }
-
-      // Check for pending highlight for this table
-      if (pendingHighlight && pendingHighlight.tableId === widgetId) {
-        console.log('Processing pending highlight for table:', widgetId, 'row:', pendingHighlight.rowIndex);
-        if (attemptRowHighlight(true, widgetId, pendingHighlight.rowIndex)) {
-          console.log('Successfully applied pending highlight');
-          pendingHighlight = null;
-        }
-      }
-
-      // Apply pending table states
-      for (var j = pendingTableStates.length - 1; j >= 0; j--) {
-        var pendingState = pendingTableStates[j];
-        if (pendingState.tableId === widgetId) {
-          if (applyTableState(pendingState.tableId, pendingState.state, settings)) {
-            pendingTableStates.splice(j, 1);
-          }
-        }
-      }
-    });
-
-    // For server-side AJAX tables, try row highlight after data arrives
-    $(document).on('xhr.dt', function(e, settings, json, xhr) {
-      var widgetId = resolveWidgetId(settings.sTableId);
-      console.log('DataTable xhr event for:', widgetId, '- data received, records:', json && json.recordsTotal);
-
-      // After AJAX data is received, retry pending highlight with a small delay
-      // Use requestAnimationFrame + setTimeout to ensure DOM has been updated
-      if (pendingHighlight && pendingHighlight.tableId === widgetId) {
-        requestAnimationFrame(function() {
-          setTimeout(function() {
-            if (pendingHighlight && pendingHighlight.tableId === widgetId) {
-              console.log('Post-XHR highlight attempt for', widgetId);
-              if (attemptRowHighlight(true, widgetId, pendingHighlight.rowIndex)) {
-                console.log('Applied pending highlight after XHR');
-                pendingHighlight = null;
-              }
-            }
-          }, 100);
-        });
-      }
-    });
-
-    // Function to attempt row highlight using the explicit table and row index.
-    // Highlighting is solely driven by tableId and rowIndex.
-    function attemptRowHighlight(clearCurrent, tableId, rowIndex) {
-      if (clearCurrent !== false) { // Default to true unless explicitly set to false
-        console.log('Attempting to highlight row tableId=', tableId, 'rowIndex=', rowIndex);
-        // Clear all highlights from all tables first
-        $('table tbody tr').removeClass('selected-entity');
-      }
-
-      // Must have both tableId and rowIndex to highlight
-      if (!tableId || rowIndex === undefined || rowIndex === null || isNaN(rowIndex)) {
-        console.log('No explicit tableId/rowIndex provided; skipping highlight');
-        return false;
-      }
-
-      // For DT widgets, the tableId is the widget container ID (e.g., 'plant_table')
-      // The actual data rows may be in a scrollBody table, separate from the header table
-      var widgetContainer = $('#' + tableId);
-      if (!widgetContainer.length) {
-        console.log('No widget container found for tableId', tableId);
-        return false;
-      }
-
-      // Look for rows in scrollBody first (for tables with scroll enabled)
-      var scrollBody = widgetContainer.find('.dataTables_scrollBody tbody');
-      var allRows;
-      if (scrollBody.length && scrollBody.find('tr').length > 0) {
-        allRows = scrollBody.find('tr');
-        console.log('Found', allRows.length, 'rows in scrollBody for', tableId);
-      } else {
-        // Fallback: find any tbody rows in the widget
-        allRows = widgetContainer.find('table.dataTable tbody tr');
-        console.log('Found', allRows.length, 'rows in dataTable for', tableId);
-      }
-
-      // Check if rows are actually loaded (not just a Loading placeholder)
-      if (allRows.length === 0 || (allRows.length === 1 && allRows.find('td.dataTables_empty').length > 0)) {
-        console.log('Table appears to be loading or empty, rows not ready yet');
-        return false;
-      }
-
-      var numericIndex = Number(rowIndex);
-      var indexedRow = allRows.eq(numericIndex);
-      if (indexedRow && indexedRow.length) {
-        indexedRow.addClass('selected-entity');
-        console.log('SUCCESS: Highlighted row by explicit index', numericIndex, 'in table', tableId);
-        currentHighlightTableId = tableId;
-        currentHighlightRowIndex = numericIndex;
-        return true;
-      }
-
-      console.log('Row index', numericIndex, 'not found in table', tableId, '(total rows:', allRows.length, ')');
-      return false;
-    }
-
-    Shiny.addCustomMessageHandler('highlightTableRow', function(message) {
-      console.log('Received highlight request for table:', message.tableId, 'row:', message.rowIndex);
-
-      // Try immediate highlight; if it fails, set as pending for retry after table draw
-      if (!attemptRowHighlight(true, message.tableId, message.rowIndex)) {
-        console.log('Immediate highlight failed; will retry after table draw');
-        pendingHighlight = { tableId: message.tableId, rowIndex: message.rowIndex };
-      } else {
-        pendingHighlight = null;
-      }
-    });
-
-    Shiny.addCustomMessageHandler('clearAllTableHighlights', function(message) {
-      $('table tbody tr').removeClass('selected-entity');
-      currentHighlightTableId = null;
-      currentHighlightRowIndex = null;
-      console.log('Cleared all table highlights');
-    });
-
-    $(document).ready(function() {
-      var params = new URLSearchParams(window.location.search);
-      if(params.get('details_open') === 'true') {
-        if (document.getElementById('detail-overlay')) {
-            document.getElementById('detail-overlay').style.right = '0px';
-        }
-      }
-     });
-
-    $(document).on('stateLoaded.dt', function(e, settings, data) {
-      var tableInfo = getResolvedTableIdentifiers(settings);
-      if (!tableInfo) {
-        return;
-      }
-
-      tableStateLoadComplete[tableInfo.effectiveId] = true;
-      clearPendingTableStates(tableInfo.effectiveId);
-
-      var api = getDataTableApi(tableInfo.effectiveId, settings);
-      var info = api && typeof api.page === 'function' && typeof api.page().info === 'function'
-        ? api.page().info()
-        : null;
-      if (info && typeof info.start === 'number') {
-        expectedStartByTable[tableInfo.effectiveId] = info.start;
-      }
-
-      if (!window.Shiny || typeof Shiny.setInputValue !== 'function') {
-        return;
-      }
-
-      var payload = sanitizeStatePayload(settings, data);
-      if (!payload) {
-        return;
-      }
-
-      var targetInputId = tableInfo.widgetId || tableInfo.dataTableId;
-      if (targetInputId) {
-        Shiny.setInputValue(targetInputId + '_state', payload, {priority: 'event'});
-      }
-    });
-    Shiny.addCustomMessageHandler('updateDetailType', function(message) {
-      const type = message.type;
-      const plotCards = document.getElementById('plot-details-cards');
-      const communityConceptCards = document.getElementById('community-concept-details-cards');
-      const communityClassificationCards = document.getElementById('community-classification-details-cards');
-      const projectCards = document.getElementById('project-details-cards');
-      const partyCards = document.getElementById('party-details-cards');
-      const plantConceptCards = document.getElementById('plant-concept-details-cards');
-      const referenceCards = document.getElementById('reference-details-cards');
-      const coverMethodCards = document.getElementById('cover-method-details-cards');
-      const stratumMethodCards = document.getElementById('stratum-method-details-cards');
-
-      console.log('Updating detail type to:', type);
-
-      if (plotCards && communityConceptCards && communityClassificationCards &&
-          projectCards && partyCards && plantConceptCards && referenceCards && coverMethodCards &&
-          stratumMethodCards) {
-        // Hide all card types first
-        plotCards.style.display = 'none';
-        communityConceptCards.style.display = 'none';
-        communityClassificationCards.style.display = 'none';
-        projectCards.style.display = 'none';
-        partyCards.style.display = 'none';
-        plantConceptCards.style.display = 'none';
-        referenceCards.style.display = 'none';
-        coverMethodCards.style.display = 'none';
-        stratumMethodCards.style.display = 'none';
-
-        // Show the requested type
-        if (type === 'plot-observation') {
-          console.log('Showing plot details');
-          plotCards.style.display = 'block';
-        } else if (type === 'community-concept') {
-          console.log('Showing community details');
-          communityConceptCards.style.display = 'block';
-        } else if (type === 'community-classification') {
-          console.log('Showing community classification details');
-          communityClassificationCards.style.display = 'block';
-        } else if (type === 'project') {
-          console.log('Showing project details');
-          projectCards.style.display = 'block';
-        } else if (type === 'party') {
-          console.log('Showing party details');
-          partyCards.style.display = 'block';
-        } else if (type === 'plant-concept') {
-          console.log('Showing plant concept details');
-          plantConceptCards.style.display = 'block';
-        } else if (type === 'reference') {
-          console.log('Showing reference details');
-          referenceCards.style.display = 'block';
-        } else if (type === 'cover-method') {
-          console.log('Showing cover method details');
-          coverMethodCards.style.display = 'block';
-        } else if (type === 'stratum-method') {
-          console.log('Showing stratum method details');
-          stratumMethodCards.style.display = 'block';
-        }
-      }
-    });
-  "
-  ))
-
-  htmltools::tagList(font_head, navbar, overlay, map_loading_overlay, script)
+  map_loading_overlay <- build_map_loading_overlay(
+    visible = identical(initial_tab, "Map")
+  )
+  overview_loading_overlay <- build_overview_loading_overlay(
+    visible = identical(initial_tab, "Overview") && !has_cite_param
+  )
+  citation_loading_overlay <- build_citation_loading_overlay(
+    visible = has_cite_param
+  )
+  download_loading_overlay <- build_download_loading_overlay()
+
+  # Inline script with application constants injected from R
+  detail_label_entries <- Filter(function(e) !is.null(e$detail_type), RESOURCE_REGISTRY)
+  detail_labels_js <- paste(
+    vapply(detail_label_entries, function(e) {
+      paste0("  '", e$detail_type, "': '", tools::toTitleCase(e$singular), "'")
+    }, character(1)),
+    collapse = ",\n"
+  )
+  constants_script <- htmltools::tags$script(htmltools::HTML(paste0(
+    "// Application constants - single source of truth from R\n",
+    "window.DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n",
+    "window.DETAIL_TYPE_LABELS = {\n", detail_labels_js, "\n};\n",
+    "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n",
+    "window.VB_VALID_CONCEPT_STATUSES = ", jsonlite::toJSON(VALID_CONCEPT_STATUSES), ";\n"
+  )))
+
+  # External JavaScript file with main application logic
+  app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
+
+  htmltools::tagList(
+    font_head,
+    navbar,
+    overlay,
+    map_loading_overlay,
+    overview_loading_overlay,
+    citation_loading_overlay,
+    download_loading_overlay,
+    constants_script,
+    app_script
+  )
 }
 
-#' Custom Bootstrap Theme for Vegbank Web Application
+#' Custom Bootstrap Theme for VegBank Web Application
 #'
 #' Defines a bslib theme with custom rules.
 #'
 #' @return A Bootstrap theme object.
 #'
 #' @noRd
+# Bootstrap theme configuration
+# Custom CSS styles are in inst/shiny/www/vegbank-styles.css
 custom_theme <- bslib::bs_theme(
   bg = "hsl(0, 0%, 100%)",
   fg = "hsl(156, 12%, 11%)",
   info = "hsl(160, 69%, 30%)",
-  primary = "hsl(160, 29%, 48%)",
-  secondary = "hsl(160, 34%, 59%)",
+  # WCAG AA requires ≥ 4.5:1 contrast for normal text.
+  # hsl(160, 29%, 40%) only achieved ~4.07:1 against white.
+  # Dropping lightness to 35% raises that to ~4.97:1, keeping
+  # white-on-primary filled buttons at the same ratio (both pass).
+  primary = "hsl(165, 41%, 34%)",
+  # secondary at 59% lightness (~3.3:1) also fails if used as text,
+  # darkened to 42% (~4.56:1) as a proactive fix.
+  secondary = "hsl(160, 34%, 42%)",
   base_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   "font-size-base" = "0.875rem"
 )
-custom_theme <- bslib::bs_add_rules(
-  custom_theme,
-  ":root {
-    font-family: Inter, sans-serif !important;
-    font-feature-settings: 'liga' 1, 'calt' 1;
-    --bs-font-sans-serif: Inter, sans-serif !important;
 
-    --bslib-navbar-height: 57px;
-
-    /* Vegbank brand colors */
-    --vb-green: hsl(153, 31%, 25%);
-
-    /* Status badge colors */
-    --no-status-bg: hsl(204, 6%, 90%);
-    --no-status-text: hsl(0, 0%, 20%);
-    --accepted-bg: hsl(153, 31%, 79%);
-    --accepted-text: hsl(152, 69%, 19%);
-    --not-current-bg: hsl(45, 100%, 85%);
-    --not-current-text: hsl(45, 94%, 21%);
-  }
-  @supports (font-variation-settings: normal) {
-    :root {
-      font-family: InterVariable, sans-serif !important;
-      --bs-font-sans-serif: InterVariable, sans-serif !important;
-    }
-  }
-
-  *, *::before, *::after {
-    font-family: Inter, sans-serif !important;
-    font-variant-numeric: tabular-nums slashed-zero !important;
-    font-feature-settings: 'tnum' 1, 'zero' 1, 'ss01' 1, 'ss02' 1, 'liga' 1, 'calt' 1 !important;
-  }
-  @supports (font-variation-settings: normal) {
-    *, *::before, *::after {
-      font-family: InterVariable, sans-serif !important;
-    }
-  }
-
-  .card-header {
-    background-color: var(--vb-green);
-    color: #FFFFFF;
-    font-weight: bold;
-  }
-  .navbar {
-      min-height: 56px !important;
-      display: flex;
-      align-items: center;
-  }
-  .navbar.nav-disabled {
-    pointer-events: none;
-  }
-  .navbar.nav-disabled .nav-link {
-    cursor: not-allowed !important;
-    opacity: 0.65;
-  }
-  .navbar.nav-disabled .navbar-toggler {
-    pointer-events: none;
-  }
-  .navbar-nav {
-      display: flex;
-      align-items: center;
-      height: 100%;
-  }
-  .navbar-brand {
-      color: var(--vb-green) !important;
-      font-weight: bold;
-      padding: 0;
-      display: flex;
-      align-items: center;
-  }
-  .navbar-brand img {
-      height: 30px;
-      margin-right: 10px;
-  }
-  .nav-item {
-      display: flex;
-      align-items: center;
-      height: 100%;
-  }
-  .navbar-form {
-      display: flex;
-      align-items: center;
-      margin-bottom: 5px;
-  }
-  .navbar-form .form-group {
-      margin: 0;
-  }
-  .form-control {
-      height: 36px;
-  }
-  .detail-section {
-      display: none;
-  }
-  #community-description p {
-      margin-bottom: 0.75rem;
-  }
-  .dataTables_wrapper table th {
-      font-weight: 500 !important;
-  }
-  .datatables .dataTables_wrapper div.dataTables_info {
-      padding-top: 0.75rem;
-      font-size: 0.875rem !important;
-  }
-  .dataTables_wrapper tbody tr.selected-entity,
-  table.dataTable tbody tr.selected-entity,
-  .table tbody tr.selected-entity {
-      background-color: rgba(114, 185, 162, 0.15) !important;
-  }
-  .dataTables_wrapper tbody tr.selected-entity:hover,
-  table.dataTable tbody tr.selected-entity:hover,
-  .table tbody tr.selected-entity:hover {
-      background-color: rgba(114, 185, 162, 0.25) !important;
-  }
-  
-  /* DataTables loading indicator customization */
-  .dataTables_processing {
-      z-index: 1000 !important;
-      position: absolute !important;
-      top: 50% !important;
-      left: 50% !important;
-  }
-  
-  /* Target the nested divs that create the loading animation */
-  .dataTables_processing > div > div {
-      background-color: #72B9A2 !important;
-  }
-  
-  /* Map loading ellipses animation */
-  .map-loading-ellipses {
-      display: inline-block;
-      position: relative;
-      margin-bottom: 1rem;
-      width: 9.375rem;
-      height: 1.5rem;
-  }
-  
-  .map-loading-ellipses > div {
-      position: absolute;
-      width: 1.5rem;
-      height: 1.5rem;
-      border-radius: 50%;
-      background: #72B9A2;
-      animation-timing-function: cubic-bezier(0, 1, 1, 0);
-  }
-  
-  .map-loading-ellipses > div:nth-child(1) {
-      left: 0.75rem;
-      animation: mapEllipses1 0.6s infinite;
-  }
-  
-  .map-loading-ellipses > div:nth-child(2) {
-      left: 0.75rem;
-      animation: mapEllipses2 0.6s infinite;
-  }
-  
-  .map-loading-ellipses > div:nth-child(3) {
-      left: 3.75rem;
-      animation: mapEllipses2 0.6s infinite;
-  }
-  
-  .map-loading-ellipses > div:nth-child(4) {
-      left: 6.75rem;
-      animation: mapEllipses3 0.6s infinite;
-  }
-  
-  @keyframes mapEllipses1 {
-    0% { transform: scale(0); }
-    100% { transform: scale(1); }
-  }
-  
-  @keyframes mapEllipses2 {
-    0% { transform: translate(0, 0); }
-    100% { transform: translate(3rem, 0); }
-  }
-  
-  @keyframes mapEllipses3 {
-    0% { transform: scale(1); }
-    100% { transform: scale(0); }
-  }
-  
-  @keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-  }
-  
-  #map-loading-overlay.fade-out {
-    animation: fadeOut 0.5s ease-out forwards;
-  }
-  
-  /* Detail overlay responsive width */
-  #detail-overlay {
-    position: fixed;
-    top: var(--bslib-navbar-height, 57px);
-    height: calc(100vh - var(--bslib-navbar-height, 57px));
-    overflow-y: auto;
-    background: #fff;
-    border-left: 1px solid #ccc;
-    z-index: 1050;
-    padding: 20px;
-    transition: right 0.4s;
-  }
-  
-  /* Mobile: full width */
-  @media (max-width: 767px) {
-    #detail-overlay {
-      right: -100vw;
-      width: 100vw;
-    }
-  }
-  
-  /* Desktop: 420px width */
-  @media (min-width: 768px) {
-    #detail-overlay {
-      right: -420px;
-      width: 420px;
-    }
-  }
-"
-)
-
-#' Build Navigation Bar for Vegbank UI
+#' Build Navigation Bar for VegBank UI
 #'
 #' Constructs and returns the navigation bar to be used in the UI.
 #'
+#' @param initial_tab Character string specifying which tab to show initially
 #' @return A Shiny tag list representing the navigation bar.
 #'
 #' @noRd
-build_navbar <- function() {
+build_navbar <- function(initial_tab = "Home") {
   navbar <- bslib::page_navbar(
     id = "page",
+    selected = initial_tab,
     theme = custom_theme,
     title = htmltools::tags$span(
       htmltools::tags$img(
         src = "assets/logo_vegbank_leaves.svg"
       ),
-      "Vegbank"
+      "VegBank"
     ),
+    build_home_panel(),
     bslib::nav_panel(
       title = "Overview",
       shiny::fluidPage(
-        shiny::fluidRow(
-          shiny::column(
-            12,
-            bslib::card(
-              bslib::card_header("Vegbank Beta 0.2.0"),
-              bslib::card_body(shiny::uiOutput("dataSummary"))
+        bslib::layout_columns(
+          col_widths = bslib::breakpoints(
+            sm = 12,
+            md = 6,
+            lg = 4
+          ),
+          bslib::card(
+            bslib::card_header("Data in VegBank"),
+            bslib::card_body(
+              shiny::uiOutput("core_counts_list")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Recently Updated Projects"),
+            bslib::card_body(
+              shiny::uiOutput("latest_projects_table")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Projects with Most Plots"),
+            bslib::card_body(
+              shiny::uiOutput("top_projects_plot")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Common Communities"),
+            bslib::card_body(
+              shiny::uiOutput("top_communities_plot")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Common Plants"),
+            bslib::card_body(
+              shiny::uiOutput("top_plants_plot")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Top Contributors"),
+            bslib::card_body(
+              shiny::uiOutput("top_contributors_plot")
             )
           )
         )
@@ -1263,6 +187,13 @@ build_navbar <- function() {
       title = "Plots",
       shiny::fluidPage(
         shiny::uiOutput("plot_filter_alert"),
+        # Hidden download button triggered by DT button click
+        # Use position absolute and move off-screen instead of display:none
+        # so Shiny properly initializes the href attribute
+        htmltools::tags$div(
+          style = "position: absolute; left: -9999px; top: -9999px;",
+          shiny::downloadButton("download_plot_table", "Download")
+        ),
         DT::dataTableOutput("plot_table")
       )
     ),
@@ -1275,6 +206,7 @@ build_navbar <- function() {
     bslib::nav_panel(
       title = "Communities",
       shiny::fluidPage(
+        shiny::uiOutput("comm_filter_alert"),
         DT::dataTableOutput("comm_table")
       )
     ),
@@ -1294,18 +226,31 @@ build_navbar <- function() {
       title = "About",
       align = "right",
       bslib::nav_panel(
+        title = "Getting Started",
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
+        )
+      ),
+      bslib::nav_panel(
         title = "FAQ",
-        shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
+        )
       ),
       bslib::nav_panel(
         title = "Cite",
-        shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+        )
       )
     )
   )
 }
 
-#' Build Detail Overlay for Vegbank UI
+#' Build Detail Overlay for VegBank UI
 #'
 #' Constructs the overlay panel that displays detailed plot information.
 #'
@@ -1315,12 +260,29 @@ build_navbar <- function() {
 build_detail_overlay <- function() {
   htmltools::tags$div(
     id = "detail-overlay",
-    shiny::actionButton("close_overlay", "",
-      onclick = "var overlay = document.getElementById('detail-overlay');
-                 var closePos = window.innerWidth < 768 ? '-100vw' : '-420px';
-                 overlay.style.right = closePos;
-                 Shiny.setInputValue('close_details', true, {priority:'event'});",
-      class = "btn-close", style = "float:right; margin-bottom:10px;"
+    # Sticky gradient banner showing the detail type with icon — lets users keep
+    # context even after scrolling past the first card.
+    htmltools::tags$div(
+      id = "detail-type-banner",
+      htmltools::tags$span(
+        class = "detail-type-icon",
+        id = "detail-type-icon",
+        `aria-hidden` = "true"
+      ),
+      htmltools::tags$span(
+        class = "detail-type-label",
+        id = "detail-type-label"
+      ),
+      shiny::actionButton("close_overlay",
+        htmltools::HTML(.BTN_ICON_CLOSE),
+        onclick = "var overlay = document.getElementById('detail-overlay');
+                   overlay.classList.add('closed');
+                   document.body.classList.remove('overlay-open');
+                   Shiny.setInputValue('close_details', true, {priority:'event'});",
+        class = "vb-close-btn",
+        `aria-label` = "Close details",
+        title = "Close details"
+      )
     ),
     shiny::fluidRow(
       shiny::column(
@@ -1330,7 +292,7 @@ build_detail_overlay <- function() {
           id = "plot-details-cards",
           class = "detail-section",
           shiny::uiOutput("plot_notification"),
-          bslib::card(bslib::card_header("Plot Observation"), shiny::uiOutput("plot_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("plot_header")),
           bslib::card(bslib::card_header("Author Codes"), shiny::uiOutput("author_code_details")),
           bslib::card(bslib::card_header("Dates"), shiny::uiOutput("date_details")),
           bslib::card(bslib::card_header("Location"), shiny::uiOutput("location_details")),
@@ -1350,7 +312,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "community-concept-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Community Concept"), shiny::uiOutput("community_concept_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("community_concept_header")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("community_concept_details")),
           bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("community_party_perspective"))
         ),
@@ -1359,7 +321,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "community-classification-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Community Classification"), shiny::uiOutput("comm_class_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("comm_class_header")),
           bslib::card(bslib::card_header("Classification Details"), shiny::uiOutput("comm_class_details")),
           bslib::card(bslib::card_header("Community Interpretations"), shiny::uiOutput("comm_class_interpretations")),
           bslib::card(bslib::card_header("Contributors"), shiny::uiOutput("comm_class_contributors"))
@@ -1369,7 +331,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "project-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Project"), shiny::uiOutput("project_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("project_header")),
           bslib::card(bslib::card_header("Description"), shiny::uiOutput("project_description")),
           bslib::card(bslib::card_header("Dates"), shiny::uiOutput("project_dates")),
           bslib::card(bslib::card_header("Plot Observation Count"), shiny::uiOutput("project_observations")),
@@ -1380,7 +342,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "party-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Party"), shiny::uiOutput("party_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("party_header")),
           bslib::card(bslib::card_header("Organization"), shiny::uiOutput("party_organization")),
           bslib::card(bslib::card_header("Contact Information"), shiny::uiOutput("party_contact")),
           bslib::card(bslib::card_header("Contributions"), shiny::uiOutput("party_contributions"))
@@ -1390,7 +352,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "plant-concept-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Plant Concept"), shiny::uiOutput("plant_concept_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("plant_concept_header")),
           bslib::card(bslib::card_header("Concept Details"), shiny::uiOutput("plant_concept_details")),
           bslib::card(bslib::card_header("Party Perspective"), shiny::uiOutput("plant_party_perspective"))
         ),
@@ -1399,7 +361,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "reference-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Reference"), shiny::uiOutput("reference_header")),
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("reference_header")),
           bslib::card(bslib::card_header("Identifiers"), shiny::uiOutput("reference_identifiers")),
           bslib::card(bslib::card_header("Publication"), shiny::uiOutput("reference_publication"))
         ),
@@ -1408,7 +370,7 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "cover-method-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Cover Method"), shiny::uiOutput("cover_method_header")),
+          bslib::card(bslib::card_header("Name"), shiny::uiOutput("cover_method_header")),
           bslib::card(bslib::card_header("Details"), shiny::uiOutput("cover_method_details")),
           bslib::card(bslib::card_header("Cover Indexes"), shiny::uiOutput("cover_method_indexes"))
         ),
@@ -1417,48 +379,64 @@ build_detail_overlay <- function() {
         htmltools::tags$div(
           id = "stratum-method-details-cards",
           class = "detail-section",
-          bslib::card(bslib::card_header("Stratum Method"), shiny::uiOutput("stratum_method_header")),
+          bslib::card(bslib::card_header("Name"), shiny::uiOutput("stratum_method_header")),
           bslib::card(bslib::card_header("Details"), shiny::uiOutput("stratum_method_details")),
           bslib::card(bslib::card_header("Stratum Types"), shiny::uiOutput("stratum_types"))
+        ),
+
+        # Taxon Observation Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "taxon-observation-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("taxon_obs_header")),
+          bslib::card(bslib::card_header("Observation Details"), shiny::uiOutput("taxon_obs_details")),
+          bslib::card(bslib::card_header("Taxon Importance"), shiny::uiOutput("taxon_obs_importance")),
+          bslib::card(bslib::card_header("Taxon Interpretations"), shiny::uiOutput("taxon_obs_interpretations"))
         )
       )
     )
   )
 }
 
-#' Build Map Loading Overlay for Vegbank UI
+# ================= CITATION REDIRECT HELPERS ======================================================
+
+#' Extract Citation Identifier from /cite/ Path
 #'
-#' Constructs a full-screen loading overlay for initial map loading with animated
-#' spinner and rotating plant puns.
+#' Checks if the request path is a /cite/IDENTIFIER URL and returns the identifier.
+#' Only checks path-based citations — query-based (?cite=) citations are handled
+#' by the server after the app loads.
 #'
-#' @return A Shiny tag representing the map loading overlay.
-#'
+#' @param req A Shiny request object
+#' @return The citation identifier string, or NULL if not a /cite/ path
 #' @noRd
-build_map_loading_overlay <- function() {
-  htmltools::tags$div(
-    id = "map-loading-overlay",
-    style = "display: none; position: fixed; top: var(--bslib-navbar-height, 57px); left: 0; 
-             width: 100vw; height: calc(100vh - var(--bslib-navbar-height, 57px));
-             background: rgba(255, 255, 255, 0.98); z-index: 1200;
-             justify-content: center; align-items: center; flex-direction: column;",
-    htmltools::tags$div(
-      class = "map-loading-content",
-      style = "text-align: center; margin-top: -5rem;",
-      htmltools::tags$h2(
-        "Loading the map for the first time can take a few seconds. It's busy:",
-        style = "font-size: 0.875rem; color: var(--no-status-text); margin-bottom: 1.5rem;"
-      ),
-      htmltools::tags$div(
-        class = "map-loading-ellipses",
-        htmltools::tags$div(htmltools::tags$div()),
-        htmltools::tags$div(htmltools::tags$div()),
-        htmltools::tags$div(htmltools::tags$div()),
-        htmltools::tags$div(htmltools::tags$div())
-      ),
-      htmltools::tags$div(
-        id = "map-loading-pun",
-        style = "font-size: 1rem; color: var(--vb-green); font-weight: 500;",
-      )
-    )
+extract_citation_identifier <- function(req) {
+  path_info <- req$PATH_INFO
+  if (!is.null(path_info) && length(path_info) > 0 && grepl("^/cite/", path_info)) {
+    identifier <- sub("^/cite/", "", path_info)
+    if (nzchar(identifier)) {
+      return(identifier)
+    }
+  }
+  NULL
+}
+
+#' Build an HTTP 302 Redirect for Citation URLs
+#'
+#' Returns an HTTP 302 response that redirects /cite/IDENTIFIER to /?cite=IDENTIFIER.
+#' This is an immediate server-level redirect — no HTML is rendered and no resources
+#' are loaded — which avoids the problem of relative asset paths being misinterpreted
+#' as citation identifiers when uiPattern = ".*" routes all requests through ui().
+#'
+#' @param identifier The citation identifier to redirect
+#' @return A Shiny httpResponse object with status 302
+#' @noRd
+build_citation_redirect <- function(identifier) {
+  encoded_id <- utils::URLencode(identifier, reserved = TRUE)
+  shiny::httpResponse(
+    status = 302L,
+    headers = list(
+      Location = paste0("/?cite=", encoded_id)
+    ),
+    content = ""
   )
 }

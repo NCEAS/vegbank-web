@@ -1,4 +1,6 @@
 ^CONTRIBUTING\.md$
+^app\.R$
+^config\.yml$
 ^\.github$
 ^LICENSE\.md$
 ^[.].*$

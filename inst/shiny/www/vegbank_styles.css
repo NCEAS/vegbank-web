@@ -1,0 +1,914 @@
+/* VegBank Web Application Custom Styles */
+
+:root {
+  font-family: Inter, sans-serif !important;
+  font-feature-settings: 'liga' 1, 'calt' 1;
+  --bs-font-sans-serif: Inter, sans-serif !important;
+
+  /* Navbar height - responsive to mobile collapse */
+  --navbar-height: 56px;
+
+  /* VegBank brand colors */
+  --vb-green: hsl(153, 31%, 25%);
+  --vb-green-medium: hsl(153, 31%, 45%);
+
+  /* Overview progress bar colors - VegBank green variants */
+  --vb-green-400: hsl(133, 30%, 43%);
+  --vb-green-300: hsl(133, 30%, 51%);
+  --vb-green-200: hsl(133, 30%, 70%);
+  --vb-green-100: hsl(133, 30%, 80%);
+
+  /* Text colors */
+  --text-primary: hsl(0, 0%, 13%);
+  --text-secondary: hsl(0, 0%, 38%);
+  --bg-soft: hsl(0, 0%, 98%);
+  --bg-card: hsl(0, 0%, 100%);
+  --border-subtle: hsl(0, 0%, 92%);
+  --text-muted: #333;
+
+  /* Badge colors */
+  --monochrome-bg: hsl(204, 6%, 90%);
+  --monochrome-text: hsl(0, 0%, 20%);
+  --green-bg: hsl(153, 31%, 79%);
+  --green-text: hsl(152, 69%, 19%);
+  --yellow-bg: hsl(45, 100%, 85%);
+  --yellow-text: hsl(45, 94%, 21%);
+}
+
+/* Adjust navbar height for mobile when toggler is visible */
+@media (max-width: 767px) {
+  :root {
+    --navbar-height: 56px;
+  }
+}
+
+@supports (font-variation-settings: normal) {
+  :root {
+    font-family: InterVariable, sans-serif !important;
+    --bs-font-sans-serif: InterVariable, sans-serif !important;
+  }
+}
+
+*, *::before, *::after {
+  font-family: Inter, sans-serif !important;
+  font-variant-numeric: tabular-nums slashed-zero !important;
+  font-feature-settings: 'tnum' 1, 'zero' 1, 'ss01' 1, 'ss02' 1, 'liga' 1, 'calt' 1 !important;
+}
+
+@supports (font-variation-settings: normal) {
+  *, *::before, *::after {
+    font-family: InterVariable, sans-serif !important;
+  }
+}
+
+.text-muted, .text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+/* Card Styles */
+.card {
+  border: none;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--bg-card);
+}
+
+.card:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.card-header {
+  background-color: var(--vb-green);
+  color: #FFFFFF;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Navbar Styles */
+.navbar {
+  min-height: var(--navbar-height);
+  display: flex;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2000;
+  background-color: #fff !important;
+  border-bottom: 1px solid rgba(40, 70, 94, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Add top padding to main content to account for fixed navbar */
+.container-fluid.html-fill-item.html-fill-container {
+  padding-top: var(--navbar-height) !important;
+}
+
+/* Offset in-page anchor targets by the fixed navbar height so fragment
+   navigation (e.g. FAQ section links) doesn't scroll the heading under
+   the navbar. A 3rem gap accounts for the section spacing. */
+h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
+  scroll-margin-top: calc(var(--navbar-height) + 3rem);
+}
+
+.navbar.nav-disabled {
+  pointer-events: none;
+}
+
+.navbar.nav-disabled .nav-link {
+  cursor: not-allowed !important;
+  opacity: 0.65;
+}
+
+.navbar.nav-disabled .navbar-toggler {
+  pointer-events: none;
+}
+
+.navbar-nav {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.navbar-brand {
+  color: var(--vb-green) !important;
+  font-weight: bold;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.navbar-brand img {
+  height: 30px;
+  margin-right: 10px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* Detail Section */
+.detail-section {
+  display: none;
+}
+
+/* DataTables Styles */
+.dataTables_wrapper table th {
+  font-weight: 500 !important;
+}
+
+/* Search bar width — mobile: default, tablet: 1.5×, large screens: 2× */
+@media (min-width: 768px) {
+  .dataTables_filter input {
+    width: 300px !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .dataTables_filter input {
+    width: 450px !important;
+  }
+}
+
+/* Icon buttons in DT cells — keeps SVG and label on the same baseline */
+.dt-icon-btn {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* SVG sizing for row action buttons (Details / Map) */
+.dt-icon-btn svg {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+/* SVG sizing for the toolbar download button */
+.vb-plot-download svg {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+/* SVG sizing for the toolbar help (info) button */
+.vb-help-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Info/close icon crossfade transition on help buttons */
+.vb-help-btn .vb-help-info-icon,
+.vb-help-btn .vb-help-close-icon {
+  display: inline-flex;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  transform-origin: center;
+}
+
+.vb-help-btn .vb-help-close-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: rotate(-45deg) scale(0.7);
+}
+
+.vb-help-btn {
+  position: relative;
+}
+
+.vb-help-btn.vb-help-open .vb-help-info-icon {
+  opacity: 0;
+  transform: rotate(45deg) scale(0.7);
+}
+
+.vb-help-btn.vb-help-open .vb-help-close-icon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.vb-status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  float: right;
+  margin-top: 0.25rem;
+  margin-right: 0.75rem;
+  font-size: 0.875rem;
+  cursor: default;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.vb-status-select {
+  font-size: 0.875rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.datatables .dataTables_wrapper div.dataTables_info {
+  padding-top: 0.75rem;
+  font-size: 0.875rem !important;
+}
+
+.dataTables_wrapper tbody tr.selected-entity,
+table.dataTable tbody tr.selected-entity,
+.table tbody tr.selected-entity {
+  background-color: rgba(114, 185, 162, 0.15) !important;
+}
+
+.dataTables_wrapper tbody tr.selected-entity:hover,
+table.dataTable tbody tr.selected-entity:hover,
+.table tbody tr.selected-entity:hover {
+  background-color: rgba(114, 185, 162, 0.25) !important;
+}
+
+/* DataTables loading indicator customization */
+.dataTables_processing {
+  z-index: 1000 !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+}
+
+/* Target the nested divs that create the loading animation */
+.dataTables_processing > div > div {
+  background-color: #72B9A2 !important;
+}
+
+/* Map help control button — flex-center the SVG icon within the leaflet-bar <a> */
+.vb-map-help-control a.vb-map-help-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Description column in DataTables */
+.dt-description {
+  display: -webkit-box;
+  line-clamp: 5;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dt-read-more {
+  display: none;
+  font-size: 1em;
+  white-space: nowrap;
+}
+
+/* Generic loading ellipses animation for all overlays */
+.loading-ellipses {
+  display: inline-block;
+  position: relative;
+  margin-bottom: 1rem;
+  width: 81px;
+  height: 13px;
+}
+
+.loading-ellipses > div {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #72B9A2;
+  animation-timing-function: cubic-bezier(0, 1, 1, 0);
+}
+
+.loading-ellipses > div:nth-child(1) {
+  left: 6.5px;
+  animation: loadingEllipses1 0.6s infinite;
+}
+
+.loading-ellipses > div:nth-child(2) {
+  left: 6.5px;
+  animation: loadingEllipses2 0.6s infinite;
+}
+
+.loading-ellipses > div:nth-child(3) {
+  left: 32.5px;
+  animation: loadingEllipses2 0.6s infinite;
+}
+
+.loading-ellipses > div:nth-child(4) {
+  left: 58.5px;
+  animation: loadingEllipses3 0.6s infinite;
+}
+
+@keyframes loadingEllipses1 {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+@keyframes loadingEllipses2 {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(26px, 0); }
+}
+
+@keyframes loadingEllipses3 {
+  0% { transform: scale(1); }
+  100% { transform: scale(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Full-screen loading overlays — shared base styles */
+.loading-overlay {
+  position: fixed;
+  top: var(--navbar-height);
+  left: 0;
+  width: 100vw;
+  height: calc(100vh - var(--navbar-height));
+  background: rgba(255, 255, 255, 0.98);
+  z-index: 1200;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-overlay.fade-out {
+  animation: fadeOut 0.5s ease-out forwards;
+}
+
+.loading-content {
+  text-align: center;
+  margin-top: -5rem;
+}
+
+.loading-title {
+  font-size: 0.875rem;
+  color: var(--monochrome-text);
+  margin: 0 1.5rem 1.5rem;
+}
+
+.loading-pun {
+  margin: 0 2rem;
+  font-size: 1rem;
+  color: var(--vb-green);
+  font-weight: 500;
+}
+
+.loading-detail {
+  font-size: 0.875rem;
+  color: var(--monochrome-text);
+  margin-bottom: 1.5rem;
+}
+
+/* Detail overlay responsive width */
+#detail-overlay {
+  position: fixed;
+  top: var(--navbar-height);
+  height: calc(100vh - var(--navbar-height));
+  overflow-y: auto;
+  background: #fff;
+  border-left: 1px solid rgba(40, 70, 94, 0.15);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12), -2px 0 8px rgba(0, 0, 0, 0.08);
+  z-index: 1050;
+  padding: 0 20px 0;
+  transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#detail-overlay.closed {
+  right: -100vw !important;
+}
+
+#detail-type-banner {
+  position: sticky;
+  top: 0;
+  margin: 0 -20px 16px;
+  height: 46px;
+  padding: 0 10px 0 14px;
+  background: linear-gradient(90deg, var(--vb-green), hsl(160, 29%, 58%));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  z-index: 1;
+}
+
+#detail-type-banner .detail-type-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+#detail-type-banner .detail-type-icon > svg {
+  /* !important ensures these beat any width/height attributes on the SVG element
+     (e.g. potrace-generated icons with width="256pt"). Colour is handled via
+     currentColor, which inherits the banner's color: #fff. */
+  width: 22px !important;
+  height: 22px !important;
+}
+
+#detail-type-banner .detail-type-label {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#detail-type-banner .vb-close-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #ffffff;
+  line-height: 1;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+#detail-type-banner .vb-close-btn:hover,
+#detail-type-banner .vb-close-btn:focus {
+  opacity: 1 !important;
+  background-color: var(--vb-green) !important;
+  box-shadow: none !important;
+}
+
+/* Mobile: full width */
+@media (max-width: 767px) {
+  /* Lock body scroll while overlay is open so the phantom scrollbar
+     doesn't appear behind a full-screen overlay. Desktop intentionally
+     omitted: the page content to the left of the panel is still
+     reachable and users may want to scroll the table while reading. */
+  body.overlay-open {
+    overflow: hidden;
+  }
+
+  #detail-overlay {
+    right: -100vw;
+    width: 100vw;
+  }
+}
+
+/* Desktop: split screen */
+@media (min-width: 768px) {
+  #detail-overlay {
+    right: -100vw;
+    width: 450px;
+  }
+}
+
+/* Monitor: wider split */
+@media (min-width: 2560px) {
+  #detail-overlay {
+    right: -100vw;
+    width: 560px;
+  }
+}
+
+/* Overview Page Styles */
+.overview-bar-track {
+  width: 100%;
+  height: 10px;
+  min-height: 10px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background-color: transparent;
+}
+
+.overview-bar-fill {
+  min-height: 10px;
+}
+
+/* Fill: the coloured portion, sized by inline width% set from R */
+.overview-bar-fill {
+  height: 100%;
+  min-width: 4px;
+  border-radius: 9999px;
+}
+
+.overview-bar-projects    { background-color: var(--vb-green-400); }
+.overview-bar-communities { background-color: var(--vb-green-200); }
+.overview-bar-contributors { background-color: var(--vb-green-100); }
+.overview-bar-plants      { background-color: var(--vb-green-300); }
+
+.overview-date {
+  color: var(--text-muted);
+}
+
+.overview-project-name {
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Core counts rows: flexbox keeps label left, count right without either overflowing */
+.core-counts-list > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+/* Override Bootstrap's float-end since we use flex alignment instead */
+.core-counts-list .float-end {
+  float: none !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Allow the label text to wrap onto the next line rather than pushing the count off-screen */
+.core-counts-list > div > span:first-child,
+.core-counts-list > div > strong:first-child {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* Strip horizontal padding from the two ancestor containers that constrain
+   the Home tab's width (bslib gap-spacing wrapper and Bootstrap container-fluid).
+   Scoped to the active Home tab so no other tab is affected.
+   .vb-hero can then fill 100% width naturally — no 100vw breakout needed. */
+.bslib-gap-spacing:has(> .vb-home) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.container-fluid.html-fill-item.html-fill-container:has(.tab-pane.active > .vb-home) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Start image right below the nav bar */
+.vb-home {
+  margin-top: -1.6rem;
+}
+
+.vb-hero {
+  position: relative;
+  height: 330px;
+  overflow: hidden;
+}
+
+.vb-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 55%;
+  display: block;
+}
+
+.vb-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.0) 35%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  display: flex;
+  align-items: flex-end;
+  padding: 2rem 2.5rem;
+}
+
+.vb-hero-text h1 {
+  color: #fff;
+  font-size: 2.8rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.vb-hero-tagline {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.15rem;
+  margin: 0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.vb-home-content {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  font-size: 1.1em;
+  line-height: 1.7;
+}
+
+/* Standalone markdown pages (About dropdown: Getting Started, FAQ, Cite) */
+.vb-markdown-page {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  font-size: 1.1em;
+  line-height: 1.7;
+}
+
+.vb-home-section {
+  margin-bottom: 2.75rem;
+}
+
+.vb-home-section h2,
+.vb-markdown-page h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: var(--vb-green);
+  margin-bottom: 0.75rem;
+}
+
+/* Headings rendered from includeMarkdown */
+.vb-home-section h2:not(:first-child),
+.vb-markdown-page h2:not(:first-child) {
+  margin-top: 2.25rem;
+}
+
+/* Paragraph spacing for markdown content */
+.vb-home-section p,
+.vb-markdown-page p {
+  margin-bottom: 1em;
+}
+
+/* List item spacing for markdown content */
+.vb-home-section li,
+.vb-markdown-page li {
+  margin-bottom: 0.65em;
+}
+
+.vb-home-cta {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 2.5rem;
+}
+
+.vb-cta-btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 576px) {
+  .vb-hero {
+    height: 240px;
+  }
+
+  .vb-hero-text h1 {
+    font-size: 2rem;
+  }
+
+  .vb-hero-overlay {
+    padding: 1.25rem 1.25rem;
+  }
+
+  .vb-home-content,
+  .vb-markdown-page {
+    padding: 1.5rem 1rem 3rem;
+  }
+}
+
+.vb-table-help-popover {
+  max-width: 340px;
+}
+
+.vb-table-help-popover {
+  border: none !important;
+}
+
+.vb-table-help-popover .popover-header {
+  color: var(--text-primary);
+  padding-top: 0.75rem;
+}
+
+.vb-table-help-popover .popover-header strong {
+  font-weight: 600 !important;
+}
+
+.vb-table-help-popover .popover-body ul {
+  padding-left: 1.1rem;
+  margin-bottom: 0;
+}
+
+.vb-table-help-popover .popover-body p {
+  margin-bottom: 0.5rem;
+}
+
+.vb-partner-logos {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  flex-wrap: wrap;
+  padding: 2.5rem 0 3rem;
+}
+
+.vb-partner-logo-link {
+  display: flex;
+  align-items: center;
+  transition: filter 0.2s ease;
+}
+
+.vb-partner-logo-link:hover {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+.vb-partner-logo {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+}
+
+@media (max-width: 576px) {
+  .vb-partner-logos {
+    gap: 2rem;
+  }
+
+  .vb-partner-logo {
+    height: 36px;
+  }
+}
+
+/* ---- Map Search Control ---- */
+.vb-map-search-control {
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  font-family: inherit;
+  font-size: 13px;
+  width: 320px;
+}
+
+@media (max-width: 768px) {
+  .vb-map-search-control {
+    width: 240px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vb-map-search-control {
+    width: 180px;
+  }
+}
+
+.vb-map-search-row {
+  display: flex;
+  align-items: baseline;
+  padding: 6px 8px;
+  gap: 6px;
+}
+
+.vb-map-search-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: #333;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.vb-map-search-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--bs-body-color);
+  min-width: 0;
+}
+
+.vb-map-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 2px 0;
+  font-size: 13px;
+  background: transparent;
+  min-width: 0;
+}
+
+.vb-map-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: #999;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.vb-map-search-clear:hover {
+  color: #333;
+}
+
+.vb-map-search-results {
+  max-height: 180px;
+  overflow-y: auto;
+  border-top: 1px solid #ddd;
+}
+
+.vb-map-search-item {
+  display: block;
+  padding: 5px 8px;
+  border-bottom: 1px solid #eee;
+  text-decoration: none;
+  color: #333;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Override Leaflet .leaflet-bar a sizing that forces 26-30px width on <a> items */
+.leaflet-bar.vb-map-search-control .vb-map-search-item,
+.leaflet-touch .leaflet-bar.vb-map-search-control .vb-map-search-item {
+  width: auto !important;
+  height: auto !important;
+  line-height: normal !important;
+  text-align: left !important;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+.vb-map-search-item:last-child {
+  border-bottom: none;
+}
+
+
+/* Override Leaflet .leaflet-bar a hover styles on match items */
+.leaflet-bar.vb-map-search-control a.vb-map-search-match:hover,
+.leaflet-touch .leaflet-bar.vb-map-search-control a.vb-map-search-match:hover {
+  background-color: rgba(0, 0, 0, 0.075) !important;
+  color: #333 !important;
+}
+
+.vb-map-search-info {
+  color: #666;
+  font-style: italic;
+}
+
+/* ---- Map marker label elevation ----------------------------------------- */
+/* Labels have pointer-events:all (clickable:TRUE), so :hover and :focus-within */
+/* work. Raising z-index within .leaflet-tooltip-pane brings the active label  */
+/* above overlapping siblings so no content is fully obscured.                 */
+.leaflet-tooltip:hover,
+.leaflet-tooltip:focus-within {
+  z-index: 1000 !important;
+}

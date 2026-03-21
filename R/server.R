@@ -1,4 +1,4 @@
-#' Shiny Server for Vegbank Web Application
+#' Shiny Server for VegBank Web Application
 #'
 #' Initializes server-side functionality for data visualization and interactivity.
 #'
@@ -8,21 +8,22 @@
 #'
 #' @return Called for its side effects.
 #'
-#' @importFrom ggplot2 .data
+#' @importFrom rlang .data
 #' @importFrom shiny reactiveVal observeEvent observe req renderUI renderText showNotification
 #'             updateNavbarPage invalidateLater reactiveValuesToList onBookmark onBookmarked
-#'             onRestore
+#'             onRestore isolate
 #' @importFrom DT renderDataTable datatable dataTableProxy
 #' @importFrom htmltools tags
 #' @importFrom leaflet renderLeaflet leafletProxy
-#' @importFrom utils head
+#' @importFrom utils head write.csv
 #' @import vegbankr
 #'
 #' @noRd
 # ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
-  vegbankr::vb_debug()
-  vegbankr::vb_set_base_url("https://api-dev.vegbank.org")
+  cfg <- config::get()
+  if (isTRUE(cfg$vb_debug)) vegbankr::vb_debug()
+  vegbankr::vb_set_base_url(cfg$vb_base_url)
 
   # MAP DEFAULTS ------------------------------------------------------------------------------------
   # Get default map settings from constants module
@@ -38,7 +39,7 @@ server <- function(input, output, session) {
   map_state <- initialize_map_state()
 
   state <- list(
-    current_tab = shiny::reactiveVal("Overview"),
+    current_tab = shiny::reactiveVal("Home"),
     details_open = shiny::reactiveVal(FALSE),
     detail_type = shiny::reactiveVal(NULL),
     detail_code = shiny::reactiveVal(NULL),
@@ -49,7 +50,10 @@ server <- function(input, output, session) {
     map_zoom = map_state$map_zoom,
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
-    plot_filter = shiny::reactiveVal(NULL), # Cross-resource filter: list(type, code, label) or NULL
+    plot_filter = shiny::reactiveVal(NULL), # Cross-resource / citation filter: list(type, code, label)
+    community_filter = shiny::reactiveVal(NULL), # Citation filter for cc: list(type, code, label)
+    community_status = shiny::reactiveVal("current_accepted"), # Status filter for community concepts table
+    plant_status = shiny::reactiveVal("current_accepted"), # Status filter for plant concepts table
     table_states = shiny::reactiveValues(),
     table_sync_pending = shiny::reactiveValues(),
     table_sync_completed_at = shiny::reactiveValues()
@@ -73,6 +77,19 @@ server <- function(input, output, session) {
   map_observations <- shiny::reactiveVal(NULL)
   map_fetch_in_progress <- shiny::reactiveVal(FALSE)
   map_initialized <- shiny::reactiveVal(FALSE)
+  map_filter_notice_shown <- shiny::reactiveVal(FALSE)
+
+  # Pre-built search index: rebuilt once whenever map_observations changes.
+  # Maps lowercase ob_code / author_obs_code -> integer row indices so each
+  # search query is an O(1) list lookup rather than two O(n) tolower() scans.
+  map_search_index <- shiny::reactive({
+    obs <- map_observations()
+    if (is.null(obs) || nrow(obs) == 0L) return(NULL)
+    build_map_search_index(obs)
+  })
+
+  # Overview data state so we can lazy load that page once a session
+  overview_initialized <- shiny::reactiveVal(FALSE)
 
   # Initialize URL State Manager with defaults and table registry
   url_manager <- URLStateManager$new(
@@ -84,6 +101,27 @@ server <- function(input, output, session) {
     ),
     table_registry = table_registry
   )
+
+  # Initialize current_tab from URL before any render logic runs.
+  # Citation URLs arrive as ?cite=IDENTIFIER after an HTTP 302 redirect from /cite/ paths.
+  initial_query <- shiny::isolate(shiny::parseQueryString(session$clientData$url_search))
+  has_cite_param <- !is.null(initial_query$cite) && nzchar(initial_query$cite)
+
+  # For citation URLs, don't pre-select a tab — the citation resolver will navigate
+  # to the correct tab after resolving the identifier. For all other URLs, parse the
+  # tab parameter or default to Home.
+  if (has_cite_param) {
+    # Leave state$current_tab at its default ("Home") but don't initialize any
+    # tab-specific data. The citation resolver will set the real tab.
+    initial_tab <- NULL
+  } else {
+    initial_tab <- if (!is.null(initial_query$tab) && nzchar(initial_query$tab)) {
+      initial_query$tab
+    } else {
+      "Home"
+    }
+    state$current_tab(initial_tab)
+  }
 
   session$onFlushed(function() {
     if (!url_manager$is_history_initialized()) {
@@ -111,51 +149,6 @@ server <- function(input, output, session) {
     url_manager$is_history_initialized() && !url_manager$is_updating()
   }
 
-  # --- Map Data Loading -----
-
-  # Fetch map data when Map tab is first visited.
-  # Uses map_fetch_in_progress flag to prevent duplicate requests.
-  shiny::observeEvent(state$current_tab(),
-    {
-      # Only fetch when switching to Map tab
-      if (!identical(state$current_tab(), "Map")) {
-        return()
-      }
-
-      # Already have data? Skip fetch.
-      if (!is.null(map_observations())) {
-        return()
-      }
-
-      # Already fetching? Skip.
-      if (isTRUE(map_fetch_in_progress())) {
-        return()
-      }
-
-      # Check if map has been initialized before
-      if (!isTRUE(map_initialized())) {
-        # First time loading - show loading screen and lock nav
-        session$sendCustomMessage("showMapLoading", list())
-        session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
-      }
-
-      # Fetch data
-      map_fetch_in_progress(TRUE)
-      observations <- fetch_plot_map_data()
-      map_fetch_in_progress(FALSE)
-
-      if (!is.null(observations)) {
-        map_observations(observations)
-        # Note: map_initialized flag and loading screen will be hidden
-        # by the onRender callback in output$map after map fully renders
-      } else {
-        # If data fetch failed, still unlock nav and hide loading screen
-        session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
-        session$sendCustomMessage("hideMapLoading", list())
-      }
-    },
-    ignoreInit = TRUE
-  )
 
   # --- DataTable State Management -----
 
@@ -327,7 +320,10 @@ server <- function(input, output, session) {
       table_states = table_states_list,
       highlight_table = state$highlighted_table(),
       highlight_row = state$highlighted_row(),
-      plot_filter = state$plot_filter()
+      plot_filter = state$plot_filter(),
+      community_filter = state$community_filter(),
+      community_status = state$community_status(),
+      plant_status = state$plant_status()
     )
 
     url_manager$update_query_string(target_query, mode = mode)
@@ -348,9 +344,6 @@ server <- function(input, output, session) {
   #   skip_highlight - If TRUE, skip server-side row highlight (client handles it from URL)
   open_detail <- function(detail_type, vb_code, push_history = TRUE, history_mode = "push",
                           skip_highlight = FALSE) {
-    # Ensure we have an up-to-date record of the current tab
-    state$current_tab(input$page %||% state$current_tab())
-
     success <- open_code_details(
       state = state,
       session = session,
@@ -414,11 +407,833 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  # URL/HISTORY SYNCHRONIZATION OBSERVER -----------------------------------------------------------
+  # --- Citation Resolution -----
+
+  # Resolve a ?cite=IDENTIFIER URL and navigate to the appropriate view.
+  # Called from the URL observer when a ?cite= query parameter is detected.
+  #
+  # Uses resolve_citation() for API lookup, then directly applies navigation
+  # using existing server-side functions (open_detail, state mutations, tab
+  # switching) rather than relying on a URL round-trip.
+  #
+  # Supported citation types:
+  #   - Single entities (Plots/Communities): filter + detail overlay + highlight
+  #   - Datasets: cross-resource filter on Plots tab
+  #   - Unsupported types: error notification, stay on current tab
+  #
+  # The citation loading overlay (already visible from page load) is hidden
+  # when resolution completes or fails.
+  resolve_and_redirect_citation <- function(identifier) {
+    citation <- resolve_citation(identifier)
+
+    if (is.null(citation)) {
+      session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
+
+      shiny::showNotification(
+        paste0("Could not resolve citation: ", identifier),
+        type = "error",
+        duration = NULL
+      )
+
+      # Fall back to Home tab
+      state$current_tab("Home")
+      shiny::updateNavbarPage(session, "page", selected = "Home")
+      update_app_query(mode = "replace", tab = "Home")
+      session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+      return()
+    }
+
+    # Only datasets, plot observations (Plots tab), and community concepts
+    # (Communities tab) support citation filtering.
+    supported_citation_tabs <- c("Plots", "Communities")
+    is_dataset <- citation$resource_info$api_type == "user-datasets"
+
+    if (!is_dataset && !isTRUE(citation$tab %in% supported_citation_tabs)) {
+      session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
+
+      shiny::showNotification(
+        paste0("Citations are not supported for ",
+               citation$resource_info$plural %||% citation$detail_type, "."),
+        type = "warning",
+        duration = NULL
+      )
+
+      # Fall back to Home tab
+      state$current_tab("Home")
+      shiny::updateNavbarPage(session, "page", selected = "Home")
+      update_app_query(mode = "replace", tab = "Home")
+      session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+      return()
+    }
+
+    filter_type <- if (is_dataset) "collection-citation" else "single-entity-citation"
+
+    filter_info <- list(
+      type = filter_type,
+      code = citation$vb_code,
+      label = paste("Citation identifier:", identifier),
+      resource_type = citation$detail_type,
+      resource_info = citation$resource_info
+    )
+
+    if (is_dataset) {
+      state$plot_filter(filter_info)
+      state$current_tab("Plots")
+      shiny::updateNavbarPage(session, "page", selected = "Plots")
+      update_app_query(mode = "replace", tab = "Plots")
+    } else {
+      if (citation$tab == "Plots") {
+        state$plot_filter(filter_info)
+        state$highlighted_table("plot_table")
+      } else if (citation$tab == "Communities") {
+        state$community_filter(filter_info)
+        state$highlighted_table("comm_table")
+      }
+
+      state$highlighted_row(0L)
+      state$current_tab(citation$tab)
+      shiny::updateNavbarPage(session, "page", selected = citation$tab)
+
+      open_detail(
+        detail_type = citation$detail_type,
+        vb_code = citation$vb_code,
+        push_history = FALSE,
+        skip_highlight = FALSE
+      )
+
+      update_app_query(
+        mode = "replace",
+        tab = citation$tab,
+        detail_type = citation$detail_type,
+        detail_code = citation$vb_code
+      )
+    }
+
+    session$sendCustomMessage("hideLoadingOverlay", list(type = "citation"))
+    session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+  }
+
+  # Helper function to create filter alert UI
+  create_filter_alert <- function(filter, resource_singular, resource_plural, clear_input_id) {
+    if (is.null(filter)) {
+      return(NULL)
+    }
+
+    # Customize message based on filter type
+    message <- if (filter$type == "single-entity-citation") {
+      # e.g. "Showing the cited plot observation: ob.2948 (Citation identifier: VB.Ob.2948.ACAD143)"
+      sprintf("Showing the cited %s: %s (%s)", resource_singular, filter$code, filter$label)
+    } else if (filter$type == "collection-citation") {
+      # e.g. "Showing plot observations in dataset: ds.200278 (Citation identifier: ds.200278)"
+      sprintf("Showing plot observations in dataset: %s (%s)", filter$code, filter$label)
+    } else {
+      sprintf(
+        "Showing %s related to %s: %s (%s)",
+        resource_plural, filter$type, filter$code, filter$label
+      )
+    }
+
+    htmltools::tags$div(
+      class = "alert alert-info alert-dismissible show d-flex align-items-center justify-content-between",
+      role = "alert",
+      htmltools::tags$strong(message),
+      htmltools::tags$button(
+        type = "button",
+        class = "btn btn-sm btn-outline-info ms-3",
+        onclick = sprintf("Shiny.setInputValue('%s', Math.random());", clear_input_id),
+        "Clear filter"
+      )
+    )
+  }
+
+  MAP_FILTER_NOTICE_MSG <- paste0(
+    "Filters applied to the Plots table don't affect the Map. ",
+    "You can only view all of the plots in VegBank simultaneously."
+  )
+
+  # Show the map-filter notification once per session, if the Plots table
+  # currently has an active search or cross-resource filter.
+  # No-ops when already shown or when no filter is active.
+  maybe_show_map_filter_notice <- function() {
+    if (isTRUE(map_filter_notice_shown())) return()
+    plots_search <- shiny::isolate(state$table_states[["plots"]]$search)
+    has_table_search <- !is.null(plots_search) && nzchar(plots_search)
+    has_cross_filter <- !is.null(shiny::isolate(state$plot_filter()))
+    if (has_table_search || has_cross_filter) {
+      map_filter_notice_shown(TRUE)
+      shiny::showNotification(MAP_FILTER_NOTICE_MSG, type = "message", duration = 10)
+    }
+  }
+
+  # RENDER UI ELEMENTS --------------------------------------------------------------------------------
+
+
+  # Initialize overview immediately if that's the initial tab (not a citation URL)
+  if (identical(initial_tab, "Overview")) {
+    init_overview(output, state, session)
+    overview_initialized(TRUE)
+  }
+
+  # Initialize map data fetch when navigating directly to the Map tab.
+  # The map data observeEvent below uses ignoreInit = TRUE so it only handles
+  # subsequent tab changes. This block handles the initial page load case.
+  if (identical(initial_tab, "Map")) {
+    # Defer the fetch to after Shiny is fully initialized (map output registered)
+    session$onFlushed(function() {
+      if (is.null(isolate(map_observations())) && !isTRUE(isolate(map_fetch_in_progress()))) {
+        session$sendCustomMessage("showLoadingOverlay", list(type = "map"))
+        session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
+        map_fetch_in_progress(TRUE)
+        observations <- do_map_fetch_with_feedback()
+        map_fetch_in_progress(FALSE)
+        if (!is.null(observations)) {
+          map_observations(observations)
+        } else {
+          session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+          session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
+        }
+      }
+    }, once = TRUE)
+  }
+
+  output$plot_filter_alert <- shiny::renderUI({
+    filter <- state$plot_filter()
+    if (is.null(filter)) {
+      return(NULL)
+    }
+
+    # Get display names from resource_info if available, otherwise use defaults
+    resource_singular <- filter$resource_info$singular %||% "plot observation"
+    resource_plural <- filter$resource_info$plural %||% "plot observations"
+
+    create_filter_alert(
+      filter,
+      resource_singular = resource_singular,
+      resource_plural = resource_plural,
+      clear_input_id = "clear_plot_filter"
+    )
+  })
+
+  output$comm_filter_alert <- shiny::renderUI({
+    filter <- state$community_filter()
+    if (is.null(filter)) {
+      return(NULL)
+    }
+
+    # Get display names from resource_info if available, otherwise use defaults
+    resource_singular <- filter$resource_info$singular %||% "community concept"
+    resource_plural <- filter$resource_info$plural %||% "community concepts"
+
+    create_filter_alert(
+      filter,
+      resource_singular = resource_singular,
+      resource_plural = resource_plural,
+      clear_input_id = "clear_comm_filter"
+    )
+  })
+
+  output$plot_table <- DT::renderDataTable({
+    # Rebuild table when filter changes to pass vb_code for cross-resource queries
+    filter <- state$plot_filter()
+    vb_code <- if (!is.null(filter)) filter$code else NULL
+    filter_type <- if (!is.null(filter)) filter$type else NULL
+    build_plot_table_with_filter(vb_code, filter_type)
+  })
+
+  # Download handler for plot table
+  output$download_plot_table <- create_table_download_handler("plot_table", input, state, session)
+
+  # Keep state$community_status in sync with the dropdown input
+  shiny::observeEvent(input$comm_status, {
+    val <- input$comm_status
+    if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) {
+      state$community_status(val)
+    }
+  })
+
+  # Keep state$plant_status in sync with the dropdown input
+  shiny::observeEvent(input$plant_status, {
+    val <- input$plant_status
+    if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) {
+      state$plant_status(val)
+    }
+  })
+
+  # Proxies for status filter reloads. When status changes we do a tbody-only
+  # ajax.reload() so the DT wrapper DOM (including initComplete-injected elements)
+  # is never destroyed.
+  comm_proxy  <- DT::dataTableProxy("comm_table",  session = session)
+  plant_proxy <- DT::dataTableProxy("plant_table", session = session)
+
+  shiny::observeEvent(state$community_status(), {
+    DT::reloadData(comm_proxy, resetPaging = TRUE)
+  }, ignoreInit = TRUE)
+
+  shiny::observeEvent(state$plant_status(), {
+    DT::reloadData(plant_proxy, resetPaging = TRUE)
+  }, ignoreInit = TRUE)
+
+  output$comm_table <- DT::renderDataTable({
+    # Rebuild table when citation filter changes.
+    # Status changes are handled via proxy reload above — no dependency here.
+    filter <- state$community_filter()
+    vb_code <- if (!is.null(filter)) filter$code else NULL
+    filter_type <- if (!is.null(filter)) filter$type else NULL
+    build_concept_table_with_filter(
+      concept_type = "community",
+      vb_code = vb_code,
+      filter_type = filter_type,
+      status_fn = state$community_status
+    )
+  })
+
+  output$proj_table <- DT::renderDataTable({
+    build_project_table()
+  })
+
+  output$party_table <- DT::renderDataTable({
+    build_party_table()
+  })
+
+  output$plant_table <- DT::renderDataTable({
+    # Status changes handled via proxy reload — no dependency here.
+    build_concept_table_with_filter(
+      concept_type = "plant",
+      status_fn = state$plant_status
+    )
+  })
+
+  output$map <- leaflet::renderLeaflet({
+    # Wait for map data to be available (fetched when Map tab is visited)
+    shiny::req(map_observations())
+
+    # Use the current map state (already restored from URL by the URL observer) so that
+    # direct navigation with map_lat/map_lng/map_zoom params renders the correct initial view.
+    # isolate() prevents creating a reactive dependency that would re-render the whole map.
+    center_lat <- shiny::isolate(state$map_center_lat())
+    center_lng <- shiny::isolate(state$map_center_lng())
+    zoom <- shiny::isolate(state$map_zoom())
+
+    map <- process_map_data(
+      map_data = map_observations(),
+      center_lng = center_lng,
+      center_lat = center_lat,
+      zoom = zoom
+    )
+
+    # Add callback to hide loading screen once map is fully rendered
+    # Use isolate() to prevent creating a reactive dependency on map_initialized()
+    if (!isTRUE(shiny::isolate(map_initialized()))) {
+      map <- htmlwidgets::onRender(map, "
+        function(el, x) {
+          var map = this;
+          var signaled = false;
+
+          function signalMapReady() {
+            if (!signaled) {
+              signaled = true;
+              Shiny.setInputValue('map_ready', true, {priority: 'event'});
+            }
+          }
+
+          // Check if all visible tile images have full opacity
+          function allTilesFullOpacity() {
+            var tiles = el.querySelectorAll('.leaflet-tile-loaded');
+            if (tiles.length === 0) return false;
+
+            for (var i = 0; i < tiles.length; i++) {
+              var style = window.getComputedStyle(tiles[i]);
+              var opacity = parseFloat(style.opacity);
+              if (opacity < 0.99) {
+                return false;
+              }
+            }
+            return true;
+          }
+
+          // Check if map container is NOT recalculating (Shiny output state)
+          function isNotRecalculating() {
+            return !el.classList.contains('recalculating');
+          }
+
+          // Check if clusters are rendered
+          function hasClusters() {
+            var clusters = el.querySelectorAll('.marker-cluster');
+            var markers = el.querySelectorAll('.leaflet-marker-icon');
+            return clusters.length > 0 || markers.length > 0;
+          }
+
+          // Main readiness check - polls until all conditions are met
+          function checkFullyReady() {
+            if (signaled) return;
+
+            var notRecalculating = isNotRecalculating();
+            var tilesReady = allTilesFullOpacity();
+            var clustersPresent = hasClusters();
+
+            if (notRecalculating && tilesReady && clustersPresent) {
+              signalMapReady();
+            } else {
+              // Keep checking every 50ms
+              setTimeout(checkFullyReady, 50);
+            }
+          }
+
+          // Start checking after initial render
+          map.whenReady(function() {
+            // Give Leaflet a moment to start tile loading
+            setTimeout(checkFullyReady, 100);
+          });
+
+          // Fallback timeout
+          setTimeout(function() {
+            if (!signaled) {
+              signalMapReady();
+            }
+          }, 15000);
+        }
+      ")
+    }
+
+    map
+  })
+
+
+  # EVENT OBSERVERS --------------------------------------------------------------------------------
+
+  # Handle tab-specific initialization on navigation:
+  #   - Overview: lazy-initialize overview data on first visit
+  #   - Map: fetch plot observation data on first visit
+  # Uses per-tab flags to prevent duplicate work across repeated navigations.
+  shiny::observeEvent(state$current_tab(),
+    {
+      tab <- state$current_tab()
+
+      # Lazy-initialize Overview content on first visit
+      if (identical(tab, "Overview") && !overview_initialized()) {
+        session$sendCustomMessage("showLoadingOverlay", list(type = "overview"))
+        init_overview(output, state, session)
+        overview_initialized(TRUE)
+      }
+
+      # Only fetch map data when switching to Map tab
+      if (!identical(tab, "Map")) {
+        return()
+      }
+
+      # Already have data? Skip fetch.
+      if (!is.null(map_observations())) {
+        return()
+      }
+
+      # Already fetching? Skip.
+      if (isTRUE(map_fetch_in_progress())) {
+        return()
+      }
+
+      # Check if map has been initialized before
+      if (!isTRUE(map_initialized())) {
+        # First time loading - show loading screen and lock nav
+        session$sendCustomMessage("showLoadingOverlay", list(type = "map"))
+        session$sendCustomMessage("setNavInteractivity", list(disabled = TRUE))
+      }
+
+      # Fetch data
+      map_fetch_in_progress(TRUE)
+      observations <- do_map_fetch_with_feedback()
+      map_fetch_in_progress(FALSE)
+
+      if (!is.null(observations)) {
+        map_observations(observations)
+        # Note: map_initialized flag and loading screen will be hidden
+        # by the onRender callback in output$map after map fully renders
+      } else {
+        # Loading screen and nav interactivity are reset regardless of error type;
+        # do_map_fetch_with_feedback() already surfaced the right notification.
+        session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
+      }
+    },
+    ignoreInit = TRUE
+  )
+
+  # Enable/disable DT download button based on filtered record count
+  # Button is only enabled when records <= 20,000 (DOWNLOAD_MAX_RECORDS)
+  shiny::observe({
+    # React to table ready signal (fires after table init/re-render)
+    input$plot_table_ready
+
+    # Get the filtered record count from the DataTable AJAX response
+    filtered_count <- input$plot_table_filtered_count
+
+    # Enable button only if we have a count and it's within the limit
+    # Initial state (NULL count) keeps button disabled
+    can_download <- !is.null(filtered_count) &&
+      is.numeric(filtered_count) &&
+      filtered_count > 0 &&
+      filtered_count <= DOWNLOAD_MAX_RECORDS
+
+    # Enable/disable via custom message handler
+    session$sendCustomMessage("setDownloadButtonState", list(enabled = can_download))
+  })
+
+  # When DT button is clicked, trigger the download
+  shiny::observeEvent(input$plot_download_trigger, {
+    # Client-side validation will show loading overlay after checks pass
+    session$sendCustomMessage("triggerDownload", list())
+  })
+
+  # Hide loading screen when map is fully rendered and ready
+  shiny::observeEvent(input$map_ready,
+    {
+      if (!isTRUE(map_initialized())) {
+        map_initialized(TRUE)
+        session$sendCustomMessage("hideLoadingOverlay", list(type = "map"))
+        session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
+
+        # Show filter notice if the user had a filter active when they first
+        # navigated to the Map tab (hidden behind the loading overlay until now)
+        maybe_show_map_filter_notice()
+      }
+    },
+    ignoreInit = TRUE
+  )
+
+  # When returning to an already-loaded map with an active Plots filter, show
+  # the notice once so the user isn't confused by the unfiltered marker set.
+  shiny::observeEvent(state$current_tab(),
+    {
+      if (!identical(state$current_tab(), "Map")) return()
+      if (!isTRUE(map_initialized())) return()
+      maybe_show_map_filter_notice()
+    },
+    ignoreInit = TRUE
+  )
+
+  # Handle search-by-code from the map search control
+  shiny::observeEvent(input$map_search_query,
+    {
+      query <- trimws(input$map_search_query$query)
+      if (is.null(query) || !nzchar(query)) return()
+
+      # Use the pre-built index for O(1) lookup instead of per-search tolower scans
+      idx <- map_search_index()
+      if (is.null(idx)) {
+        session$sendCustomMessage("map_search_results", list(status = "no_data"))
+        return()
+      }
+
+      query_lower <- tolower(query)
+      row_indices <- idx[[query_lower]]
+      if (is.null(row_indices)) {
+        session$sendCustomMessage("map_search_results", list(status = "none"))
+        return()
+      }
+
+      obs <- map_observations()
+      matches <- obs[unique(row_indices), , drop = FALSE]
+      matches <- matches[!is.na(matches$latitude) & !is.na(matches$longitude), , drop = FALSE]
+
+      if (nrow(matches) == 0) {
+        session$sendCustomMessage("map_search_results", list(status = "none"))
+        return()
+      }
+
+      if (nrow(matches) == 1) {
+        session$sendCustomMessage("map_search_results", list(
+          status = "single",
+          lat = matches$latitude[1],
+          lng = matches$longitude[1],
+          popup_label = build_plot_popup_label(matches$author_obs_code[1], matches$ob_code[1])
+        ))
+        return()
+      }
+
+      # Multiple matches — send disambiguation list (cap at 50 for sanity)
+      matches <- utils::head(matches, 50)
+      match_list <- lapply(seq_len(nrow(matches)), function(i) {
+        list(
+          lat = matches$latitude[i],
+          lng = matches$longitude[i],
+          author_obs_code = matches$author_obs_code[i],
+          ob_code = matches$ob_code[i],
+          popup_label = build_plot_popup_label(matches$author_obs_code[i], matches$ob_code[i])
+        )
+      })
+      session$sendCustomMessage("map_search_results", list(
+        status = "multiple",
+        matches = match_list
+      ))
+    },
+    ignoreNULL = TRUE,
+    ignoreInit = TRUE
+  )
+
+  # Track map state changes without triggering redraws
+  shiny::observeEvent(input$map_zoom,
+    {
+      zoom <- suppressWarnings(as.numeric(input$map_zoom))
+      if (is.null(zoom) || is.na(zoom)) {
+        return()
+      }
+
+      previous_zoom <- state$map_zoom()
+      changed <- !url_manager$nearly_equal(previous_zoom, zoom, tol = 1e-4)
+
+      state$map_zoom(zoom)
+      update_map_custom_flag()
+
+      if (changed && can_mutate_history()) {
+        update_app_query(mode = "replace")
+      }
+    },
+    ignoreInit = TRUE
+  )
+
+  shiny::observeEvent(input$map_center,
+    {
+      map_center <- input$map_center
+      if (is.null(map_center)) {
+        return()
+      }
+
+      lat <- suppressWarnings(as.numeric(map_center$lat))
+      lng <- suppressWarnings(as.numeric(map_center$lng))
+
+      if (any(is.na(c(lat, lng)))) {
+        return()
+      }
+
+      previous_lat <- state$map_center_lat()
+      previous_lng <- state$map_center_lng()
+      changed <- !url_manager$nearly_equal(previous_lat, lat, tol = 1e-5) || !url_manager$nearly_equal(previous_lng, lng, tol = 1e-5)
+
+      state$map_center_lat(lat)
+      state$map_center_lng(lng)
+      update_map_custom_flag()
+
+      if (changed && can_mutate_history()) {
+        update_app_query(mode = "replace")
+      }
+    },
+    ignoreInit = TRUE
+  )
+
+  # Handle tab navigation: update state, restore table state, invalidate map, update URL
+  # This observer handles user-initiated tab changes (navbar clicks).
+  # It does NOT call updateNavbarPage() - the URL observer handles that to prevent feedback loops.
+  # ignoreInit = TRUE prevents firing on the initial navbar selection ("Overview"),
+  # which would race with citation resolution and URL-driven initialization.
+  shiny::observeEvent(input$page,
+    {
+      if (is.null(input$page) || !nzchar(input$page)) {
+        return()
+      }
+
+      # Early exit if we're in the middle of URL restoration to prevent feedback loops
+      # The URL observer will handle navbar updates during restoration
+      if (url_manager$is_updating()) {
+        return()
+      }
+
+      # Skip if the tab is already current (e.g., after citation resolution already
+      # set the tab via state$current_tab() and updateNavbarPage()). This prevents
+      # duplicate URL pushes and redundant state updates.
+      if (identical(state$current_tab(), input$page)) {
+        return()
+      }
+
+      state$current_tab(input$page)
+
+      # Invalidate map size when navigating to Map tab to ensure proper rendering
+      # Map forgets its size when hidden and needs recalculation
+      # See https://github.com/NCEAS/vegbank-web/issues/28
+      if (identical(input$page, "Map")) {
+        session$sendCustomMessage("invalidateMapSize", list())
+      }
+
+      # When switching tabs, apply any stored table state for the new tab's table
+      new_table_key <- url_manager$get_table_key(input$page)
+      if (!is.null(new_table_key)) {
+        stored_state <- shiny::isolate(state$table_states[[new_table_key]])
+        if (!is.null(stored_state)) {
+          state$table_sync_pending[[new_table_key]] <- TRUE
+          send_table_state_to_client(new_table_key, stored_state)
+        }
+      }
+
+      # Defer history mutations until the initial URL restoration has completed
+      if (!can_mutate_history()) {
+        return()
+      }
+
+      update_app_query(
+        mode = "push",
+        tab = input$page,
+        detail_type = if (isTRUE(state$details_open())) state$detail_type() else NULL,
+        detail_code = if (isTRUE(state$details_open())) state$detail_code() else NULL
+      )
+    },
+    ignoreNULL = FALSE,
+    ignoreInit = TRUE
+  )
+
+  shiny::observeEvent(input$row_highlight,
+    {
+      payload <- input$row_highlight
+      table_id <- payload$tableId %||% NULL
+      row_index <- payload$rowIndex %||% NULL
+
+      state$highlighted_table(table_id)
+
+      if (is.null(row_index) || is.na(row_index)) {
+        state$highlighted_row(NULL)
+      } else {
+        state$highlighted_row(as.integer(row_index))
+      }
+    },
+    ignoreNULL = TRUE
+  )
+
+  for (key in names(table_registry)) {
+    local({
+      table_key <- key
+      input_id <- paste0(table_registry[[table_key]]$table_id, "_state")
+
+      shiny::observeEvent(input[[input_id]],
+        {
+          store_table_state(table_key, input[[input_id]])
+        },
+        ignoreNULL = TRUE
+      )
+    })
+  }
+
+  shiny::observeEvent(input$show_on_map,
+    {
+      map_data <- input$show_on_map
+      lat <- as.numeric(map_data$lat)
+      lng <- as.numeric(map_data$lng)
+      code <- map_data$code
+      ob_code <- map_data$ob_code
+
+      # Check for valid coordinates
+      if (is.na(lat) || is.na(lng) || !is.numeric(lat) || !is.numeric(lng)) {
+        shiny::showNotification("Cannot show on map: Missing or invalid coordinates for plot: " + code,
+          type = "warning"
+        )
+        return()
+      }
+
+      target_zoom <- map_defaults$detail_zoom %||% DEFAULT_MAP_ZOOM
+
+      state$map_center_lat(lat)
+      state$map_center_lng(lng)
+      state$map_zoom(target_zoom)
+      update_map_custom_flag(lat, lng, target_zoom)
+
+      state$map_request(list(lat = lat, lng = lng, code = code, ob_code = ob_code, zoom = target_zoom))
+
+      state$current_tab("Map")
+
+      mode <- if (url_manager$is_history_initialized()) "push" else "replace"
+      update_app_query(
+        mode = mode,
+        tab = "Map",
+        detail_type = if (isTRUE(state$details_open())) state$detail_type() else NULL,
+        detail_code = if (isTRUE(state$details_open())) state$detail_code() else NULL
+      )
+      shiny::updateNavbarPage(session, "page", selected = "Map")
+
+      map_update_observer <- shiny::observe({
+        shiny::req(input$page == "Map")
+
+        map_req <- state$map_request()
+        if (!is.null(map_req)) {
+          # Invalidating the map size is necessary when navigating to Map tab because the
+          # map fogrets its size when hidden and needs to be recalculated to render properly.
+          # See https://github.com/NCEAS/vegbank-web/issues/28
+          session$sendCustomMessage("invalidateMapSize", list())
+          label <- build_plot_popup_label(map_req$code, map_req$ob_code)
+          move_map_to_obs(
+            session,
+            map_req$lat,
+            map_req$lng,
+            label
+          )
+          state$map_request(NULL)
+
+          map_update_observer$destroy()
+        }
+      })
+    },
+    ignoreNULL = TRUE,
+    ignoreInit = TRUE
+  )
+
+  shiny::observeEvent(input$close_details, {
+    close_detail(push_history = TRUE)
+  })
+
+  shiny::observeEvent(input$plot_link_click, {
+    vb_code <- input$plot_link_click
+    if (!is.null(vb_code) && nchar(vb_code) > 0) {
+      open_detail("plot-observation", vb_code)
+    }
+  })
+
+  shiny::observeEvent(input$comm_class_link_click, {
+    vb_code <- input$comm_class_link_click
+    open_detail("community-classification", vb_code)
+  })
+
+  shiny::observeEvent(input$comm_link_click, {
+    vb_code <- input$comm_link_click
+    open_detail("community-concept", vb_code)
+  })
+
+  shiny::observeEvent(input$proj_link_click, {
+    vb_code <- input$proj_link_click
+    open_detail("project", vb_code)
+  })
+
+  shiny::observeEvent(input$party_link_click, {
+    vb_code <- input$party_link_click
+    open_detail("party", vb_code)
+  })
+
+  shiny::observeEvent(input$plant_link_click, {
+    vb_code <- input$plant_link_click
+    open_detail("plant-concept", vb_code)
+  })
+
+  shiny::observeEvent(input$ref_link_click, {
+    vb_code <- input$ref_link_click
+    open_detail("reference", vb_code)
+  })
+
+  shiny::observeEvent(input$cover_method_link_click, {
+    vb_code <- input$cover_method_link_click
+    open_detail("cover-method", vb_code)
+  })
+
+  shiny::observeEvent(input$stratum_method_link_click, {
+    vb_code <- input$stratum_method_link_click
+    open_detail("stratum-method", vb_code)
+  })
+
+  shiny::observeEvent(input$to_link_click, {
+    vb_code <- input$to_link_click
+    if (!is.null(vb_code) && nchar(vb_code) > 0) {
+      open_detail("taxon-observation", vb_code)
+    }
+  })
+
+  # URL STATE SYNCHRONIZATION OBSERVER ----------------------------------------------------------------
+
   # This observer runs whenever the browser URL changes (back/forward, refresh, direct link).
   # It parses query parameters and restores tab, detail overlay, map view, and table state.
   # The URL manager's updating flag prevents circular updates when we programmatically change the URL.
-
   shiny::observeEvent(current_query(),
     {
       params <- current_query()
@@ -435,10 +1250,25 @@ server <- function(input, output, session) {
         add = TRUE
       )
 
+      # Handle citation resolution: ?cite=IDENTIFIER
+      # /cite/ paths are HTTP-302-redirected to /?cite= by the UI function.
+      # Here we resolve the identifier via the vegbankr API, apply the appropriate
+      # navigation state, and replace the URL with resolved parameters.
+      # The return() ensures no other URL params from the ?cite= query are processed.
+      cite_param <- url_manager$first_param(params$cite)
+      if (url_manager$is_valid_param(cite_param)) {
+        # Strip surrounding quotes that may appear from URL encoding (%22)
+        cite_param <- gsub('^["\']|["\']$', "", cite_param)
+        if (nzchar(cite_param)) {
+          resolve_and_redirect_citation(cite_param)
+          return()
+        }
+      }
+
       # Parse and apply requested tab
       requested_tab <- url_manager$first_param(params$tab)
       if (!url_manager$is_valid_param(requested_tab)) {
-        requested_tab <- "Overview"
+        requested_tab <- "Home"
       }
 
       if (!identical(state$current_tab(), requested_tab)) {
@@ -493,26 +1323,26 @@ server <- function(input, output, session) {
       }
 
       # Parse and apply plot filter state
-      filter_code <- url_manager$first_param(params$filter_code)
-      filter_type <- url_manager$first_param(params$filter_type)
-      filter_label <- url_manager$first_param(params$filter_label)
+      plot_filter_code <- url_manager$first_param(params$plot_filter_code)
+      plot_filter_type <- url_manager$first_param(params$plot_filter_type)
+      plot_filter_label <- url_manager$first_param(params$plot_filter_label)
 
-      if (url_manager$is_valid_param(filter_code) && url_manager$is_valid_param(filter_type)) {
+      if (url_manager$is_valid_param(plot_filter_code) && url_manager$is_valid_param(plot_filter_type)) {
         # Restore filter from URL
         current_filter <- state$plot_filter()
         new_filter <- list(
-          type = filter_type,
-          code = filter_code,
-          label = if (url_manager$is_valid_param(filter_label)) filter_label else filter_code
+          type = plot_filter_type,
+          code = plot_filter_code,
+          label = if (url_manager$is_valid_param(plot_filter_label)) plot_filter_label else plot_filter_code
         )
 
         # Only update if different from current state
         if (is.null(current_filter) ||
-              !identical(current_filter$code, new_filter$code) ||
-              !identical(current_filter$type, new_filter$type)) {
+          !identical(current_filter$code, new_filter$code) ||
+          !identical(current_filter$type, new_filter$type)) {
           state$plot_filter(new_filter)
         }
-      } else if (!is.null(params$filter_code) || !is.null(params$filter_type)) {
+      } else if (!is.null(params$plot_filter_code) || !is.null(params$plot_filter_type)) {
         # Invalid filter params in URL, clear them
         state$plot_filter(NULL)
         if (url_manager$is_history_initialized()) {
@@ -524,6 +1354,52 @@ server <- function(input, output, session) {
           state$plot_filter(NULL)
         }
       }
+
+      # Parse and apply community filter state
+      comm_filter_code <- url_manager$first_param(params$comm_filter_code)
+      comm_filter_type <- url_manager$first_param(params$comm_filter_type)
+      comm_filter_label <- url_manager$first_param(params$comm_filter_label)
+
+      if (url_manager$is_valid_param(comm_filter_code) && url_manager$is_valid_param(comm_filter_type)) {
+        # Restore community filter from URL
+        current_comm_filter <- state$community_filter()
+        new_comm_filter <- list(
+          type = comm_filter_type,
+          code = comm_filter_code,
+          label = if (url_manager$is_valid_param(comm_filter_label)) comm_filter_label else comm_filter_code
+        )
+
+        # Only update if different from current state
+        if (is.null(current_comm_filter) ||
+          !identical(current_comm_filter$code, new_comm_filter$code) ||
+          !identical(current_comm_filter$type, new_comm_filter$type)) {
+          state$community_filter(new_comm_filter)
+        }
+      } else if (!is.null(params$comm_filter_code) || !is.null(params$comm_filter_type)) {
+        # Invalid community filter params in URL, clear them
+        state$community_filter(NULL)
+        if (url_manager$is_history_initialized()) {
+          update_app_query(mode = "replace", tab = requested_tab)
+        }
+      } else {
+        # No community filter params in URL, clear filter state
+        if (!is.null(state$community_filter())) {
+          state$community_filter(NULL)
+        }
+      }
+
+      # Restore concept status filters from URL.
+      # `status_reactive` is a reactiveVal — calling it reads, calling it with a value sets.
+      restore_status_param <- function(url_param, status_reactive, msg_type) {
+        val <- url_manager$first_param(url_param)
+        target <- if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) val else "current_accepted"
+        if (!identical(status_reactive(), target)) {
+          status_reactive(target)
+          session$sendCustomMessage(msg_type, list(value = target))
+        }
+      }
+      restore_status_param(params$communities_status, state$community_status, "setCommStatus")
+      restore_status_param(params$plants_status, state$plant_status, "setPlantStatus")
 
       # Parse and apply map view state
       map_lat_param <- params$map_lat
@@ -646,531 +1522,7 @@ server <- function(input, output, session) {
     ignoreNULL = FALSE
   )
 
-  # RENDER UI ELEMENTS --------------------------------------------------------------------------------
-
-  output$dataSummary <- shiny::renderUI({
-    htmltools::tagList(
-      htmltools::tags$div(
-        htmltools::strong(
-          "Now with some filtering, some sorting, additional plot details, and a more manageable map!"
-        ),
-        htmltools::tags$p(
-          " More features are coming soon and this page will change. This is still a beta release; please ",
-          htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here.")
-        )
-      ),
-      htmltools::tags$br(),
-      htmltools::tags$h5("Getting Started"),
-      htmltools::tags$ul(
-        htmltools::tags$li(
-          htmltools::tags$strong("Map:"),
-          " View plot locations on an interactive map. Click markers to zoom to plot clusters and ",
-          "the links on location labels to see plot observation details. Some location labels have ",
-          "many plot observations because of repeated sampling or location fuzzing for privacy."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Plots:"),
-          " Browse vegetation plot observations. Each row represents a single plot observation ",
-          "with location, date, and ecological data. Use the search box to find plots with a specific ",
-          " plant species, community type, author code, or location (eg: ",
-          htmltools::tags$code("Sibbaldiopsis tridentata"), ", ",
-          htmltools::tags$code("CEGL001833"), ", ",
-          htmltools::tags$code("Eleocharis palustris Marsh"), ", ",
-          htmltools::tags$code("BADL.126"), ", or ",
-          htmltools::tags$code("California"), ")."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Plants:"),
-          " Explore the plant taxonomy database. Search for plant concepts by plant name or browse ",
-          "the full list of plant concepts."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Communities:"),
-          " View community classification types. Communities represent recurring patterns of ",
-          "co-occurring plant species. You can also search them by name or browse the full list."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Parties:"),
-          " Find contributors, authors, and parties associated with plot data."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Projects:"),
-          " Explore research projects that have contributed data to VegBank."
-        )
-      ),
-      htmltools::tags$h5("Using the App"),
-      htmltools::tags$ul(
-        htmltools::tags$li(
-          "Click ", htmltools::tags$strong("'Details'"),
-          " buttons or links in tables to view detailed information about any entity."
-        ),
-        htmltools::tags$li(
-          "Browse the ", htmltools::tags$strong("'Map'"),
-          " to see plots grouped by location. Clicking the links on the pin labels will show details",
-          " for a plot, and clicking the ", htmltools::tags$strong("'Map'"),
-          " button in a row of the plot table will center the map on that plot."
-        ),
-        htmltools::tags$li(
-          "Use the ", htmltools::tags$strong("search box"),
-          " in the top-right of each table to find matching results.",
-          htmltools::tags$ul(
-            htmltools::tags$li(
-              htmltools::tags$i("Quotes:"),
-              " Use double quotes to search for exact phrases (e.g., ",
-              htmltools::tags$code('"Quercus alba"'), ")."
-            ),
-            htmltools::tags$li(
-              htmltools::tags$i("Multiple terms:"),
-              " Separate words with spaces to match rows containing multiple terms (e.g., ",
-              htmltools::tags$code("oak prairie"), ")."
-            ),
-            htmltools::tags$li(
-              htmltools::tags$i("Exclude terms:"),
-              " Prefix a word with a minus sign to exclude it (e.g., ",
-              htmltools::tags$code("-alliance"), ")."
-            )
-          )
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Filter"), " the plot table by plant, community, party or project ",
-          "by clicking the numerical observation, contribution, or plot count links for that entity. That ",
-          "will bring you to the plots table and show only plots associated with that entity. Use the ",
-          "'Clear filter' button above the plot table to remove the filter."
-        ),
-        htmltools::tags$li(
-          htmltools::tags$strong("Sorting"), " is now supported for any table column that has ",
-          "arrows in its header. You can click that header to sort by that column in ascending or ",
-          "descending order, and you can hold shift and click multiple column headers to sort by ",
-          "multiple columns."
-        ),
-        htmltools::tags$li(
-          "Your ", htmltools::tags$strong("URL updates"),
-          " as you navigate, so you can bookmark or share specific views."
-        ),
-        htmltools::tags$li(
-          "Use your browser's ", htmltools::tags$strong("back/forward buttons"),
-          " to navigate through your browsing history."
-        ),
-        htmltools::tags$li(
-          "For common questions, check the ",
-          htmltools::tags$a(
-            href = "?tab=FAQ",
-            htmltools::tags$strong("FAQ")
-          ),
-          " tab."
-        )
-      ),
-      htmltools::tags$h5("Beta Notice"),
-      htmltools::tags$p(
-        htmltools::tags$em(
-          "This is a beta release. Things may be slow and buggy. Most features are still in development. ",
-          "When you encounter issues, please report them to help@vegbank.org with details ",
-          "about what you were doing when the problem occurred."
-        )
-      ),
-      htmltools::tags$br(),
-      htmltools::tags$p(
-        "For more information, see the previous ",
-        htmltools::tags$a(href = "http://vegbank.org", target = "_blank", " VegBank site"),
-        " or the ",
-        htmltools::tags$a(
-          href = "https://github.com/NCEAS/vegbankr",
-          target = "_blank",
-          "vegbankr R package"
-        ),
-        " for programmatic data access."
-      )
-    )
-  })
-
-  output$plot_filter_alert <- shiny::renderUI({
-    filter <- state$plot_filter()
-    if (is.null(filter)) {
-      return(NULL)
-    }
-
-    htmltools::tags$div(
-      class = "alert alert-info alert-dismissible show d-flex align-items-center justify-content-between",
-      role = "alert",
-      htmltools::tags$strong(
-        sprintf(
-          "Showing plot observations related to %s: %s (%s)",
-          filter$type, filter$code, filter$label
-        )
-      ),
-      htmltools::tags$button(
-        type = "button",
-        class = "btn btn-sm btn-outline-info ms-3",
-        onclick = "Shiny.setInputValue('clear_plot_filter', Math.random());",
-        "Clear filter"
-      )
-    )
-  })
-
-  output$plot_table <- DT::renderDataTable({
-    # Rebuild table when filter changes to pass vb_code for cross-resource queries
-    filter <- state$plot_filter()
-    vb_code <- if (!is.null(filter)) filter$code else NULL
-    build_plot_table_with_filter(vb_code)
-  })
-
-  output$comm_table <- DT::renderDataTable({
-    build_community_table()
-  })
-
-  output$proj_table <- DT::renderDataTable({
-    build_project_table()
-  })
-
-  output$party_table <- DT::renderDataTable({
-    build_party_table()
-  })
-
-  output$plant_table <- DT::renderDataTable({
-    build_plant_table()
-  })
-
-  output$map <- leaflet::renderLeaflet({
-    # Wait for map data to be available (fetched when Map tab is visited)
-    shiny::req(map_observations())
-
-    map <- process_map_data(
-      map_data = map_observations(),
-      center_lng = DEFAULT_MAP_LNG,
-      center_lat = DEFAULT_MAP_LAT,
-      zoom = DEFAULT_MAP_ZOOM
-    )
-    
-    # Add callback to hide loading screen once map is fully rendered
-    # Use isolate() to prevent creating a reactive dependency on map_initialized()
-    if (!isTRUE(shiny::isolate(map_initialized()))) {
-      map <- htmlwidgets::onRender(map, "
-        function(el, x) {
-          var map = this;
-          var signaled = false;
-          
-          function signalMapReady() {
-            if (!signaled) {
-              signaled = true;
-              Shiny.setInputValue('map_ready', true, {priority: 'event'});
-            }
-          }
-          
-          // Check if all visible tile images have full opacity
-          function allTilesFullOpacity() {
-            var tiles = el.querySelectorAll('.leaflet-tile-loaded');
-            if (tiles.length === 0) return false;
-            
-            for (var i = 0; i < tiles.length; i++) {
-              var style = window.getComputedStyle(tiles[i]);
-              var opacity = parseFloat(style.opacity);
-              if (opacity < 0.99) {
-                return false;
-              }
-            }
-            return true;
-          }
-          
-          // Check if map container is NOT recalculating (Shiny output state)
-          function isNotRecalculating() {
-            return !el.classList.contains('recalculating');
-          }
-          
-          // Check if clusters are rendered
-          function hasClusters() {
-            var clusters = el.querySelectorAll('.marker-cluster');
-            var markers = el.querySelectorAll('.leaflet-marker-icon');
-            return clusters.length > 0 || markers.length > 0;
-          }
-          
-          // Main readiness check - polls until all conditions are met
-          function checkFullyReady() {
-            if (signaled) return;
-            
-            var notRecalculating = isNotRecalculating();
-            var tilesReady = allTilesFullOpacity();
-            var clustersPresent = hasClusters();
-            
-            if (notRecalculating && tilesReady && clustersPresent) {
-              signalMapReady();
-            } else {
-              // Keep checking every 50ms
-              setTimeout(checkFullyReady, 50);
-            }
-          }
-          
-          // Start checking after initial render
-          map.whenReady(function() {
-            // Give Leaflet a moment to start tile loading
-            setTimeout(checkFullyReady, 100);
-          });
-          
-          // Fallback timeout
-          setTimeout(function() {
-            if (!signaled) {
-              signalMapReady();
-            }
-          }, 15000);
-        }
-      ")
-    }
-    
-    map
-  })
-
-
-  # EVENT OBSERVERS --------------------------------------------------------------------------------
-
-  # Invalidating the map size is necessary when navigating to Map tab because the map forgets its size when
-  # hidden and needs to be recalculated to render properly. See https://github.com/NCEAS/vegbank-web/issues/28
-  shiny::observeEvent(input$page,
-    {
-      if (identical(input$page, "Map")) {
-        # Invalidate map size to ensure proper rendering after tab switches
-        session$sendCustomMessage("invalidateMapSize", list())
-      }
-    },
-    ignoreInit = TRUE
-  )
-
-  # Hide loading screen when map is fully rendered and ready
-  shiny::observeEvent(input$map_ready,
-    {
-      if (!isTRUE(map_initialized())) {
-        map_initialized(TRUE)
-        session$sendCustomMessage("hideMapLoading", list())
-        session$sendCustomMessage("setNavInteractivity", list(disabled = FALSE))
-      }
-    },
-    ignoreInit = TRUE
-  )
-
-  # Track map state changes without triggering redraws
-  shiny::observeEvent(input$map_zoom,
-    {
-      zoom <- suppressWarnings(as.numeric(input$map_zoom))
-      if (is.null(zoom) || is.na(zoom)) {
-        return()
-      }
-
-      previous_zoom <- state$map_zoom()
-      changed <- !url_manager$nearly_equal(previous_zoom, zoom, tol = 1e-4)
-
-      state$map_zoom(zoom)
-      update_map_custom_flag()
-
-      if (changed && can_mutate_history()) {
-        update_app_query(mode = "replace")
-      }
-    },
-    ignoreInit = TRUE
-  )
-
-  shiny::observeEvent(input$map_center,
-    {
-      map_center <- input$map_center
-      if (is.null(map_center)) {
-        return()
-      }
-
-      lat <- suppressWarnings(as.numeric(map_center$lat))
-      lng <- suppressWarnings(as.numeric(map_center$lng))
-
-      if (any(is.na(c(lat, lng)))) {
-        return()
-      }
-
-      previous_lat <- state$map_center_lat()
-      previous_lng <- state$map_center_lng()
-      changed <- !url_manager$nearly_equal(previous_lat, lat, tol = 1e-5) || !url_manager$nearly_equal(previous_lng, lng, tol = 1e-5)
-
-      state$map_center_lat(lat)
-      state$map_center_lng(lng)
-      update_map_custom_flag()
-
-      if (changed && can_mutate_history()) {
-        update_app_query(mode = "replace")
-      }
-    },
-    ignoreInit = TRUE
-  )
-
-  shiny::observeEvent(input$page,
-    {
-      if (is.null(input$page) || !nzchar(input$page)) {
-        return()
-      }
-
-      state$current_tab(input$page)
-
-      # When switching tabs, apply any stored table state for the new tab's table
-      new_table_key <- url_manager$get_table_key(input$page)
-      if (!is.null(new_table_key)) {
-        stored_state <- shiny::isolate(state$table_states[[new_table_key]])
-        if (!is.null(stored_state)) {
-          state$table_sync_pending[[new_table_key]] <- TRUE
-          send_table_state_to_client(new_table_key, stored_state)
-        }
-      }
-
-      # Defer history mutations until the initial URL restoration has completed
-      if (!can_mutate_history()) {
-        return()
-      }
-
-      update_app_query(
-        mode = "push",
-        tab = input$page,
-        detail_type = if (isTRUE(state$details_open())) state$detail_type() else NULL,
-        detail_code = if (isTRUE(state$details_open())) state$detail_code() else NULL
-      )
-    },
-    ignoreNULL = FALSE
-  )
-
-  shiny::observeEvent(input$row_highlight,
-    {
-      payload <- input$row_highlight
-      table_id <- payload$tableId %||% NULL
-      row_index <- payload$rowIndex %||% NULL
-
-      state$highlighted_table(table_id)
-
-      if (is.null(row_index) || is.na(row_index)) {
-        state$highlighted_row(NULL)
-      } else {
-        state$highlighted_row(as.integer(row_index))
-      }
-    },
-    ignoreNULL = TRUE
-  )
-
-  for (key in names(table_registry)) {
-    local({
-      table_key <- key
-      input_id <- paste0(table_registry[[table_key]]$table_id, "_state")
-
-      shiny::observeEvent(input[[input_id]],
-        {
-          store_table_state(table_key, input[[input_id]])
-        },
-        ignoreNULL = TRUE
-      )
-    })
-  }
-
-  shiny::observeEvent(input$show_on_map,
-    {
-      map_data <- input$show_on_map
-      lat <- as.numeric(map_data$lat)
-      lng <- as.numeric(map_data$lng)
-      code <- map_data$code
-
-      # Check for valid coordinates
-      if (is.na(lat) || is.na(lng) || !is.numeric(lat) || !is.numeric(lng)) {
-        shiny::showNotification("Cannot show on map: Missing or invalid coordinates for plot: " + code,
-          type = "warning"
-        )
-        return()
-      }
-
-      target_zoom <- map_defaults$detail_zoom %||% DEFAULT_MAP_ZOOM
-
-      state$map_center_lat(lat)
-      state$map_center_lng(lng)
-      state$map_zoom(target_zoom)
-      update_map_custom_flag(lat, lng, target_zoom)
-
-      state$map_request(list(lat = lat, lng = lng, code = code, zoom = target_zoom))
-
-      state$current_tab("Map")
-
-      mode <- if (url_manager$is_history_initialized()) "push" else "replace"
-      update_app_query(
-        mode = mode,
-        tab = "Map",
-        detail_type = if (isTRUE(state$details_open())) state$detail_type() else NULL,
-        detail_code = if (isTRUE(state$details_open())) state$detail_code() else NULL
-      )
-      shiny::updateNavbarPage(session, "page", selected = "Map")
-
-      map_update_observer <- shiny::observe({
-        shiny::req(input$page == "Map")
-
-        map_req <- state$map_request()
-        if (!is.null(map_req)) {
-          # Invalidating the map size is necessary when navigating to Map tab because the
-          # map fogrets its size when hidden and needs to be recalculated to render properly.
-          # See https://github.com/NCEAS/vegbank-web/issues/28
-          session$sendCustomMessage("invalidateMapSize", list())
-          move_map_to_obs(
-            session,
-            map_req$lat,
-            map_req$lng,
-            paste("Plot", map_req$code, "is here!")
-          )
-          state$map_request(NULL)
-
-          map_update_observer$destroy()
-        }
-      })
-    },
-    ignoreNULL = TRUE,
-    ignoreInit = TRUE
-  )
-
-  shiny::observeEvent(input$close_details, {
-    close_detail(push_history = TRUE)
-  })
-
-  shiny::observeEvent(input$plot_link_click, {
-    vb_code <- input$plot_link_click
-    if (!is.null(vb_code) && nchar(vb_code) > 0) {
-      open_detail("plot-observation", vb_code)
-    }
-  })
-
-  shiny::observeEvent(input$comm_class_link_click, {
-    vb_code <- input$comm_class_link_click
-    open_detail("community-classification", vb_code)
-  })
-
-  shiny::observeEvent(input$comm_link_click, {
-    vb_code <- input$comm_link_click
-    open_detail("community-concept", vb_code)
-  })
-
-  shiny::observeEvent(input$proj_link_click, {
-    vb_code <- input$proj_link_click
-    open_detail("project", vb_code)
-  })
-
-  shiny::observeEvent(input$party_link_click, {
-    vb_code <- input$party_link_click
-    open_detail("party", vb_code)
-  })
-
-  shiny::observeEvent(input$plant_link_click, {
-    vb_code <- input$plant_link_click
-    open_detail("plant-concept", vb_code)
-  })
-
-  shiny::observeEvent(input$ref_link_click, {
-    vb_code <- input$ref_link_click
-    open_detail("reference", vb_code)
-  })
-
-  shiny::observeEvent(input$cover_method_link_click, {
-    vb_code <- input$cover_method_link_click
-    open_detail("cover-method", vb_code)
-  })
-
-  shiny::observeEvent(input$stratum_method_link_click, {
-    vb_code <- input$stratum_method_link_click
-    open_detail("stratum-method", vb_code)
-  })
-
-  # CROSS-RESOURCE FILTER OBSERVERS ----------------------------------------------------------------
+  # CROSS-RESOURCE FILTER OBSERVER ----------------------------------------------------------------
 
   # Generic observer for all obs_count clicks - extracts entity type from vb_code prefix
   shiny::observeEvent(input$obs_count_click, {
@@ -1196,7 +1548,7 @@ server <- function(input, output, session) {
 
     # Extract entity type from vb_code prefix
     # VegBank codes follow pattern: prefix.id (e.g., pj.340, py.123, pc.456)
-    entity_type <- extract_entity_type_from_code(vb_code)
+    entity_type <- convert_code_to_singular(vb_code)
     if (is.null(entity_type)) {
       warning("Could not determine entity type from vb_code: ", vb_code)
       return()
@@ -1209,6 +1561,10 @@ server <- function(input, output, session) {
       label = label %||% vb_code
     ))
 
+    # Clear plots table state (including search) when applying cross-resource filter
+    # This prevents old search terms from being carried over to the filtered view
+    state$table_states[["plots"]] <- NULL
+
     # Navigate to Plots tab and update URL
     state$current_tab("Plots")
     shiny::updateNavbarPage(session, "page", selected = "Plots")
@@ -1217,11 +1573,69 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$clear_plot_filter, {
     state$plot_filter(NULL)
+    # Clear plots table state (including search) when clearing filter
+    # This ensures we start fresh without any stale search terms
+    state$table_states[["plots"]] <- NULL
+    # Update URL to remove filter parameters
+    update_app_query(mode = "push", tab = state$current_tab())
+  })
+
+  shiny::observeEvent(input$clear_comm_filter, {
+    state$community_filter(NULL)
+    # Clear communities table state when clearing filter
+    state$table_states[["communities"]] <- NULL
     # Update URL to remove filter parameters
     update_app_query(mode = "push", tab = state$current_tab())
   })
 }
 
+# ================= CITATION RESOLUTION ============================================================
+# Note: RESOURCE_REGISTRY and helper functions are defined in R/resource_registry.R
+
+#' Resolve citation identifier to app navigation parameters
+#'
+#' Calls vegbankr::vb_resolve() to look up the resource type and VegBank code
+#' for a legacy identifier, then maps the result to app navigation targets
+#' using RESOURCE_REGISTRY.
+#'
+#' @param identifier Character string, the accession code (or vb_code or DOI) to resolve
+#'   (e.g., "VB.Ob.2948.ACAD143")
+#' @return A list with components:
+#'   \describe{
+#'     \item{vb_code}{The resolved VegBank code (e.g., "ob.2948")}
+#'     \item{tab}{The app tab to navigate to (e.g., "Plots")}
+#'     \item{detail_type}{The detail view type (e.g., "plot-observation")}
+#'     \item{resource_info}{Full resource metadata from RESOURCE_REGISTRY}
+#'     \item{identifier}{The original identifier (for labeling)}
+#'   }
+#'   Returns NULL if resolution fails or the resource type is unsupported.
+#' @noRd
+resolve_citation <- function(identifier) {
+  result <- tryCatch(
+    vegbankr::vb_resolve(identifier),
+    error = function(e) {
+      warning("Citation resolution failed for '", identifier, "': ", conditionMessage(e))
+      NULL
+    }
+  )
+
+  if (is.null(result) || is.null(result$vb_resource_type) || is.null(result$vb_code)) {
+    return(NULL)
+  }
+
+  resource_info <- get_resource_by_api_type(result$vb_resource_type)
+  if (is.null(resource_info)) {
+    return(NULL)
+  }
+
+  list(
+    vb_code = result$vb_code,
+    tab = resource_info$tab,
+    detail_type = resource_info$detail_type,
+    resource_info = resource_info, # Include full resource info for display names
+    identifier = identifier
+  )
+}
 
 # ================= OTHER FUNCTIONS ===========================================================
 
@@ -1241,7 +1655,7 @@ open_code_details <- function(
     skip_highlight = FALSE) {
   if (!is_valid_vb_code(vb_code)) {
     error_msg <- error_message %||% paste0("No VegBank code found for that ", gsub("-", " ", detail_type))
-    shiny::showNotification(error_msg, type = "error")
+    shiny::showNotification(error_msg, type = "error", duration = NULL)
     return(FALSE)
   }
 
@@ -1269,44 +1683,55 @@ is_valid_vb_code <- function(vb_code) {
     nchar(as.character(vb_code)) > 0 && vb_code != "NA"
 }
 
-#' Extract entity type from VegBank code prefix
+#' Fetch map data and notify the user on failure
 #'
-#' VegBank codes follow the pattern: prefix.id (e.g., pj.340, py.123, pc.456)
-#' This function extracts the prefix and maps it to the human-readable entity type.
+#' Wraps `fetch_plot_map_data()` in error handling so that both the Shiny
+#' notification and the loading-screen teardown always happen in the same
+#' call site that manages the loading overlay. Returns the data frame on
+#' success, or NULL on any failure (after showing the appropriate notification).
 #'
-#' @param vb_code The VegBank code (e.g., "pj.340")
-#' @return Character string of entity type (e.g., "project"), or NULL if unknown
+#' @return Data frame of plot observations, or NULL
 #' @noRd
-extract_entity_type_from_code <- function(vb_code) {
-  if (!is_valid_vb_code(vb_code)) {
-    return(NULL)
-  }
-
-  # Extract prefix before the dot
-  parts <- strsplit(as.character(vb_code), "\\.")[[1]]
-  if (length(parts) < 2) {
-    return(NULL)
-  }
-
-  prefix <- tolower(parts[1])
-
-  # Map VegBank prefixes to entity types
-  prefix_map <- c(
-    "pj" = "project",
-    "py" = "party",
-    "pc" = "plant concept",
-    "cc" = "community concept",
-    "ct" = "community classification",
-    "ob" = "plot observation",
-    "rf" = "reference"
+do_map_fetch_with_feedback <- function() {
+  tryCatch(
+    {
+      obs <- fetch_plot_map_data()
+      if (is.null(obs)) {
+        shiny::showNotification(
+          "Map data is currently unavailable. Please try again later.",
+          type = "warning",
+          duration = NULL
+        )
+      }
+      obs
+    },
+    error = function(err) {
+      shiny::showNotification(
+        paste("Failed to load map data:", conditionMessage(err)),
+        type = "error",
+        duration = NULL
+      )
+      NULL
+    }
   )
+}
 
-  entity_type <- prefix_map[[prefix]]
-  if (is.null(entity_type)) {
-    return(NULL)
+#' Build the popup label for a plot observation
+#'
+#' Produces the human-readable string shown in the leaflet popup when the map
+#' flies to a plot. The JavaScript mirror of this function is `buildPopupNode()`
+#' in `vegbank_app.js`.
+#'
+#' @param code Author observation code (author_obs_code)
+#' @param ob_code VegBank observation code (ob_code), or NULL / empty string
+#' @return A character string
+#' @noRd
+build_plot_popup_label <- function(code, ob_code = NULL) {
+  if (!is.null(ob_code) && nzchar(ob_code %||% "")) {
+    paste0("Plot ", code, " (", ob_code, ") is here!")
+  } else {
+    paste("Plot", code, "is here!")
   }
-
-  entity_type
 }
 
 #' Move the map to the specified latitude and longitude with a popup message

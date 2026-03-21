@@ -19,25 +19,25 @@ build_cover_method_details_view <- function(result) {
 
   # Overview Card - cm_code and cover_type
   header_ui <- shiny::renderUI({
-    cm_code <- cm$cm_code %|||% "Not recorded"
-    cover_type <- cm$cover_type %|||% "Not recorded"
+    cm_code <- cm$cm_code %|||% "Unspecified Code"
+    cover_type <- cm$cover_type %|||% "Unnamed Cover Method"
 
     htmltools::tags$div(
       htmltools::tags$h5(cover_type, style = "font-weight: 600; margin-bottom: 0px;"),
-      htmltools::tags$h5(cm_code, style = "color: var(--vegbank-green); font-weight: 600;")
+      htmltools::tags$h5(cm_code, style = "color: var(--vb-green); font-weight: 600;")
     )
   })
 
   # Detail Card - cover_estimation_method and reference link
   details_ui <- shiny::renderUI({
-    cover_estimation_method <- cm$cover_estimation_method %|||% "Not recorded"
+    cover_estimation_method <- cm$cover_estimation_method %|||% "Unspecified"
 
     # Create reference link if rf_code and rf_label exist
     reference_display <- if (has_valid_field_value(cm, "rf_code") &&
       has_valid_field_value(cm, "rf_label")) {
       create_detail_link("ref_link_click", cm$rf_code, cm$rf_label)
     } else {
-      "Not provided"
+      "Unspecified"
     }
 
     details <- list(

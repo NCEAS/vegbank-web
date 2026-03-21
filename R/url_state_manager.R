@@ -339,12 +339,14 @@ URLStateManager <- R6::R6Class(
     #' @param highlight_table Table ID where selection occurred
     #' @param highlight_row Row index of selection
     #' @param plot_filter Plot table filter (list with type, code, label) or NULL
+    #' @param community_filter Community table filter (list with type, code, label) or NULL
     #' @return Query string (e.g., "?tab=Plots&detail=plot&code=123")
     build_query_string = function(tab = NULL, detail_type = NULL, detail_code = NULL,
                                   map_lat = NULL, map_lng = NULL, map_zoom = NULL,
                                   map_has_custom_state = FALSE, table_states = list(),
                                   highlight_table = NULL, highlight_row = NULL,
-                                  plot_filter = NULL) {
+                                  plot_filter = NULL, community_filter = NULL,
+                                  community_status = NULL, plant_status = NULL) {
       if (is.null(tab) || !nzchar(tab)) {
         tab <- "Overview"
       }
@@ -369,14 +371,39 @@ URLStateManager <- R6::R6Class(
       # Include plot filter parameters for cross-resource queries
       if (!is.null(plot_filter) && is.list(plot_filter)) {
         if (!is.null(plot_filter$code) && nzchar(plot_filter$code)) {
-          params$filter_code <- plot_filter$code
+          params$plot_filter_code <- plot_filter$code
         }
         if (!is.null(plot_filter$type) && nzchar(plot_filter$type)) {
-          params$filter_type <- plot_filter$type
+          params$plot_filter_type <- plot_filter$type
         }
         if (!is.null(plot_filter$label) && nzchar(plot_filter$label)) {
-          params$filter_label <- plot_filter$label
+          params$plot_filter_label <- plot_filter$label
         }
+      }
+
+      # Include community filter parameters
+      if (!is.null(community_filter) && is.list(community_filter)) {
+        if (!is.null(community_filter$code) && nzchar(community_filter$code)) {
+          params$comm_filter_code <- community_filter$code
+        }
+        if (!is.null(community_filter$type) && nzchar(community_filter$type)) {
+          params$comm_filter_type <- community_filter$type
+        }
+        if (!is.null(community_filter$label) && nzchar(community_filter$label)) {
+          params$comm_filter_label <- community_filter$label
+        }
+      }
+
+      # Include community status filter (omit when it's the default)
+      if (!is.null(community_status) && nzchar(community_status) &&
+          !identical(community_status, "current_accepted")) {
+        params$communities_status <- community_status
+      }
+
+      # Include plant status filter (omit when it's the default)
+      if (!is.null(plant_status) && nzchar(plant_status) &&
+          !identical(plant_status, "current_accepted")) {
+        params$plants_status <- plant_status
       }
 
       include_map_params <- identical(tab, "Map") || isTRUE(map_has_custom_state)

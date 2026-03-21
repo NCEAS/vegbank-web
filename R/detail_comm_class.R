@@ -106,25 +106,27 @@ create_comm_class_details_ui <- function(result) {
               result$class_publication_rf_label
             )
           } else {
-            "Not provided"
+            "Unspecified"
           }
         )
       )
     )
 
-    if (has_valid_field_value(result, "class_notes")) {
-      rows <- append(rows, list(
-        htmltools::tags$tr(
-          htmltools::tags$td("Notes"),
-          htmltools::tags$td(class = "text-end", result$class_notes)
+    htmltools::tagList(
+      htmltools::tags$table(
+        class = "table table-sm table-striped table-hover",
+        style = "width: 100%; table-layout: fixed; word-break: break-word;",
+        htmltools::tags$tbody(rows)
+      ),
+      if (has_valid_field_value(result, "class_notes")) {
+        htmltools::tags$div(
+          style = "margin-top: 15px;",
+          create_section_header("Notes", "10px"),
+          htmltools::tags$div(
+            htmltools::htmlEscape(result$class_notes)
+          )
         )
-      ))
-    }
-
-    htmltools::tags$table(
-      class = "table table-sm table-striped table-hover",
-      style = "width: 100%; table-layout: fixed; word-break: break-word;",
-      htmltools::tags$tbody(rows)
+      }
     )
   })
 }
@@ -149,17 +151,17 @@ create_comm_class_interpretations_ui <- function(result) {
         rows <- lapply(seq_len(nrow(interpretations)), function(i) {
           interp <- interpretations[i, , drop = FALSE]
 
-          comm_name <- interp$comm_name %|||% "Unknown community"
+          comm_name <- interp$comm_name %|||% "Unspecified"
           cc_code <- if ("cc_code" %in% names(interp)) interp$cc_code else NULL
 
-          confidence <- interp$class_confidence %|||% "Not recorded"
-          fit <- interp$class_fit %|||% "Not recorded"
-          typal_value <- if ("type" %in% names(interp)) format_boolean(interp$type) else "Not recorded"
+          confidence <- interp$class_confidence %|||% "Unspecified"
+          fit <- interp$class_fit %|||% "Unspecified"
+          typal_value <- if ("type" %in% names(interp)) format_boolean(interp$type) else "Unspecified"
 
           authority <- if ("comm_authority_rf_label" %in% names(interp)) {
-            interp$comm_authority_rf_label %|||% "Not specified"
+            interp$comm_authority_rf_label %|||% "Unspecified"
           } else {
-            "Not specified"
+            "Unspecified"
           }
 
           authority_rf_code <- if ("comm_authority_rf_code" %in% names(interp)) {
@@ -178,6 +180,13 @@ create_comm_class_interpretations_ui <- function(result) {
                 comm_name
               }
             ),
+            if ("notes" %in% names(interp) && has_valid_field_value(interp, "notes")) {
+              htmltools::tags$div(
+                style = "margin-top: 10px;",
+                create_section_header("Notes", "6px"),
+                htmltools::tags$div(htmltools::htmlEscape(interp$notes))
+              )
+            },
             htmltools::tags$table(
               class = "table table-sm table-striped table-hover",
               style = "margin-top: 5px; margin-bottom: 0; width: 100%; table-layout: fixed; word-break: break-word;",
@@ -210,12 +219,6 @@ create_comm_class_interpretations_ui <- function(result) {
                   htmltools::tags$tr(
                     htmltools::tags$td("Nomenclatural Type"),
                     htmltools::tags$td(class = "text-end", format_boolean(interp$nomenclatural_type))
-                  )
-                },
-                if ("notes" %in% names(interp) && has_valid_field_value(interp, "notes")) {
-                  htmltools::tags$tr(
-                    htmltools::tags$td("Notes"),
-                    htmltools::tags$td(class = "text-end", interp$notes)
                   )
                 }
               )
@@ -252,9 +255,9 @@ create_comm_class_contributors_ui <- function(result) {
         rows <- lapply(seq_len(nrow(contributors)), function(i) {
           contrib <- contributors[i, , drop = FALSE]
 
-          party_name <- contrib$party_label %|||% "Unknown"
+          party_name <- contrib$party_label %|||% "Unspecified"
           py_code <- if ("py_code" %in% names(contrib)) contrib$py_code else NULL
-          role <- contrib$role %|||% "Not specified"
+          role <- contrib$role %|||% "Unspecified"
 
           htmltools::tags$tr(
             htmltools::tags$td(

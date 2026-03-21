@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Magnifying glass lens circle (larger) -->
+  <circle cx="10.25" cy="10.25" r="8.5"/>
+  <!-- Plant concept logo scaled to fit inside the lens (nested SVG clips to its viewport) -->
+  <svg x="4.75" y="4.75" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/>
+    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+  </svg>
+  <!-- Magnifying glass handle (shorter, with gap from lens edge) -->
+  <line x1="17.25" y1="17.25" x2="22.25" y2="22.25"/>
+</svg>

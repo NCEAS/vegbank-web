@@ -2,6 +2,10 @@
 #'
 #' Provides server-side DataTable builders for plant and community concepts.
 #' @noRd
+
+# Valid values for the concept status filter, shared between server logic and URL restore.
+VALID_CONCEPT_STATUSES <- c("any", "current", "accepted", "current_accepted")
+
 CONCEPT_CONFIG <- list(
   plant = build_table_module_config(
     type = "plant",
@@ -12,12 +16,13 @@ CONCEPT_CONFIG <- list(
     fields = c(
       "pc_code",
       "plant_name",
-      "current_accepted",
       "plant_level",
       "concept_rf_code",
       "concept_rf_label",
       "obs_count",
-      "plant_description"
+      "plant_description",
+      "status",
+      "stop_date"
     ),
     extra = list(
       concept_type = "plant",
@@ -37,12 +42,13 @@ CONCEPT_CONFIG <- list(
     fields = c(
       "cc_code",
       "comm_name",
-      "current_accepted",
       "comm_level",
       "concept_rf_code",
       "concept_rf_label",
       "obs_count",
-      "comm_description"
+      "comm_description",
+      "status",
+      "stop_date"
     ),
     extra = list(
       concept_type = "community",
@@ -70,6 +76,95 @@ build_concept_table <- function(concept_type = c("plant", "community")) {
   build_table_from_spec(spec)
 }
 
+#' Build concept DataTable with optional citation filter
+#'
+#' For citation filters, directly fetches and displays the single cited entity.
+#'
+#' @param concept_type Either "plant" or "community"
+#' @param vb_code Optional VegBank code for citation filtering (e.g., "cc.1234")
+#' @param filter_type Optional filter type ("single-entity-citation")
+#' @return A DT::datatable object
+#' @noRd
+build_concept_table_with_filter <- function(concept_type = c("plant", "community"),
+                                            vb_code = NULL,
+                                            filter_type = NULL,
+                                            status_fn = NULL) {
+  concept_type <- match.arg(concept_type)
+  spec <- CONCEPT_TABLE_SPECS[[concept_type]]
+  if (is.null(spec)) {
+    stop("No concept table spec registered for type: ", concept_type)
+  }
+
+  # Inject status as a query function evaluated per AJAX request via shiny::isolate().
+  # Always a zero-argument function so the AJAX handler reads the current value at
+  # draw time without creating a reactive dependency inside renderDataTable.
+  if (!is.null(status_fn)) {
+    spec$data_source <- utils::modifyList(
+      spec$data_source %||% list(),
+      list(query = function() list(status = shiny::isolate(status_fn())))
+    )
+  }
+
+  has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
+
+  # For citation filters, fetch the specific concept directly
+  if (has_filter && !is.null(filter_type) && filter_type == "single-entity-citation") {
+    tryCatch(
+      {
+        # Fetch the single concept using the appropriate API function
+        # Concept endpoints require detail = "full" (minimal not supported)
+        concept_data <- if (concept_type == "community") {
+          vegbankr::vb_get_community_concepts(vb_code, detail = "full", with_nested = FALSE)
+        } else {
+          vegbankr::vb_get_plant_concepts(vb_code, detail = "full", with_nested = FALSE)
+        }
+
+        if (!is.null(concept_data) && nrow(concept_data) > 0) {
+          # Process through the same pipeline as AJAX
+          coerced <- spec$coerce_fn(concept_data)
+          normalized <- spec$normalize_fn(coerced)
+          display_data <- spec$display_fn(normalized)
+
+          # Build static table (no AJAX) with the single row
+          static_config <- list(
+            initial_data = display_data,
+            column_defs = spec$column_defs,
+            page_length = 1L,
+            options = utils::modifyList(
+              spec$options %||% list(),
+              list(
+                scrollY = "calc(100vh - 250px)",  # Accommodate citation alert notification
+                serverSide = FALSE,
+                searching = FALSE,
+                paging = FALSE
+              )
+            ),
+            datatable_args = spec$datatable_args,
+            escape = FALSE
+          )
+
+          return(create_table(static_config))
+        } else {
+          shiny::showNotification(
+            paste("Could not load cited", concept_type, "concept:", vb_code),
+            type = "warning"
+          )
+        }
+      },
+      error = function(e) {
+        shiny::showNotification(
+          paste("Error loading cited", concept_type, "concept:", conditionMessage(e)),
+          type = "error"
+        )
+      }
+    )
+    # Fall through to normal AJAX table if fetch fails
+  }
+
+  # No filter or fetch failed - return normal AJAX table
+  build_table_from_spec(spec)
+}
+
 #' Process concept data into display format
 #'
 #' @param data_sources List containing concept data keyed by concept type
@@ -91,16 +186,17 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
   display_names <- clean_column_data(concept_data, config$name_field)
   concept_codes <- concept_data[[config$code_field]]
 
-  statuses <- concept_data$current_accepted
+  raw_status   <- concept_data$status
+  raw_stopdate <- concept_data$stop_date
   levels <- clean_column_data(concept_data, config$level_field)
   reference_codes <- concept_data$concept_rf_code
   reference_names <- clean_column_data(concept_data, "concept_rf_label")
   obs_counts <- suppressWarnings(as.numeric(clean_column_data(concept_data, "obs_count", "0")))
   obs_counts[is.na(obs_counts)] <- 0
   descriptions <- clean_column_data(concept_data, config$description_field)
-  descriptions <- truncate_text_with_ellipsis(descriptions, max_chars = 680L)
+  detail_input_id <- if (concept_type == "plant") "plant_link_click" else "comm_link_click"
   actions <- create_action_buttons(
-    if (concept_type == "plant") "plant_link_click" else "comm_link_click",
+    detail_input_id,
     "Details",
     concept_data[[config$code_field]]
   )
@@ -119,21 +215,32 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     if (!is.null(code) && !is.na(code) && nzchar(code)) {
       as.character(create_detail_link("ref_link_click", code, label %|||% code))
     } else {
-      htmltools::htmlEscape(label %|||% "Not provided")
+      htmltools::htmlEscape(label %|||% "Unspecified")
     }
   }, character(1))
 
-  status_badges <- vapply(statuses, create_status_badge, character(1))
+  status_badges <- vapply(
+    seq_along(raw_status),
+    function(i) create_status_badges(raw_status[[i]], raw_stopdate[[i]]),
+    character(1)
+  )
 
   result <- data.frame(
     Actions = actions,
-    `Vegbank Code` = vapply(concept_codes, htmltools::htmlEscape, character(1)),
+    `VegBank Code` = vapply(concept_codes, htmltools::htmlEscape, character(1)),
     Name = vapply(display_names, htmltools::htmlEscape, character(1)),
     Status = status_badges,
     Level = vapply(levels, htmltools::htmlEscape, character(1)),
     `Reference Source` = ref_links,
-    Observations = obs_count_links,
-    Description = vapply(descriptions, htmltools::htmlEscape, character(1)),
+    Plots = obs_count_links,
+    Description = vapply(seq_along(descriptions), function(i) {
+      safe_desc <- htmltools::htmlEscape(descriptions[i])
+      safe_code <- htmltools::htmlEscape(as.character(concept_codes[[i]]), attribute = TRUE)
+      sprintf(
+        '<div class="dt-description-container"><div class="dt-description">%s</div><a href="#" class="dt-read-more dt-shiny-action" data-input-id="%s" data-value="%s">Read more</a></div>',
+        safe_desc, detail_input_id, safe_code
+      )
+    }, character(1)),
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
@@ -154,12 +261,12 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
 create_concept_column_defs <- function(detail_input_id) {
   list(
     list(targets = 0, width = "10%", orderable = FALSE, searchable = FALSE), # Actions
-    list(targets = 1, width = "12%", orderable = TRUE), # Vegbank Code
+    list(targets = 1, width = "12%", orderable = TRUE), # VegBank Code
     list(targets = 2, width = "23%", orderable = TRUE), # Name
     list(targets = 3, width = "10%", className = "dt-center", orderable = FALSE), # Status
     list(targets = 4, width = "10%", className = "dt-center", orderable = FALSE), # Level
     list(targets = 5, width = "10%", orderable = FALSE), # Reference Source
-    list(targets = 6, width = "10%", type = "num", className = "dt-right", orderable = TRUE), # Observations
+    list(targets = 6, width = "10%", type = "num", className = "dt-right", orderable = TRUE), # Plots
     list(targets = 7, width = "25%", orderable = FALSE) # Description
   )
 }
@@ -222,6 +329,40 @@ get_concept_config <- function(concept_type) {
   config
 }
 
+.PLANT_TABLE_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p("This table lists plant taxa in VegBank's taxonomic concept hierarchy. Each row is a single plant concept."),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description."),
+      htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations containing this taxon."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code, Plant Concept name, and Plots support sorting."),
+      htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plant in an overlay."),
+      htmltools::tags$li(htmltools::tags$strong("Status:"), " indicates whether a concept is currently accepted, not current, or doesn't have a status."),
+      htmltools::tags$li(htmltools::tags$strong("Level:"), " the taxonomic rank (species, genus, family, etc.)."),
+      htmltools::tags$li(htmltools::tags$strong("Reference:"), " the authoritative classification source for this concept."),
+    )
+  ))
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
+.COMMUNITY_TABLE_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p("This table lists vegetation community concepts in VegBank's classification hierarchy. Each row is a single community type."),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description."),
+      htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations classified to this community."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code, Community Concept name, and Plots support sorting."),
+      htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the community in an overlay."),
+      htmltools::tags$li(htmltools::tags$strong("Status:"), " indicates whether a concept is currently accepted, not current, or doesn't have a status."),
+      htmltools::tags$li(htmltools::tags$strong("Level:"), " the vegetation hierarchy level (class, group, formation, alliance, association, etc.)."),
+      htmltools::tags$li(htmltools::tags$strong("Reference:"), " the authoritative classification source for this concept."),
+    )
+  ))
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
 CONCEPT_TABLE_SPECS <- local({
   specs <- lapply(CONCEPT_CONFIG, function(config) {
     schema_template <- build_schema_template(config$fields)
@@ -229,9 +370,9 @@ CONCEPT_TABLE_SPECS <- local({
 
     # Map: col index -> field for sorting
     sort_field_map <- list(
-      "1" = "default", # Vegbank Code
+      "1" = "default", # VegBank Code
       "2" = config$name_field, # Name
-      "6" = "obs_count" # Observations
+      "6" = "obs_count" # Plots
     )
 
     list(
@@ -251,8 +392,26 @@ CONCEPT_TABLE_SPECS <- local({
         sort_field_map = sort_field_map
       ),
       page_length = config$page_length,
-      options = list(),
-      datatable_args = list(),
+      search_placeholder = if (config$concept_type == "plant") {
+        "by plant name, code, VegBank code, or description\u2026"
+      } else {
+        "by community name, code, VegBank code, or description\u2026"
+      },
+      options = local({
+        help_btn <- make_help_button_js(
+          if (config$concept_type == "plant") "Plants Table" else "Communities Table",
+          if (config$concept_type == "plant") .PLANT_TABLE_HELP_CONTENT else .COMMUNITY_TABLE_HELP_CONTENT
+        )
+        opts <- list(dom = "Bfrtip", buttons = I(list(help_btn)))
+        opts$initComplete <- DT::JS(paste0(
+          "function(settings) {",
+          "var id = $(settings.nTable).closest('.datatables')[0].id;",
+          "if (window.vbConceptStatusInit) window.vbConceptStatusInit(settings.nTableWrapper, id);",
+          "}"
+        ))
+        opts
+      }),
+      datatable_args = list(extensions = "Buttons"),
       initial_display = process_concept_data(schema_template, concept_type = config$concept_type)
     )
   })

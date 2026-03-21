@@ -22,7 +22,7 @@ test_that("project table spec wires AJAX data source", {
   expect_equal(config$column_defs[[1]]$targets, 0)
   expect_s3_class(config$initial_data, "data.frame")
   expect_equal(nrow(config$initial_data), 0)
-  expect_equal(colnames(config$initial_data), c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
+  expect_equal(colnames(config$initial_data), c("Actions", "VegBank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
   expect_true(is.function(config$ajax))
   ajax_env <- environment(config$ajax)
   spec <- ajax_env$data_source_spec
@@ -37,36 +37,49 @@ test_that("project table spec wires AJAX data source", {
 })
 
 test_that("process_project_data formats normalized data", {
-  test_data <- data.frame(
-    pj_code = c("pj.1", "pj.2", "pj.314"),
-    project_name = c("alpha", "Beta", "Walker et al. 2010"),
-    project_description = c(NA, "second", "Angelina National Forest.  Sampling work conducted between 1998 and 2002 supported the application of the United States National Vegetation Classification (USNVC) standard to Region 8 Forests. This resulted in a basic list of vegetation units (alliances and community associations) for the National Forests in this region.\nThe vegetation classification produced through this agreement, and the NatureServe Ecological Systems Classification which is based on it, form the foundation for continuing use of the USNVC on U.S. Forest Service lands in Region 8 for natural resource planning and management.\nReports on the US National Vegetation Classification for various National Forests or groups of forests are found at http://www.natureserve.org/publications/library.jsp#techrpts"),
-    obs_count = c(NA, 12, 149),
-    start_date = c("", "Thu, 21 Aug 1997 07:00:00 GMT", "2022-01-01"),
-    stop_date = c("2020-12-31", NA, "Sat, 23 Aug 1997 07:00:00 GMT"),
-    last_plot_added_date = c("2021-05-01", "2022-02-02", NA),
-    stringsAsFactors = FALSE
+  cols <- c("pj_code", "project_name", "project_description", "obs_count",
+            "start_date", "stop_date", "last_plot_added_date")
+  test_data <- rbind(
+    mock_project_pj339[, cols],
+    mock_project_pj10559[, cols],
+    mock_project_pj11008[, cols]
   )
 
   result <- process_project_data(test_data)
 
   expect_equal(nrow(result), 3)
   expect_true(all(grepl("<button", result$Actions)))
-  expect_equal(result$`Vegbank Code`, vapply(c("pj.1", "pj.2", "pj.314"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE))
-  expect_equal(result$Project, c("Alpha", "Beta", "Walker et al. 2010"))
-  expect_equal(result$Description, c("Not provided", "Second", "Angelina National Forest.  Sampling work conducted between 1998 and 2002 supported the application of the United States National Vegetation Classification (USNVC) standard to Region 8 Forests. This resulted in a basic list of vegetation units (alliances and community associations) for the National Forests in this region.\nThe vegetation classification produced through this agreement, and the NatureServe Ecological Systems Classification which is based on it, form the foundation for continuing use of the USNVC on U.S. Forest Service lands in Region 8 for natural resource planning and management.\nReports on the US National Vegetation Classification for various National Fores..."))
-  expect_equal(result$Plots[1], "0")
-  expect_true(grepl(">12</a>", result$Plots[2]))
-  expect_true(grepl(">149</a>", result$Plots[3]))
-  expect_true(all(grepl("obs-count-link", result$Plots[c(2, 3)])))
-  expect_equal(result$Started, c("Not provided", "1997-08-21", "2022-01-01"))
-  expect_equal(result$Ended, c("2020-12-31", "Not provided", "1997-08-23"))
-  expect_equal(result$`Last Plot Added`, c("2021-05-01", "2022-02-02", "Not provided"))
+  expect_equal(
+    result$`VegBank Code`,
+    vapply(c("pj.339", "pj.10559", "pj.11008"), htmltools::htmlEscape, character(1), USE.NAMES = FALSE)
+  )
+  # Project names (clean_column_data capitalises first letter)
+  expect_equal(result$Project[1], "Composition and function of vegetation alliances in the Interior Northwest, USA")
+  expect_equal(result$Project[2], "Ecological Site Descriptions")
+  expect_equal(result$Project[3], "Carolina Vegetation Survey (121): Pulse 2010B = Mountain lacunae")
+  # Plots (obs_count links)
+  expect_true(grepl(">12962</a>", result$Plots[1]))
+  expect_true(grepl("obs-count-link", result$Plots[1]))
+  expect_true(grepl(">24</a>",    result$Plots[2]))
+  expect_true(grepl("obs-count-link", result$Plots[2]))
+  expect_true(grepl(">48</a>",    result$Plots[3]))
+  expect_true(grepl("obs-count-link", result$Plots[3]))
+  # Dates — pj.339: no start/stop; pj.10559: start only; pj.11008: no start/stop
+  expect_equal(result$Started,          c("Unspecified", "2013-05-01", "Unspecified"))
+  expect_equal(result$Ended,            c("Unspecified", "Unspecified", "Unspecified"))
+  expect_equal(result$`Last Plot Added`, c("2004-11-19",  "2015-03-17", "2015-12-11"))
+  # Descriptions
+  expect_true(grepl("Improved policy and management",             result$Description[1]))
+  expect_true(grepl('data-value="pj.339"',                        result$Description[1]))
+  expect_true(grepl("USDA Natural Resource Conservation Service", result$Description[2]))
+  expect_true(grepl('data-value="pj.10559"',                      result$Description[2]))
+  expect_true(grepl("Unspecified",                                result$Description[3]))
+  expect_true(grepl('data-value="pj.11008"',                      result$Description[3]))
 })
 
 test_that("process_project_data handles empty input", {
   result <- process_project_data(vegbankweb:::PROJECT_TABLE_SCHEMA_TEMPLATE)
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0)
-  expect_equal(colnames(result), c("Actions", "Vegbank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
+  expect_equal(colnames(result), c("Actions", "VegBank Code", "Project", "Plots", "Started", "Ended", "Last Plot Added", "Description"))
 })

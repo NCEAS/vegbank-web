@@ -28,7 +28,7 @@ PLOT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
 
 PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
   "Actions",
-  "Vegbank Code",
+  "VegBank Code",
   "Author Code",
   "Location",
   "Top Taxa",
@@ -45,7 +45,7 @@ PLOT_TABLE_DISPLAY_TEMPLATE <- build_display_template(c(
 create_plot_column_defs <- function() {
   list(
     list(targets = 0, orderable = FALSE, searchable = FALSE, width = "10%"), # Actions
-    list(targets = 1, width = "10%", orderable = TRUE), # Vegbank Code
+    list(targets = 1, width = "10%", orderable = TRUE), # VegBank Code
     list(targets = 2, width = "10%", orderable = TRUE), # Author Code
     list(targets = 3, width = "15%", orderable = FALSE), # Location
     list(targets = 4, width = "25%", orderable = FALSE), # Top Taxa
@@ -68,11 +68,15 @@ build_plot_table <- function() {
 #'
 #' Configures the plot table with an optional vb_code parameter for
 #' cross-resource queries (e.g., showing plots for a specific project).
+#' For citation filters of single entities, directly fetches and displays the single cited entity.
+#' For collection citations (datasets), uses AJAX table with vb_code query parameter.
 #'
-#' @param vb_code Optional VegBank code for cross-resource filtering (e.g., "pj.340")
+#' @param vb_code Optional VegBank code for cross-resource filtering (e.g., "pj.340", "ob.2948")
+#' @param filter_type Optional filter type ("plant concept", "community concept", "project",
+#'                    "party", "single-entity-citation", "collection-citation")
 #' @return A DT::datatable object
 #' @noRd
-build_plot_table_with_filter <- function(vb_code = NULL) {
+build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL) {
   # Deep copy to avoid mutating the shared PLOT_TABLE_SPEC
   spec <- PLOT_TABLE_SPEC
   spec$data_source <- utils::modifyList(spec$data_source, list())
@@ -81,15 +85,75 @@ build_plot_table_with_filter <- function(vb_code = NULL) {
   # Determine if filter is active
   has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
 
+  # For single-entity-citation filters, fetch the specific plot observation directly
+  # Collection citations (datasets) use AJAX table with vb_code for proper pagination
+  if (has_filter && !is.null(filter_type) && filter_type == "single-entity-citation") {
+    tryCatch(
+      {
+        # Fetch the single plot observation using the same parameters as the AJAX table
+        # Use detail="minimal" with nested data to match the table's expected structure
+        # Limit to top 5 taxa and communities like the regular table
+        plot_data <- vegbankr::vb_get_plot_observations(
+          vb_code,
+          detail = "minimal",
+          with_nested = TRUE,
+          num_taxa = 5L,
+          num_comms = 5L
+        )
+
+        if (!is.null(plot_data) && nrow(plot_data) > 0) {
+          # Coerce and normalize the data through the same pipeline as AJAX
+          coerced <- coerce_plot_page(plot_data)
+          normalized <- normalize_plot_data(coerced)
+          display_data <- process_plot_data(normalized)
+
+          # Build static table (no AJAX) with the single row
+          # Create a minimal table config without ajax to display static data
+          static_config <- list(
+            initial_data = display_data,
+            column_defs = spec$column_defs,
+            page_length = 1L,
+            options = utils::modifyList(
+              spec$options %||% list(),
+              list(
+                scrollY = "calc(100vh - 300px)", # Accommodate citation alert notification
+                serverSide = FALSE, # Disable server-side processing
+                searching = FALSE, # No need to search a single row
+                paging = FALSE # No pagination for single row
+              )
+            ),
+            datatable_args = spec$datatable_args,
+            escape = FALSE # Allow HTML in cells (already escaped by process functions)
+          )
+
+          return(create_table(static_config))
+        } else {
+          shiny::showNotification(
+            paste("Could not load cited plot observation:", vb_code),
+            type = "warning"
+          )
+        }
+      },
+      error = function(e) {
+        shiny::showNotification(
+          paste("Error loading cited plot:", conditionMessage(e)),
+          type = "error"
+        )
+      }
+    )
+    # Fall through to normal AJAX table if fetch fails
+  }
+
   # Add vb_code to query if filtering is active
-  if (has_filter) {
+  # This includes: cross-resource filters, collection citations, and fallback from failed single-entity citation fetch
+  if (has_filter && (is.null(filter_type) || filter_type != "single-entity-citation")) {
     spec$data_source$query$vb_code <- vb_code
   }
 
   spec$options <- utils::modifyList(spec$options, list())
 
-  # Adjust table height based on whether filter alert is shown so we don't overflow viewport
-  spec$options$scrollY <- if (has_filter) "calc(100vh - 315px)" else "calc(100vh - 235px)"
+  # Accomodate filter alert, download button, and search bar so we don't overflow viewport
+  spec$options$scrollY <- if (has_filter) "calc(100vh - 300px)" else "calc(100vh - 235px)"
 
   build_table_from_spec(spec)
 }
@@ -120,7 +184,7 @@ process_plot_data <- function(plot_data) {
 
   data.frame(
     "Actions" = actions_html,
-    "Vegbank Code" = vapply(ob_codes, htmltools::htmlEscape, character(1)),
+    "VegBank Code" = vapply(ob_codes, htmltools::htmlEscape, character(1)),
     "Author Code" = vapply(author_codes, htmltools::htmlEscape, character(1)),
     "Location" = locations,
     "Top Taxa" = top_taxa_html,
@@ -148,25 +212,51 @@ format_plot_action_buttons <- function(ob_codes, author_codes, latitudes, longit
     has_coords <- !is.na(lat) && !is.na(lng)
     # Details button
     detail_btn <- if (!is.null(detail_code) && nzchar(detail_code)) {
-      sprintf(
-        '<button type="button" class="btn btn-sm btn-outline-primary dt-shiny-action" data-input-id="plot_link_click" data-value="%s">Details</button>',
-        htmltools::htmlEscape(detail_code, attribute = TRUE))
-    } else {
-      '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Details</button>'
-    }
-    # Map button
-    map_btn <- if (has_coords) {
-      code_attr <- if (!is.null(code) && nzchar(code)) sprintf(' data-code="%s"', htmltools::htmlEscape(code, attribute = TRUE)) else ''
-      sprintf(
-        '<button type="button" class="btn btn-sm btn-outline-primary dt-map-action" data-lat="%s" data-lng="%s"%s>Map</button>',
-        htmltools::htmlEscape(lat, attribute = TRUE),
-        htmltools::htmlEscape(lng, attribute = TRUE),
-        code_attr
+      htmltools::tags$button(
+        type = "button",
+        class = "btn btn-sm btn-outline-primary dt-icon-btn dt-shiny-action",
+        `data-input-id` = "plot_link_click",
+        `data-value` = htmltools::htmlEscape(detail_code, attribute = TRUE),
+        htmltools::HTML(paste0(.BTN_ICON_EYE, "Details"))
       )
     } else {
-      '<button type="button" class="btn btn-sm btn-outline-primary" disabled>Map</button>'
+      htmltools::tags$button(
+        type = "button",
+        class = "btn btn-sm btn-outline-primary dt-icon-btn",
+        disabled = NA,
+        htmltools::HTML(paste0(.BTN_ICON_EYE, "Details"))
+      )
     }
-    sprintf('<div class="btn-group btn-group-sm" role="group">%s%s</div>', detail_btn, map_btn)
+    # Map/pin button
+    map_btn <- if (has_coords) {
+      map_attrs <- list(
+        type = "button",
+        class = "btn btn-sm btn-outline-primary dt-icon-btn dt-map-action",
+        `data-lat` = htmltools::htmlEscape(lat, attribute = TRUE),
+        `data-lng` = htmltools::htmlEscape(lng, attribute = TRUE),
+        htmltools::HTML(paste0(.BTN_ICON_PIN, "Map"))
+      )
+      if (!is.null(code) && nzchar(code)) {
+        map_attrs[["data-code"]] <- htmltools::htmlEscape(code, attribute = TRUE)
+      }
+      if (!is.null(detail_code) && nzchar(detail_code)) {
+        map_attrs[["data-ob-code"]] <- htmltools::htmlEscape(detail_code, attribute = TRUE)
+      }
+      do.call(htmltools::tags$button, map_attrs)
+    } else {
+      htmltools::tags$button(
+        type = "button",
+        class = "btn btn-sm btn-outline-primary dt-icon-btn",
+        disabled = NA,
+        htmltools::HTML(paste0(.BTN_ICON_PIN, "Map"))
+      )
+    }
+    as.character(htmltools::tags$div(
+      class = "btn-group btn-group-sm",
+      role = "group",
+      detail_btn,
+      map_btn
+    ))
   }, character(1))
 }
 
@@ -182,26 +272,26 @@ format_plot_taxa_list <- function(taxa_list, taxon_counts) {
     taxa <- taxa_list[[idx]]
     total <- suppressWarnings(as.integer(taxon_counts[[idx]]))
     if (is.null(taxa) || !is.data.frame(taxa) || nrow(taxa) == 0) {
-      return('<span class="text-muted">Not provided</span>')
+      return('<span class="text-muted">No taxa recorded</span>')
     }
     links <- vapply(seq_len(nrow(taxa)), function(j) {
       name <- taxa[j, "name", drop = TRUE]
-      pc_code <- taxa[j, "pc_code", drop = TRUE]
+      to_code_val <- if ("to_code" %in% names(taxa)) taxa[j, "to_code", drop = TRUE] else NA_character_
       max_cover <- taxa[j, "max_cover", drop = TRUE]
       safe_name <- htmltools::htmlEscape(name)
-      name_link <- if (!is.null(pc_code) && nzchar(pc_code)) {
-        sprintf('<a href="#" class="dt-shiny-action" data-input-id="plant_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(pc_code, attribute = TRUE), safe_name)
+      name_link <- if (!is.null(to_code_val) && !is.na(to_code_val) && nzchar(to_code_val)) {
+        sprintf('<a href="#" class="dt-shiny-action" data-input-id="to_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(to_code_val, attribute = TRUE), safe_name)
       } else {
-        sprintf('<span>%s</span>', safe_name)
+        sprintf("<span>%s</span>", safe_name)
       }
       if (!is.null(max_cover) && !is.na(max_cover)) {
-        cover_text <- sprintf('(%0.1f%%)', as.numeric(max_cover))
+        cover_text <- sprintf("(%0.1f%%)", as.numeric(max_cover))
         sprintf('<div style="display: flex; justify-content: space-between;"><span>%s</span><span style="margin-left: 8px;">%s</span></div>', name_link, htmltools::htmlEscape(cover_text, attribute = TRUE))
       } else {
-        sprintf('<div>%s</div>', name_link)
+        sprintf("<div>%s</div>", name_link)
       }
     }, character(1))
-    html <- paste(links, collapse = '')
+    html <- paste(links, collapse = "")
     if (!is.null(total) && !is.na(total) && total > length(links)) {
       remainder <- total - length(links)
       html <- paste0(html, sprintf('<div class="text-muted small">+%d other taxa</div>', remainder))
@@ -220,7 +310,7 @@ format_plot_community_list <- function(comm_list) {
   vapply(seq_len(row_count), function(idx) {
     comms <- comm_list[[idx]]
     if (is.null(comms) || !is.data.frame(comms) || nrow(comms) == 0) {
-      return('<span class="text-muted">Not provided</span>')
+      return('<span class="text-muted">No communities recorded</span>')
     }
     links <- vapply(seq_len(nrow(comms)), function(j) {
       comm_name <- comms[j, "comm_name", drop = TRUE]
@@ -230,14 +320,14 @@ format_plot_community_list <- function(comm_list) {
       entry <- if (!is.null(cl_code) && nzchar(cl_code)) {
         sprintf('<a href="#" class="dt-shiny-action" data-input-id="comm_class_link_click" data-value="%s">%s</a>', htmltools::htmlEscape(cl_code, attribute = TRUE), safe_name)
       } else {
-        sprintf('<span>%s</span>', safe_name)
+        sprintf("<span>%s</span>", safe_name)
       }
-      if (!is.null(comm_code) && nzchar(comm_code) && grepl('^CEGL', comm_code, ignore.case = TRUE)) {
+      if (!is.null(comm_code) && nzchar(comm_code) && grepl("^CEGL", comm_code, ignore.case = TRUE)) {
         entry <- paste0(entry, sprintf('<br><span class="text-muted small">%s</span>', htmltools::htmlEscape(comm_code, attribute = TRUE)))
       }
       entry
     }, character(1))
-    paste(links, collapse = '<br>')
+    paste(links, collapse = "<br>")
   }, character(1))
 }
 
@@ -280,7 +370,7 @@ format_location_column <- function(data, latitudes = NULL, longitudes = NULL, el
 
     # Default if no location provided
     if (!length(lines)) {
-      lines <- "Not provided"
+      lines <- "Unspecified"
     }
 
     # Add coordinates in muted text if available
@@ -410,6 +500,26 @@ normalize_plot_data <- create_normalizer(
 #' Coerce VegBank plot response to a data frame
 #' @noRd
 coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
+
+.PLOT_TABLE_HELP_CONTENT <- local({
+  html <- as.character(htmltools::tagList(
+    htmltools::tags$p(
+      "This table lists all plot observations in VegBank. Each row is a single observation."
+    ),
+    htmltools::tags$ul(
+      htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box (top right) to filter by plant concept, community type, author code, VegBank code, or location."),
+      htmltools::tags$li(htmltools::tags$strong("Filter by resource:"), " clicking a plot count link from a Project, Party, Community, or Plant view will pre-filter this table to contain only those plots. You can then filter further with the search bar."),
+      htmltools::tags$li(htmltools::tags$strong("Download:"), " once the table is filtered to within 20,000 entries, the Download CSV button becomes active. Open the README.txt file after downloading or visit the Download page in the About menu to learn how to combine the data."),
+      htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plot in an overlay."),
+      htmltools::tags$li(htmltools::tags$strong("Show on map:"), " click the Map button to jump to the plot location on the Map tab."),
+      htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code and Author Code support sorting."),
+    )
+  ))
+  # Collapse to single line and escape single quotes for embedding in a JS single-quoted string
+  html <- gsub("\n", "", html, fixed = TRUE)
+  gsub("'", "\\'", html, fixed = TRUE)
+})
+
 PLOT_TABLE_SPEC <- list(
   table_id = "plot_table",
   resource = "plot-observations",
@@ -426,14 +536,32 @@ PLOT_TABLE_SPEC <- list(
     clean_rows_fn = sanitize_dt_rows,
     query = list(with_nested = "TRUE"),
     sort_field_map = list(
-      "1" = "default", # Vegbank Code
+      "1" = "default", # VegBank Code
       "2" = "author_obs_code"
     )
   ),
   page_length = NULL,
+  search_placeholder = "by plant, community, author code, VegBank code, or location\u2026",
   options = list(
-    scrollY = "calc(100vh - 235px)"
+    scrollY = "calc(100vh - 235px)",
+    dom = "Bfrtip",
+    buttons = I(list(
+      make_help_button_js("Plots Table", .PLOT_TABLE_HELP_CONTENT),
+      list(
+        extend = "csv",
+        text = paste0(.BTN_ICON_DOWNLOAD, "Download CSV (up to ", format(DOWNLOAD_MAX_RECORDS, big.mark = ","), " entries)"),
+        className = "btn btn-sm btn-outline-info vb-plot-download",
+        action = DT::JS("function(e, dt, node, config) { Shiny.setInputValue('plot_download_trigger', Math.random()); }")
+      )
+    )),
+    initComplete = DT::JS(
+      "function(settings, json) {
+        Shiny.setInputValue('plot_table_ready', Math.random());
+      }"
+    )
   ),
-  datatable_args = list(),
+  datatable_args = list(
+    extensions = "Buttons"
+  ),
   initial_display = PLOT_TABLE_DISPLAY_TEMPLATE
 )
