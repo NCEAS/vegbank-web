@@ -45,7 +45,7 @@ build_home_panel <- function() {
             htmltools::tags$h1("VegBank"),
             htmltools::tags$p(
               class = "vb-hero-tagline",
-              "The ESA's open repository for vegetation plot data"
+              "A Repository for Vegetation Plot Data across North America"
             )
           )
         )
@@ -74,7 +74,7 @@ build_home_panel <- function() {
           htmltools::tags$p(
             "For programmatic data access or to upload data, see the ",
             htmltools::tags$a(
-              href = "https://github.com/NCEAS/vegbankr",
+              href = "https://nceas.github.io/vegbankr/index.html",
               target = "_blank",
               rel = "noopener noreferrer",
               "vegbankr R package"
@@ -85,6 +85,10 @@ build_home_panel <- function() {
               "FAQ page"
             ),
             " and other info in the About dropdown for additional background and documentation."
+          ),
+          htmltools::tags$p("Please ",
+            htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here"),
+            " with details about what you were doing when the problem occurred."
           )
         ),
 
@@ -137,7 +141,7 @@ build_home_panel <- function() {
             )
           ),
           htmltools::tags$a(
-            href = "https://github.com/NCEAS/vegbankr",
+            href = "https://nceas.github.io/vegbankr/index.html",
             target = "_blank",
             rel = "noopener noreferrer",
             class = "btn btn-outline-primary btn-lg vb-cta-btn",
@@ -147,17 +151,6 @@ build_home_panel <- function() {
             href = "?tab=Getting Started",
             class = "btn btn-outline-primary btn-lg vb-cta-btn",
             "Learn More"
-          )
-        ),
-
-        # Beta notice
-        htmltools::tags$h5("Beta Notice"),
-        htmltools::tags$p(
-          htmltools::tags$em(
-            " The content of this page may change. This is still a beta release; ",
-            " things may be slow and buggy. Please ",
-            htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here"),
-            " with details about what you were doing when the problem occurred."
           )
         ),
 
