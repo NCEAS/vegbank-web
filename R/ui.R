@@ -35,6 +35,7 @@ ui <- function(req) {
 
   # Ensure Inter font loads from CDN before any CSS
   font_head <- htmltools::tags$head(
+    htmltools::tags$link(rel = "icon", type = "image/svg+xml", href = "assets/logo_vegbank_leaves.svg"),
     htmltools::tags$link(rel = "preconnect", href = "https://rsms.me/"),
     htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css"),
     htmltools::tags$link(rel = "stylesheet", href = "assets/vegbank_styles.css")
