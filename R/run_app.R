@@ -5,7 +5,8 @@
 #' Running the application requires:
 #'   - R (version 4.0 or higher) installed on the local machine
 #'   - The `vegbankweb` package and its dependencies installed in the R environment
-#'   - R_CONFIG_FILE environment variable set to the absolute path of a valid configuration file
+#'   - Optionally, an R_CONFIG_FILE environment variable set to the absolute path of a valid
+#'     configuration file; defaults to the inst/config.yml bundled with the package
 #'   - An active internet connection to access the VegBank API
 #'   - A modern web browser to view the user interface
 #'

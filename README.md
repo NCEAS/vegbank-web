@@ -17,14 +17,12 @@ The app is currently configured to hit the [vegbankr](https://github.com/NCEAS/v
 
 To run the app locally, you'll need to [install R](https://www.r-project.org/) and [download this repository](https://docs.github.com/en/get-started/start-your-journey/downloading-files-from-github).
 
-Then, create a .Renviron file in the root directory of the repository and set the R_CONFIG_FILE envirionment variable in it to the absolute path of a [valid config.yml](https://rstudio.github.io/config/articles/introduction.html#embedding-r-code-inside-the-yaml-file) file, and select the configuration in that file by sepecifying the R_CONFIG_ACTIVE environmental variable. 
+By default the app uses the `inst/config.yml` bundled with the package (sourced via `system.file`). To override this, create a `.Renviron` file in the root directory of the repository and set the `R_CONFIG_FILE` environment variable to the absolute path of a [valid config.yml](https://rstudio.github.io/config/articles/introduction.html#embedding-r-code-inside-the-yaml-file) file. You can also select a named configuration block by setting the `R_CONFIG_ACTIVE` environment variable (defaults to `"default"` if not set).
 
-For example, to select the production configuration in the /inst/config.yml file included with this repository, add something like:
-
+For example, to select the production configuration in a custom config file, add something like:
 
 ```
 # vegbank-web/.Renviron
-# Your absolute path to inst/config.yml will be different
 R_CONFIG_FILE="/Users/yourUserName/git/vegbank-web/inst/config.yml"
 R_CONFIG_ACTIVE="production"
 ```

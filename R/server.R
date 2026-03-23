@@ -21,7 +21,18 @@
 #' @noRd
 # ================= MAIN SERVER FUNCTION ===========================================================
 server <- function(input, output, session) {
-  cfg <- config::get()
+  config_file <- if (nzchar(Sys.getenv("R_CONFIG_FILE"))) {
+    Sys.getenv("R_CONFIG_FILE")
+  } else {
+    pkg_config <- system.file("config.yml", package = "vegbankweb")
+    if (!nzchar(pkg_config)) {
+      stop("Could not locate config.yml in the vegbankweb package. ",
+           "Set the R_CONFIG_FILE environment variable to the path of a valid config.yml ",
+           "or add a valid config.yml to the package.")
+    }
+    pkg_config
+  }
+  cfg <- config::get(file = config_file)
   if (isTRUE(cfg$vb_debug)) vegbankr::vb_debug()
   vegbankr::vb_set_base_url(cfg$vb_base_url)
 
