@@ -90,7 +90,7 @@ process_project_data <- function(project_data) {
     "Ended" = vapply(stops, htmltools::htmlEscape, character(1)),
     "Last Plot Added" = vapply(last_added, htmltools::htmlEscape, character(1)),
     "Description" = vapply(seq_along(descriptions), function(i) {
-      safe_desc <- htmltools::htmlEscape(descriptions[i])
+      safe_desc <- sanitize_description_html(descriptions[i])
       safe_code <- htmltools::htmlEscape(as.character(pj_codes[i]), attribute = TRUE)
       sprintf(
         '<div class="dt-description-container"><div class="dt-description">%s</div><a href="#" class="dt-read-more dt-shiny-action" data-input-id="proj_link_click" data-value="%s">Read more</a></div>',

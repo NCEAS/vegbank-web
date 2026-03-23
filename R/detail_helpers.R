@@ -413,6 +413,40 @@ has_valid_field_value <- function(data, field) {
   !all(trimws(as.character(value)) == "")
 }
 
+#' Sanitize Description HTML
+#'
+#' Safely renders a narrow allowlist of inline formatting tags (`<i>`, `<b>`, `<em>`,
+#' `<strong>`, `<br>`) from description text while preventing XSS.
+#'
+#' The strategy is **escape-then-restore**: every character is first passed through
+#' `htmltools::htmlEscape()`, which neutralises all HTML.  A regex then selectively
+#' restores only bare, attribute-free tags from the allowlist.  Because the full
+#' string is escaped first, tags that carry attributes (e.g. `<b onclick="...">`)
+#' are never restored and remain safely escaped.
+#'
+#' Pass the return value to `htmltools::HTML()` when inserting into an htmltools
+#' context; use it directly when building an HTML string (e.g. `sprintf()`).
+#'
+#' @param text A character string that may contain HTML inline-formatting tags
+#' @return A character string with dangerous HTML escaped and safe inline tags
+#'   preserved as real HTML
+#' @noRd
+sanitize_description_html <- function(text) {
+  if (is.null(text) || is.na(text) || !nzchar(trimws(as.character(text)))) {
+    return(text)
+  }
+  escaped <- htmltools::htmlEscape(as.character(text))
+  # Restore only bare inline tags with no attributes (the &lt; / &gt; form is what
+  # htmlEscape produces, so the pattern below can only match attribute-free tags).
+  gsub(
+    "&lt;(/?(?:i|b|em|strong|br/?))&gt;",
+    "<\\1>",
+    escaped,
+    perl = TRUE,
+    ignore.case = TRUE
+  )
+}
+
 #' Format Date Range for Display
 #'
 #' Formats start and stop dates into a human-readable range string.
