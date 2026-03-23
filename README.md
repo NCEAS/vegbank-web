@@ -1,6 +1,6 @@
 ## VegBank Web: A Web App for Vegetation Plot Data
 - **Authors**: Gill, Darian; Regetz, Jim (0009-0008-2666-6229);
-- **License**: [Apache 2](http://opensource.org/licenses/Apache-2.0)
+- **License**: [Apache 2](https://opensource.org/licenses/Apache-2.0)
 - [Package source code on GitHub](https://github.com/NCEAS/vegbank-web)
 - [**Submit Bugs and feature requests**](https://github.com/NCEAS/vegbank-web/issues)
 
@@ -46,7 +46,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
