@@ -104,7 +104,7 @@ Please select from the following questions, or browse through this file:
 
 ##### How do I download VegBank data? {#howdownload}
 
-> Data can be downloaded from the [vegbankr](https://github.com/NCEAS/vegbankr) R package, which underpins this website and serves as an interface to the VegBank API.
+> Data can be downloaded from the [vegbankr](https://nceas.github.io/vegbankr/index.html) R package, which underpins this website and serves as an interface to the VegBank API.
 
 [back to top...](#topoffaq)
 

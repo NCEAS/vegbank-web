@@ -246,6 +246,14 @@ build_navbar <- function(initial_tab = "Home") {
           class = "vb-markdown-page",
           shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
         )
+      ),
+      bslib::nav_item(
+        htmltools::tags$a(
+          "vegbankr",
+          href = "https://nceas.github.io/vegbankr/index.html",
+          target = "_blank",
+          rel = "noopener noreferrer"
+        )
       )
     )
   )
