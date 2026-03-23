@@ -123,3 +123,82 @@ test_that("create_detail_link handles special characters safely", {
   expect_true(grepl("&lt;test&gt;", link_html)) # escaped angle brackets
   expect_true(grepl("&amp;", link_html)) # escaped ampersand
 })
+
+# ---- sanitize_description_html tests ----
+
+test_that("sanitize_description_html preserves allowed inline tags without attributes", {
+  expect_equal(sanitize_description_html("plain text"), "plain text")
+  expect_equal(sanitize_description_html("a <i>italic</i> word"), "a <i>italic</i> word")
+  expect_equal(sanitize_description_html("a <b>bold</b> word"), "a <b>bold</b> word")
+  expect_equal(sanitize_description_html("<em>emphasis</em>"), "<em>emphasis</em>")
+  expect_equal(sanitize_description_html("<strong>strong</strong>"), "<strong>strong</strong>")
+  expect_equal(sanitize_description_html("line one<br>line two"), "line one<br>line two")
+  expect_equal(sanitize_description_html("line one<br/>line two"), "line one<br/>line two")
+  # Mixed allowlist tags
+  expect_equal(
+    sanitize_description_html("<b>bold</b> and <i>italic</i>"),
+    "<b>bold</b> and <i>italic</i>"
+  )
+})
+
+test_that("sanitize_description_html preserves allowed tags case-insensitively", {
+  expect_equal(sanitize_description_html("<I>italic</I>"), "<I>italic</I>")
+  expect_equal(sanitize_description_html("<B>bold</B>"), "<B>bold</B>")
+  expect_equal(sanitize_description_html("<EM>em</EM>"), "<EM>em</EM>")
+  expect_equal(sanitize_description_html("<STRONG>strong</STRONG>"), "<STRONG>strong</STRONG>")
+  expect_equal(sanitize_description_html("<BR>"), "<BR>")
+})
+
+test_that("sanitize_description_html escapes disallowed tags", {
+  # <script> must never appear in output
+  result <- sanitize_description_html("<script>alert('xss')</script>")
+  expect_false(grepl("<script>", result, fixed = TRUE))
+  expect_true(grepl("&lt;script&gt;", result, fixed = TRUE))
+
+  # <img> is not on the allowlist
+  result <- sanitize_description_html('<img src="x" onerror="alert(1)">')
+  expect_false(grepl("<img", result, fixed = TRUE))
+  expect_true(grepl("&lt;img", result, fixed = TRUE))
+
+  # <a> is not on the allowlist
+  result <- sanitize_description_html('<a href="http://evil.example">click</a>')
+  expect_false(grepl("<a ", result, fixed = TRUE))
+  expect_true(grepl("&lt;a ", result, fixed = TRUE))
+
+  # <div> is not on the allowlist
+  result <- sanitize_description_html("<div>block</div>")
+  expect_false(grepl("<div>", result, fixed = TRUE))
+  expect_true(grepl("&lt;div&gt;", result, fixed = TRUE))
+})
+
+test_that("sanitize_description_html does not restore allowed tags that carry attributes", {
+  # <b> with an event handler must stay escaped
+  result <- sanitize_description_html('<b onclick="alert(1)">bold</b>')
+  expect_false(grepl('<b onclick', result, fixed = TRUE))
+  expect_true(grepl("&lt;b onclick", result, fixed = TRUE))
+
+  # <i> with a style attribute must stay escaped
+  result <- sanitize_description_html('<i style="color:red">italic</i>')
+  expect_false(grepl('<i style', result, fixed = TRUE))
+  expect_true(grepl("&lt;i style", result, fixed = TRUE))
+
+  # <em> with any attribute must stay escaped
+  result <- sanitize_description_html('<em class="x">em</em>')
+  expect_false(grepl('<em class', result, fixed = TRUE))
+  expect_true(grepl("&lt;em class", result, fixed = TRUE))
+
+  # <br> with an attribute must stay escaped
+  result <- sanitize_description_html('<br id="x">')
+  expect_false(grepl('<br id', result, fixed = TRUE))
+  expect_true(grepl("&lt;br id", result, fixed = TRUE))
+})
+
+test_that("sanitize_description_html handles edge cases gracefully", {
+  expect_equal(sanitize_description_html(NULL), NULL)
+  expect_true(is.na(sanitize_description_html(NA)))
+  expect_equal(sanitize_description_html(""), "")
+  expect_equal(sanitize_description_html("   "), "   ")
+  # Ampersands and quotes in plain text are still escaped
+  result <- sanitize_description_html("cats & dogs")
+  expect_true(grepl("&amp;", result, fixed = TRUE))
+})
