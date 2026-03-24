@@ -249,8 +249,16 @@ build_navbar <- function(initial_tab = "Home") {
       ),
       bslib::nav_item(
         htmltools::tags$a(
-          "vegbankr",
+          "vegbankr Package",
           href = "https://nceas.github.io/vegbankr/index.html",
+          target = "_blank",
+          rel = "noopener noreferrer"
+        )
+      ),
+      bslib::nav_item(
+        htmltools::tags$a(
+          "VegBank REST API",
+          href = "https://nceas.github.io/vegbank2/api/",
           target = "_blank",
           rel = "noopener noreferrer"
         )
