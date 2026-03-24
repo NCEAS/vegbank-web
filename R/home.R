@@ -45,7 +45,7 @@ build_home_panel <- function() {
             htmltools::tags$h1("VegBank"),
             htmltools::tags$p(
               class = "vb-hero-tagline",
-              "The ESA's open repository for vegetation plot data"
+              "A Repository for Vegetation Plot Data across North America"
             )
           )
         )
@@ -61,34 +61,44 @@ build_home_panel <- function() {
           htmltools::tags$h2("Welcome to VegBank!"),
           htmltools::tags$p(
             "VegBank is the public repository for vegetation plot data,",
-            " maintained by the ",
+            "maintained by the",
             htmltools::tags$a(
               href = "https://esa.org/vegpanel/",
               target = "_blank",
               rel = "noopener noreferrer",
-              "Ecological Society of America's Vegetation Classification Panel"
+              "Ecological Society of America's Vegetation Classification Panel."
             ),
-            ". These data support the development of the U.S. National Vegetation",
-            " Classification and general ecological research across North America."
+            "These data support the development of the U.S. National Vegetation",
+            "Classification and general ecological research across North America."
           ),
           htmltools::tags$p(
-            "For programmatic data access or to upload data, see the ",
+            "These data are also available for access with R via the",
             htmltools::tags$a(
-              href = "https://github.com/NCEAS/vegbankr",
+              href = "https://nceas.github.io/vegbankr/",
               target = "_blank",
               rel = "noopener noreferrer",
-              "vegbankr R package"
+              "vegbankr R package,"
             ),
-            ". You can also browse the ",
+            "and in other languages via the",
             htmltools::tags$a(
-              href = "?tab=FAQ",
-              "FAQ page"
+              href = "https://nceas.github.io/vegbank2/api/",
+              target = "_blank",
+              rel = "noopener noreferrer",
+              "VegBank REST API."
             ),
-            " and other info in the About dropdown for additional background and documentation."
-          )
-        ),
+            "To upload data,",
+            htmltools::tags$a(href = "mailto:help@vegbank.org", "request contributor permissions"),
+            "from the ESA Vegetation Classification Panel. Once your contributor role is granted,",
+            " you will be able to upload new plot data with the ",
+            htmltools::tags$a(
+              href = "https://nceas.github.io/vegbankr/articles/upload.html",
+              target = "_blank",
+              rel = "noopener noreferrer",
+              "vegbankr R package."
+            )
+          ),
 
-        # CTA buttons
+          # CTA buttons
         htmltools::tags$div(
           class = "vb-home-cta",
           # Browse dropdown
@@ -137,7 +147,7 @@ build_home_panel <- function() {
             )
           ),
           htmltools::tags$a(
-            href = "https://github.com/NCEAS/vegbankr",
+            href = "https://nceas.github.io/vegbankr/index.html",
             target = "_blank",
             rel = "noopener noreferrer",
             class = "btn btn-outline-primary btn-lg vb-cta-btn",
@@ -146,18 +156,17 @@ build_home_panel <- function() {
           htmltools::tags$a(
             href = "?tab=Getting Started",
             class = "btn btn-outline-primary btn-lg vb-cta-btn",
-            "Learn More"
+            "Get Started"
           )
         ),
 
-        # Beta notice
-        htmltools::tags$h5("Beta Notice"),
-        htmltools::tags$p(
-          htmltools::tags$em(
-            " The content of this page may change. This is still a beta release; ",
-            " things may be slow and buggy. Please ",
-            htmltools::tags$a(href = "mailto:help@vegbank.org", "report bugs here"),
-            " with details about what you were doing when the problem occurred."
+
+          htmltools::tags$p(
+            "Browse the",
+            htmltools::tags$a(href = "?tab=FAQ", "FAQ page"),
+            "and other info in the About dropdown for additional documentation. Please",
+            htmltools::tags$a(href = "mailto:help@vegbank.org", "report any bugs here"),
+            "with details about what you were doing when the problem occurred."
           )
         ),
 

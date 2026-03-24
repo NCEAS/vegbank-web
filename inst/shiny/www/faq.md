@@ -33,7 +33,7 @@ Please select from the following questions, or browse through this file:
 
 ##### Who runs VegBank? {#whoruns}
 
-> VegBank is operated by the [National Center for Ecological Analysis and Synthesis](http://www.nceas.ucsb.edu/) in cooperation with the Ecological Society of America's [Vegetation Panel](https://esa.org/vegpanel/).
+> VegBank is operated by the [National Center for Ecological Analysis and Synthesis](https://www.nceas.ucsb.edu/) in cooperation with the Ecological Society of America's [Vegetation Panel](https://esa.org/vegpanel/).
 
 [back to top...](#topoffaq)
 
@@ -51,8 +51,7 @@ Please select from the following questions, or browse through this file:
 
 > In overly simple terms, a community is a set of plant taxa that live adjacent to one another within a set of physical conditions. This community of co-occurring plants may be seen to repeat itself in a predictable pattern. One may classify (or interpret) a plot as belonging to a certain community type.  
 >   
-> The [Guidelines of the NVC (National Vegetation Classification) Standards document (version 3)](http://vegbank.org/vegdocs/panel/NVC_guidelines_v3.pdf) provides more full definitions for two different levels of communities: association and alliance. It defines an **association** "as the basic unit of vegetation: A vegetation classification unit defined on the bases of a characteristic range of species composition, diagnostic species occurrence, habitat conditions and physiognomy." (pg. 21)  
-> The broader **alliance** it defines as "A vegetation classification unit containing one or more associations, and defined by a characteristic range of species composition, habitat conditions, physiognomy, and diagnostic species, typically at least one of which is found in the uppermost or dominant stratum of the vegetation." (pg.23)  
+> The [USNVC Guide to the Classification](https://usnvc.org/guidetoclassification/) provides more full definitions for the 8 levels of the Natural Vegetation Heirarchy from Biome down to Association.
 >   
 > Communities are Concept-Based in VegBank, meaning they are defined by a combination of a name and a reference. See the [What is a Concept?](#whatconcept) FAQ Topic for more information on Concepts.
 
@@ -62,7 +61,7 @@ Please select from the following questions, or browse through this file:
 
 ##### What is a plant concept? What is a community concept? {#whatconcept}
 
-> Generally, people use only a plant name to refer to a particular plant taxon. However, names may mean different things to different people or at different times. When users view a plant in VegBank, they need to know what is meant by a plant name, hence only a name is not enough. A reference, or context, must be provided which gives the name meaning and defines what the taxon encompasses. When we mention a "plant concept" in VegBank, we mean this unique combination of name and reference. For example, one might mention "Carya ovata" according to (reference) "Radford, 1968." Each plant concept and community concept in VegBank has a VegBank Code which provides unique identification for the plant concept. For more information, please see the [VegBank Plant Taxonomy Overview](http://vegbank.org/vegdocs/design/planttaxaoverview.html).  
+> Generally, people use only a plant name to refer to a particular plant taxon. However, names may mean different things to different people or at different times. When users view a plant in VegBank, they need to know what is meant by a plant name, hence only a name is not enough. A reference, or context, must be provided which gives the name meaning and defines what the taxon encompasses. When we mention a "plant concept" in VegBank, we mean this unique combination of name and reference. For example, one might mention "Carya ovata" according to (reference) "Radford, 1968." Each plant concept and community concept in VegBank has a VegBank Code which provides unique identification for the plant concept.  
 > Community Concepts function in exactly the same way, except that Community Concepts describe a community type, not a plant taxon.
 
 [back to top...](#topoffaq)
@@ -75,7 +74,7 @@ Please select from the following questions, or browse through this file:
 > 1) We do not guarantee the accurateness of the data in VegBank. Users are allowed to annotate (make notes and reinterpret plants and plots) to share with other users their opinions about the data already in VegBank. \[Some of the annotation features are still in development.\]  
 > 2) We need users to share their data. There are many different reasons users share their data. Some are required to share their data by their grants, but don't want to deal with the hassle of setting up computer servers and software to manage this. Some use VegBank as a means of collaborating with others in data analysis. Others have finished analysis and are eager to find a use for their hard work other than being filed away to collect dust. Still others see the foresight in adding their data to the greater body of knowledge on a public site like VegBank.  
 >   
-> Other data, like plants and communities, come from VegBank's users, but rely heavily on VegBank users like the organizations [USDA Plants](http://plants.usda.gov/) and [NatureServe](http://natureserve.org/) to provide this data.
+> Other data, like plants and communities, come from VegBank's users, but rely heavily on VegBank users like the organizations [USDA Plants](https://plants.usda.gov/) and [NatureServe](https://natureserve.org/) to provide this data.
 
 [back to top...](#topoffaq)
 
@@ -104,7 +103,7 @@ Please select from the following questions, or browse through this file:
 
 ##### How do I download VegBank data? {#howdownload}
 
-> Data can be downloaded from the [vegbankr](https://github.com/NCEAS/vegbankr) R package, which underpins this website and serves as an interface to the VegBank API.
+> Data can be downloaded from the [vegbankr](https://nceas.github.io/vegbankr/index.html) R package, which underpins this website and serves as an interface to the VegBank API.
 
 [back to top...](#topoffaq)
 

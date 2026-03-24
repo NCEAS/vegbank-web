@@ -40,7 +40,7 @@ build_project_details_view <- function(result) {
 
     project_description = shiny::renderUI({
       if (has_valid_field_value(result, "project_description")) {
-        htmltools::tags$div(id = "project-description", htmltools::htmlEscape(result$project_description))
+        htmltools::tags$div(id = "project-description", htmltools::HTML(sanitize_description_html(result$project_description)))
       } else {
         htmltools::p("No description recorded")
       }

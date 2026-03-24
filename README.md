@@ -1,6 +1,6 @@
 ## VegBank Web: A Web App for Vegetation Plot Data
-- **Authors**: Gill, Darian; Regetz, Jim (0009-0008-2666-6229);
-- **License**: [Apache 2](http://opensource.org/licenses/Apache-2.0)
+
+- **License**: [Apache 2](https://opensource.org/licenses/Apache-2.0)
 - [Package source code on GitHub](https://github.com/NCEAS/vegbank-web)
 - [**Submit Bugs and feature requests**](https://github.com/NCEAS/vegbank-web/issues)
 
@@ -17,14 +17,12 @@ The app is currently configured to hit the [vegbankr](https://github.com/NCEAS/v
 
 To run the app locally, you'll need to [install R](https://www.r-project.org/) and [download this repository](https://docs.github.com/en/get-started/start-your-journey/downloading-files-from-github).
 
-Then, create a .Renviron file in the root directory of the repository and set the R_CONFIG_FILE envirionment variable in it to the absolute path of a [valid config.yml](https://rstudio.github.io/config/articles/introduction.html#embedding-r-code-inside-the-yaml-file) file, and select the configuration in that file by sepecifying the R_CONFIG_ACTIVE environmental variable. 
+By default the app uses the `inst/config.yml` bundled with the package (sourced via `system.file`). To override this, create a `.Renviron` file in the root directory of the repository and set the `R_CONFIG_FILE` environment variable to the absolute path of a [valid config.yml](https://rstudio.github.io/config/articles/introduction.html#embedding-r-code-inside-the-yaml-file) file. You can also select a named configuration block by setting the `R_CONFIG_ACTIVE` environment variable (defaults to `"default"` if not set).
 
-For example, to select the production configuration in the /inst/config.yml file included with this repository, add something like:
-
+For example, to select the production configuration in a custom config file, add something like:
 
 ```
 # vegbank-web/.Renviron
-# Your absolute path to inst/config.yml will be different
 R_CONFIG_FILE="/Users/yourUserName/git/vegbank-web/inst/config.yml"
 R_CONFIG_ACTIVE="production"
 ```
@@ -40,6 +38,28 @@ Finally run the following commands in your IDE terminal:
 ~ % vegbankweb::run_app()
 ```
 
+## Current Contributors
+- Darian Gill (dgill@nceas.ucsb.edu): ORCID: 0009-0005-7848-2163
+- Jim Regetz (regetz@nceas.ucsb.edu): ORCID: 0009-0008-2666-6229
+- Robert Shelton (rshelton@nceas.ucsb.edu): ORCID: 0009-0008-7478-8992
+- Matthew B. Jones (jones@nceas.ucsb.edu): ORCID: 0000-0003-0077-4738
+- Dou Mok (mok@nceas.ucsb.edu): ORCID: 0000-0002-6076-8092
+- Matthew Brooke (brooke@nceas.ucsb.edu): ORCID: 0000-0002-1472-913X
+- Rushiraj Nenuji (nenuji@nceas.ucsb.edu): ORCID: 0000-0003-4678-5213
+- Jeanette Clark (jclark@nceas.ucsb.edu): ORCID: 0000-0003-4703-1974
+- Maggie Klope (mmklope@nceas.ucsb.edu): ORCID: 0000-0003-3926-7039
+- Michael T. Lee (michael.lee@unc.edu): ORCID: 0009-0003-3874-8604
+- Robert K. Peet (peet@unc.edu): ORCID: 0000-0003-2823-6587
+
+## Previous Contributors
+- Michael D. Jennings
+- Dennis Grossman
+- Marilyn D. Walker
+- Mark Anderson
+- Gabriel Farrell
+- John Harris
+- Chad Berkley
+
 ## License
 ```
 Copyright [2025] [Regents of the University of California]
@@ -48,7 +68,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,

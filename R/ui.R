@@ -35,6 +35,7 @@ ui <- function(req) {
 
   # Ensure Inter font loads from CDN before any CSS
   font_head <- htmltools::tags$head(
+    htmltools::tags$link(rel = "icon", type = "image/svg+xml", href = "assets/logo_vegbank_leaves.svg"),
     htmltools::tags$link(rel = "preconnect", href = "https://rsms.me/"),
     htmltools::tags$link(rel = "stylesheet", href = "https://rsms.me/inter/inter.css"),
     htmltools::tags$link(rel = "stylesheet", href = "assets/vegbank_styles.css")
@@ -244,6 +245,22 @@ build_navbar <- function(initial_tab = "Home") {
         htmltools::tags$div(
           class = "vb-markdown-page",
           shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+        )
+      ),
+      bslib::nav_item(
+        htmltools::tags$a(
+          "vegbankr Package",
+          href = "https://nceas.github.io/vegbankr/index.html",
+          target = "_blank",
+          rel = "noopener noreferrer"
+        )
+      ),
+      bslib::nav_item(
+        htmltools::tags$a(
+          "VegBank REST API",
+          href = "https://nceas.github.io/vegbank2/api/",
+          target = "_blank",
+          rel = "noopener noreferrer"
         )
       )
     )

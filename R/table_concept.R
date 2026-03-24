@@ -234,7 +234,7 @@ process_concept_data <- function(data_sources, concept_type = "plant") {
     `Reference Source` = ref_links,
     Plots = obs_count_links,
     Description = vapply(seq_along(descriptions), function(i) {
-      safe_desc <- htmltools::htmlEscape(descriptions[i])
+      safe_desc <- sanitize_description_html(descriptions[i])
       safe_code <- htmltools::htmlEscape(as.character(concept_codes[[i]]), attribute = TRUE)
       sprintf(
         '<div class="dt-description-container"><div class="dt-description">%s</div><a href="#" class="dt-read-more dt-shiny-action" data-input-id="%s" data-value="%s">Read more</a></div>',

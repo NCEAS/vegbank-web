@@ -21,7 +21,9 @@ Running the application requires:
 \itemize{
 \item R (version 4.0 or higher) installed on the local machine
 \item The \code{vegbankweb} package and its dependencies installed in the R environment
-\item R_CONFIG_FILE environment variable set to the absolute path of a valid configuration file
+\item Optionally, an R_CONFIG_FILE environment variable set to the absolute path of a custom
+configuration file; defaults to the \code{config.yml} bundled with the package
+(source path: \code{inst/config.yml}; resolved at runtime via \code{system.file("config.yml", package = "vegbankweb")})
 \item An active internet connection to access the VegBank API
 \item A modern web browser to view the user interface
 }
