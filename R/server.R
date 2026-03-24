@@ -31,7 +31,7 @@ server <- function(input, output, session) {
         return(env_path)
       } else {
         warning("[config] R_CONFIG_FILE path does not exist: ", env_path,
-                " — falling back to package default.")
+                " -- falling back to package default.")
       }
     } else {
       message("[config] R_CONFIG_FILE not set; checking package default.")
@@ -138,7 +138,7 @@ server <- function(input, output, session) {
   initial_query <- shiny::isolate(shiny::parseQueryString(session$clientData$url_search))
   has_cite_param <- !is.null(initial_query$cite) && nzchar(initial_query$cite)
 
-  # For citation URLs, don't pre-select a tab — the citation resolver will navigate
+  # For citation URLs, don't pre-select a tab -- the citation resolver will navigate
   # to the correct tab after resolving the identifier. For all other URLs, parse the
   # tab parameter or default to Home.
   if (has_cite_param) {
@@ -235,7 +235,7 @@ server <- function(input, output, session) {
   # to update the encoded URL. Each DataTable widget sends its state through a
   # Shiny input (`<table_id>_state`); we sanitize the payload, de-dupe against the
   # current snapshot, and only mutate browser history when the active tab matches
-  # the table emitting the event. This keeps the URL and Shiny’s authoritative
+  # the table emitting the event. This keeps the URL and Shiny's authoritative
   # state in sync without double-applying DT settings.
   # Parameters:
   #   key - Table registry key
@@ -706,7 +706,7 @@ server <- function(input, output, session) {
 
   output$comm_table <- DT::renderDataTable({
     # Rebuild table when citation filter changes.
-    # Status changes are handled via proxy reload above — no dependency here.
+    # Status changes are handled via proxy reload above -- no dependency here.
     filter <- state$community_filter()
     vb_code <- if (!is.null(filter)) filter$code else NULL
     filter_type <- if (!is.null(filter)) filter$type else NULL
@@ -727,7 +727,7 @@ server <- function(input, output, session) {
   })
 
   output$plant_table <- DT::renderDataTable({
-    # Status changes handled via proxy reload — no dependency here.
+    # Status changes handled via proxy reload -- no dependency here.
     build_concept_table_with_filter(
       concept_type = "plant",
       status_fn = state$plant_status
@@ -980,7 +980,7 @@ server <- function(input, output, session) {
         return()
       }
 
-      # Multiple matches — send disambiguation list (cap at 50 for sanity)
+      # Multiple matches -- send disambiguation list (cap at 50 for sanity)
       matches <- utils::head(matches, 50)
       match_list <- lapply(seq_len(nrow(matches)), function(i) {
         list(
@@ -1420,7 +1420,7 @@ server <- function(input, output, session) {
       }
 
       # Restore concept status filters from URL.
-      # `status_reactive` is a reactiveVal — calling it reads, calling it with a value sets.
+      # `status_reactive` is a reactiveVal -- calling it reads, calling it with a value sets.
       restore_status_param <- function(url_param, status_reactive, msg_type) {
         val <- url_manager$first_param(url_param)
         target <- if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) val else "current_accepted"
