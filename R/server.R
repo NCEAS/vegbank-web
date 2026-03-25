@@ -579,7 +579,7 @@ server <- function(input, output, session) {
       htmltools::tags$a(
         href = "#",
         onclick = sprintf(
-          "Shiny.setInputValue('citation_detail_click', {code: '%s', detail_type: '%s'}, {priority: 'event'}); return false;",
+          "Shiny.setInputValue('filter_detail_click', {code: '%s', detail_type: '%s'}, {priority: 'event'}); return false;",
           safe_code, safe_detail_type
         ),
         filter$code
@@ -1302,8 +1302,8 @@ server <- function(input, output, session) {
     }
   })
 
-  shiny::observeEvent(input$citation_detail_click, {
-    event_data <- input$citation_detail_click
+  shiny::observeEvent(input$filter_detail_click, {
+    event_data <- input$filter_detail_click
     if (is.null(event_data)) return()
     vb_code     <- event_data$code
     detail_type <- event_data$detail_type
