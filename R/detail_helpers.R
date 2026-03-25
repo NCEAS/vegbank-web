@@ -96,11 +96,23 @@ append_units <- function(field_name, value) {
     return(value)
   }
 
-  # slope_aspect encodes two sentinel values that must not receive a degree symbol
-  if (field_name == "slope_aspect") {
+  # slope_aspect and gradient encodes two sentinel values that must not receive a degree symbol
+  if (field_name == "slope_aspect" ||
+        field_name == "slope_gradient") {
     numeric_value <- suppressWarnings(as.numeric(value))
     if (!is.na(numeric_value) && numeric_value == -1) return("-1 (Too flat)")
     if (!is.na(numeric_value) && numeric_value == -2) return("-2 (Too irregular)")
+  }
+
+  # area measurements use -1 to indicate lack of boundaries
+  if (field_name == "taxon_observation_area" ||
+        field_name == "taxon_inference_area" ||
+        field_name == "stem_observation_area" ||
+        field_name == "stem_taxon_area" ||
+        field_name == "inference_area" ||
+        field_name == "area") {
+    numeric_value <- suppressWarnings(as.numeric(value))
+    if (!is.na(numeric_value) && numeric_value == -1) return("-1 (No known boundaries)")
   }
 
   unit_map <- c(
@@ -119,7 +131,7 @@ append_units <- function(field_name, value) {
     taxon_observation_area = " m\u00B2",
     stem_observation_area = " m\u00B2",
     inference_area = " m\u00B2",
-    basal_area = " m\u00B2",
+    basal_area = " m\u00B2/ha",
     azimuth = "\u00B0",
     slope_aspect = "\u00B0",
     min_slope_aspect = "\u00B0",

@@ -225,3 +225,42 @@ test_that("append_units skips sentinel check for NA or Unspecified slope_aspect"
   expect_equal(append_units("slope_aspect", NA),           NA)
   expect_equal(append_units("slope_aspect", "Unspecified"), "Unspecified")
 })
+
+test_that("append_units renders slope_gradient sentinel values without degree symbol", {
+  expect_equal(append_units("slope_gradient", -1),   "-1 (Too flat)")
+  expect_equal(append_units("slope_gradient", -2),   "-2 (Too irregular)")
+  expect_equal(append_units("slope_gradient", "-1"), "-1 (Too flat)")
+  expect_equal(append_units("slope_gradient", "-2"), "-2 (Too irregular)")
+})
+
+test_that("append_units appends degree symbol to normal slope_gradient values", {
+  expect_equal(append_units("slope_gradient", 0),   "0\u00B0")
+  expect_equal(append_units("slope_gradient", 15),  "15\u00B0")
+  expect_equal(append_units("slope_gradient", 90),  "90\u00B0")
+})
+
+test_that("append_units sentinel check does not affect min/max slope_gradient", {
+  expect_equal(append_units("min_slope_gradient", -1),  "-1\u00B0")
+  expect_equal(append_units("max_slope_gradient", -2),  "-2\u00B0")
+})
+
+test_that("append_units renders area sentinel values without square meter units", {
+  expect_equal(append_units("area", -1),                    "-1 (No known boundaries)")
+  expect_equal(append_units("taxon_observation_area", -1),  "-1 (No known boundaries)")
+  expect_equal(append_units("taxon_inference_area", -1),    "-1 (No known boundaries)")
+  expect_equal(append_units("stem_observation_area", -1),   "-1 (No known boundaries)")
+  expect_equal(append_units("inference_area", -1),          "-1 (No known boundaries)")
+  expect_equal(append_units("stem_taxon_area", -1),         "-1 (No known boundaries)")
+})
+
+test_that("append_units keeps normal units for area fields when not sentinel", {
+  expect_equal(append_units("area", 12),                   "12 m\u00B2")
+  expect_equal(append_units("taxon_observation_area", 8),  "8 m\u00B2")
+  expect_equal(append_units("taxon_inference_area", 3),    "3 m\u00B2")
+  expect_equal(append_units("stem_observation_area", 5),   "5 m\u00B2")
+  expect_equal(append_units("inference_area", 4),          "4 m\u00B2")
+})
+
+test_that("append_units returns raw value for stem_taxon_area when not sentinel", {
+  expect_equal(append_units("stem_taxon_area", 9), 9)
+})
