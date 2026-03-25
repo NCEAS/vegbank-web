@@ -140,7 +140,7 @@ parse_dataset_author_label <- function(owner_label) {
 #' @return A character string containing the full citation
 #' @noRd
 build_dataset_citation_text <- function(ds, author_name, start_year, stop_year) {
-  name      <- htmltools::htmlEscape(as.character(ds$name %|||% "Unnamed Dataset"))
+  name      <- as.character(ds$name %|||% "Unnamed Dataset")
   accession <- as.character(ds$accession_code %|||% "Unspecified")
 
   date_part <- if (!identical(start_year, "Unspecified") && !identical(stop_year, "Unspecified")) {
