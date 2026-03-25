@@ -102,8 +102,7 @@ build_dataset_details_view <- function(result) {
     }),
 
     dataset_citation = shiny::renderUI({
-      citation_text <- build_dataset_citation_text(ds, author_name, start_year, stop_year)
-      htmltools::HTML(citation_text)
+      build_dataset_citation_text(ds, author_name, start_year, stop_year)
     })
   )
 }
@@ -140,8 +139,10 @@ parse_dataset_author_label <- function(owner_label) {
 #' @return A character string containing the full citation
 #' @noRd
 build_dataset_citation_text <- function(ds, author_name, start_year, stop_year) {
-  name      <- htmltools::htmlEscape(as.character(ds$name %|||% "Unnamed Dataset"))
-  accession <- as.character(ds$accession_code %|||% "Unspecified")
+  # Escape all interpolated fields
+  safe_author    <- htmltools::htmlEscape(as.character(author_name %|||% "Unknown Author"))
+  safe_name      <- htmltools::htmlEscape(as.character(ds$name %|||% "Unnamed Dataset"))
+  safe_accession <- htmltools::htmlEscape(as.character(ds$accession_code %|||% "Unspecified"))
 
   date_part <- if (!identical(start_year, "Unspecified") && !identical(stop_year, "Unspecified")) {
     paste0(start_year, " - ", stop_year)
@@ -152,7 +153,7 @@ build_dataset_citation_text <- function(ds, author_name, start_year, stop_year) 
   }
 
   paste0(
-    author_name, " (", date_part, "): VegBank Plot Observations: \u201C",
-    name, "\u201D. VegBank. Dataset. ", accession, "."
+    safe_author, " (", date_part, "): VegBank Plot Observations: \u201C",
+    safe_name, "\u201D. VegBank. Dataset. ", safe_accession, "."
   )
 }
