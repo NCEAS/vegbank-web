@@ -1228,23 +1228,19 @@ Shiny.addCustomMessageHandler('updateDetailType', function(message) {
   const coverMethodCards = document.getElementById('cover-method-details-cards');
   const stratumMethodCards = document.getElementById('stratum-method-details-cards');
   const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
+  const userDatasetCards = document.getElementById('user-dataset-details-cards');
 
   console.log('Updating detail type to:', type);
 
-  if (plotCards && communityConceptCards && communityClassificationCards &&
-      projectCards && partyCards && plantConceptCards && referenceCards && coverMethodCards &&
-      stratumMethodCards && taxonObservationCards) {
+  const allCardSections = [
+    plotCards, communityConceptCards, communityClassificationCards,
+    projectCards, partyCards, plantConceptCards, referenceCards, coverMethodCards,
+    stratumMethodCards, taxonObservationCards, userDatasetCards
+  ];
+
+  if (allCardSections.every(function(el) { return el !== null; })) {
     // Hide all card types first
-    plotCards.style.display = 'none';
-    communityConceptCards.style.display = 'none';
-    communityClassificationCards.style.display = 'none';
-    projectCards.style.display = 'none';
-    partyCards.style.display = 'none';
-    plantConceptCards.style.display = 'none';
-    referenceCards.style.display = 'none';
-    coverMethodCards.style.display = 'none';
-    stratumMethodCards.style.display = 'none';
-    taxonObservationCards.style.display = 'none';
+    allCardSections.forEach(function(el) { el.style.display = 'none'; });
 
     // Show the requested type
     if (type === 'plot-observation') {
@@ -1277,6 +1273,9 @@ Shiny.addCustomMessageHandler('updateDetailType', function(message) {
     } else if (type === 'taxon-observation') {
       console.log('Showing taxon observation details');
       taxonObservationCards.style.display = 'block';
+    } else if (type === 'user-dataset') {
+      console.log('Showing user dataset details');
+      userDatasetCards.style.display = 'block';
     }
   }
 });

@@ -112,7 +112,7 @@ RESOURCE_REGISTRY <- list(
   "user-datasets" = list(
     api_type = "user-datasets",
     vb_prefix = "ds",
-    detail_type = NULL,  # Datasets use a filter-based view, not a detail overlay
+    detail_type = "user-dataset",
     tab = "Plots",
     singular = "dataset",
     plural = "datasets"

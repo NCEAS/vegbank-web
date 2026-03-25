@@ -511,7 +511,20 @@ server <- function(input, output, session) {
       state$plot_filter(filter_info)
       state$current_tab("Plots")
       shiny::updateNavbarPage(session, "page", selected = "Plots")
-      update_app_query(mode = "replace", tab = "Plots")
+
+      open_detail(
+        detail_type = "user-dataset",
+        vb_code = citation$vb_code,
+        push_history = FALSE,
+        skip_highlight = TRUE
+      )
+
+      update_app_query(
+        mode = "replace",
+        tab = "Plots",
+        detail_type = "user-dataset",
+        detail_code = citation$vb_code
+      )
     } else {
       if (citation$tab == "Plots") {
         state$plot_filter(filter_info)
