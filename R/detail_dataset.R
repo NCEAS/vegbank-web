@@ -18,30 +18,10 @@ build_dataset_details_view <- function(result) {
 
   ds <- result[1, , drop = FALSE]
 
-  # Normalise start/stop to "YYYY-MM-DD" strings via safe_parse_date() so
-  # format_date() and format_date_range() receive a format they understand.
-  # The real API may return start as a character ISO 8601 string, a POSIXct, or
-  # NA; stop is typically NA_integer_.
-  to_date_char <- function(x) {
-    if (is.null(x) || length(x) == 0 || all(is.na(x))) return(NA_character_)
-    val <- x[[1]]
-    if (is.na(val)) return(NA_character_)
-    # POSIXct / Date: format directly
-    if (inherits(val, c("POSIXct", "POSIXlt", "Date"))) {
-      return(format(as.Date(val), "%Y-%m-%d"))
-    }
-    # Character: let safe_parse_date handle it
-    parsed <- safe_parse_date(as.character(val))
-    if (is.na(parsed)) NA_character_ else format(parsed, "%Y-%m-%d")
-  }
+  start_year <- format_date(ds$start, format_string = "%Y")
+  stop_year  <- format_date(ds$stop,  format_string = "%Y")
 
-  start_char <- to_date_char(ds$start)
-  stop_char  <- to_date_char(ds$stop)
-
-  start_year <- format_date(start_char, format_string = "%Y")
-  stop_year  <- format_date(stop_char,  format_string = "%Y")
-
-  date_range_display <- format_date_range(start_char, stop_char)
+  date_range_display <- format_date_range(ds$start, ds$stop)
   author_name        <- parse_dataset_author_label(ds$owner_label %|||% "")
 
   list(

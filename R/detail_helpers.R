@@ -25,17 +25,47 @@
 #' @return A Date object or NA if parsing fails
 #' @noRd
 safe_parse_date <- function(date_string) {
-  if (is.null(date_string) || length(date_string) == 0 || is.na(date_string) || date_string == "") {
+  if (is.null(date_string) || length(date_string) == 0) {
+    return(NA)
+  }
+
+  value <- date_string[[1]]
+
+  if (is.na(value)) {
+    return(NA)
+  }
+
+  if (inherits(value, "Date")) {
+    return(as.Date(value))
+  }
+
+  if (inherits(value, c("POSIXct", "POSIXlt"))) {
+    return(as.Date(value))
+  }
+
+  value_chr <- trimws(as.character(value))
+  if (!nzchar(value_chr)) {
     return(NA)
   }
 
   tryCatch(
     {
-      parsed_date <- as.POSIXct(date_string, format = "%a, %d %b %Y %H:%M:%S", tz = "GMT")
+      parsed_date <- as.POSIXct(value_chr, format = "%a, %d %b %Y %H:%M:%S", tz = "GMT")
       if (!is.na(parsed_date)) {
         return(as.Date(parsed_date))
       }
-      as.Date(date_string)
+
+      parsed_date <- as.Date(value_chr)
+      if (!is.na(parsed_date)) {
+        return(parsed_date)
+      }
+
+      parsed_datetime <- as.POSIXct(value_chr, tz = "UTC")
+      if (!is.na(parsed_datetime)) {
+        return(as.Date(parsed_datetime))
+      }
+
+      NA
     },
     error = function(e) {
       NA
