@@ -268,7 +268,7 @@ test_that("append_units returns raw value for stem_taxon_area when not sentinel"
   expect_equal(append_units("stem_taxon_area", 9), 9)
 })
 
-test_that("create_copy_permalink_button builds a copy control with cite URL", {
+test_that("create_citation_button builds a copy control with cite URL", {
   tag <- create_citation_button("ob.2948")
   expect_s3_class(tag, "shiny.tag")
   html <- as.character(tag)
@@ -279,14 +279,14 @@ test_that("create_copy_permalink_button builds a copy control with cite URL", {
   expect_true(grepl("vegbank.org/cite/ob.2948", html, fixed = TRUE))
 })
 
-test_that("create_copy_permalink_button returns NULL for missing vb_code", {
+test_that("create_citation_button returns NULL for missing vb_code", {
   expect_null(create_citation_button(NULL))
   expect_null(create_citation_button(NA_character_))
   expect_null(create_citation_button(""))
   expect_null(create_citation_button("   "))
 })
 
-test_that("attach_copy_button_to_last_header_row appends copy control to final row", {
+test_that("add_citation_button_to_last_row appends copy control to final row", {
   rows <- list(
     htmltools::tags$h5("Header 1"),
     htmltools::tags$p("Header 2")
@@ -301,7 +301,7 @@ test_that("attach_copy_button_to_last_header_row appends copy control to final r
   expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
 })
 
-test_that("attach_copy_button_to_last_header_row ignores NULL rows", {
+test_that("add_citation_button_to_last_row ignores NULL rows", {
   rows <- list(
     htmltools::tags$h5("Header 1"),
     NULL,
