@@ -202,3 +202,26 @@ test_that("sanitize_description_html handles edge cases gracefully", {
   result <- sanitize_description_html("cats & dogs")
   expect_true(grepl("&amp;", result, fixed = TRUE))
 })
+
+test_that("append_units renders slope_aspect sentinel values without degree symbol", {
+  expect_equal(append_units("slope_aspect", -1),   "-1 (Too flat)")
+  expect_equal(append_units("slope_aspect", -2),   "-2 (Too irregular)")
+  expect_equal(append_units("slope_aspect", "-1"),  "-1 (Too flat)")
+  expect_equal(append_units("slope_aspect", "-2"),  "-2 (Too irregular)")
+})
+
+test_that("append_units appends degree symbol to normal slope_aspect values", {
+  expect_equal(append_units("slope_aspect", 180),  "180\u00B0")
+  expect_equal(append_units("slope_aspect", 0),    "0\u00B0")
+  expect_equal(append_units("slope_aspect", 360),  "360\u00B0")
+})
+
+test_that("append_units sentinel check does not affect min_slope_aspect or max_slope_aspect", {
+  expect_equal(append_units("min_slope_aspect", -1),  "-1\u00B0")
+  expect_equal(append_units("max_slope_aspect", -2),  "-2\u00B0")
+})
+
+test_that("append_units skips sentinel check for NA or Unspecified slope_aspect", {
+  expect_equal(append_units("slope_aspect", NA),           NA)
+  expect_equal(append_units("slope_aspect", "Unspecified"), "Unspecified")
+})

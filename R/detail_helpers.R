@@ -96,6 +96,13 @@ append_units <- function(field_name, value) {
     return(value)
   }
 
+  # slope_aspect encodes two sentinel values that must not receive a degree symbol
+  if (field_name == "slope_aspect") {
+    numeric_value <- suppressWarnings(as.numeric(value))
+    if (!is.na(numeric_value) && numeric_value == -1) return("-1 (Too flat)")
+    if (!is.na(numeric_value) && numeric_value == -2) return("-2 (Too irregular)")
+  }
+
   unit_map <- c(
     elevation = " m",
     elevation_accuracy = " m",
