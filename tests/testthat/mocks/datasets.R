@@ -12,6 +12,7 @@ mock_dataset_ds201120 <- data.frame(
   type           = "normal",
   owner_label    = "Palmquist, Kyle",
   owner_email    = "kapalmqu@yahoo.com",
+  py_code        = "py.191860",
   obs_count      = 6,
   stringsAsFactors = FALSE
 )
@@ -26,6 +27,7 @@ mock_dataset_ds201398 <- data.frame(
   type           = "dataset",
   owner_label    = "Albers, Gayle",
   owner_email    = "galbers@uga.edu",
+  py_code        = "py.198599",
   obs_count      = 17514,
   stringsAsFactors = FALSE
 )
@@ -40,6 +42,7 @@ mock_dataset_ds201907 <- data.frame(
   type           = "normal",
   owner_label    = "Lee, Michael",
   owner_email    = "mikelee@email.com",
+  py_code        = "py.410",
   obs_count      = 1901,
   stringsAsFactors = FALSE
 )

@@ -81,7 +81,11 @@ build_dataset_details_view <- function(result) {
               htmltools::tags$td("Author"),
               htmltools::tags$td(
                 class = "text-end",
-                ds$owner_label %|||% "Unknown"
+                if (has_valid_field_value(ds, "py_code")) {
+                  create_detail_link("party_link_click", ds$py_code, ds$owner_label %|||% "Unknown")
+                } else {
+                  ds$owner_label %|||% "Unknown"
+                }
               )
             ),
             htmltools::tags$tr(
