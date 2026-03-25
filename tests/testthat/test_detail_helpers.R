@@ -227,10 +227,13 @@ test_that("append_units skips sentinel check for NA or Unspecified slope_aspect"
 })
 
 test_that("append_units renders slope_gradient sentinel values without degree symbol", {
-  expect_equal(append_units("slope_gradient", -1),   "-1 (Too flat)")
-  expect_equal(append_units("slope_gradient", -2),   "-2 (Too irregular)")
-  expect_equal(append_units("slope_gradient", "-1"), "-1 (Too flat)")
-  expect_equal(append_units("slope_gradient", "-2"), "-2 (Too irregular)")
+  expect_equal(append_units("slope_gradient", -1),   "-1 (Too irregular)")
+  expect_equal(append_units("slope_gradient", "-1"), "-1 (Too irregular)")
+})
+
+test_that("append_units treats non-sentinel negative slope_gradient values as degree values", {
+  expect_equal(append_units("slope_gradient", -2),   "-2\u00B0")
+  expect_equal(append_units("slope_gradient", "-2"), "-2\u00B0")
 })
 
 test_that("append_units appends degree symbol to normal slope_gradient values", {
