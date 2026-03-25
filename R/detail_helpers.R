@@ -382,6 +382,71 @@ create_detail_link <- function(input_id, code_value, display_text) {
   )
 }
 
+#' Create Copy Citation Link Button
+#'
+#' Renders a minimal inline button that copies `vegbank.org/cite/<vb_code>` to
+#' the clipboard. The click behavior is implemented in `vegbank_app.js`.
+#'
+#' @param vb_code VegBank code (e.g., "ob.1234", "cc.567", "ds.987")
+#' @param label Button label text (defaults to "Copy citation")
+#' @return An htmltools button tag, or NULL when vb_code is missing
+#' @noRd
+create_citation_button <- function(vb_code, label = "Copy citation") {
+  if (is.null(vb_code) || length(vb_code) == 0 || is.na(vb_code) || !nzchar(trimws(as.character(vb_code)))) {
+    return(NULL)
+  }
+
+  code <- trimws(as.character(vb_code)[1])
+  copy_text <- paste0("vegbank.org/cite/", code)
+  copy_icon <- load_svg_icon(
+    "copy",
+    style = "width:13px;height:13px;vertical-align:-0.1em;flex-shrink:0;"
+  )
+
+  htmltools::tags$button(
+    type = "button",
+    class = "vb-copy-permalink",
+    `data-copy-text` = htmltools::htmlEscape(copy_text, attribute = TRUE),
+    `data-default-text` = htmltools::htmlEscape(label, attribute = TRUE),
+    `data-copied-text` = "Copied",
+    title = htmltools::htmlEscape(label, attribute = TRUE),
+    `aria-label` = htmltools::htmlEscape(label, attribute = TRUE),
+    label,
+    htmltools::HTML(copy_icon)
+  )
+}
+
+#' Add Citation Button to Last Row
+#'
+#' Takes a list of row tags (some may be NULL), removes NULL entries,
+#' and appends the copy citation control inline with the final remaining row.
+#'
+#' @param rows List of htmltools tag elements (for header rows)
+#' @param vb_code VegBank code used for the citation URL
+#' @return A list of header row tags with the last row wrapped in
+#'   `div.vb-copy-inline-row` when a copy button can be created
+#' @noRd
+add_citation_button_to_last_row <- function(rows, vb_code) {
+  rows <- Filter(Negate(is.null), rows)
+  if (length(rows) == 0) {
+    return(rows)
+  }
+
+  copy_button <- create_citation_button(vb_code)
+  if (is.null(copy_button)) {
+    return(rows)
+  }
+
+  last_idx <- length(rows)
+  rows[[last_idx]] <- htmltools::tags$div(
+    class = "vb-copy-inline-row",
+    rows[[last_idx]],
+    copy_button
+  )
+
+  rows
+}
+
 #' Creates a clickable link for observation counts that triggers
 #' a Shiny input event for cross-resource filtering.
 #'

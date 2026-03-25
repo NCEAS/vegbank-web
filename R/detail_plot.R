@@ -350,7 +350,7 @@ build_plot_obs_details_view <- function(result) {
       return(NULL)
     }),
     plot_header = shiny::renderUI({
-      htmltools::div(
+      header_rows <- list(
         htmltools::tags$h5(plot_observation$author_obs_code, style = "font-weight: 600; margin-bottom: 0px;"),
         htmltools::tags$h5(plot_observation$ob_code, style = "color: var(--vb-green); font-weight: 600;"),
         if (has_valid_field_value(plot_observation, "project_name")) {
@@ -361,13 +361,17 @@ build_plot_obs_details_view <- function(result) {
           )
         },
         if (has_valid_field_value(plot_observation, "obs_start_date")) {
-          htmltools::tags$p(format_date_range(plot_observation$obs_start_date, plot_observation$obs_end_date))
+          htmltools::tags$p(
+            format_date_range(plot_observation$obs_start_date, plot_observation$obs_end_date),
+            style = "margin-bottom: 0px;"
+          )
         },
         if (has_valid_field_value(plot_observation, "rf_code") &&
               has_valid_field_value(plot_observation, "rf_label")) {
           htmltools::tags$p(
             htmltools::tags$span("Reference: "),
-            create_detail_link("ref_link_click", plot_observation$rf_code, plot_observation$rf_label)
+            create_detail_link("ref_link_click", plot_observation$rf_code, plot_observation$rf_label),
+            style = "margin-bottom: 0px;"
           )
         },
         if (has_valid_field_value(plot_observation, "previous_ob_code")) {
@@ -377,10 +381,18 @@ build_plot_obs_details_view <- function(result) {
               "obs_link_click",
               plot_observation$previous_ob_code,
               plot_observation$previous_ob_code
-            )
+            ),
+            style = "margin-bottom: 0px;"
           )
         }
       )
+
+      header_rows <- add_citation_button_to_last_row(
+        header_rows,
+        plot_observation$ob_code
+      )
+
+      htmltools::div(htmltools::tagList(header_rows))
     }),
     author_code_details = render_detail_table(
       c("author_obs_code", "author_plot_code", "author_datum"),

@@ -25,12 +25,21 @@ build_concept_details_view <- function(result, concept_type = "plant") {
   outputs <- list()
 
   outputs[[name_output]] <- shiny::renderUI({
-    htmltools::div(
+    header_rows <- list(
       htmltools::tags$i(tools::toTitleCase(as.character(result[[level_field]])) %|||% "Unspecified level"),
       htmltools::tags$h5(result[[name_field]], style = "font-weight: 600; margin-bottom: 0px;"),
       if (!is.na(result[[code_field]])) htmltools::tags$p(paste0("(", result[[code_field]], ")"), style = "margin-bottom: 0px;"),
-      htmltools::tags$h5(result[[id_field]], style = "color: var(--vb-green); font-weight: 600;")
+      htmltools::tags$h5(result[[id_field]], style = "color: var(--vb-green); font-weight: 600; margin-bottom: 0;")
     )
+
+    if (!is_plant) {
+      header_rows <- add_citation_button_to_last_row(
+        header_rows,
+        result[[id_field]]
+      )
+    }
+
+    htmltools::div(htmltools::tagList(header_rows))
   })
 
   outputs[[details_output]] <- shiny::renderUI({

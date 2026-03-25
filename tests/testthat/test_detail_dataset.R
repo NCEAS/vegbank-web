@@ -100,6 +100,17 @@ test_that("build_dataset_details_view header contains ds_code and name", {
   expect_true(grepl("unnamed dataset", html2, fixed = TRUE))
 })
 
+test_that("build_dataset_details_view header includes copy permalink button", {
+  mock_session <- shiny::MockShinySession$new()
+
+  details <- build_dataset_details_view(mock_dataset_ds201120)
+  html <- htmltools::renderTags(details$dataset_header(shinysession = mock_session))$html
+
+  expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
+  expect_true(grepl("Copy citation", html, fixed = TRUE))
+  expect_true(grepl("vegbank.org/cite/ds.201120", html, fixed = TRUE))
+})
+
 test_that("build_dataset_details_view details card contains accession, author, plot count link", {
   mock_session <- shiny::MockShinySession$new()
 

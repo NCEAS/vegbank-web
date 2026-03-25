@@ -46,16 +46,23 @@ build_dataset_details_view <- function(result) {
 
   list(
     dataset_header = shiny::renderUI({
-      htmltools::div(
+      header_rows <- list(
         htmltools::tags$h5(
           ds$name %|||% "Unnamed Dataset",
           style = "font-weight: 600; margin-bottom: 0px;"
         ),
         htmltools::tags$h5(
           ds$ds_code,
-          style = "color: var(--vb-green); font-weight: 600;"
+          style = "color: var(--vb-green); font-weight: 600; margin-bottom: 0;"
         )
       )
+
+      header_rows <- add_citation_button_to_last_row(
+        header_rows,
+        ds$ds_code
+      )
+
+      htmltools::div(htmltools::tagList(header_rows))
     }),
 
     dataset_details = shiny::renderUI({
