@@ -127,11 +127,15 @@ append_units <- function(field_name, value) {
   }
 
   # slope_aspect and gradient encodes two sentinel values that must not receive a degree symbol
-  if (field_name == "slope_aspect" ||
-        field_name == "slope_gradient") {
+  if (field_name == "slope_gradient") {
     numeric_value <- suppressWarnings(as.numeric(value))
-    if (!is.na(numeric_value) && numeric_value == -1) return("-1 (Too flat)")
-    if (!is.na(numeric_value) && numeric_value == -2) return("-2 (Too irregular)")
+    if (numeric_value == -1) return("-1 (Too irregular)")
+  }
+
+  if (field_name == "slope_aspect") {
+    numeric_value <- suppressWarnings(as.numeric(value))
+    if (numeric_value == -1) return("-1 (Too flat)")
+    if (numeric_value == -2) return("-2 (Too irregular)")
   }
 
   # area measurements use -1 to indicate lack of boundaries
