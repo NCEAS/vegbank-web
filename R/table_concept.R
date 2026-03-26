@@ -333,7 +333,7 @@ get_concept_config <- function(concept_type) {
     htmltools::tags$p("This table lists plant taxa in VegBank's taxonomic concept hierarchy. Each row is a single plant concept."),
     htmltools::tags$ul(
       htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description."),
-      htmltools::tags$li(htmltools::tags$strong("Status:"), " badges indicates whether a concept is currently accepted, either current or accepted, or doesn't have a status. You can filter by status using the dropdown to the left of the search bar."),
+      htmltools::tags$li(htmltools::tags$strong("Status:"), " badges indicate whether a concept is currently accepted, either current or accepted, or doesn't have a status. You can filter by status using the dropdown to the left of the search bar."),
       htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations containing this taxon."),
       htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code, Plant Concept name, and Plots support sorting."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plant in an overlay."),
@@ -350,7 +350,7 @@ get_concept_config <- function(concept_type) {
     htmltools::tags$p("This table lists vegetation community concepts in VegBank's classification hierarchy. Each row is a single community type."),
     htmltools::tags$ul(
       htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box to filter by name, code, VegBank code, or description."),
-      htmltools::tags$li(htmltools::tags$strong("Status:"), " badges indicates whether a concept is currently accepted, either current or accepted, or doesn't have a status. You can filter by status using the dropdown to the left of the search bar."),
+      htmltools::tags$li(htmltools::tags$strong("Status:"), " badges indicate whether a concept is currently accepted, either current or accepted, or doesn't have a status. You can filter by status using the dropdown to the left of the search bar."),
       htmltools::tags$li(htmltools::tags$strong("Show plots:"), " click the number in the Plots column to filter the Plots table to observations classified to this community."),
       htmltools::tags$li(htmltools::tags$strong("Sort:"), " click a column header to sort; VegBank Code, Community Concept name, and Plots support sorting."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the community in an overlay."),
