@@ -346,7 +346,9 @@ URLStateManager <- R6::R6Class(
                                   map_has_custom_state = FALSE, table_states = list(),
                                   highlight_table = NULL, highlight_row = NULL,
                                   plot_filter = NULL, community_filter = NULL,
-                                  community_status = NULL, plant_status = NULL) {
+                                  plot_status = NULL,
+                                  community_status = NULL,
+                                  plant_status = NULL) {
       if (is.null(tab) || !nzchar(tab)) {
         tab <- "Overview"
       }
@@ -392,6 +394,12 @@ URLStateManager <- R6::R6Class(
         if (!is.null(community_filter$label) && nzchar(community_filter$label)) {
           params$comm_filter_label <- community_filter$label
         }
+      }
+
+      # Include plot status filter (omit when it's the default)
+      if (!is.null(plot_status) && nzchar(plot_status) &&
+          !identical(plot_status, "current")) {
+        params$plots_status <- plot_status
       }
 
       # Include community status filter (omit when it's the default)

@@ -3,6 +3,9 @@
 #' Provides a remote (server-side) DataTable for VegBank plot observations.
 #' @noRd
 
+# Valid values for the plot status filter, shared between server logic and URL restore.
+VALID_PLOT_STATUSES <- c("any", "current")
+
 PLOT_TABLE_FIELDS <- c(
   "ob_code",
   "author_obs_code",
@@ -76,11 +79,13 @@ build_plot_table <- function() {
 #'                    "party", "single-entity-citation", "collection-citation")
 #' @return A DT::datatable object
 #' @noRd
-build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL) {
+build_plot_table_with_filter <- function(vb_code = NULL,
+                                         filter_type = NULL,
+                                         status_fn = NULL) {
   # Deep copy to avoid mutating the shared PLOT_TABLE_SPEC
   spec <- PLOT_TABLE_SPEC
   spec$data_source <- utils::modifyList(spec$data_source, list())
-  spec$data_source$query <- as.list(spec$data_source$query)
+  base_query <- as.list(spec$data_source$query)
 
   # Determine if filter is active
   has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
@@ -146,9 +151,17 @@ build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL) {
 
   # Add vb_code to query if filtering is active
   # This includes: cross-resource filters, collection citations, and fallback from failed single-entity citation fetch
-  if (has_filter && (is.null(filter_type) || filter_type != "single-entity-citation")) {
-    spec$data_source$query$vb_code <- vb_code
+  query_fn <- function() {
+    query <- base_query
+    if (has_filter && (is.null(filter_type) || filter_type != "single-entity-citation")) {
+      query$vb_code <- vb_code
+    }
+    if (!is.null(status_fn)) {
+      query$status <- shiny::isolate(status_fn())
+    }
+    query
   }
+  spec$data_source$query <- query_fn
 
   spec$options <- utils::modifyList(spec$options, list())
 
@@ -508,6 +521,7 @@ coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
     ),
     htmltools::tags$ul(
       htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box (top right) to filter by plant concept, community type, author code, VegBank code, or location."),
+      htmltools::tags$li(htmltools::tags$strong("Status:"), " use the dropdown to the left of the search bar to show current plots only (default) or select 'any' to include plots that have been marked obsolete."),
       htmltools::tags$li(htmltools::tags$strong("Filter by resource:"), " clicking a plot count link from a Project, Party, Community, or Plant view will pre-filter this table to contain only those plots. You can then filter further with the search bar."),
       htmltools::tags$li(htmltools::tags$strong("Download:"), " once the table is filtered to within 20,000 entries, the Download CSV button becomes active. Open the README.txt file after downloading or visit the Download page in the About menu to learn how to combine the data."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plot in an overlay."),
@@ -556,6 +570,7 @@ PLOT_TABLE_SPEC <- list(
     )),
     initComplete = DT::JS(
       "function(settings, json) {
+        if (window.vbPlotStatusInit) window.vbPlotStatusInit(settings.nTableWrapper, 'plot_table');
         Shiny.setInputValue('plot_table_ready', Math.random());
       }"
     )

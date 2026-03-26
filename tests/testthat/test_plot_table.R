@@ -271,3 +271,56 @@ test_that("plot table spec produces valid config", {
   expect_equal(spec$query$with_nested, "TRUE")
 })
 
+test_that("build_plot_table_with_filter injects plot status into AJAX query", {
+  pkg_env <- asNamespace("vegbankweb")
+  captured_spec <- NULL
+  status_state <- shiny::reactiveVal("current")
+  status_fn <- status_state
+
+  with_mocked_bindings(
+    build_table_from_spec = function(spec) {
+      captured_spec <<- spec
+      structure(list(x = list(data = data.frame())), class = "datatables")
+    },
+    .env = pkg_env,
+    {
+      result <- build_plot_table_with_filter(status_fn = status_fn)
+      expect_s3_class(result, "datatables")
+      expect_true(is.function(captured_spec$data_source$query))
+
+      query_current <- captured_spec$data_source$query()
+      expect_equal(query_current$with_nested, "TRUE")
+      expect_equal(query_current$status, "current")
+
+      status_state("any")
+      query_any <- captured_spec$data_source$query()
+      expect_equal(query_any$status, "any")
+    }
+  )
+})
+
+test_that("build_plot_table_with_filter keeps vb_code and status query params", {
+  pkg_env <- asNamespace("vegbankweb")
+  captured_spec <- NULL
+
+  with_mocked_bindings(
+    build_table_from_spec = function(spec) {
+      captured_spec <<- spec
+      structure(list(x = list(data = data.frame())), class = "datatables")
+    },
+    .env = pkg_env,
+    {
+      build_plot_table_with_filter(
+        vb_code = "pj.340",
+        filter_type = "project",
+        status_fn = function() "any"
+      )
+
+      query <- captured_spec$data_source$query()
+      expect_equal(query$with_nested, "TRUE")
+      expect_equal(query$vb_code, "pj.340")
+      expect_equal(query$status, "any")
+    }
+  )
+})
+

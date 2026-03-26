@@ -567,6 +567,46 @@ Shiny.addCustomMessageHandler('setPlantStatus', function(message) {
   $('.vb-plant-status-select').val(message.value);
 });
 
+window.vbPlotStatusInit = function(nTableWrapper, tableId) {
+  if (tableId !== 'plot_table') return;
+  if ($(nTableWrapper).find('.vb-plot-status-label').length) return;
+
+  var validStatuses = window.VB_VALID_PLOT_STATUSES || ['current', 'any'];
+  var urlVal = new URLSearchParams(window.location.search).get('plots_status');
+  var storedVal = window.vbPlotStatus;
+  var initVal = (storedVal && validStatuses.indexOf(storedVal) !== -1)
+    ? storedVal
+    : (urlVal && validStatuses.indexOf(urlVal) !== -1 ? urlVal : 'current');
+
+  var $label = $(
+    '<label class="vb-status-label vb-plot-status-label">' +
+      'Status:' +
+      '<select class="vb-plot-status-select vb-status-select">' +
+        '<option value="current">Current</option>' +
+        '<option value="any">Any</option>' +
+      '</select>' +
+    '</label>'
+  );
+
+  $label.find('select').val(initVal);
+  $(nTableWrapper).find('.dataTables_filter').after($label[0]);
+  $label.find('select').on('change', function() {
+    var val = this.value;
+    window.vbPlotStatus = val;
+    var params = new URLSearchParams(window.location.search);
+    if (val === 'current') { params.delete('plots_status'); } else { params.set('plots_status', val); }
+    if (params.has('plots_start')) { params.set('plots_start', '0'); }
+    var newSearch = params.toString();
+    history.replaceState(null, '', newSearch ? '?' + newSearch : window.location.pathname);
+    Shiny.setInputValue('plot_status', val, {priority: 'event'});
+  });
+};
+
+Shiny.addCustomMessageHandler('setPlotStatus', function(message) {
+  window.vbPlotStatus = message.value;
+  $('.vb-plot-status-select').val(message.value);
+});
+
 // Shared helper — set up a toggleable info popover on a DT help button.
 // Called from each table's DT button init callback.
 var _vbClickHandlerRegistered = false;
