@@ -167,3 +167,27 @@ test_that("build_dataset_details_view details plot count link has correct ds_cod
   expect_true(grepl("1901",       html, fixed = TRUE))
   expect_true(grepl("obs-count-link", html, fixed = TRUE))
 })
+
+# ==== build_dataset_citation_text() accession/DOI link rendering ====
+
+test_that("build_dataset_citation_text renders VegBank accession as correct link and label", {
+  tag <- build_dataset_citation_text(
+    mock_dataset_ds201120,
+    author_name = "Kyle Palmquist",
+    start_year  = "2017"
+  )
+  html <- as.character(tag)
+  expect_true(grepl(">vegbank:VB.ds.201120.DWLFOT<", html, fixed = TRUE))
+  expect_true(grepl("href=\"https://identifiers.org/vegbank:VB.ds.201120.DWLFOT\"", html, fixed = TRUE))
+})
+
+test_that("build_dataset_citation_text renders DOI as correct link and label", {
+  tag <- build_dataset_citation_text(
+    mock_dataset_ds201910,
+    author_name = "Rushirah Nenuji",
+    start_year  = "2026"
+  )
+  html <- as.character(tag)
+  expect_true(grepl(">doi:10.5072/FK26D61D4V<", html, fixed = TRUE))
+  expect_true(grepl("href=\"https://doi.org/10.5072/FK26D61D4V\"", html, fixed = TRUE))
+})

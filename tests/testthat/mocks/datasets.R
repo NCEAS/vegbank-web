@@ -46,3 +46,18 @@ mock_dataset_ds201907 <- data.frame(
   obs_count      = 1901,
   stringsAsFactors = FALSE
 )
+
+mock_dataset_ds201910 <- data.frame(
+  ds_code        = "ds.201910",
+  accession_code = "10.5072/FK26D61D4V",
+  start          = as.POSIXct("2026-03-25 21:00:00", tz = "UTC"),
+  stop           = NA_integer_,
+  name           = "vegbankr test - DC recommended fields",
+  description    = "A test dataset for checking the identifier system works",
+  type           = "normal",
+  owner_label    = "Nenuji, Rushirah",
+  owner_email    = "nenuji@email.com",
+  py_code        = "py.410",
+  obs_count      = 3,
+  stringsAsFactors = FALSE
+)

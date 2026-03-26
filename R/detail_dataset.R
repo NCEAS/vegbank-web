@@ -138,12 +138,37 @@ parse_dataset_author_label <- function(owner_label) {
 #' @noRd
 build_dataset_citation_text <- function(ds, author_name, start_year) {
   # Escape all interpolated fields
-  safe_author    <- htmltools::htmlEscape(as.character(author_name %|||% "Unknown Author"))
-  safe_name      <- htmltools::htmlEscape(as.character(ds$name %|||% "Unnamed Dataset"))
-  safe_accession <- htmltools::htmlEscape(as.character(ds$accession_code %|||% "Unspecified"))
+  safe_author <- htmltools::htmlEscape(as.character(author_name %|||% "Unknown Author"))
+  safe_name   <- htmltools::htmlEscape(as.character(ds$name %|||% "Unnamed Dataset"))
+  raw_accession <- as.character(ds$accession_code %|||% "Unspecified")
 
-  paste0(
-    safe_author, " (", start_year, "): VegBank Plot Observations: \u201C",
-    safe_name, "\u201D. VegBank. Dataset. ", safe_accession, "."
-  )
+  # Determine accession type and build link
+  is_doi <- grepl("^10\\.\\d{4,9}/", raw_accession)
+  is_vegbank <- grepl("^VB\\.ds\\.\\d+\\.", raw_accession)
+  if (is_doi) {
+    display <- paste0("doi:", raw_accession)
+    url <- paste0("https://doi.org/", raw_accession)
+  } else if (is_vegbank) {
+    display <- paste0("vegbank:", raw_accession)
+    url <- paste0("https://identifiers.org/vegbank:", raw_accession)
+  } else {
+    display <- htmltools::htmlEscape(raw_accession)
+    url <- NULL
+  }
+
+  # Build the citation as a single HTML string, inserting the link as needed
+  # because tagList() adds spaces before periods
+  if (!is.null(url)) {
+    citation_html <- paste0(
+      safe_author, " (", start_year, "): VegBank Plot Observations: ",
+      safe_name, ". VegBank. Dataset. ",
+      as.character(htmltools::tags$a(href = url, target = "_blank", rel = "noopener", display)), "."
+    )
+  } else {
+    citation_html <- paste0(
+      safe_author, " (", start_year, "): VegBank Plot Observations: ",
+      safe_name, ". VegBank. Dataset. ", display, "."
+    )
+  }
+  htmltools::HTML(citation_html)
 }
