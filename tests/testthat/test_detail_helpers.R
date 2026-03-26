@@ -268,31 +268,31 @@ test_that("append_units returns raw value for stem_taxon_area when not sentinel"
   expect_equal(append_units("stem_taxon_area", 9), 9)
 })
 
-test_that("create_citation_button builds a copy control with cite URL", {
-  tag <- create_citation_button("ob.2948")
+test_that("create_permalink_button builds a copy control with cite URL", {
+  tag <- create_permalink_button("ob.2948")
   expect_s3_class(tag, "shiny.tag")
   html <- as.character(tag)
 
   expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
-  expect_true(grepl("Copy citation", html, fixed = TRUE))
-  expect_false(grepl("Copy citation link", html, fixed = TRUE))
+  expect_true(grepl("Copy permalink", html, fixed = TRUE))
+  expect_false(grepl("Copy permalink link", html, fixed = TRUE))
   expect_true(grepl("vegbank.org/cite/ob.2948", html, fixed = TRUE))
 })
 
-test_that("create_citation_button returns NULL for missing vb_code", {
-  expect_null(create_citation_button(NULL))
-  expect_null(create_citation_button(NA_character_))
-  expect_null(create_citation_button(""))
-  expect_null(create_citation_button("   "))
+test_that("create_permalink_button returns NULL for missing vb_code", {
+  expect_null(create_permalink_button(NULL))
+  expect_null(create_permalink_button(NA_character_))
+  expect_null(create_permalink_button(""))
+  expect_null(create_permalink_button("   "))
 })
 
-test_that("add_citation_button_to_last_row appends copy control to final row", {
+test_that("add_permalink_button_to_last_row appends copy control to final row", {
   rows <- list(
     htmltools::tags$h5("Header 1"),
     htmltools::tags$p("Header 2")
   )
 
-  out <- add_citation_button_to_last_row(rows, "ob.2948")
+  out <- add_permalink_button_to_last_row(rows, "ob.2948")
   expect_length(out, 2)
 
   html <- as.character(out[[2]])
@@ -301,14 +301,14 @@ test_that("add_citation_button_to_last_row appends copy control to final row", {
   expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
 })
 
-test_that("add_citation_button_to_last_row ignores NULL rows", {
+test_that("add_permalink_button_to_last_row ignores NULL rows", {
   rows <- list(
     htmltools::tags$h5("Header 1"),
     NULL,
     htmltools::tags$p("Header 3")
   )
 
-  out <- add_citation_button_to_last_row(rows, "ob.2948")
+  out <- add_permalink_button_to_last_row(rows, "ob.2948")
   expect_length(out, 2)
 
   html <- as.character(out[[2]])

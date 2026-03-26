@@ -913,7 +913,7 @@ table.dataTable tbody tr.selected-entity:hover,
   z-index: 1000 !important;
 }
 
-/* Copy citation link button in detail-view header cards */
+/* Copy permalink link button in detail-view header cards */
 .vb-copy-permalink {
   font-size: 0.8rem;
   color: var(--vb-green);

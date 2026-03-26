@@ -94,7 +94,7 @@ test_that("build_dataset_details_view header includes copy permalink button", {
   html <- htmltools::renderTags(details$dataset_header(shinysession = mock_session))$html
 
   expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
-  expect_true(grepl("Copy citation", html, fixed = TRUE))
+  expect_true(grepl("Copy permalink", html, fixed = TRUE))
   expect_true(grepl("vegbank.org/cite/ds.201120", html, fixed = TRUE))
 })
 

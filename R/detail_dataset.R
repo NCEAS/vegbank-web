@@ -36,7 +36,7 @@ build_dataset_details_view <- function(result) {
         )
       )
 
-      header_rows <- add_citation_button_to_last_row(
+      header_rows <- add_permalink_button_to_last_row(
         header_rows,
         ds$ds_code
       )

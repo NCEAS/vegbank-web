@@ -387,7 +387,7 @@ build_plot_obs_details_view <- function(result) {
         }
       )
 
-      header_rows <- add_citation_button_to_last_row(
+      header_rows <- add_permalink_button_to_last_row(
         header_rows,
         plot_observation$ob_code
       )

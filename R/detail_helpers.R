@@ -416,16 +416,16 @@ create_detail_link <- function(input_id, code_value, display_text) {
   )
 }
 
-#' Create Copy Citation Link Button
+#' Create Copy permalink Link Button
 #'
 #' Renders a minimal inline button that copies `vegbank.org/cite/<vb_code>` to
 #' the clipboard. The click behavior is implemented in `vegbank_app.js`.
 #'
 #' @param vb_code VegBank code (e.g., "ob.1234", "cc.567", "ds.987")
-#' @param label Button label text (defaults to "Copy citation")
+#' @param label Button label text (defaults to "Copy permalink")
 #' @return An htmltools button tag, or NULL when vb_code is missing
 #' @noRd
-create_citation_button <- function(vb_code, label = "Copy citation") {
+create_permalink_button <- function(vb_code, label = "Copy permalink") {
   if (is.null(vb_code) || length(vb_code) == 0 || is.na(vb_code) || !nzchar(trimws(as.character(vb_code)))) {
     return(NULL)
   }
@@ -450,23 +450,23 @@ create_citation_button <- function(vb_code, label = "Copy citation") {
   )
 }
 
-#' Add Citation Button to Last Row
+#' Add Copy Permalink Button to Last Row
 #'
 #' Takes a list of row tags (some may be NULL), removes NULL entries,
-#' and appends the copy citation control inline with the final remaining row.
+#' and appends the Copy permalink control inline with the final remaining row.
 #'
 #' @param rows List of htmltools tag elements (for header rows)
 #' @param vb_code VegBank code used for the citation URL
 #' @return A list of header row tags with the last row wrapped in
 #'   `div.vb-copy-inline-row` when a copy button can be created
 #' @noRd
-add_citation_button_to_last_row <- function(rows, vb_code) {
+add_permalink_button_to_last_row <- function(rows, vb_code) {
   rows <- Filter(Negate(is.null), rows)
   if (length(rows) == 0) {
     return(rows)
   }
 
-  copy_button <- create_citation_button(vb_code)
+  copy_button <- create_permalink_button(vb_code)
   if (is.null(copy_button)) {
     return(rows)
   }

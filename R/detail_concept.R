@@ -33,7 +33,7 @@ build_concept_details_view <- function(result, concept_type = "plant") {
     )
 
     if (!is_plant) {
-      header_rows <- add_citation_button_to_last_row(
+      header_rows <- add_permalink_button_to_last_row(
         header_rows,
         result[[id_field]]
       )

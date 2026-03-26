@@ -671,7 +671,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    var defaultText = btn.getAttribute('data-default-text') || 'Copy citation';
+    var defaultText = btn.getAttribute('data-default-text') || 'Copy permalink';
     var copiedText = btn.getAttribute('data-copied-text') || 'Copied';
 
     // Find the first text node so the SVG child is preserved during the

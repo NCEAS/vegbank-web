@@ -274,7 +274,7 @@ test_that("build_plot_obs_details_view header includes copy permalink button", {
   html <- htmltools::renderTags(result$plot_header(shinysession = mock_session))$html
 
   expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
-  expect_true(grepl("Copy citation", html, fixed = TRUE))
+  expect_true(grepl("Copy permalink", html, fixed = TRUE))
   expect_true(grepl("vegbank.org/cite/ob.2948", html, fixed = TRUE))
 })
 
