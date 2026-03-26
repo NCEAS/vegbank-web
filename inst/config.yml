@@ -8,6 +8,10 @@ development:
   vb_base_url: "https://api-dev.vegbank.org"
   vb_debug: true
 
+development2:
+  vb_base_url: "https://api-dev2.vegbank.org"
+  vb_debug: true
+
 production:
   inherit: default
   vb_debug: true
