@@ -405,7 +405,7 @@ CONCEPT_TABLE_SPECS <- local({
         opts$initComplete <- DT::JS(paste0(
           "function(settings) {",
           "var id = $(settings.nTable).closest('.datatables')[0].id;",
-          "if (window.vbConceptStatusInit) window.vbConceptStatusInit(settings.nTableWrapper, id);",
+          "if (window.vbStatusInit) window.vbStatusInit(settings.nTableWrapper, id);",
           "}"
         ))
         opts

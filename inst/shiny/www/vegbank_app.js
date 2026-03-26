@@ -515,30 +515,46 @@ window.vbMapHelpControl = function(map, el, btnInnerHtml, closeIconHtml, content
 // Inject the status <label> into the .dataTables_filter area on table init.
 // Called from each concept table's initComplete callback. Uses the Shiny
 // output div id (same resolution as registerDataTableMapping) to look up config.
-var vbConceptStatusConfigs = {
-  plant_table: { urlKey: 'plants_status',      windowVar: 'vbPlantStatus', cssClass: 'vb-plant-status-select', shinyInput: 'plant_status', paginationKey: 'plants_start' },
-  comm_table:  { urlKey: 'communities_status', windowVar: 'vbCommStatus',  cssClass: 'vb-comm-status-select',  shinyInput: 'comm_status',  paginationKey: 'communities_start' }
+var vbStatusConfigs = {
+  plant_table: {
+    urlKey: 'plants_status', windowVar: 'vbPlantStatus', cssClass: 'vb-plant-status-select',
+    shinyInput: 'plant_status', paginationKey: 'plants_start',
+    defaultStatus: 'current_accepted',
+    validStatuses: function() { return window.VB_VALID_CONCEPT_STATUSES || ['current_accepted', 'current', 'accepted', 'any']; },
+    optionsHtml: '<option value="current_accepted">Currently Accepted</option><option value="current">Current</option><option value="accepted">Accepted</option><option value="any">Any</option>'
+  },
+  comm_table: {
+    urlKey: 'communities_status', windowVar: 'vbCommStatus', cssClass: 'vb-comm-status-select',
+    shinyInput: 'comm_status', paginationKey: 'communities_start',
+    defaultStatus: 'current_accepted',
+    validStatuses: function() { return window.VB_VALID_CONCEPT_STATUSES || ['current_accepted', 'current', 'accepted', 'any']; },
+    optionsHtml: '<option value="current_accepted">Currently Accepted</option><option value="current">Current</option><option value="accepted">Accepted</option><option value="any">Any</option>'
+  },
+  plot_table: {
+    urlKey: 'plots_status', windowVar: 'vbPlotStatus', cssClass: 'vb-plot-status-select',
+    shinyInput: 'plot_status', paginationKey: 'plots_start',
+    defaultStatus: 'current',
+    validStatuses: function() { return window.VB_VALID_PLOT_STATUSES || ['current', 'any']; },
+    optionsHtml: '<option value="current">Current</option><option value="any">Any</option>'
+  }
 };
 
-window.vbConceptStatusInit = function(nTableWrapper, tableId) {
-  var config = vbConceptStatusConfigs[tableId];
+window.vbStatusInit = function(nTableWrapper, tableId) {
+  var config = vbStatusConfigs[tableId];
   if (!config) return;
   // Guard against double-injection (e.g. if initComplete fires twice on the same wrapper).
   if ($(nTableWrapper).find('.vb-status-label').length) return;
-  var validStatuses = window.VB_VALID_CONCEPT_STATUSES || ['current_accepted', 'current', 'accepted', 'any'];
+  var validStatuses = config.validStatuses();
   var urlVal    = new URLSearchParams(window.location.search).get(config.urlKey);
   var storedVal = window[config.windowVar];
   var initVal   = (storedVal && validStatuses.indexOf(storedVal) !== -1)
     ? storedVal
-    : (urlVal && validStatuses.indexOf(urlVal) !== -1 ? urlVal : 'current_accepted');
+    : (urlVal && validStatuses.indexOf(urlVal) !== -1 ? urlVal : config.defaultStatus);
   var $label = $(
     '<label class="vb-status-label">' +
       'Status:' +
       '<select class="' + config.cssClass + ' vb-status-select">' +
-        '<option value="current_accepted">Currently Accepted</option>' +
-        '<option value="current">Current</option>' +
-        '<option value="accepted">Accepted</option>' +
-        '<option value="any">Any</option>' +
+        config.optionsHtml +
       '</select>' +
     '</label>'
   );
@@ -548,7 +564,7 @@ window.vbConceptStatusInit = function(nTableWrapper, tableId) {
     var val = this.value;
     window[config.windowVar] = val;
     var params = new URLSearchParams(window.location.search);
-    if (val === 'current_accepted') { params.delete(config.urlKey); } else { params.set(config.urlKey, val); }
+    if (val === config.defaultStatus) { params.delete(config.urlKey); } else { params.set(config.urlKey, val); }
     if (params.has(config.paginationKey)) { params.set(config.paginationKey, '0'); }
     var newSearch = params.toString();
     history.replaceState(null, '', newSearch ? '?' + newSearch : window.location.pathname);
@@ -566,41 +582,6 @@ Shiny.addCustomMessageHandler('setPlantStatus', function(message) {
   window.vbPlantStatus = message.value;
   $('.vb-plant-status-select').val(message.value);
 });
-
-window.vbPlotStatusInit = function(nTableWrapper, tableId) {
-  if (tableId !== 'plot_table') return;
-  if ($(nTableWrapper).find('.vb-plot-status-label').length) return;
-
-  var validStatuses = window.VB_VALID_PLOT_STATUSES || ['current', 'any'];
-  var urlVal = new URLSearchParams(window.location.search).get('plots_status');
-  var storedVal = window.vbPlotStatus;
-  var initVal = (storedVal && validStatuses.indexOf(storedVal) !== -1)
-    ? storedVal
-    : (urlVal && validStatuses.indexOf(urlVal) !== -1 ? urlVal : 'current');
-
-  var $label = $(
-    '<label class="vb-status-label vb-plot-status-label">' +
-      'Status:' +
-      '<select class="vb-plot-status-select vb-status-select">' +
-        '<option value="current">Current</option>' +
-        '<option value="any">Any</option>' +
-      '</select>' +
-    '</label>'
-  );
-
-  $label.find('select').val(initVal);
-  $(nTableWrapper).find('.dataTables_filter').after($label[0]);
-  $label.find('select').on('change', function() {
-    var val = this.value;
-    window.vbPlotStatus = val;
-    var params = new URLSearchParams(window.location.search);
-    if (val === 'current') { params.delete('plots_status'); } else { params.set('plots_status', val); }
-    if (params.has('plots_start')) { params.set('plots_start', '0'); }
-    var newSearch = params.toString();
-    history.replaceState(null, '', newSearch ? '?' + newSearch : window.location.pathname);
-    Shiny.setInputValue('plot_status', val, {priority: 'event'});
-  });
-};
 
 Shiny.addCustomMessageHandler('setPlotStatus', function(message) {
   window.vbPlotStatus = message.value;
