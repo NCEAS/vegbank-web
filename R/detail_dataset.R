@@ -19,7 +19,6 @@ build_dataset_details_view <- function(result) {
   ds <- result[1, , drop = FALSE]
 
   start_year <- format_date(ds$start, format_string = "%Y")
-  stop_year  <- format_date(ds$stop,  format_string = "%Y")
 
   date_range_display <- format_date_range(ds$start, ds$stop)
   author_name        <- parse_dataset_author_label(ds$owner_label %|||% "")
@@ -102,7 +101,7 @@ build_dataset_details_view <- function(result) {
     }),
 
     dataset_citation = shiny::renderUI({
-      build_dataset_citation_text(ds, author_name, start_year, stop_year)
+      build_dataset_citation_text(ds, author_name, start_year)
     })
   )
 }
@@ -129,31 +128,22 @@ parse_dataset_author_label <- function(owner_label) {
 #' Build Dataset Citation Text
 #'
 #' Constructs a formatted citation string for a VegBank dataset in the format:
-#' Author Name (Start Year - End Year): VegBank Plot Observations: "Dataset Name".
+#' Author Name (Start Year): VegBank Plot Observations: "Dataset Name".
 #' VegBank. Dataset. accession_code.
 #'
 #' @param ds Single-row dataframe of dataset fields
 #' @param author_name Author name already formatted as "First Last"
 #' @param start_year Formatted start year string (or "Unspecified")
-#' @param stop_year Formatted stop year string (or "Unspecified")
 #' @return A character string containing the full citation
 #' @noRd
-build_dataset_citation_text <- function(ds, author_name, start_year, stop_year) {
+build_dataset_citation_text <- function(ds, author_name, start_year) {
   # Escape all interpolated fields
   safe_author    <- htmltools::htmlEscape(as.character(author_name %|||% "Unknown Author"))
   safe_name      <- htmltools::htmlEscape(as.character(ds$name %|||% "Unnamed Dataset"))
   safe_accession <- htmltools::htmlEscape(as.character(ds$accession_code %|||% "Unspecified"))
 
-  date_part <- if (!identical(start_year, "Unspecified") && !identical(stop_year, "Unspecified")) {
-    paste0(start_year, " - ", stop_year)
-  } else if (!identical(start_year, "Unspecified")) {
-    start_year
-  } else {
-    "Unspecified"
-  }
-
   paste0(
-    safe_author, " (", date_part, "): VegBank Plot Observations: \u201C",
+    safe_author, " (", start_year, "): VegBank Plot Observations: \u201C",
     safe_name, "\u201D. VegBank. Dataset. ", safe_accession, "."
   )
 }

@@ -25,8 +25,7 @@ test_that("build_dataset_citation_text builds correct citation — start only", 
   text <- build_dataset_citation_text(
     mock_dataset_ds201120,
     author_name = "Kyle Palmquist",
-    start_year  = "2017",
-    stop_year   = "Unspecified"
+    start_year  = "2017"
   )
   expect_true(grepl("Kyle Palmquist", text, fixed = TRUE))
   expect_true(grepl("(2017)", text, fixed = TRUE))
@@ -36,25 +35,13 @@ test_that("build_dataset_citation_text builds correct citation — start only", 
   expect_true(grepl("VB.ds.201120.DWLFOT", text, fixed = TRUE))
 })
 
-test_that("build_dataset_citation_text includes year range when both dates present", {
-  ds_with_stop <- mock_dataset_ds201120
-  text <- build_dataset_citation_text(
-    ds_with_stop,
-    author_name = "Kyle Palmquist",
-    start_year  = "2017",
-    stop_year   = "2020"
-  )
-  expect_true(grepl("2017 - 2020", text, fixed = TRUE))
-})
-
 test_that("build_dataset_citation_text sanitizes dataset name", {
   ds_xss <- mock_dataset_ds201120
   ds_xss$name <- '<script>alert("xss")</script>'
   text <- build_dataset_citation_text(
     ds_xss,
     author_name = "Kyle Palmquist",
-    start_year  = "2017",
-    stop_year   = "Unspecified"
+    start_year  = "2017"
   )
   expect_false(grepl("<script>", text, fixed = TRUE))
   expect_true(grepl("&lt;script&gt;", text, fixed = TRUE))
