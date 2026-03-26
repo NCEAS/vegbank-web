@@ -186,7 +186,7 @@ process_plot_data <- function(plot_data) {
   ob_codes <- plot_data$ob_code
   author_codes <- clean_column_data(plot_data, "author_obs_code")
   has_observation_synonym <- if ("has_observation_synonym" %in% names(plot_data)) {
-    parse_logical_vector(plot_data$has_observation_synonym)
+    plot_data$has_observation_synonym
   } else {
     rep(FALSE, row_count)
   }
@@ -539,13 +539,7 @@ normalize_taxa_items <- function(items) {
 #' @noRd
 normalize_plot_data <- create_normalizer(
   PLOT_TABLE_SCHEMA_TEMPLATE,
-  na_to_zero_fields = c("taxon_count", "taxon_count_returned"),
-  custom_transforms = list(function(normalized) {
-    if ("has_observation_synonym" %in% names(normalized)) {
-      normalized$has_observation_synonym <- parse_logical_vector(normalized$has_observation_synonym)
-    }
-    normalized
-  })
+  na_to_zero_fields = c("taxon_count", "taxon_count_returned")
 )
 
 #' Coerce VegBank plot response to a data frame
