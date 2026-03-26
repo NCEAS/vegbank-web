@@ -211,6 +211,35 @@ test_that("process_plot_data handles empty data correctly", {
   expect_equal(nrow(result_empty), 0)
 })
 
+test_that("process_plot_data adds Not Current badge under Author Code", {
+  plot_data <- data.frame(
+    ob_code = c("ob.1", "ob.2", "ob.3"),
+    author_obs_code = c("ACAD.143", "GRSM.225", "OLYM.Z.681.0003"),
+    has_observation_synonym = c(TRUE, FALSE, NA),
+    state_province = c("Maine", "Tennessee", NA),
+    country = c("United States", "United States", NA),
+    latitude = c(44.3465, 35.5800, NA),
+    longitude = c(-68.2293, -83.8000, NA),
+    elevation = c(416, 930, 1915),
+    area = c(NA, NA, NA),
+    year = c("1998", "1998", "2012"),
+    taxon_count = c(0L, 0L, 0L),
+    taxon_count_returned = c(0L, 0L, 0L),
+    stringsAsFactors = FALSE
+  )
+  plot_data$top_taxon_observations <- list(NULL, NULL, NULL)
+  plot_data$top_classifications <- list(NULL, NULL, NULL)
+
+  result <- process_plot_data(plot_data)
+
+  expect_true(grepl("ACAD\\.143", result$`Author Code`[1]))
+  expect_true(grepl("Not Current", result$`Author Code`[1]))
+  expect_true(grepl("badge rounded-pill", result$`Author Code`[1], fixed = TRUE))
+
+  expect_equal(result$`Author Code`[2], "GRSM.225")
+  expect_equal(result$`Author Code`[3], "OLYM.Z.681.0003")
+})
+
 test_that("build_plot_table returns DataTable object", {
   pkg_env <- asNamespace("vegbankweb")
 
@@ -269,5 +298,58 @@ test_that("plot table spec produces valid config", {
   expect_equal(spec$resource, "plot-observations")
   expect_equal(spec$detail, "minimal")
   expect_equal(spec$query$with_nested, "TRUE")
+})
+
+test_that("build_plot_table_with_filter injects plot status into AJAX query", {
+  pkg_env <- asNamespace("vegbankweb")
+  captured_spec <- NULL
+  status_state <- shiny::reactiveVal("current")
+  status_fn <- status_state
+
+  with_mocked_bindings(
+    build_table_from_spec = function(spec) {
+      captured_spec <<- spec
+      structure(list(x = list(data = data.frame())), class = "datatables")
+    },
+    .env = pkg_env,
+    {
+      result <- build_plot_table_with_filter(status_fn = status_fn)
+      expect_s3_class(result, "datatables")
+      expect_true(is.function(captured_spec$data_source$query))
+
+      query_current <- captured_spec$data_source$query()
+      expect_equal(query_current$with_nested, "TRUE")
+      expect_equal(query_current$status, "current")
+
+      status_state("any")
+      query_any <- captured_spec$data_source$query()
+      expect_equal(query_any$status, "any")
+    }
+  )
+})
+
+test_that("build_plot_table_with_filter keeps vb_code and status query params", {
+  pkg_env <- asNamespace("vegbankweb")
+  captured_spec <- NULL
+
+  with_mocked_bindings(
+    build_table_from_spec = function(spec) {
+      captured_spec <<- spec
+      structure(list(x = list(data = data.frame())), class = "datatables")
+    },
+    .env = pkg_env,
+    {
+      build_plot_table_with_filter(
+        vb_code = "pj.340",
+        filter_type = "project",
+        status_fn = function() "any"
+      )
+
+      query <- captured_spec$data_source$query()
+      expect_equal(query$with_nested, "TRUE")
+      expect_equal(query$vb_code, "pj.340")
+      expect_equal(query$status, "any")
+    }
+  )
 })
 

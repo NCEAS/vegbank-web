@@ -375,6 +375,22 @@ test_that("build_query_string omits filter params when filters are NULL", {
   expect_no_match(query, "comm_filter_")
 })
 
+test_that("build_query_string serializes plot status when non-default", {
+  mock_session <- list(clientData = list(url_search = ""))
+  manager <- URLStateManager$new(mock_session)
+
+  query <- manager$build_query_string(tab = "Plots", plot_status = "any")
+  expect_match(query, "plots_status=any")
+})
+
+test_that("build_query_string omits default plot status", {
+  mock_session <- list(clientData = list(url_search = ""))
+  manager <- URLStateManager$new(mock_session)
+
+  query <- manager$build_query_string(tab = "Plots", plot_status = "current")
+  expect_no_match(query, "plots_status=")
+})
+
 test_that("plot_filter URL params roundtrip through build and parse", {
   # Build a query string with a plot filter
   build_session <- list(clientData = list(url_search = ""))

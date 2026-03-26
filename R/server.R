@@ -82,6 +82,7 @@ server <- function(input, output, session) {
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
     plot_filter = shiny::reactiveVal(NULL), # Cross-resource / citation filter: list(type, code, label)
+    plot_status = shiny::reactiveVal("current"), # Status filter for plot observations table
     community_filter = shiny::reactiveVal(NULL), # Citation filter for cc: list(type, code, label)
     community_status = shiny::reactiveVal("current_accepted"), # Status filter for community concepts table
     plant_status = shiny::reactiveVal("current_accepted"), # Status filter for plant concepts table
@@ -352,6 +353,7 @@ server <- function(input, output, session) {
       highlight_table = state$highlighted_table(),
       highlight_row = state$highlighted_row(),
       plot_filter = state$plot_filter(),
+      plot_status = state$plot_status(),
       community_filter = state$community_filter(),
       community_status = state$community_status(),
       plant_status = state$plant_status()
@@ -707,14 +709,27 @@ server <- function(input, output, session) {
 
   output$plot_table <- DT::renderDataTable({
     # Rebuild table when filter changes to pass vb_code for cross-resource queries
+    # Status changes are handled via proxy reload below -- no dependency here.
     filter <- state$plot_filter()
     vb_code <- if (!is.null(filter)) filter$code else NULL
     filter_type <- if (!is.null(filter)) filter$type else NULL
-    build_plot_table_with_filter(vb_code, filter_type)
+    build_plot_table_with_filter(
+      vb_code = vb_code,
+      filter_type = filter_type,
+      status_fn = state$plot_status
+    )
   })
 
   # Download handler for plot table
   output$download_plot_table <- create_table_download_handler("plot_table", input, state, session)
+
+  # Keep state$plot_status in sync with the dropdown input
+  shiny::observeEvent(input$plot_status, {
+    val <- input$plot_status
+    if (!is.null(val) && val %in% VALID_PLOT_STATUSES) {
+      state$plot_status(val)
+    }
+  })
 
   # Keep state$community_status in sync with the dropdown input
   shiny::observeEvent(input$comm_status, {
@@ -735,8 +750,13 @@ server <- function(input, output, session) {
   # Proxies for status filter reloads. When status changes we do a tbody-only
   # ajax.reload() so the DT wrapper DOM (including initComplete-injected elements)
   # is never destroyed.
+  plot_proxy  <- DT::dataTableProxy("plot_table",  session = session)
   comm_proxy  <- DT::dataTableProxy("comm_table",  session = session)
   plant_proxy <- DT::dataTableProxy("plant_table", session = session)
+
+  shiny::observeEvent(state$plot_status(), {
+    DT::reloadData(plot_proxy, resetPaging = TRUE)
+  }, ignoreInit = TRUE)
 
   shiny::observeEvent(state$community_status(), {
     DT::reloadData(comm_proxy, resetPaging = TRUE)
@@ -1473,16 +1493,30 @@ server <- function(input, output, session) {
 
       # Restore concept status filters from URL.
       # `status_reactive` is a reactiveVal -- calling it reads, calling it with a value sets.
-      restore_status_param <- function(url_param, status_reactive, msg_type) {
+      restore_status_param <- function(url_param,
+                                       status_reactive,
+                                       msg_type,
+                                       valid_statuses,
+                                       default_status) {
         val <- url_manager$first_param(url_param)
-        target <- if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) val else "current_accepted"
+        target <- if (!is.null(val) && val %in% valid_statuses) val else default_status
         if (!identical(status_reactive(), target)) {
           status_reactive(target)
           session$sendCustomMessage(msg_type, list(value = target))
         }
       }
-      restore_status_param(params$communities_status, state$community_status, "setCommStatus")
-      restore_status_param(params$plants_status, state$plant_status, "setPlantStatus")
+      restore_status_param(params$communities_status, state$community_status, "setCommStatus",
+        valid_statuses = VALID_CONCEPT_STATUSES,
+        default_status = "current_accepted"
+      )
+      restore_status_param(params$plants_status, state$plant_status, "setPlantStatus",
+        valid_statuses = VALID_CONCEPT_STATUSES,
+        default_status = "current_accepted"
+      )
+      restore_status_param(params$plots_status, state$plot_status, "setPlotStatus",
+        valid_statuses = VALID_PLOT_STATUSES,
+        default_status = "current"
+      )
 
       # Parse and apply map view state
       map_lat_param <- params$map_lat
