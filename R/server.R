@@ -511,7 +511,20 @@ server <- function(input, output, session) {
       state$plot_filter(filter_info)
       state$current_tab("Plots")
       shiny::updateNavbarPage(session, "page", selected = "Plots")
-      update_app_query(mode = "replace", tab = "Plots")
+
+      open_detail(
+        detail_type = "user-dataset",
+        vb_code = citation$vb_code,
+        push_history = FALSE,
+        skip_highlight = TRUE
+      )
+
+      update_app_query(
+        mode = "replace",
+        tab = "Plots",
+        detail_type = "user-dataset",
+        detail_code = citation$vb_code
+      )
     } else {
       if (citation$tab == "Plots") {
         state$plot_filter(filter_info)
@@ -550,24 +563,53 @@ server <- function(input, output, session) {
       return(NULL)
     }
 
-    # Customize message based on filter type
-    message <- if (filter$type == "single-entity-citation") {
-      # e.g. "Showing the cited plot observation: ob.2948 (Citation identifier: VB.Ob.2948.ACAD143)"
-      sprintf("Showing the cited %s: %s (%s)", resource_singular, filter$code, filter$label)
-    } else if (filter$type == "collection-citation") {
-      # e.g. "Showing plot observations in dataset: ds.200278 (Citation identifier: ds.200278)"
-      sprintf("Showing plot observations in dataset: %s (%s)", filter$code, filter$label)
+    # Resolve the detail_type for the filter code so we can make it a link.
+    # Citation filters carry resource_type directly; cross-resource filters
+    # (e.g. from obs_count_click) don't, so derive it from the code prefix.
+    detail_type <- filter$resource_type %||% {
+      prefix <- strsplit(as.character(filter$code), "\\.")[[1]][1]
+      info   <- get_resource_by_prefix(prefix)
+      info$detail_type %||% NULL
+    }
+
+    # Build a clickable code span when a detail view is available, plain text otherwise.
+    code_display <- if (!is.null(detail_type) && nzchar(detail_type)) {
+      safe_code        <- htmltools::htmlEscape(as.character(filter$code),  attribute = TRUE)
+      safe_detail_type <- htmltools::htmlEscape(as.character(detail_type),  attribute = TRUE)
+      htmltools::tags$a(
+        href = "#",
+        onclick = sprintf(
+          "Shiny.setInputValue('filter_detail_click', {code: '%s', detail_type: '%s'}, {priority: 'event'}); return false;",
+          safe_code, safe_detail_type
+        ),
+        filter$code
+      )
     } else {
-      sprintf(
-        "Showing %s related to %s: %s (%s)",
-        resource_plural, filter$type, filter$code, filter$label
+      htmltools::tags$span(filter$code)
+    }
+
+    # Build the message with the code replaced by the (possibly linked) element.
+    message_ui <- if (filter$type == "single-entity-citation") {
+      htmltools::tagList(
+        "Showing the cited ", resource_singular, ": ", code_display,
+        " (", filter$label, ")"
+      )
+    } else if (filter$type == "collection-citation") {
+      htmltools::tagList(
+        "Showing plot observations in dataset: ", code_display,
+        " (", filter$label, ")"
+      )
+    } else {
+      htmltools::tagList(
+        "Showing ", resource_plural, " related to ", filter$type, ": ",
+        code_display, " (", filter$label, ")"
       )
     }
 
     htmltools::tags$div(
       class = "alert alert-info alert-dismissible show d-flex align-items-center justify-content-between",
       role = "alert",
-      htmltools::tags$strong(message),
+      htmltools::tags$strong(message_ui),
       htmltools::tags$button(
         type = "button",
         class = "btn btn-sm btn-outline-info ms-3",
@@ -1257,6 +1299,16 @@ server <- function(input, output, session) {
     vb_code <- input$to_link_click
     if (!is.null(vb_code) && nchar(vb_code) > 0) {
       open_detail("taxon-observation", vb_code)
+    }
+  })
+
+  shiny::observeEvent(input$filter_detail_click, {
+    event_data <- input$filter_detail_click
+    if (is.null(event_data)) return()
+    vb_code     <- event_data$code
+    detail_type <- event_data$detail_type
+    if (!is.null(vb_code) && nzchar(vb_code) && !is.null(detail_type) && nzchar(detail_type)) {
+      open_detail(detail_type, vb_code)
     }
   })
 

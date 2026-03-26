@@ -912,3 +912,34 @@ table.dataTable tbody tr.selected-entity:hover,
 .leaflet-tooltip:focus-within {
   z-index: 1000 !important;
 }
+
+/* Copy permalink link button in detail-view header cards */
+
+.vb-copy-permalink,
+.vb-copy-citation {
+  font-size: 0.8rem;
+  color: var(--vb-green);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+}
+
+.vb-copy-permalink:hover,
+.vb-copy-citation:hover {
+  text-decoration: underline;
+  color: var(--vb-green-medium);
+}
+
+
+.vb-copy-inline-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}

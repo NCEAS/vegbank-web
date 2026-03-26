@@ -409,6 +409,15 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Observation Details"), shiny::uiOutput("taxon_obs_details")),
           bslib::card(bslib::card_header("Taxon Importance"), shiny::uiOutput("taxon_obs_importance")),
           bslib::card(bslib::card_header("Taxon Interpretations"), shiny::uiOutput("taxon_obs_interpretations"))
+        ),
+
+        # User Dataset Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "user-dataset-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("dataset_header")),
+          bslib::card(bslib::card_header("Dataset Details"), shiny::uiOutput("dataset_details")),
+          bslib::card(bslib::card_header("Citation"), shiny::uiOutput("dataset_citation"))
         )
       )
     )
