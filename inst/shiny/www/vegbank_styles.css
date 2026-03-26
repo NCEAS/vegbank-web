@@ -914,7 +914,9 @@ table.dataTable tbody tr.selected-entity:hover,
 }
 
 /* Copy permalink link button in detail-view header cards */
-.vb-copy-permalink {
+
+.vb-copy-permalink,
+.vb-copy-citation {
   font-size: 0.8rem;
   color: var(--vb-green);
   background: none;
@@ -928,10 +930,12 @@ table.dataTable tbody tr.selected-entity:hover,
   line-height: 1.2;
 }
 
-.vb-copy-permalink:hover {
+.vb-copy-permalink:hover,
+.vb-copy-citation:hover {
   text-decoration: underline;
   color: var(--vb-green-medium);
 }
+
 
 .vb-copy-inline-row {
   display: flex;

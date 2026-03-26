@@ -101,7 +101,30 @@ build_dataset_details_view <- function(result) {
     }),
 
     dataset_citation = shiny::renderUI({
-      build_dataset_citation_text(ds, author_name, start_year)
+      citation_html <- build_dataset_citation_text(ds, author_name, start_year)
+      citation_text <- build_dataset_citation_text_plain(ds, author_name, start_year)
+      copy_icon <- load_svg_icon(
+        "copy",
+        style = "width:13px;height:13px;vertical-align:-0.1em;flex-shrink:0;"
+      )
+      copy_btn <- htmltools::tags$button(
+        type = "button",
+        class = "vb-copy-citation",
+        `data-copy-text` = citation_text,
+        `data-default-text` = "Copy citation",
+        `data-copied-text` = "Copied",
+        title = "Copy citation",
+        `aria-label` = "Copy citation",
+        "Copy citation",
+        htmltools::HTML(copy_icon)
+      )
+      htmltools::tagList(
+        citation_html,
+        htmltools::tags$div(
+          style = "display: flex; justify-content: flex-end; margin-top: 0.25rem;",
+          copy_btn
+        )
+      )
     })
   )
 }
@@ -128,14 +151,16 @@ parse_dataset_author_label <- function(owner_label) {
 #' Build Dataset Citation Text
 #'
 #' Constructs a formatted citation string for a VegBank dataset in the format:
-#' Author Name (Start Year): VegBank Plot Observations: "Dataset Name".
-#' VegBank. Dataset. accession_code.
+#' Author Name (Start Year): VegBank plot observations: Dataset Name.
+#' VegBank. Dataset. Link with accession_code.
 #'
 #' @param ds Single-row dataframe of dataset fields
 #' @param author_name Author name already formatted as "First Last"
 #' @param start_year Formatted start year string (or "Unspecified")
 #' @return A character string containing the full citation
 #' @noRd
+#' Build Dataset Citation Text
+#' ...existing code...
 build_dataset_citation_text <- function(ds, author_name, start_year) {
   # Escape all interpolated fields
   safe_author <- htmltools::htmlEscape(as.character(author_name %|||% "Unknown Author"))
@@ -160,15 +185,50 @@ build_dataset_citation_text <- function(ds, author_name, start_year) {
   # because tagList() adds spaces before periods
   if (!is.null(url)) {
     citation_html <- paste0(
-      safe_author, " (", start_year, "): VegBank Plot Observations: ",
+      safe_author, " (", start_year, "): VegBank plot observations: ",
       safe_name, ". VegBank. Dataset. ",
       as.character(htmltools::tags$a(href = url, target = "_blank", rel = "noopener", display)), "."
     )
   } else {
     citation_html <- paste0(
-      safe_author, " (", start_year, "): VegBank Plot Observations: ",
+      safe_author, " (", start_year, "): VegBank plot observations: ",
       safe_name, ". VegBank. Dataset. ", display, "."
     )
   }
   htmltools::HTML(citation_html)
+}
+
+#' Build Dataset Citation Text (Plain)
+#'
+#' Returns a plain text version of the citation, including the URL at the end if present.
+#' @noRd
+build_dataset_citation_text_plain <- function(ds, author_name, start_year) {
+  safe_author <- as.character(author_name %|||% "Unknown Author")
+  safe_name   <- as.character(ds$name %|||% "Unnamed Dataset")
+  raw_accession <- as.character(ds$accession_code %|||% "Unspecified")
+
+  is_doi <- grepl("^10\\.\\d{4,9}/", raw_accession)
+  is_vegbank <- grepl("^VB\\.ds\\.\\d+\\.", raw_accession)
+  if (is_doi) {
+    display <- paste0("doi:", raw_accession)
+    url <- paste0("https://doi.org/", raw_accession)
+  } else if (is_vegbank) {
+    display <- paste0("vegbank:", raw_accession)
+    url <- paste0("https://identifiers.org/vegbank:", raw_accession)
+  } else {
+    display <- raw_accession
+    url <- NULL
+  }
+
+  if (!is.null(url)) {
+    paste0(
+      safe_author, " (", start_year, "): VegBank plot observations: ",
+      safe_name, ". VegBank. Dataset. ", display, ". ", url
+    )
+  } else {
+    paste0(
+      safe_author, " (", start_year, "): VegBank plot observations: ",
+      safe_name, ". VegBank. Dataset. ", display, "."
+    )
+  }
 }

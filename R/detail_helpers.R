@@ -456,7 +456,7 @@ create_permalink_button <- function(vb_code, label = "Copy permalink") {
 #' and appends the Copy permalink control inline with the final remaining row.
 #'
 #' @param rows List of htmltools tag elements (for header rows)
-#' @param vb_code VegBank code used for the citation URL
+#' @param vb_code VegBank code used for the permalink /cite URL
 #' @return A list of header row tags with the last row wrapped in
 #'   `div.vb-copy-inline-row` when a copy button can be created
 #' @noRd

@@ -662,20 +662,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  $(document).on('click', '.vb-copy-permalink', function(e) {
-    e.preventDefault();
 
+  function handleCopyButtonClick(e, selector, defaultLabel) {
+    e.preventDefault();
     var btn = e.currentTarget;
     var copyText = btn.getAttribute('data-copy-text');
-    if (!copyText) {
-      return;
-    }
-
-    var defaultText = btn.getAttribute('data-default-text') || 'Copy permalink';
+    if (!copyText) return;
+    var defaultText = btn.getAttribute('data-default-text') || defaultLabel;
     var copiedText = btn.getAttribute('data-copied-text') || 'Copied';
-
-    // Find the first text node so the SVG child is preserved during the
-    // temporary status flash.
     function getTextNode() {
       for (var i = 0; i < btn.childNodes.length; i++) {
         if (btn.childNodes[i].nodeType === Node.TEXT_NODE) {
@@ -684,22 +678,16 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       return null;
     }
-
     function showTemporaryStatus(text) {
       var textNode = getTextNode();
-      if (textNode) {
-        textNode.nodeValue = text;
-      }
+      if (textNode) textNode.nodeValue = text;
       btn.disabled = true;
       window.setTimeout(function() {
         var tn = getTextNode();
-        if (tn) {
-          tn.nodeValue = defaultText;
-        }
+        if (tn) tn.nodeValue = defaultText;
         btn.disabled = false;
       }, 950);
     }
-
     function copyWithFallback() {
       var textArea = document.createElement('textarea');
       textArea.value = copyText;
@@ -708,29 +696,26 @@ document.addEventListener('DOMContentLoaded', function() {
       textArea.style.opacity = '0';
       document.body.appendChild(textArea);
       textArea.select();
-
       var copied = false;
-      try {
-        copied = document.execCommand('copy');
-      } catch (err) {
-        copied = false;
-      }
-
+      try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
       document.body.removeChild(textArea);
       showTemporaryStatus(copied ? copiedText : 'Copy failed');
     }
-
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(copyText)
-        .then(function() {
-          showTemporaryStatus(copiedText);
-        })
-        .catch(function() {
-          copyWithFallback();
-        });
+        .then(function() { showTemporaryStatus(copiedText); })
+        .catch(function() { copyWithFallback(); });
     } else {
       copyWithFallback();
     }
+  }
+
+  $(document).on('click', '.vb-copy-permalink', function(e) {
+    handleCopyButtonClick(e, '.vb-copy-permalink', 'Copy permalink');
+  });
+
+  $(document).on('click', '.vb-copy-citation', function(e) {
+    handleCopyButtonClick(e, '.vb-copy-citation', 'Copy citation');
   });
 
   $(document).on('click', '.dt-map-action', function(e) {
