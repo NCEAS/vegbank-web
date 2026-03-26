@@ -29,7 +29,7 @@ test_that("RESOURCE_REGISTRY dataset entry has correct structure", {
   info <- RESOURCE_REGISTRY[["user-datasets"]]
   expect_equal(info$tab, "Plots")
   expect_equal(info$api_type, "user-datasets")
-  expect_equal(info$detail_type, NULL)  # Datasets use a filter-based view, not a detail overlay
+  expect_equal(info$detail_type, "user-dataset")
 })
 
 test_that("RESOURCE_REGISTRY maps to valid app tabs", {
@@ -51,7 +51,7 @@ test_that("RESOURCE_REGISTRY detail types match show_detail_view switch cases", 
   valid_detail_types <- c(
     "community-classification", "community-concept", "plot-observation",
     "project", "party", "plant-concept", "reference", "cover-method", "stratum-method",
-    "taxon-observation"
+    "taxon-observation", "user-dataset"
   )
   for (type in names(RESOURCE_REGISTRY)) {
     detail_type <- RESOURCE_REGISTRY[[type]]$detail_type
@@ -169,7 +169,7 @@ test_that("resolve_citation returns correct structure for user dataset", {
       expect_false(is.null(result))
       expect_equal(result$vb_code, "ds.50")
       expect_equal(result$tab, "Plots")
-      expect_equal(result$detail_type, NULL)
+      expect_equal(result$detail_type, "user-dataset")
       expect_equal(result$resource_info$api_type, "user-datasets")
       expect_equal(result$identifier, "VB.DS.50.TEST")
     }

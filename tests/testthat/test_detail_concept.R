@@ -50,6 +50,16 @@ test_that("build_comm_concept_details_view formats community data correctly", {
   expect_true(inherits(result_vii$community_concept_header, "shiny.render.function"))
 })
 
+test_that("build_comm_concept_details_view header includes copy permalink button", {
+  result <- build_comm_concept_details_view(mock_comm_concept_cegl007230)
+  mock_session <- shiny::MockShinySession$new()
+  html <- htmltools::renderTags(result$community_concept_header(shinysession = mock_session))$html
+
+  expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
+  expect_true(grepl("Copy permalink", html, fixed = TRUE))
+  expect_true(grepl("vegbank.org/cite/cc.47882", html, fixed = TRUE))
+})
+
 test_that("build_plant_concept_details_view handles valid data", {
   with_mocked_bindings(
     renderUI = function(expr) {

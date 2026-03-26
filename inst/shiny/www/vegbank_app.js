@@ -702,6 +702,62 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+
+  function handleCopyButtonClick(e, selector, defaultLabel) {
+    e.preventDefault();
+    var btn = e.currentTarget;
+    var copyText = btn.getAttribute('data-copy-text');
+    if (!copyText) return;
+    var defaultText = btn.getAttribute('data-default-text') || defaultLabel;
+    var copiedText = btn.getAttribute('data-copied-text') || 'Copied';
+    function getTextNode() {
+      for (var i = 0; i < btn.childNodes.length; i++) {
+        if (btn.childNodes[i].nodeType === Node.TEXT_NODE) {
+          return btn.childNodes[i];
+        }
+      }
+      return null;
+    }
+    function showTemporaryStatus(text) {
+      var textNode = getTextNode();
+      if (textNode) textNode.nodeValue = text;
+      btn.disabled = true;
+      window.setTimeout(function() {
+        var tn = getTextNode();
+        if (tn) tn.nodeValue = defaultText;
+        btn.disabled = false;
+      }, 950);
+    }
+    function copyWithFallback() {
+      var textArea = document.createElement('textarea');
+      textArea.value = copyText;
+      textArea.setAttribute('readonly', 'readonly');
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      var copied = false;
+      try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+      document.body.removeChild(textArea);
+      showTemporaryStatus(copied ? copiedText : 'Copy failed');
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(copyText)
+        .then(function() { showTemporaryStatus(copiedText); })
+        .catch(function() { copyWithFallback(); });
+    } else {
+      copyWithFallback();
+    }
+  }
+
+  $(document).on('click', '.vb-copy-permalink', function(e) {
+    handleCopyButtonClick(e, '.vb-copy-permalink', 'Copy permalink');
+  });
+
+  $(document).on('click', '.vb-copy-citation', function(e) {
+    handleCopyButtonClick(e, '.vb-copy-citation', 'Copy citation');
+  });
+
   $(document).on('click', '.dt-map-action', function(e) {
     e.preventDefault();
     var btn = $(this);
@@ -1268,23 +1324,19 @@ Shiny.addCustomMessageHandler('updateDetailType', function(message) {
   const coverMethodCards = document.getElementById('cover-method-details-cards');
   const stratumMethodCards = document.getElementById('stratum-method-details-cards');
   const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
+  const userDatasetCards = document.getElementById('user-dataset-details-cards');
 
   console.log('Updating detail type to:', type);
 
-  if (plotCards && communityConceptCards && communityClassificationCards &&
-      projectCards && partyCards && plantConceptCards && referenceCards && coverMethodCards &&
-      stratumMethodCards && taxonObservationCards) {
+  const allCardSections = [
+    plotCards, communityConceptCards, communityClassificationCards,
+    projectCards, partyCards, plantConceptCards, referenceCards, coverMethodCards,
+    stratumMethodCards, taxonObservationCards, userDatasetCards
+  ];
+
+  if (allCardSections.every(function(el) { return el !== null; })) {
     // Hide all card types first
-    plotCards.style.display = 'none';
-    communityConceptCards.style.display = 'none';
-    communityClassificationCards.style.display = 'none';
-    projectCards.style.display = 'none';
-    partyCards.style.display = 'none';
-    plantConceptCards.style.display = 'none';
-    referenceCards.style.display = 'none';
-    coverMethodCards.style.display = 'none';
-    stratumMethodCards.style.display = 'none';
-    taxonObservationCards.style.display = 'none';
+    allCardSections.forEach(function(el) { el.style.display = 'none'; });
 
     // Show the requested type
     if (type === 'plot-observation') {
@@ -1317,6 +1369,9 @@ Shiny.addCustomMessageHandler('updateDetailType', function(message) {
     } else if (type === 'taxon-observation') {
       console.log('Showing taxon observation details');
       taxonObservationCards.style.display = 'block';
+    } else if (type === 'user-dataset') {
+      console.log('Showing user dataset details');
+      userDatasetCards.style.display = 'block';
     }
   }
 });

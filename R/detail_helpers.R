@@ -25,17 +25,47 @@
 #' @return A Date object or NA if parsing fails
 #' @noRd
 safe_parse_date <- function(date_string) {
-  if (is.null(date_string) || length(date_string) == 0 || is.na(date_string) || date_string == "") {
+  if (is.null(date_string) || length(date_string) == 0) {
+    return(NA)
+  }
+
+  value <- date_string[[1]]
+
+  if (is.na(value)) {
+    return(NA)
+  }
+
+  if (inherits(value, "Date")) {
+    return(as.Date(value))
+  }
+
+  if (inherits(value, c("POSIXct", "POSIXlt"))) {
+    return(as.Date(value))
+  }
+
+  value_chr <- trimws(as.character(value))
+  if (!nzchar(value_chr)) {
     return(NA)
   }
 
   tryCatch(
     {
-      parsed_date <- as.POSIXct(date_string, format = "%a, %d %b %Y %H:%M:%S", tz = "GMT")
+      parsed_date <- as.POSIXct(value_chr, format = "%a, %d %b %Y %H:%M:%S", tz = "GMT")
       if (!is.na(parsed_date)) {
         return(as.Date(parsed_date))
       }
-      as.Date(date_string)
+
+      parsed_date <- as.Date(value_chr)
+      if (!is.na(parsed_date)) {
+        return(parsed_date)
+      }
+
+      parsed_datetime <- as.POSIXct(value_chr, tz = "UTC")
+      if (!is.na(parsed_datetime)) {
+        return(as.Date(parsed_datetime))
+      }
+
+      NA
     },
     error = function(e) {
       NA
@@ -96,6 +126,29 @@ append_units <- function(field_name, value) {
     return(value)
   }
 
+  # slope_aspect and gradient encodes two sentinel values that must not receive a degree symbol
+  if (field_name == "slope_gradient") {
+    numeric_value <- suppressWarnings(as.numeric(value))
+    if (!is.na(numeric_value) && numeric_value == -1) return("-1 (Too irregular)")
+  }
+
+  if (field_name == "slope_aspect") {
+    numeric_value <- suppressWarnings(as.numeric(value))
+    if (!is.na(numeric_value) && numeric_value == -1) return("-1 (Too flat)")
+    if (!is.na(numeric_value) && numeric_value == -2) return("-2 (Too irregular)")
+  }
+
+  # area measurements use -1 to indicate lack of boundaries
+  if (field_name == "taxon_observation_area" ||
+        field_name == "taxon_inference_area" ||
+        field_name == "stem_observation_area" ||
+        field_name == "stem_taxon_area" ||
+        field_name == "inference_area" ||
+        field_name == "area") {
+    numeric_value <- suppressWarnings(as.numeric(value))
+    if (!is.na(numeric_value) && numeric_value == -1) return("-1 (No known boundaries)")
+  }
+
   unit_map <- c(
     elevation = " m",
     elevation_accuracy = " m",
@@ -112,7 +165,7 @@ append_units <- function(field_name, value) {
     taxon_observation_area = " m\u00B2",
     stem_observation_area = " m\u00B2",
     inference_area = " m\u00B2",
-    basal_area = " m\u00B2",
+    basal_area = " m\u00B2/ha",
     azimuth = "\u00B0",
     slope_aspect = "\u00B0",
     min_slope_aspect = "\u00B0",
@@ -361,6 +414,71 @@ create_detail_link <- function(input_id, code_value, display_text) {
     ),
     htmltools::HTML(safe_display)
   )
+}
+
+#' Create Copy permalink Link Button
+#'
+#' Renders a minimal inline button that copies `vegbank.org/cite/<vb_code>` to
+#' the clipboard. The click behavior is implemented in `vegbank_app.js`.
+#'
+#' @param vb_code VegBank code (e.g., "ob.1234", "cc.567", "ds.987")
+#' @param label Button label text (defaults to "Copy permalink")
+#' @return An htmltools button tag, or NULL when vb_code is missing
+#' @noRd
+create_permalink_button <- function(vb_code, label = "Copy permalink") {
+  if (is.null(vb_code) || length(vb_code) == 0 || is.na(vb_code) || !nzchar(trimws(as.character(vb_code)))) {
+    return(NULL)
+  }
+
+  code <- trimws(as.character(vb_code)[1])
+  copy_text <- paste0("vegbank.org/cite/", code)
+  copy_icon <- load_svg_icon(
+    "copy",
+    style = "width:13px;height:13px;vertical-align:-0.1em;flex-shrink:0;"
+  )
+
+  htmltools::tags$button(
+    type = "button",
+    class = "vb-copy-permalink",
+    `data-copy-text` = htmltools::htmlEscape(copy_text, attribute = TRUE),
+    `data-default-text` = htmltools::htmlEscape(label, attribute = TRUE),
+    `data-copied-text` = "Copied",
+    title = htmltools::htmlEscape(label, attribute = TRUE),
+    `aria-label` = htmltools::htmlEscape(label, attribute = TRUE),
+    label,
+    htmltools::HTML(copy_icon)
+  )
+}
+
+#' Add Copy Permalink Button to Last Row
+#'
+#' Takes a list of row tags (some may be NULL), removes NULL entries,
+#' and appends the Copy permalink control inline with the final remaining row.
+#'
+#' @param rows List of htmltools tag elements (for header rows)
+#' @param vb_code VegBank code used for the permalink /cite URL
+#' @return A list of header row tags with the last row wrapped in
+#'   `div.vb-copy-inline-row` when a copy button can be created
+#' @noRd
+add_permalink_button_to_last_row <- function(rows, vb_code) {
+  rows <- Filter(Negate(is.null), rows)
+  if (length(rows) == 0) {
+    return(rows)
+  }
+
+  copy_button <- create_permalink_button(vb_code)
+  if (is.null(copy_button)) {
+    return(rows)
+  }
+
+  last_idx <- length(rows)
+  rows[[last_idx]] <- htmltools::tags$div(
+    class = "vb-copy-inline-row",
+    rows[[last_idx]],
+    copy_button
+  )
+
+  rows
 }
 
 #' Creates a clickable link for observation counts that triggers
