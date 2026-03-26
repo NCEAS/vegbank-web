@@ -29,7 +29,7 @@ test_that("build_dataset_citation_text builds correct citation — start only", 
   )
   expect_true(grepl("Kyle Palmquist", text, fixed = TRUE))
   expect_true(grepl("(2017)", text, fixed = TRUE))
-  expect_true(grepl("VegBank Plot Observations", text, fixed = TRUE))
+  expect_true(grepl("VegBank plot observations", text, fixed = TRUE))
   expect_true(grepl("CEGL007141.v2", text, fixed = TRUE))
   expect_true(grepl("VegBank. Dataset.", text, fixed = TRUE))
   expect_true(grepl("VB.ds.201120.DWLFOT", text, fixed = TRUE))
@@ -143,7 +143,7 @@ test_that("build_dataset_details_view citation card contains expected parts", {
   html <- htmltools::renderTags(details$dataset_citation(shinysession = mock_session))$html
 
   expect_true(grepl("Kyle Palmquist",         html, fixed = TRUE))
-  expect_true(grepl("VegBank Plot Observations", html, fixed = TRUE))
+  expect_true(grepl("VegBank plot observations", html, fixed = TRUE))
   expect_true(grepl("VegBank. Dataset.",       html, fixed = TRUE))
   expect_true(grepl("VB.ds.201120.DWLFOT",    html, fixed = TRUE))
   expect_true(grepl("2017",                   html, fixed = TRUE))
