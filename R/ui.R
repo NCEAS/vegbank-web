@@ -242,17 +242,25 @@ build_navbar <- function(initial_tab = "Home") {
         )
       ),
       bslib::nav_panel(
-        title = "Download",
+        title = "Citing Data",
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+        )
+      ),
+      bslib::nav_panel(
+        title = "Downloading Plots",
         htmltools::tags$div(
           class = "vb-markdown-page",
           shiny::includeMarkdown(system.file("shiny", "www", "download.md", package = "vegbankweb"))
         )
       ),
-      bslib::nav_panel(
-        title = "Cite",
-        htmltools::tags$div(
-          class = "vb-markdown-page",
-          shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+      bslib::nav_item(
+        htmltools::tags$a(
+          "Uploading Plots",
+          href = "https://nceas.github.io/vegbankr/articles/upload.html",
+          target = "_blank",
+          rel = "noopener noreferrer"
         )
       ),
       bslib::nav_item(

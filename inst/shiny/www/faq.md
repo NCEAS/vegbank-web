@@ -103,7 +103,7 @@ Please select from the following questions, or browse through this file:
 
 ##### How do I download VegBank data? {#howdownload}
 
-> Data can be downloaded from the [vegbankr](https://nceas.github.io/vegbankr/index.html) R package, which underpins this website and serves as an interface to the VegBank API.
+> View our [Download Plots](?tab=Downloading%20Plots) page in the About menu to learn more about downloading data with the Plot table. Data can also be downloaded from the [vegbankr](https://nceas.github.io/vegbankr/index.html) R package, which underpins this website and serves as an interface to the [VegBank API](https://nceas.github.io/vegbank2/api/).
 
 [back to top...](#topoffaq)
 
@@ -111,7 +111,7 @@ Please select from the following questions, or browse through this file:
 
 ##### What features does VegBank offer for analysis of plot data? {#analysis}
 
-> VegBank does not have analysis tools. Other groups have done a good job making tools for analysis, and we encourage users to find data in VegBank, then export into a format of your choice, then work on analysis with a program like PC-Ord.
+> VegBank does not have analysis tools. Other groups have done a good job making tools for analysis, and we encourage users to find data in VegBank, then [download it](?tab=Downloading%20Plots), then work on analysis with another program. Users interested in more precise analysis and complete views of the data may also benefit from exploring it via the [vegbankr package](https://nceas.github.io/vegbankr/index.html).
 
 [back to top...](#topoffaq)
 
@@ -127,7 +127,7 @@ Please select from the following questions, or browse through this file:
 
 ##### How do I cite VegBank? {#cite}
 
-> You may cite VegBank, as a whole or one or more elements, with the instructions on the [Cite page](?tab=Cite) in the About menu. That page also shows how to cite a description of VegBank.
+> To cite VegBank, as a whole or one or more elements, follow the instructions on the [Citing Data page](?tab=Citing%20Data) in the About menu. That page also shows how to cite a description of VegBank.
 
 [back to top...](#topoffaq)
 
@@ -153,17 +153,13 @@ Please select from the following questions, or browse through this file:
 
 * * *
 
-## Learning More about VegBank {#catglearnmore}
-
 ##### How can I get help with VegBank? Is there a tutorial? {#tutorial}
 
-> Not yet. We're working on an instructions page to help with this.
+> You can get a baisc overview of the application and some common interactions on the [Getting Started](tabl=Getting%20Started) page in the About menu. If you have further questions feel free to contact us at help@vegbank.org.
 
 [back to top...](#topoffaq)
 
 * * *
-
-## Contacting VegBank Developers {#catgcontact}
 
 ##### What if I find something not working in VegBank? {#bug}
 
