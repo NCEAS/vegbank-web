@@ -639,6 +639,18 @@ table.dataTable tbody tr.selected-entity:hover,
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
+.vb-version-tag {
+  display: inline-block;
+  font-size: 0.95rem;
+  font-weight: 500;
+  vertical-align: baseline;
+  color: rgba(255, 255, 255, 0.88);
+  letter-spacing: 0.02em;
+  text-shadow: none;
+  line-height: 1.4;
+  position: relative;
+}
+
 .vb-hero-tagline {
   color: rgba(255, 255, 255, 0.9);
   font-size: 1.15rem;

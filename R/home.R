@@ -42,7 +42,13 @@ build_home_panel <- function() {
           class = "vb-hero-overlay",
           htmltools::tags$div(
             class = "vb-hero-text",
-            htmltools::tags$h1("VegBank"),
+            htmltools::tags$h1(
+              "VegBank",
+              htmltools::tags$span(
+                class = "vb-version-tag",
+                paste0("v", utils::packageVersion("vegbankweb"))
+              )
+            ),
             htmltools::tags$p(
               class = "vb-hero-tagline",
               "A Repository for Vegetation Plot Data across North America"
