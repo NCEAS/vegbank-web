@@ -693,6 +693,65 @@ table.dataTable tbody tr.selected-entity:hover,
   margin-bottom: 0.65em;
 }
 
+/* Tables rendered from markdown (e.g. download.md) */
+.vb-markdown-page table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.95em;
+}
+
+.vb-markdown-page table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid var(--border-subtle);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.vb-markdown-page table td {
+  padding: 0.65rem 0.75rem;
+  vertical-align: top;
+}
+
+.vb-markdown-page table tbody tr + tr td {
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Copy-to-clipboard wrapper for fenced code blocks in markdown pages */
+.vb-code-block {
+  position: relative;
+}
+
+.vb-copy-code {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  font-family: inherit;
+}
+
+.vb-copy-code:hover {
+  background: var(--border-subtle);
+  color: var(--text-primary);
+  border-color: hsl(0, 0%, 78%);
+}
+
+.vb-copy-code svg {
+  flex-shrink: 0;
+}
+
 .vb-home-cta {
   display: flex;
   justify-content: center;
