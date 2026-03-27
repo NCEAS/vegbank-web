@@ -1,6 +1,7 @@
 ## Downloading Plot Data
 
-The VegBank web app lets you download up to **20,000 plot observations** at a time as a ZIP archive containing several related CSV files.
+The VegBank web app lets you download up to **20,000 plot observations** at a time as a ZIP archive containing several related CSV files. For bulk or programmatic access, consider using the [vegbankr](https://nceas.github.io/vegbankr/articles/download.html) R package, which provides full access to all VegBank data without the 20,000-row limit.
+
 
 * * *
 
@@ -10,8 +11,6 @@ The VegBank web app lets you download up to **20,000 plot observations** at a ti
 2. Use the **search box** or a **filter** (from a Project, Party, Plant, or Community view) to narrow the table to the plots you want. The download button is only active when the table contains **20,000 or fewer** rows.
 3. Click the **Download CSV** button above the table. A loading indicator will appear while the data is fetched from the API.
 4. Save the resulting `.zip` file to your computer and extract it.
-
-For bulk or programmatic access, consider using the [vegbankr](https://nceas.github.io/vegbankr/index.html) R package, which provides full access to all VegBank data without the 20,000-row limit.
 
 * * *
 
@@ -123,4 +122,4 @@ plots_with_community = (plots
 - **Empty files are omitted**: If a set of plot observations has no stratum data, for example, `strata.csv` will not appear in the ZIP.
 - **Location fuzzing**: Some plot coordinates are intentionally imprecise to protect sensitive species or private land.
 - **Superseded plots**: The Plots table shows only current plot observations by default. Superseded versions are hidden unless you change the **Status** dropdown. The downloaded data reflects whichever rows were visible in the table at the time of download.
-- **Large downloads**: For datasets larger than 20,000 plots, use the [vegbankr](https://nceas.github.io/vegbankr/index.html) R package.
+- **Large downloads**: For datasets larger than 20,000 plots, use the [vegbankr](https://nceas.github.io/vegbankr/articles/download.html) R package.

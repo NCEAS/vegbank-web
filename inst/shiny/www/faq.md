@@ -111,7 +111,7 @@ Please select from the following questions, or browse through this file:
 
 ##### What features does VegBank offer for analysis of plot data? {#analysis}
 
-> VegBank does not have analysis tools. Other groups have done a good job making tools for analysis, and we encourage users to find data in VegBank, then [download it](?tab=Downloading%20Plots), then work on analysis with another program. Users interested in more precise analysis and complete views of the data may also benefit from exploring it via the [vegbankr package](https://nceas.github.io/vegbankr/index.html).
+> VegBank does not have analysis tools. Other groups have done a good job making tools for analysis, and we encourage users to find data in VegBank, then [download it](?tab=Downloading%20Plots), then work on analysis with another program. Users interested in more precise analysis and complete views of the data may also benefit from exploring it via the [vegbankr package](https://nceas.github.io/vegbankr/articles/download.html).
 
 [back to top...](#topoffaq)
 
