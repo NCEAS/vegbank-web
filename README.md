@@ -7,6 +7,7 @@
 
 ## Citation
 
+> Darian Gill, Jim Regetz, Matthew B. Jones, Michael T. Lee, Matthew Brooke, Robert K. Peet (2026) **VegBank Web: A Shiny Web App for Vegetation Plot Data**. VegBank. [doi:10.82902/J1H59R](doi:10.82902/J1H59R)
 
 ## Overview
 
@@ -24,7 +25,7 @@ The data shown in vegbankweb are also available for access with R via the [vegba
 
 This is a [Shiny App](https://shiny.posit.co/) built using the [Shiny R package](https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/). 
 
-The app is currently configured to hit the [vegbankr](https://github.com/NCEAS/vegbankr) package and underlying [vegbank2 api](https://github.com/NCEAS/vegbank2) for data.
+The app is currently configured to use the [vegbankr](https://github.com/NCEAS/vegbankr) package and underlying [vegbank2 api](https://github.com/NCEAS/vegbank2) for data.
 
 To run the app locally, you'll need to [install R](https://www.r-project.org/) and [download this repository](https://docs.github.com/en/get-started/start-your-journey/downloading-files-from-github).
 
@@ -50,16 +51,17 @@ Finally run the following commands in your IDE terminal:
 ```
 
 ## Current Contributors
-- Darian Gill (dgill@nceas.ucsb.edu): ORCID: 0009-0005-7848-2163
-- Jim Regetz (regetz@nceas.ucsb.edu): ORCID: 0009-0008-2666-6229
-- Matthew B. Jones (jones@nceas.ucsb.edu): ORCID: 0000-0003-0077-4738
-- Michael T. Lee (michael.lee@unc.edu): ORCID: 0009-0003-3874-8604
-- Matthew Brooke (brooke@nceas.ucsb.edu): ORCID: 0000-0002-1472-913X
-- Robert K. Peet (peet@unc.edu): ORCID: 0000-0003-2823-6587
+
+- Darian Gill (dgill@nceas.ucsb.edu): ORCID: [0009-0005-7848-2163](https://orcid.org/0009-0005-7848-2163)
+- Jim Regetz (regetz@nceas.ucsb.edu): ORCID: [0009-0008-2666-6229](https://orcid.org/0009-0008-2666-6229)
+- Matthew B. Jones (jones@nceas.ucsb.edu): ORCID: [0000-0003-0077-4738](https://orcid.org/0000-0003-0077-4738)
+- Michael T. Lee (michael.lee@unc.edu): ORCID: [0009-0003-3874-8604](https://orcid.org/0009-0003-3874-8604)
+- Matthew Brooke (brooke@nceas.ucsb.edu): ORCID: [0000-0002-1472-913X](https://orcid.org/0000-0002-1472-913X)
+- Robert K. Peet (peet@unc.edu): ORCID: [0000-0003-2823-6587](https://orcid.org/0000-0003-2823-6587)
 
 ## License
 ```
-Copyright [2025] [Regents of the University of California]
+Copyright [2026] [Regents of the University of California]
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
