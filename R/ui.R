@@ -242,6 +242,13 @@ build_navbar <- function(initial_tab = "Home") {
         )
       ),
       bslib::nav_panel(
+        title = "Download",
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "download.md", package = "vegbankweb"))
+        )
+      ),
+      bslib::nav_panel(
         title = "Cite",
         htmltools::tags$div(
           class = "vb-markdown-page",
