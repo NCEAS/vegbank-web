@@ -46,7 +46,7 @@ build_home_panel <- function() {
               "VegBank",
               htmltools::tags$span(
                 class = "vb-version-tag",
-                paste0("v", utils::packageVersion("vegbankweb"))
+                paste(utils::packageVersion("vegbankweb"))
               )
             ),
             htmltools::tags$p(
