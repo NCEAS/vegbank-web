@@ -68,8 +68,14 @@ build_home_panel <- function() {
               rel = "noopener noreferrer",
               "Ecological Society of America's Vegetation Classification Panel."
             ),
-            "These data support the development of the U.S. National Vegetation",
-            "Classification and general ecological research across North America."
+            "These data support the development of the ",
+            htmltools::tags$a(
+              href = "https://usnvc.org/explore-classification/",
+              target = "_blank",
+              rel = "noopener noreferrer",
+              "U.S. National Vegetation Classification (USNVC)"
+            ),
+            "and general ecological research across North America."
           ),
           htmltools::tags$p(
             "These data are also available for access with R via the",
@@ -147,7 +153,7 @@ build_home_panel <- function() {
               )
             ),
             htmltools::tags$a(
-              href = "https://nceas.github.io/vegbankr/index.html",
+              href = "https://nceas.github.io/vegbankr/articles/upload.html",
               target = "_blank",
               rel = "noopener noreferrer",
               class = "btn btn-outline-primary btn-lg vb-cta-btn",

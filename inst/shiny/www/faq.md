@@ -17,7 +17,7 @@ Please select from the following questions, or browse through this file:
 > [What is metadata?](#metadata)  
 > [How do I cite VegBank?](#cite)  
 > [What is a VegBank Code?](#vegbankcode)  
-> [How is VegBank financed? How can I help VegBank operate financially?](#donate)
+> [How is VegBank financed? How can I help VegBank operate financially?](#donate)   
 > [How can I get help with VegBank? Is there a tutorial?](#tutorial)  
 > [What if I find something not working in VegBank?](#bug)  
 
