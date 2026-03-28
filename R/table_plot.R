@@ -3,8 +3,9 @@
 #' Provides a remote (server-side) DataTable for VegBank plot observations.
 #' @noRd
 
-# Valid values for the plot status filter, shared between server logic and URL restore.
+# Valid values and default for the plot status filter, shared between server logic and URL restore.
 VALID_PLOT_STATUSES <- c("any", "current")
+DEFAULT_PLOT_STATUS <- "current"
 
 PLOT_TABLE_FIELDS <- c(
   "ob_code",

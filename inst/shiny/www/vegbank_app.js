@@ -519,21 +519,21 @@ var vbStatusConfigs = {
   plant_table: {
     urlKey: 'plants_status', windowVar: 'vbPlantStatus', cssClass: 'vb-plant-status-select',
     shinyInput: 'plant_status', paginationKey: 'plants_start',
-    defaultStatus: 'current_accepted',
+    defaultStatus: window.VB_DEFAULT_CONCEPT_STATUS || 'current_accepted',
     validStatuses: function() { return window.VB_VALID_CONCEPT_STATUSES || ['current_accepted', 'current', 'accepted', 'any']; },
     optionsHtml: '<option value="current_accepted">Currently Accepted</option><option value="current">Current</option><option value="accepted">Accepted</option><option value="any">Any</option>'
   },
   comm_table: {
     urlKey: 'communities_status', windowVar: 'vbCommStatus', cssClass: 'vb-comm-status-select',
     shinyInput: 'comm_status', paginationKey: 'communities_start',
-    defaultStatus: 'current_accepted',
+    defaultStatus: window.VB_DEFAULT_CONCEPT_STATUS || 'current_accepted',
     validStatuses: function() { return window.VB_VALID_CONCEPT_STATUSES || ['current_accepted', 'current', 'accepted', 'any']; },
     optionsHtml: '<option value="current_accepted">Currently Accepted</option><option value="current">Current</option><option value="accepted">Accepted</option><option value="any">Any</option>'
   },
   plot_table: {
     urlKey: 'plots_status', windowVar: 'vbPlotStatus', cssClass: 'vb-plot-status-select',
     shinyInput: 'plot_status', paginationKey: 'plots_start',
-    defaultStatus: 'current',
+    defaultStatus: window.VB_DEFAULT_PLOT_STATUS || 'current',
     validStatuses: function() { return window.VB_VALID_PLOT_STATUSES || ['current', 'any']; },
     optionsHtml: '<option value="current">Current</option><option value="any">Any</option>'
   }
