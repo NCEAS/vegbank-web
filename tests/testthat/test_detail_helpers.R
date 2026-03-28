@@ -202,3 +202,116 @@ test_that("sanitize_description_html handles edge cases gracefully", {
   result <- sanitize_description_html("cats & dogs")
   expect_true(grepl("&amp;", result, fixed = TRUE))
 })
+
+test_that("append_units renders slope_aspect sentinel values without degree symbol", {
+  expect_equal(append_units("slope_aspect", -1),   "-1 (Too flat)")
+  expect_equal(append_units("slope_aspect", -2),   "-2 (Too irregular)")
+  expect_equal(append_units("slope_aspect", "-1"),  "-1 (Too flat)")
+  expect_equal(append_units("slope_aspect", "-2"),  "-2 (Too irregular)")
+})
+
+test_that("append_units appends degree symbol to normal slope_aspect values", {
+  expect_equal(append_units("slope_aspect", 180),  "180\u00B0")
+  expect_equal(append_units("slope_aspect", 0),    "0\u00B0")
+  expect_equal(append_units("slope_aspect", 360),  "360\u00B0")
+})
+
+test_that("append_units sentinel check does not affect min_slope_aspect or max_slope_aspect", {
+  expect_equal(append_units("min_slope_aspect", -1),  "-1\u00B0")
+  expect_equal(append_units("max_slope_aspect", -2),  "-2\u00B0")
+})
+
+test_that("append_units skips sentinel check for NA or Unspecified slope_aspect", {
+  expect_equal(append_units("slope_aspect", NA),           NA)
+  expect_equal(append_units("slope_aspect", "Unspecified"), "Unspecified")
+})
+
+test_that("append_units renders slope_gradient sentinel values without degree symbol", {
+  expect_equal(append_units("slope_gradient", -1),   "-1 (Too irregular)")
+  expect_equal(append_units("slope_gradient", "-1"), "-1 (Too irregular)")
+})
+
+test_that("append_units treats non-sentinel negative slope_gradient values as degree values", {
+  expect_equal(append_units("slope_gradient", -2),   "-2\u00B0")
+  expect_equal(append_units("slope_gradient", "-2"), "-2\u00B0")
+})
+
+test_that("append_units appends degree symbol to normal slope_gradient values", {
+  expect_equal(append_units("slope_gradient", 0),   "0\u00B0")
+  expect_equal(append_units("slope_gradient", 15),  "15\u00B0")
+  expect_equal(append_units("slope_gradient", 90),  "90\u00B0")
+})
+
+test_that("append_units sentinel check does not affect min/max slope_gradient", {
+  expect_equal(append_units("min_slope_gradient", -1),  "-1\u00B0")
+  expect_equal(append_units("max_slope_gradient", -2),  "-2\u00B0")
+})
+
+test_that("append_units renders area sentinel values without square meter units", {
+  expect_equal(append_units("area", -1),                    "-1 (No known boundaries)")
+  expect_equal(append_units("taxon_observation_area", -1),  "-1 (No known boundaries)")
+  expect_equal(append_units("taxon_inference_area", -1),    "-1 (No known boundaries)")
+  expect_equal(append_units("stem_observation_area", -1),   "-1 (No known boundaries)")
+  expect_equal(append_units("inference_area", -1),          "-1 (No known boundaries)")
+  expect_equal(append_units("stem_taxon_area", -1),         "-1 (No known boundaries)")
+})
+
+test_that("append_units keeps normal units for area fields when not sentinel", {
+  expect_equal(append_units("area", 12),                   "12 m\u00B2")
+  expect_equal(append_units("taxon_observation_area", 8),  "8 m\u00B2")
+  expect_equal(append_units("taxon_inference_area", 3),    "3 m\u00B2")
+  expect_equal(append_units("stem_observation_area", 5),   "5 m\u00B2")
+  expect_equal(append_units("inference_area", 4),          "4 m\u00B2")
+})
+
+test_that("append_units returns raw value for stem_taxon_area when not sentinel", {
+  expect_equal(append_units("stem_taxon_area", 9), 9)
+})
+
+test_that("create_permalink_button builds a copy control with cite URL", {
+  tag <- create_permalink_button("ob.2948")
+  expect_s3_class(tag, "shiny.tag")
+  html <- as.character(tag)
+
+  expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
+  expect_true(grepl("Copy permalink", html, fixed = TRUE))
+  expect_false(grepl("Copy permalink link", html, fixed = TRUE))
+  expect_true(grepl("vegbank.org/cite/ob.2948", html, fixed = TRUE))
+})
+
+test_that("create_permalink_button returns NULL for missing vb_code", {
+  expect_null(create_permalink_button(NULL))
+  expect_null(create_permalink_button(NA_character_))
+  expect_null(create_permalink_button(""))
+  expect_null(create_permalink_button("   "))
+})
+
+test_that("add_permalink_button_to_last_row appends copy control to final row", {
+  rows <- list(
+    htmltools::tags$h5("Header 1"),
+    htmltools::tags$p("Header 2")
+  )
+
+  out <- add_permalink_button_to_last_row(rows, "ob.2948")
+  expect_length(out, 2)
+
+  html <- as.character(out[[2]])
+  expect_true(grepl("vb-copy-inline-row", html, fixed = TRUE))
+  expect_true(grepl("Header 2", html, fixed = TRUE))
+  expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
+})
+
+test_that("add_permalink_button_to_last_row ignores NULL rows", {
+  rows <- list(
+    htmltools::tags$h5("Header 1"),
+    NULL,
+    htmltools::tags$p("Header 3")
+  )
+
+  out <- add_permalink_button_to_last_row(rows, "ob.2948")
+  expect_length(out, 2)
+
+  html <- as.character(out[[2]])
+  expect_true(grepl("Header 3", html, fixed = TRUE))
+  expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
+})

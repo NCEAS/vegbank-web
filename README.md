@@ -1,19 +1,31 @@
-## VegBank Web: A Web App for Vegetation Plot Data
+## VegBank Web: A Shiny Web App for Vegetation Plot Data
 
 - **License**: [Apache 2](https://opensource.org/licenses/Apache-2.0)
 - [Package source code on GitHub](https://github.com/NCEAS/vegbank-web)
 - [**Submit Bugs and feature requests**](https://github.com/NCEAS/vegbank-web/issues)
+- Contact us: help@vegbank.org
 
+## Citation
 
-This package is a web access point for VegBank, the vegetation plot database of the Ecological Society of America's Panel on Vegetation Classification, hosted by the National Center for Ecological Analysis and Synthesis (NCEAS). VegBank contains vegetation plot data, community types recognized by the U.S. National Vegetation Classification and others, and all ITIS/USDA plant taxa along with other taxa recorded in plot records. As a VegBank API client, the 'vegbankweb' package supports browsing, searching, and inspecting vegetation plot records and other supporting information in the VegBank database.
+> Darian Gill, Jim Regetz, Matthew B. Jones, Michael T. Lee, Matthew Brooke, Robert K. Peet (2026) **VegBank Web: A Shiny Web App for Vegetation Plot Data**. Version 1.0.0. VegBank. [doi:10.82902/J1H59R](https://doi.org/10.82902/J1H59R)
+
+## Overview
+
+This package is a web access point for VegBank, the vegetation plot database of the [Ecological Society of America's Panel on Vegetation Classification](https://esa.org/vegpanel/), hosted by the [National Center for Ecological Analysis and Synthesis](https://www.nceas.ucsb.edu/) (NCEAS). You can find it running at [vegbank.org](https://vegbank.org/).
+
+VegBank contains vegetation plot and community data that supports the development of the [U.S. National Vegetation Classification](https://usnvc.org/explore-classification/). As a [VegBank API](https://nceas.github.io/vegbank2/api/) client, the 'vegbankweb' package supports browsing, searching, and inspecting vegetation plot records and other supporting information in the VegBank database.
 
 VegBank in general, and the vegbankweb package in particular, are open source, community projects. We [welcome contributions](./CONTRIBUTING.md) in many forms, including code, data, documentation, bug reports, testing, etc. Use the [VegBank Discussions](https://github.com/NCEAS/vegbank2/discussions), or email help@vegbank.org to discuss these contributions with us.
+
+The data shown in vegbankweb are also available for access with R via the [vegbankr R package](https://nceas.github.io/vegbankr/), and in other languages via the [VegBank REST API](https://nceas.github.io/vegbank2/api/). To upload data, request contributor permissions from the ESA Vegetation Classification Panel. Once your contributor role is granted, you will be able to upload new plot data with the vegbankr R package.
+
+
 
 ## Running Locally
 
 This is a [Shiny App](https://shiny.posit.co/) built using the [Shiny R package](https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/). 
 
-The app is currently configured to hit the [vegbankr](https://github.com/NCEAS/vegbankr) package and underlying [vegbank2 api](https://github.com/NCEAS/vegbank2) for data.
+The app is currently configured to use the [vegbankr](https://github.com/NCEAS/vegbankr) package and underlying [vegbank2 api](https://github.com/NCEAS/vegbank2) for data.
 
 To run the app locally, you'll need to [install R](https://www.r-project.org/) and [download this repository](https://docs.github.com/en/get-started/start-your-journey/downloading-files-from-github).
 
@@ -39,30 +51,17 @@ Finally run the following commands in your IDE terminal:
 ```
 
 ## Current Contributors
-- Darian Gill (dgill@nceas.ucsb.edu): ORCID: 0009-0005-7848-2163
-- Jim Regetz (regetz@nceas.ucsb.edu): ORCID: 0009-0008-2666-6229
-- Robert Shelton (rshelton@nceas.ucsb.edu): ORCID: 0009-0008-7478-8992
-- Matthew B. Jones (jones@nceas.ucsb.edu): ORCID: 0000-0003-0077-4738
-- Dou Mok (mok@nceas.ucsb.edu): ORCID: 0000-0002-6076-8092
-- Matthew Brooke (brooke@nceas.ucsb.edu): ORCID: 0000-0002-1472-913X
-- Rushiraj Nenuji (nenuji@nceas.ucsb.edu): ORCID: 0000-0003-4678-5213
-- Jeanette Clark (jclark@nceas.ucsb.edu): ORCID: 0000-0003-4703-1974
-- Maggie Klope (mmklope@nceas.ucsb.edu): ORCID: 0000-0003-3926-7039
-- Michael T. Lee (michael.lee@unc.edu): ORCID: 0009-0003-3874-8604
-- Robert K. Peet (peet@unc.edu): ORCID: 0000-0003-2823-6587
 
-## Previous Contributors
-- Michael D. Jennings
-- Dennis Grossman
-- Marilyn D. Walker
-- Mark Anderson
-- Gabriel Farrell
-- John Harris
-- Chad Berkley
+- Darian Gill (dgill@nceas.ucsb.edu): ORCID: [0009-0005-7848-2163](https://orcid.org/0009-0005-7848-2163)
+- Jim Regetz (regetz@nceas.ucsb.edu): ORCID: [0009-0008-2666-6229](https://orcid.org/0009-0008-2666-6229)
+- Matthew B. Jones (jones@nceas.ucsb.edu): ORCID: [0000-0003-0077-4738](https://orcid.org/0000-0003-0077-4738)
+- Michael T. Lee (michael.lee@unc.edu): ORCID: [0009-0003-3874-8604](https://orcid.org/0009-0003-3874-8604)
+- Matthew Brooke (brooke@nceas.ucsb.edu): ORCID: [0000-0002-1472-913X](https://orcid.org/0000-0002-1472-913X)
+- Robert K. Peet (peet@unc.edu): ORCID: [0000-0003-2823-6587](https://orcid.org/0000-0003-2823-6587)
 
 ## License
 ```
-Copyright [2025] [Regents of the University of California]
+Copyright [2026] [Regents of the University of California]
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

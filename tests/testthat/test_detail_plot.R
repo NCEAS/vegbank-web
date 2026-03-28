@@ -268,6 +268,16 @@ test_that("build_plot_obs_details_view includes reference data in plot header", 
   expect_equal(mock_plot_data_with_reference$previous_ob_code, "ob.2100")
 })
 
+test_that("build_plot_obs_details_view header includes copy permalink button", {
+  result <- build_plot_obs_details_view(mock_plot_data)
+  mock_session <- shiny::MockShinySession$new()
+  html <- htmltools::renderTags(result$plot_header(shinysession = mock_session))$html
+
+  expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
+  expect_true(grepl("Copy permalink", html, fixed = TRUE))
+  expect_true(grepl("vegbank.org/cite/ob.2948", html, fixed = TRUE))
+})
+
 test_that("normalize_plot_obs_result only uses first row of multi-row input", {
   # Only the first row should be processed
   normalized <- vegbankweb:::normalize_plot_obs_result(mock_plot_observations_multi)

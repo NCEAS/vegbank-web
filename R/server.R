@@ -82,9 +82,10 @@ server <- function(input, output, session) {
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
     plot_filter = shiny::reactiveVal(NULL), # Cross-resource / citation filter: list(type, code, label)
+    plot_status = shiny::reactiveVal(DEFAULT_PLOT_STATUS), # Status filter for plot observations table
     community_filter = shiny::reactiveVal(NULL), # Citation filter for cc: list(type, code, label)
-    community_status = shiny::reactiveVal("current_accepted"), # Status filter for community concepts table
-    plant_status = shiny::reactiveVal("current_accepted"), # Status filter for plant concepts table
+    community_status = shiny::reactiveVal(DEFAULT_CONCEPT_STATUS), # Status filter for community concepts table
+    plant_status = shiny::reactiveVal(DEFAULT_CONCEPT_STATUS), # Status filter for plant concepts table
     table_states = shiny::reactiveValues(),
     table_sync_pending = shiny::reactiveValues(),
     table_sync_completed_at = shiny::reactiveValues()
@@ -352,6 +353,7 @@ server <- function(input, output, session) {
       highlight_table = state$highlighted_table(),
       highlight_row = state$highlighted_row(),
       plot_filter = state$plot_filter(),
+      plot_status = state$plot_status(),
       community_filter = state$community_filter(),
       community_status = state$community_status(),
       plant_status = state$plant_status()
@@ -509,10 +511,27 @@ server <- function(input, output, session) {
 
     if (is_dataset) {
       state$plot_filter(filter_info)
+      # Reset plot status to "any" so no observations are hidden when arriving via citation.
+      state$plot_status("any")
+      session$sendCustomMessage("setPlotStatus", list(value = "any"))
       state$current_tab("Plots")
       shiny::updateNavbarPage(session, "page", selected = "Plots")
-      update_app_query(mode = "replace", tab = "Plots")
+
+      open_detail(
+        detail_type = "user-dataset",
+        vb_code = citation$vb_code,
+        push_history = FALSE,
+        skip_highlight = TRUE
+      )
+
+      update_app_query(
+        mode = "replace",
+        tab = "Plots",
+        detail_type = "user-dataset",
+        detail_code = citation$vb_code
+      )
     } else {
+      # Only one entity in table so no need to deal with status
       if (citation$tab == "Plots") {
         state$plot_filter(filter_info)
         state$highlighted_table("plot_table")
@@ -550,24 +569,53 @@ server <- function(input, output, session) {
       return(NULL)
     }
 
-    # Customize message based on filter type
-    message <- if (filter$type == "single-entity-citation") {
-      # e.g. "Showing the cited plot observation: ob.2948 (Citation identifier: VB.Ob.2948.ACAD143)"
-      sprintf("Showing the cited %s: %s (%s)", resource_singular, filter$code, filter$label)
-    } else if (filter$type == "collection-citation") {
-      # e.g. "Showing plot observations in dataset: ds.200278 (Citation identifier: ds.200278)"
-      sprintf("Showing plot observations in dataset: %s (%s)", filter$code, filter$label)
+    # Resolve the detail_type for the filter code so we can make it a link.
+    # Citation filters carry resource_type directly; cross-resource filters
+    # (e.g. from obs_count_click) don't, so derive it from the code prefix.
+    detail_type <- filter$resource_type %||% {
+      prefix <- strsplit(as.character(filter$code), "\\.")[[1]][1]
+      info   <- get_resource_by_prefix(prefix)
+      info$detail_type %||% NULL
+    }
+
+    # Build a clickable code span when a detail view is available, plain text otherwise.
+    code_display <- if (!is.null(detail_type) && nzchar(detail_type)) {
+      safe_code        <- htmltools::htmlEscape(as.character(filter$code),  attribute = TRUE)
+      safe_detail_type <- htmltools::htmlEscape(as.character(detail_type),  attribute = TRUE)
+      htmltools::tags$a(
+        href = "#",
+        onclick = sprintf(
+          "Shiny.setInputValue('filter_detail_click', {code: '%s', detail_type: '%s'}, {priority: 'event'}); return false;",
+          safe_code, safe_detail_type
+        ),
+        filter$code
+      )
     } else {
-      sprintf(
-        "Showing %s related to %s: %s (%s)",
-        resource_plural, filter$type, filter$code, filter$label
+      htmltools::tags$span(filter$code)
+    }
+
+    # Build the message with the code replaced by the (possibly linked) element.
+    message_ui <- if (filter$type == "single-entity-citation") {
+      htmltools::tagList(
+        "Showing the cited ", resource_singular, ": ", code_display,
+        " (", filter$label, ")"
+      )
+    } else if (filter$type == "collection-citation") {
+      htmltools::tagList(
+        "Showing plot observations in dataset: ", code_display,
+        " (", filter$label, ")"
+      )
+    } else {
+      htmltools::tagList(
+        "Showing ", resource_plural, " related to ", filter$type, ": ",
+        code_display, " (", filter$label, ")"
       )
     }
 
     htmltools::tags$div(
       class = "alert alert-info alert-dismissible show d-flex align-items-center justify-content-between",
       role = "alert",
-      htmltools::tags$strong(message),
+      htmltools::tags$strong(message_ui),
       htmltools::tags$button(
         type = "button",
         class = "btn btn-sm btn-outline-info ms-3",
@@ -665,14 +713,27 @@ server <- function(input, output, session) {
 
   output$plot_table <- DT::renderDataTable({
     # Rebuild table when filter changes to pass vb_code for cross-resource queries
+    # Status changes are handled via proxy reload below -- no dependency here.
     filter <- state$plot_filter()
     vb_code <- if (!is.null(filter)) filter$code else NULL
     filter_type <- if (!is.null(filter)) filter$type else NULL
-    build_plot_table_with_filter(vb_code, filter_type)
+    build_plot_table_with_filter(
+      vb_code = vb_code,
+      filter_type = filter_type,
+      status_fn = state$plot_status
+    )
   })
 
   # Download handler for plot table
   output$download_plot_table <- create_table_download_handler("plot_table", input, state, session)
+
+  # Keep state$plot_status in sync with the dropdown input
+  shiny::observeEvent(input$plot_status, {
+    val <- input$plot_status
+    if (!is.null(val) && val %in% VALID_PLOT_STATUSES) {
+      state$plot_status(val)
+    }
+  })
 
   # Keep state$community_status in sync with the dropdown input
   shiny::observeEvent(input$comm_status, {
@@ -693,8 +754,13 @@ server <- function(input, output, session) {
   # Proxies for status filter reloads. When status changes we do a tbody-only
   # ajax.reload() so the DT wrapper DOM (including initComplete-injected elements)
   # is never destroyed.
+  plot_proxy  <- DT::dataTableProxy("plot_table",  session = session)
   comm_proxy  <- DT::dataTableProxy("comm_table",  session = session)
   plant_proxy <- DT::dataTableProxy("plant_table", session = session)
+
+  shiny::observeEvent(state$plot_status(), {
+    DT::reloadData(plot_proxy, resetPaging = TRUE)
+  }, ignoreInit = TRUE)
 
   shiny::observeEvent(state$community_status(), {
     DT::reloadData(comm_proxy, resetPaging = TRUE)
@@ -1260,6 +1326,16 @@ server <- function(input, output, session) {
     }
   })
 
+  shiny::observeEvent(input$filter_detail_click, {
+    event_data <- input$filter_detail_click
+    if (is.null(event_data)) return()
+    vb_code     <- event_data$code
+    detail_type <- event_data$detail_type
+    if (!is.null(vb_code) && nzchar(vb_code) && !is.null(detail_type) && nzchar(detail_type)) {
+      open_detail(detail_type, vb_code)
+    }
+  })
+
   # URL STATE SYNCHRONIZATION OBSERVER ----------------------------------------------------------------
 
   # This observer runs whenever the browser URL changes (back/forward, refresh, direct link).
@@ -1421,16 +1497,30 @@ server <- function(input, output, session) {
 
       # Restore concept status filters from URL.
       # `status_reactive` is a reactiveVal -- calling it reads, calling it with a value sets.
-      restore_status_param <- function(url_param, status_reactive, msg_type) {
+      restore_status_param <- function(url_param,
+                                       status_reactive,
+                                       msg_type,
+                                       valid_statuses,
+                                       default_status) {
         val <- url_manager$first_param(url_param)
-        target <- if (!is.null(val) && val %in% VALID_CONCEPT_STATUSES) val else "current_accepted"
+        target <- if (!is.null(val) && val %in% valid_statuses) val else default_status
         if (!identical(status_reactive(), target)) {
           status_reactive(target)
           session$sendCustomMessage(msg_type, list(value = target))
         }
       }
-      restore_status_param(params$communities_status, state$community_status, "setCommStatus")
-      restore_status_param(params$plants_status, state$plant_status, "setPlantStatus")
+      restore_status_param(params$communities_status, state$community_status, "setCommStatus",
+        valid_statuses = VALID_CONCEPT_STATUSES,
+        default_status = DEFAULT_CONCEPT_STATUS
+      )
+      restore_status_param(params$plants_status, state$plant_status, "setPlantStatus",
+        valid_statuses = VALID_CONCEPT_STATUSES,
+        default_status = DEFAULT_CONCEPT_STATUS
+      )
+      restore_status_param(params$plots_status, state$plot_status, "setPlotStatus",
+        valid_statuses = VALID_PLOT_STATUSES,
+        default_status = DEFAULT_PLOT_STATUS
+      )
 
       # Parse and apply map view state
       map_lat_param <- params$map_lat
@@ -1592,6 +1682,11 @@ server <- function(input, output, session) {
       label = label %||% vb_code
     ))
 
+    # Reset plot status to "any" so no observations are hidden by the status filter
+    # when the user first arrives via a cross-resource filter (e.g. obs_count click).
+    state$plot_status("any")
+    session$sendCustomMessage("setPlotStatus", list(value = "any"))
+
     # Clear plots table state (including search) when applying cross-resource filter
     # This prevents old search terms from being carried over to the filtered view
     state$table_states[["plots"]] <- NULL
@@ -1604,6 +1699,9 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$clear_plot_filter, {
     state$plot_filter(NULL)
+    # Restore default plot status now that the filter is cleared
+    state$plot_status(DEFAULT_PLOT_STATUS)
+    session$sendCustomMessage("setPlotStatus", list(value = DEFAULT_PLOT_STATUS))
     # Clear plots table state (including search) when clearing filter
     # This ensures we start fresh without any stale search terms
     state$table_states[["plots"]] <- NULL

@@ -58,7 +58,9 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
             ti_data <- vegbankr::vb_get_taxon_interpretations(vb_code, detail = "full")
             list(taxon_obs = to_data, taxon_interps = ti_data)
           }
-        }
+        },
+        "user-dataset" =
+          vegbankr::vb_get_user_datasets(vb_code)
       )
 
       if (length(result) == 0) {
@@ -121,6 +123,9 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
       output$taxon_obs_interpretations <- shiny::renderUI(NULL)
       output$taxon_obs_details <- shiny::renderUI(NULL)
       output$taxon_obs_importance <- shiny::renderUI(NULL)
+      output$dataset_header <- shiny::renderUI(NULL)
+      output$dataset_details <- shiny::renderUI(NULL)
+      output$dataset_citation <- shiny::renderUI(NULL)
 
       shiny::incProgress(0.5, "Processing details")
 
@@ -201,6 +206,12 @@ show_detail_view <- function(resource_type, vb_code, output, session) {
           output$taxon_obs_interpretations <- details$taxon_obs_interpretations
           output$taxon_obs_details <- details$taxon_obs_details
           output$taxon_obs_importance <- details$taxon_obs_importance
+        },
+        "user-dataset" = {
+          details <- build_dataset_details_view(result)
+          output$dataset_header <- details$dataset_header
+          output$dataset_details <- details$dataset_details
+          output$dataset_citation <- details$dataset_citation
         }
       )
 

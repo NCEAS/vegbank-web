@@ -3,9 +3,14 @@
 #' Provides a remote (server-side) DataTable for VegBank plot observations.
 #' @noRd
 
+# Valid values and default for the plot status filter, shared between server logic and URL restore.
+VALID_PLOT_STATUSES <- c("any", "current")
+DEFAULT_PLOT_STATUS <- "current"
+
 PLOT_TABLE_FIELDS <- c(
   "ob_code",
   "author_obs_code",
+  "has_observation_synonym",
   "state_province",
   "country",
   "latitude",
@@ -23,6 +28,7 @@ PLOT_TABLE_SCHEMA_TEMPLATE <- build_schema_template(
   column_names = PLOT_TABLE_FIELDS,
   numeric_columns = c("latitude", "longitude", "elevation", "area"),
   integer_columns = c("taxon_count", "taxon_count_returned"),
+  logical_columns = c("has_observation_synonym"),
   list_columns = c("top_taxon_observations", "top_classifications")
 )
 
@@ -76,11 +82,13 @@ build_plot_table <- function() {
 #'                    "party", "single-entity-citation", "collection-citation")
 #' @return A DT::datatable object
 #' @noRd
-build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL) {
+build_plot_table_with_filter <- function(vb_code = NULL,
+                                         filter_type = NULL,
+                                         status_fn = NULL) {
   # Deep copy to avoid mutating the shared PLOT_TABLE_SPEC
   spec <- PLOT_TABLE_SPEC
   spec$data_source <- utils::modifyList(spec$data_source, list())
-  spec$data_source$query <- as.list(spec$data_source$query)
+  base_query <- as.list(spec$data_source$query)
 
   # Determine if filter is active
   has_filter <- !is.null(vb_code) && !is.na(vb_code) && nzchar(vb_code)
@@ -146,9 +154,17 @@ build_plot_table_with_filter <- function(vb_code = NULL, filter_type = NULL) {
 
   # Add vb_code to query if filtering is active
   # This includes: cross-resource filters, collection citations, and fallback from failed single-entity citation fetch
-  if (has_filter && (is.null(filter_type) || filter_type != "single-entity-citation")) {
-    spec$data_source$query$vb_code <- vb_code
+  query_fn <- function() {
+    query <- base_query
+    if (has_filter && (is.null(filter_type) || filter_type != "single-entity-citation")) {
+      query$vb_code <- vb_code
+    }
+    if (!is.null(status_fn)) {
+      query$status <- shiny::isolate(status_fn())
+    }
+    query
   }
+  spec$data_source$query <- query_fn
 
   spec$options <- utils::modifyList(spec$options, list())
 
@@ -170,6 +186,11 @@ process_plot_data <- function(plot_data) {
 
   ob_codes <- plot_data$ob_code
   author_codes <- clean_column_data(plot_data, "author_obs_code")
+  has_observation_synonym <- if ("has_observation_synonym" %in% names(plot_data)) {
+    plot_data$has_observation_synonym
+  } else {
+    rep(FALSE, row_count)
+  }
   years <- clean_column_data(plot_data, "year")
 
   # Format numeric columns
@@ -179,13 +200,14 @@ process_plot_data <- function(plot_data) {
 
   locations <- format_location_column(plot_data, latitudes, longitudes, elevations)
   actions_html <- format_plot_action_buttons(ob_codes, author_codes, latitudes, longitudes)
+  author_code_html <- format_plot_author_code_column(author_codes, has_observation_synonym)
   top_taxa_html <- format_plot_taxa_list(plot_data$top_taxon_observations, plot_data$taxon_count)
   communities_html <- format_plot_community_list(plot_data$top_classifications)
 
   data.frame(
     "Actions" = actions_html,
     "VegBank Code" = vapply(ob_codes, htmltools::htmlEscape, character(1)),
-    "Author Code" = vapply(author_codes, htmltools::htmlEscape, character(1)),
+    "Author Code" = author_code_html,
     "Location" = locations,
     "Top Taxa" = top_taxa_html,
     "Communities" = communities_html,
@@ -193,6 +215,30 @@ process_plot_data <- function(plot_data) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+}
+
+#' Format plot author code cells with optional "Not Current" badge
+#'
+#' Adds a yellow status badge below the author code when the observation has a
+#' synonym (meaning this observation is not current).
+#'
+#' @param author_codes Character vector of author observation codes
+#' @param has_observation_synonym Logical vector indicating synonym status
+#' @return Character vector of HTML for the Author Code column
+#' @noRd
+format_plot_author_code_column <- function(author_codes, has_observation_synonym) {
+  row_count <- length(author_codes)
+  vapply(seq_len(row_count), function(idx) {
+    code_html <- htmltools::htmlEscape(author_codes[[idx]])
+    if (isTRUE(has_observation_synonym[[idx]])) {
+      paste0(
+        code_html,
+        '<br><span class="badge rounded-pill" style="background-color: var(--yellow-bg); color: var(--yellow-text);">Not Current</span>'
+      )
+    } else {
+      code_html
+    }
+  }, character(1))
 }
 #' Format HTML for plot table action buttons (Details + Map)
 #'
@@ -508,6 +554,7 @@ coerce_plot_page <- create_coercer(PLOT_TABLE_SCHEMA_TEMPLATE)
     ),
     htmltools::tags$ul(
       htmltools::tags$li(htmltools::tags$strong("Search:"), " use the search box (top right) to filter by plant concept, community type, author code, VegBank code, or location."),
+      htmltools::tags$li(htmltools::tags$strong("Status:"), " use the dropdown to the left of the search bar to show current plots only (default) or include plots that have been updated by a newer version."),
       htmltools::tags$li(htmltools::tags$strong("Filter by resource:"), " clicking a plot count link from a Project, Party, Community, or Plant view will pre-filter this table to contain only those plots. You can then filter further with the search bar."),
       htmltools::tags$li(htmltools::tags$strong("Download:"), " once the table is filtered to within 20,000 entries, the Download CSV button becomes active. Open the README.txt file after downloading or visit the Download page in the About menu to learn how to combine the data."),
       htmltools::tags$li(htmltools::tags$strong("Open details:"), " the Details button in the Actions column opens additional information about the plot in an overlay."),
@@ -556,6 +603,7 @@ PLOT_TABLE_SPEC <- list(
     )),
     initComplete = DT::JS(
       "function(settings, json) {
+        if (window.vbStatusInit) window.vbStatusInit(settings.nTableWrapper, 'plot_table');
         Shiny.setInputValue('plot_table_ready', Math.random());
       }"
     )

@@ -515,30 +515,46 @@ window.vbMapHelpControl = function(map, el, btnInnerHtml, closeIconHtml, content
 // Inject the status <label> into the .dataTables_filter area on table init.
 // Called from each concept table's initComplete callback. Uses the Shiny
 // output div id (same resolution as registerDataTableMapping) to look up config.
-var vbConceptStatusConfigs = {
-  plant_table: { urlKey: 'plants_status',      windowVar: 'vbPlantStatus', cssClass: 'vb-plant-status-select', shinyInput: 'plant_status', paginationKey: 'plants_start' },
-  comm_table:  { urlKey: 'communities_status', windowVar: 'vbCommStatus',  cssClass: 'vb-comm-status-select',  shinyInput: 'comm_status',  paginationKey: 'communities_start' }
+var vbStatusConfigs = {
+  plant_table: {
+    urlKey: 'plants_status', windowVar: 'vbPlantStatus', cssClass: 'vb-plant-status-select',
+    shinyInput: 'plant_status', paginationKey: 'plants_start',
+    defaultStatus: window.VB_DEFAULT_CONCEPT_STATUS || 'current_accepted',
+    validStatuses: function() { return window.VB_VALID_CONCEPT_STATUSES || ['current_accepted', 'current', 'accepted', 'any']; },
+    optionsHtml: '<option value="current_accepted">Currently Accepted</option><option value="current">Current</option><option value="accepted">Accepted</option><option value="any">Any</option>'
+  },
+  comm_table: {
+    urlKey: 'communities_status', windowVar: 'vbCommStatus', cssClass: 'vb-comm-status-select',
+    shinyInput: 'comm_status', paginationKey: 'communities_start',
+    defaultStatus: window.VB_DEFAULT_CONCEPT_STATUS || 'current_accepted',
+    validStatuses: function() { return window.VB_VALID_CONCEPT_STATUSES || ['current_accepted', 'current', 'accepted', 'any']; },
+    optionsHtml: '<option value="current_accepted">Currently Accepted</option><option value="current">Current</option><option value="accepted">Accepted</option><option value="any">Any</option>'
+  },
+  plot_table: {
+    urlKey: 'plots_status', windowVar: 'vbPlotStatus', cssClass: 'vb-plot-status-select',
+    shinyInput: 'plot_status', paginationKey: 'plots_start',
+    defaultStatus: window.VB_DEFAULT_PLOT_STATUS || 'current',
+    validStatuses: function() { return window.VB_VALID_PLOT_STATUSES || ['current', 'any']; },
+    optionsHtml: '<option value="current">Current</option><option value="any">Any</option>'
+  }
 };
 
-window.vbConceptStatusInit = function(nTableWrapper, tableId) {
-  var config = vbConceptStatusConfigs[tableId];
+window.vbStatusInit = function(nTableWrapper, tableId) {
+  var config = vbStatusConfigs[tableId];
   if (!config) return;
   // Guard against double-injection (e.g. if initComplete fires twice on the same wrapper).
   if ($(nTableWrapper).find('.vb-status-label').length) return;
-  var validStatuses = window.VB_VALID_CONCEPT_STATUSES || ['current_accepted', 'current', 'accepted', 'any'];
+  var validStatuses = config.validStatuses();
   var urlVal    = new URLSearchParams(window.location.search).get(config.urlKey);
   var storedVal = window[config.windowVar];
   var initVal   = (storedVal && validStatuses.indexOf(storedVal) !== -1)
     ? storedVal
-    : (urlVal && validStatuses.indexOf(urlVal) !== -1 ? urlVal : 'current_accepted');
+    : (urlVal && validStatuses.indexOf(urlVal) !== -1 ? urlVal : config.defaultStatus);
   var $label = $(
     '<label class="vb-status-label">' +
       'Status:' +
       '<select class="' + config.cssClass + ' vb-status-select">' +
-        '<option value="current_accepted">Currently Accepted</option>' +
-        '<option value="current">Current</option>' +
-        '<option value="accepted">Accepted</option>' +
-        '<option value="any">Any</option>' +
+        config.optionsHtml +
       '</select>' +
     '</label>'
   );
@@ -548,7 +564,7 @@ window.vbConceptStatusInit = function(nTableWrapper, tableId) {
     var val = this.value;
     window[config.windowVar] = val;
     var params = new URLSearchParams(window.location.search);
-    if (val === 'current_accepted') { params.delete(config.urlKey); } else { params.set(config.urlKey, val); }
+    if (val === config.defaultStatus) { params.delete(config.urlKey); } else { params.set(config.urlKey, val); }
     if (params.has(config.paginationKey)) { params.set(config.paginationKey, '0'); }
     var newSearch = params.toString();
     history.replaceState(null, '', newSearch ? '?' + newSearch : window.location.pathname);
@@ -565,6 +581,11 @@ Shiny.addCustomMessageHandler('setCommStatus', function(message) {
 Shiny.addCustomMessageHandler('setPlantStatus', function(message) {
   window.vbPlantStatus = message.value;
   $('.vb-plant-status-select').val(message.value);
+});
+
+Shiny.addCustomMessageHandler('setPlotStatus', function(message) {
+  window.vbPlotStatus = message.value;
+  $('.vb-plot-status-select').val(message.value);
 });
 
 // Shared helper — set up a toggleable info popover on a DT help button.
@@ -660,6 +681,84 @@ document.addEventListener('DOMContentLoaded', function() {
         Shiny.setInputValue(inputId, value, {priority: 'event'});
       }
     }
+  });
+
+
+  function handleCopyButtonClick(e, selector, defaultLabel) {
+    e.preventDefault();
+    var btn = e.currentTarget;
+    var copyText = btn.getAttribute('data-copy-text');
+    if (!copyText) return;
+    var defaultText = btn.getAttribute('data-default-text') || defaultLabel;
+    var copiedText = btn.getAttribute('data-copied-text') || 'Copied';
+    function getTextNode() {
+      for (var i = 0; i < btn.childNodes.length; i++) {
+        if (btn.childNodes[i].nodeType === Node.TEXT_NODE) {
+          return btn.childNodes[i];
+        }
+      }
+      return null;
+    }
+    function showTemporaryStatus(text) {
+      var textNode = getTextNode();
+      if (textNode) textNode.nodeValue = text;
+      btn.disabled = true;
+      window.setTimeout(function() {
+        var tn = getTextNode();
+        if (tn) tn.nodeValue = defaultText;
+        btn.disabled = false;
+      }, 950);
+    }
+    function copyWithFallback() {
+      var textArea = document.createElement('textarea');
+      textArea.value = copyText;
+      textArea.setAttribute('readonly', 'readonly');
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      var copied = false;
+      try { copied = document.execCommand('copy'); } catch (err) { copied = false; }
+      document.body.removeChild(textArea);
+      showTemporaryStatus(copied ? copiedText : 'Copy failed');
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(copyText)
+        .then(function() { showTemporaryStatus(copiedText); })
+        .catch(function() { copyWithFallback(); });
+    } else {
+      copyWithFallback();
+    }
+  }
+
+  $(document).on('click', '.vb-copy-permalink', function(e) {
+    handleCopyButtonClick(e, '.vb-copy-permalink', 'Copy permalink');
+  });
+
+  $(document).on('click', '.vb-copy-citation', function(e) {
+    handleCopyButtonClick(e, '.vb-copy-citation', 'Copy citation');
+  });
+
+  $(document).on('click', '.vb-copy-code', function(e) {
+    handleCopyButtonClick(e, '.vb-copy-code', 'Copy');
+  });
+
+  // Inject copy buttons into fenced code blocks inside markdown pages
+  document.querySelectorAll('.vb-markdown-page pre').forEach(function(pre) {
+    var code = pre.querySelector('code');
+    if (!code) return;
+    var wrapper = document.createElement('div');
+    wrapper.className = 'vb-code-block';
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(pre);
+    var btn = document.createElement('button');
+    btn.className = 'vb-copy-code';
+    btn.setAttribute('data-copy-text', code.textContent);
+    btn.setAttribute('data-default-text', 'Copy');
+    btn.setAttribute('data-copied-text', 'Copied!');
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M21 8C21 6.34315 19.6569 5 18 5H10C8.34315 5 7 6.34315 7 8V20C7 21.6569 8.34315 23 10 23H18C19.6569 23 21 21.6569 21 20V8ZM19 8C19 7.44772 18.5523 7 18 7H10C9.44772 7 9 7.44772 9 8V20C9 20.5523 9.44772 21 10 21H18C18.5523 21 19 20.5523 19 20V8Z" fill="currentColor"/><path d="M6 3H16C16.5523 3 17 2.55228 17 2C17 1.44772 16.5523 1 16 1H6C4.34315 1 3 2.34315 3 4V18C3 18.5523 3.44772 19 4 19C4.55228 19 5 18.5523 5 18V4C5 3.44772 5.44772 3 6 3Z" fill="currentColor"/></svg>';
+    btn.appendChild(document.createTextNode('Copy'));
+    wrapper.appendChild(btn);
   });
 
   $(document).on('click', '.dt-map-action', function(e) {
@@ -1228,23 +1327,19 @@ Shiny.addCustomMessageHandler('updateDetailType', function(message) {
   const coverMethodCards = document.getElementById('cover-method-details-cards');
   const stratumMethodCards = document.getElementById('stratum-method-details-cards');
   const taxonObservationCards = document.getElementById('taxon-observation-details-cards');
+  const userDatasetCards = document.getElementById('user-dataset-details-cards');
 
   console.log('Updating detail type to:', type);
 
-  if (plotCards && communityConceptCards && communityClassificationCards &&
-      projectCards && partyCards && plantConceptCards && referenceCards && coverMethodCards &&
-      stratumMethodCards && taxonObservationCards) {
+  const allCardSections = [
+    plotCards, communityConceptCards, communityClassificationCards,
+    projectCards, partyCards, plantConceptCards, referenceCards, coverMethodCards,
+    stratumMethodCards, taxonObservationCards, userDatasetCards
+  ];
+
+  if (allCardSections.every(function(el) { return el !== null; })) {
     // Hide all card types first
-    plotCards.style.display = 'none';
-    communityConceptCards.style.display = 'none';
-    communityClassificationCards.style.display = 'none';
-    projectCards.style.display = 'none';
-    partyCards.style.display = 'none';
-    plantConceptCards.style.display = 'none';
-    referenceCards.style.display = 'none';
-    coverMethodCards.style.display = 'none';
-    stratumMethodCards.style.display = 'none';
-    taxonObservationCards.style.display = 'none';
+    allCardSections.forEach(function(el) { el.style.display = 'none'; });
 
     // Show the requested type
     if (type === 'plot-observation') {
@@ -1277,6 +1372,9 @@ Shiny.addCustomMessageHandler('updateDetailType', function(message) {
     } else if (type === 'taxon-observation') {
       console.log('Showing taxon observation details');
       taxonObservationCards.style.display = 'block';
+    } else if (type === 'user-dataset') {
+      console.log('Showing user dataset details');
+      userDatasetCards.style.display = 'block';
     }
   }
 });

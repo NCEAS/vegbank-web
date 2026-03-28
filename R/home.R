@@ -42,7 +42,13 @@ build_home_panel <- function() {
           class = "vb-hero-overlay",
           htmltools::tags$div(
             class = "vb-hero-text",
-            htmltools::tags$h1("VegBank"),
+            htmltools::tags$h1(
+              "VegBank",
+              htmltools::tags$span(
+                class = "vb-version-tag",
+                paste(utils::packageVersion("vegbankweb"))
+              )
+            ),
             htmltools::tags$p(
               class = "vb-hero-tagline",
               "A Repository for Vegetation Plot Data across North America"
@@ -68,8 +74,14 @@ build_home_panel <- function() {
               rel = "noopener noreferrer",
               "Ecological Society of America's Vegetation Classification Panel."
             ),
-            "These data support the development of the U.S. National Vegetation",
-            "Classification and general ecological research across North America."
+            "These data support the development of the ",
+            htmltools::tags$a(
+              href = "https://usnvc.org/explore-classification/",
+              target = "_blank",
+              rel = "noopener noreferrer",
+              "U.S. National Vegetation Classification (USNVC)"
+            ),
+            "and general ecological research across North America."
           ),
           htmltools::tags$p(
             "These data are also available for access with R via the",
@@ -99,67 +111,66 @@ build_home_panel <- function() {
           ),
 
           # CTA buttons
-        htmltools::tags$div(
-          class = "vb-home-cta",
-          # Browse dropdown
           htmltools::tags$div(
-            class = "btn-group",
-            htmltools::tags$button(
-              type = "button",
-              class = "btn btn-primary btn-lg vb-cta-btn dropdown-toggle",
-              `data-bs-toggle` = "dropdown",
-              `aria-expanded` = "false",
-              "Browse Plots"
+            class = "vb-home-cta",
+            # Browse dropdown
+            htmltools::tags$div(
+              class = "btn-group",
+              htmltools::tags$button(
+                type = "button",
+                class = "btn btn-primary btn-lg vb-cta-btn dropdown-toggle",
+                `data-bs-toggle` = "dropdown",
+                `aria-expanded` = "false",
+                "Browse Plots"
+              ),
+              htmltools::tags$ul(
+                class = "dropdown-menu",
+                htmltools::tags$li(htmltools::tags$a(
+                  class = "dropdown-item",
+                  href = "?tab=Plots",
+                  "All Plots in a Table"
+                )),
+                htmltools::tags$li(htmltools::tags$a(
+                  class = "dropdown-item",
+                  href = "?tab=Map",
+                  "All Plots on a Map"
+                )),
+                htmltools::tags$li(htmltools::tags$hr(class = "dropdown-divider")),
+                htmltools::tags$li(htmltools::tags$a(
+                  class = "dropdown-item",
+                  href = "?tab=Communities",
+                  "By Vegetation Community"
+                )),
+                htmltools::tags$li(htmltools::tags$a(
+                  class = "dropdown-item",
+                  href = "?tab=Plants",
+                  "By Plant Species"
+                )),
+                htmltools::tags$li(htmltools::tags$a(
+                  class = "dropdown-item",
+                  href = "?tab=Parties",
+                  "By Data Contributor"
+                )),
+                htmltools::tags$li(htmltools::tags$a(
+                  class = "dropdown-item",
+                  href = "?tab=Projects",
+                  "By Sampling Project"
+                ))
+              )
             ),
-            htmltools::tags$ul(
-              class = "dropdown-menu",
-              htmltools::tags$li(htmltools::tags$a(
-                class = "dropdown-item",
-                href = "?tab=Plots",
-                "All Plots in a Table"
-              )),
-              htmltools::tags$li(htmltools::tags$a(
-                class = "dropdown-item",
-                href = "?tab=Map",
-                "All Plots on a Map"
-              )),
-              htmltools::tags$li(htmltools::tags$hr(class = "dropdown-divider")),
-              htmltools::tags$li(htmltools::tags$a(
-                class = "dropdown-item",
-                href = "?tab=Communities",
-                "By Vegetation Community"
-              )),
-              htmltools::tags$li(htmltools::tags$a(
-                class = "dropdown-item",
-                href = "?tab=Plants",
-                "By Plant Species"
-              )),
-              htmltools::tags$li(htmltools::tags$a(
-                class = "dropdown-item",
-                href = "?tab=Parties",
-                "By Data Contributor"
-              )),
-              htmltools::tags$li(htmltools::tags$a(
-                class = "dropdown-item",
-                href = "?tab=Projects",
-                "By Sampling Project"
-              ))
+            htmltools::tags$a(
+              href = "https://nceas.github.io/vegbankr/articles/upload.html",
+              target = "_blank",
+              rel = "noopener noreferrer",
+              class = "btn btn-outline-primary btn-lg vb-cta-btn",
+              "Contribute Plots"
+            ),
+            htmltools::tags$a(
+              href = "?tab=Getting Started",
+              class = "btn btn-outline-primary btn-lg vb-cta-btn",
+              "Get Started"
             )
           ),
-          htmltools::tags$a(
-            href = "https://nceas.github.io/vegbankr/index.html",
-            target = "_blank",
-            rel = "noopener noreferrer",
-            class = "btn btn-outline-primary btn-lg vb-cta-btn",
-            "Contribute Plots"
-          ),
-          htmltools::tags$a(
-            href = "?tab=Getting Started",
-            class = "btn btn-outline-primary btn-lg vb-cta-btn",
-            "Get Started"
-          )
-        ),
-
 
           htmltools::tags$p(
             "Browse the",

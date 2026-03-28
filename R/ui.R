@@ -67,7 +67,10 @@ ui <- function(req) {
     "window.DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n",
     "window.DETAIL_TYPE_LABELS = {\n", detail_labels_js, "\n};\n",
     "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n",
-    "window.VB_VALID_CONCEPT_STATUSES = ", jsonlite::toJSON(VALID_CONCEPT_STATUSES), ";\n"
+    "window.VB_VALID_CONCEPT_STATUSES = ", jsonlite::toJSON(VALID_CONCEPT_STATUSES), ";\n",
+    "window.VB_VALID_PLOT_STATUSES = ",    jsonlite::toJSON(VALID_PLOT_STATUSES), ";\n",
+    "window.VB_DEFAULT_CONCEPT_STATUS = ", jsonlite::toJSON(DEFAULT_CONCEPT_STATUS, auto_unbox = TRUE), ";\n",
+    "window.VB_DEFAULT_PLOT_STATUS = ",    jsonlite::toJSON(DEFAULT_PLOT_STATUS,    auto_unbox = TRUE), ";\n"
   )))
 
   # External JavaScript file with main application logic
@@ -241,10 +244,25 @@ build_navbar <- function(initial_tab = "Home") {
         )
       ),
       bslib::nav_panel(
-        title = "Cite",
+        title = "Citing Data",
         htmltools::tags$div(
           class = "vb-markdown-page",
           shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+        )
+      ),
+      bslib::nav_panel(
+        title = "Downloading Plots",
+        htmltools::tags$div(
+          class = "vb-markdown-page",
+          shiny::includeMarkdown(system.file("shiny", "www", "download.md", package = "vegbankweb"))
+        )
+      ),
+      bslib::nav_item(
+        htmltools::tags$a(
+          "Uploading Plots",
+          href = "https://nceas.github.io/vegbankr/articles/upload.html",
+          target = "_blank",
+          rel = "noopener noreferrer"
         )
       ),
       bslib::nav_item(
@@ -409,6 +427,15 @@ build_detail_overlay <- function() {
           bslib::card(bslib::card_header("Observation Details"), shiny::uiOutput("taxon_obs_details")),
           bslib::card(bslib::card_header("Taxon Importance"), shiny::uiOutput("taxon_obs_importance")),
           bslib::card(bslib::card_header("Taxon Interpretations"), shiny::uiOutput("taxon_obs_interpretations"))
+        ),
+
+        # User Dataset Details Cards - wrapped in a div with class for toggling visibility
+        htmltools::tags$div(
+          id = "user-dataset-details-cards",
+          class = "detail-section",
+          bslib::card(bslib::card_header("Showing"), shiny::uiOutput("dataset_header")),
+          bslib::card(bslib::card_header("Dataset Details"), shiny::uiOutput("dataset_details")),
+          bslib::card(bslib::card_header("Citation"), shiny::uiOutput("dataset_citation"))
         )
       )
     )
