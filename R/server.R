@@ -1699,6 +1699,9 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$clear_plot_filter, {
     state$plot_filter(NULL)
+    # Restore default plot status now that the filter is cleared
+    state$plot_status("current")
+    session$sendCustomMessage("setPlotStatus", list(value = "current"))
     # Clear plots table state (including search) when clearing filter
     # This ensures we start fresh without any stale search terms
     state$table_states[["plots"]] <- NULL
