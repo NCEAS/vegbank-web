@@ -7,7 +7,7 @@
 
 ## Citation
 
-> Darian Gill, Jim Regetz, Matthew B. Jones, Michael T. Lee, Matthew Brooke, Robert K. Peet (2026) **VegBank Web: A Shiny Web App for Vegetation Plot Data**. VegBank. [doi:10.82902/J1H59R](doi:10.82902/J1H59R)
+> Darian Gill, Jim Regetz, Matthew B. Jones, Michael T. Lee, Matthew Brooke, Robert K. Peet (2026) **VegBank Web: A Shiny Web App for Vegetation Plot Data**. Version 1.0.0. VegBank. [doi:10.82902/J1H59R](https://doi.org/10.82902/J1H59R)
 
 ## Overview
 
