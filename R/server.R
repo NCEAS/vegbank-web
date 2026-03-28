@@ -511,6 +511,9 @@ server <- function(input, output, session) {
 
     if (is_dataset) {
       state$plot_filter(filter_info)
+      # Reset plot status to "any" so no observations are hidden when arriving via citation.
+      state$plot_status("any")
+      session$sendCustomMessage("setPlotStatus", list(value = "any"))
       state$current_tab("Plots")
       shiny::updateNavbarPage(session, "page", selected = "Plots")
 
@@ -528,6 +531,7 @@ server <- function(input, output, session) {
         detail_code = citation$vb_code
       )
     } else {
+      # Only one entity in table so no need to deal with status
       if (citation$tab == "Plots") {
         state$plot_filter(filter_info)
         state$highlighted_table("plot_table")
@@ -1677,6 +1681,11 @@ server <- function(input, output, session) {
       code = vb_code,
       label = label %||% vb_code
     ))
+
+    # Reset plot status to "any" so no observations are hidden by the status filter
+    # when the user first arrives via a cross-resource filter (e.g. obs_count click).
+    state$plot_status("any")
+    session$sendCustomMessage("setPlotStatus", list(value = "any"))
 
     # Clear plots table state (including search) when applying cross-resource filter
     # This prevents old search terms from being carried over to the filtered view
