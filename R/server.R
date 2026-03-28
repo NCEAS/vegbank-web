@@ -82,10 +82,10 @@ server <- function(input, output, session) {
     map_has_custom_state = shiny::reactiveVal(FALSE),
     map_request = shiny::reactiveVal(NULL),
     plot_filter = shiny::reactiveVal(NULL), # Cross-resource / citation filter: list(type, code, label)
-    plot_status = shiny::reactiveVal("current"), # Status filter for plot observations table
+    plot_status = shiny::reactiveVal(DEFAULT_PLOT_STATUS), # Status filter for plot observations table
     community_filter = shiny::reactiveVal(NULL), # Citation filter for cc: list(type, code, label)
-    community_status = shiny::reactiveVal("current_accepted"), # Status filter for community concepts table
-    plant_status = shiny::reactiveVal("current_accepted"), # Status filter for plant concepts table
+    community_status = shiny::reactiveVal(DEFAULT_CONCEPT_STATUS), # Status filter for community concepts table
+    plant_status = shiny::reactiveVal(DEFAULT_CONCEPT_STATUS), # Status filter for plant concepts table
     table_states = shiny::reactiveValues(),
     table_sync_pending = shiny::reactiveValues(),
     table_sync_completed_at = shiny::reactiveValues()
@@ -511,6 +511,9 @@ server <- function(input, output, session) {
 
     if (is_dataset) {
       state$plot_filter(filter_info)
+      # Reset plot status to "any" so no observations are hidden when arriving via citation.
+      state$plot_status("any")
+      session$sendCustomMessage("setPlotStatus", list(value = "any"))
       state$current_tab("Plots")
       shiny::updateNavbarPage(session, "page", selected = "Plots")
 
@@ -528,6 +531,7 @@ server <- function(input, output, session) {
         detail_code = citation$vb_code
       )
     } else {
+      # Only one entity in table so no need to deal with status
       if (citation$tab == "Plots") {
         state$plot_filter(filter_info)
         state$highlighted_table("plot_table")
@@ -1507,15 +1511,15 @@ server <- function(input, output, session) {
       }
       restore_status_param(params$communities_status, state$community_status, "setCommStatus",
         valid_statuses = VALID_CONCEPT_STATUSES,
-        default_status = "current_accepted"
+        default_status = DEFAULT_CONCEPT_STATUS
       )
       restore_status_param(params$plants_status, state$plant_status, "setPlantStatus",
         valid_statuses = VALID_CONCEPT_STATUSES,
-        default_status = "current_accepted"
+        default_status = DEFAULT_CONCEPT_STATUS
       )
       restore_status_param(params$plots_status, state$plot_status, "setPlotStatus",
         valid_statuses = VALID_PLOT_STATUSES,
-        default_status = "current"
+        default_status = DEFAULT_PLOT_STATUS
       )
 
       # Parse and apply map view state
@@ -1678,6 +1682,11 @@ server <- function(input, output, session) {
       label = label %||% vb_code
     ))
 
+    # Reset plot status to "any" so no observations are hidden by the status filter
+    # when the user first arrives via a cross-resource filter (e.g. obs_count click).
+    state$plot_status("any")
+    session$sendCustomMessage("setPlotStatus", list(value = "any"))
+
     # Clear plots table state (including search) when applying cross-resource filter
     # This prevents old search terms from being carried over to the filtered view
     state$table_states[["plots"]] <- NULL
@@ -1690,6 +1699,9 @@ server <- function(input, output, session) {
 
   shiny::observeEvent(input$clear_plot_filter, {
     state$plot_filter(NULL)
+    # Restore default plot status now that the filter is cleared
+    state$plot_status(DEFAULT_PLOT_STATUS)
+    session$sendCustomMessage("setPlotStatus", list(value = DEFAULT_PLOT_STATUS))
     # Clear plots table state (including search) when clearing filter
     # This ensures we start fresh without any stale search terms
     state$table_states[["plots"]] <- NULL

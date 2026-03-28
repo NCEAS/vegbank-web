@@ -3,8 +3,9 @@
 #' Provides server-side DataTable builders for plant and community concepts.
 #' @noRd
 
-# Valid values for the concept status filter, shared between server logic and URL restore.
+# Valid values and default for the concept status filter, shared between server logic and URL restore.
 VALID_CONCEPT_STATUSES <- c("any", "current", "accepted", "current_accepted")
+DEFAULT_CONCEPT_STATUS <- "current_accepted"
 
 CONCEPT_CONFIG <- list(
   plant = build_table_module_config(
