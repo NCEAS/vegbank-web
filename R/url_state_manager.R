@@ -398,19 +398,19 @@ URLStateManager <- R6::R6Class(
 
       # Include plot status filter (omit when it's the default)
       if (!is.null(plot_status) && nzchar(plot_status) &&
-          !identical(plot_status, "current")) {
+          !identical(plot_status, DEFAULT_PLOT_STATUS)) {
         params$plots_status <- plot_status
       }
 
       # Include community status filter (omit when it's the default)
       if (!is.null(community_status) && nzchar(community_status) &&
-          !identical(community_status, "current_accepted")) {
+          !identical(community_status, DEFAULT_CONCEPT_STATUS)) {
         params$communities_status <- community_status
       }
 
       # Include plant status filter (omit when it's the default)
       if (!is.null(plant_status) && nzchar(plant_status) &&
-          !identical(plant_status, "current_accepted")) {
+          !identical(plant_status, DEFAULT_CONCEPT_STATUS)) {
         params$plants_status <- plant_status
       }
 

@@ -69,8 +69,8 @@ ui <- function(req) {
     "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n",
     "window.VB_VALID_CONCEPT_STATUSES = ", jsonlite::toJSON(VALID_CONCEPT_STATUSES), ";\n",
     "window.VB_VALID_PLOT_STATUSES = ",    jsonlite::toJSON(VALID_PLOT_STATUSES), ";\n",
-    "window.VB_DEFAULT_CONCEPT_STATUS = '", DEFAULT_CONCEPT_STATUS, "';\n",
-    "window.VB_DEFAULT_PLOT_STATUS = '",    DEFAULT_PLOT_STATUS, "';\n"
+    "window.VB_DEFAULT_CONCEPT_STATUS = ", jsonlite::toJSON(DEFAULT_CONCEPT_STATUS, auto_unbox = TRUE), ";\n",
+    "window.VB_DEFAULT_PLOT_STATUS = ",    jsonlite::toJSON(DEFAULT_PLOT_STATUS,    auto_unbox = TRUE), ";\n"
   )))
 
   # External JavaScript file with main application logic
