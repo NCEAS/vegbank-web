@@ -12,7 +12,7 @@ Researchers can create a Vegbank Dataset (a specific named collection of plot ob
 
 To cite a dataset that is created in VegBank, it is best to use the DOI url for the dataset, which you can get from the 'Copy Citation' button in the web interface. The will produce a citation of the form:
 
-> Kyle Palmquist (2013): VegBank plot observations: Carolina Vegetation Survey Longleaf Analysis. VegBank. Dataset. [doi:doi:10.82902/ZZZZZZZZ](https://doi.org/10.82902/ZZZZZZZZ).
+> Kyle Palmquist (2013): VegBank plot observations: Carolina Vegetation Survey Longleaf Analysis. VegBank. Dataset. [doi:10.82902/ZZZZZZZZ](https://doi.org/10.82902/ZZZZZZZZ).
 
 Once you know the DOI, You can resolve the dataset using any of the following URL patterns:
 
