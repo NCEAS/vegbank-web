@@ -1,9 +1,33 @@
 Package: vegbankweb
 Type: Package
 Title: "VegBank Web: A Shiny Application for Vegetation Plot Data"
-Version: 0.4.0
-Authors@R: 
-    person(given = "Darian", family = "Gill", email = "help@vegbank.org", role = c("aut", "cre"))
+Version: 1.0.0
+Authors@R: c(
+    person("Darian", "Gill",
+        email = "dgill@nceas.ucsb.edu",
+        role = c("aut"),
+        comment=c(ORCID = "0009-0005-7848-2163")),
+    person("Jim", "Regetz",
+        email = "regetz@nceas.ucsb.edu",
+        role = c("aut", "cre"),
+        comment=c(ORCID = "0009-0008-2666-6229")),
+    person("Matthew B.", "Jones",
+        email = "jones@nceas.ucsb.edu",
+        role = c("aut"),
+        comment=c(ORCID = "0000-0003-0077-4738")),
+    person("Michael T.", "Lee",
+        email = "michael.lee@unc.edu",
+        role = c("aut"),
+        comment=c(ORCID = "0009-0003-3874-8604")),
+    person("Matthew", "Brooke",
+        email = "brooke@nceas.ucsb.edu",
+        role = c("aut"),
+        comment=c(ORCID = "0000-0002-1472-913X")),
+    person("Robert K.", "Peet",
+        email = "peet@unc.edu",
+        role = c("aut"),
+        comment=c(ORCID = "0000-0003-2823-6587"))
+    )
 Description: "This package provides a Shiny web interface to browse, search, inspect and download vegetation plot data."
 License: Apache License (>= 2)
 Imports: 
@@ -25,10 +49,11 @@ Imports:
     xml2 (>= 1.5.2)
 Encoding: UTF-8
 LazyData: true
-Remotes: github::NCEAS/vegbankr
+Additional_repositories: https://nceas.r-universe.dev
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Suggests: 
+    knitr,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3
