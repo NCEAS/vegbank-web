@@ -1,6 +1,6 @@
 Package: vegbankweb
 Type: Package
-Title: "VegBank Web: A Shiny Application for Vegetation Plot Data"
+Title: "'VegBank' Web: A Shiny Application for Vegetation Plot Data"
 Version: 1.0.1
 Date: 2026-03-31
 Authors@R: c(
@@ -58,3 +58,4 @@ Suggests:
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3
+X-CRAN-Comment: Spelling: NCEAS VegBank vegbankr

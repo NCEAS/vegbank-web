@@ -121,6 +121,7 @@ custom_theme <- bslib::bs_theme(
 #'
 #' @param initial_tab Character string specifying which tab to show initially
 #' @return A Shiny tag list representing the navigation bar.
+#' @import markdown
 #'
 #' @noRd
 build_navbar <- function(initial_tab = "Home") {
