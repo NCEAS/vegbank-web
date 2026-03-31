@@ -1,8 +1,8 @@
 Package: vegbankweb
 Type: Package
-Title: "VegBank Web: A Shiny Application for Vegetation Plot Data"
-Version: 1.0.0
-Date: 2026-03-27
+Title: "'VegBank' Web: A Shiny Application for Vegetation Plot Data"
+Version: 1.0.1
+Date: 2026-03-31
 Authors@R: c(
     person("Darian", "Gill",
         email = "dgill@nceas.ucsb.edu",
@@ -46,15 +46,16 @@ Imports:
     R6 (>= 2.6.1),
     rlang (>= 1.0.0),
     shiny (>= 1.11.1),
-    vegbankr (>= 0.9.0),
+    vegbankr (>= 1.0.0),
     xml2 (>= 1.5.2)
-Encoding: UTF-8
-LazyData: true
-Additional_repositories: https://nceas.r-universe.dev
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+Depends: R (>= 4.1.0)
 Suggests: 
     knitr,
     testthat (>= 3.0.0),
     withr
+Encoding: UTF-8
+Additional_repositories: https://nceas.r-universe.dev
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
 Config/testthat/edition: 3
+X-CRAN-Comment: Spelling: NCEAS VegBank vegbankr

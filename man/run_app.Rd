@@ -28,4 +28,4 @@ configuration file; defaults to the \code{config.yml} bundled with the package
 \item A modern web browser to view the user interface
 }
 }
-\concept{\strong{Standalone Application}}
+\concept{Standalone Application}
