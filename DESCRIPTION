@@ -48,14 +48,14 @@ Imports:
     shiny (>= 1.11.1),
     vegbankr (>= 1.0.0),
     xml2 (>= 1.5.2)
-Encoding: UTF-8
-LazyData: true
-Additional_repositories: https://nceas.r-universe.dev
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
+Depends: R (>= 4.1.0)
 Suggests: 
     knitr,
     testthat (>= 3.0.0),
     withr
+Encoding: UTF-8
+Additional_repositories: https://nceas.r-universe.dev
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
 Config/testthat/edition: 3
 X-CRAN-Comment: Spelling: NCEAS VegBank vegbankr
