@@ -103,8 +103,8 @@ build_dataset_details_view <- function(result) {
     }),
 
     dataset_citation = shiny::renderUI({
-      citation_html <- build_dataset_citation_text(ds, author_name, start_year)
-      citation_text <- xml2::xml_text(xml2::read_html(as.character(citation_html)))
+      citation_html <- build_dataset_citation_html(ds, author_name, start_year)
+      citation_text <- xml2::xml_text(xml2::read_html(paste0("<div>", as.character(citation_html), "</div>")))
       copy_icon <- load_svg_icon(
         "copy",
         style = "width:13px;height:13px;vertical-align:-0.1em;flex-shrink:0;"
@@ -155,16 +155,17 @@ parse_dataset_author_label <- function(owner_label) {
 #'
 #' Returns the HTML-formatted citation string for a VegBank dataset.
 #' @noRd
-build_dataset_citation_text <- function(ds, author_name, start_year) {
+build_dataset_citation_html <- function(ds, author_name, start_year) {
   safe_author_html <- htmltools::htmlEscape(as.character(author_name %|||% "Unknown Author"))
   safe_name_html   <- htmltools::htmlEscape(as.character(ds$name %|||% "Unnamed Dataset"))
   raw_accession <- as.character(ds$accession_code %|||% "Unspecified")
 
-  is_doi <- grepl("^10\\.\\d{4,9}/", raw_accession)
+  is_doi <- grepl("^(doi:)?10\\.\\d{4,9}/", raw_accession)
   is_vegbank <- grepl("^VB\\.ds\\.\\d+\\.", raw_accession)
   if (is_doi) {
-    display <- paste0("doi:", raw_accession)
-    url <- paste0("https://doi.org/", raw_accession)
+    clean_doi <- sub("^doi:", "", raw_accession)
+    display <- paste0("doi:", clean_doi)
+    url <- paste0("https://doi.org/", clean_doi)
   } else if (is_vegbank) {
     display <- paste0("vegbank:", raw_accession)
     url <- paste0("https://identifiers.org/vegbank:", raw_accession)
