@@ -418,20 +418,23 @@ create_detail_link <- function(input_id, code_value, display_text) {
 
 #' Create Copy permalink Link Button
 #'
-#' Renders a minimal inline button that copies `vegbank.org/cite/<vb_code>` to
-#' the clipboard. The click behavior is implemented in `vegbank_app.js`.
+#' Renders a minimal inline button that copies an URL to the clipboard.
+#' By default the URL is `https://vegbank.org/cite/<vb_code>`; pass
+#' `copy_url` to override (e.g., a DOI URL for datasets with a DOI accession).
+#' The click behavior is implemented in `vegbank_app.js`.
 #'
 #' @param vb_code VegBank code (e.g., "ob.1234", "cc.567", "ds.987")
 #' @param label Button label text (defaults to "Copy permalink")
+#' @param copy_url Optional URL string to copy instead of the default cite URL
 #' @return An htmltools button tag, or NULL when vb_code is missing
 #' @noRd
-create_permalink_button <- function(vb_code, label = "Copy permalink") {
+create_permalink_button <- function(vb_code, label = "Copy permalink", copy_url = NULL) {
   if (is.null(vb_code) || length(vb_code) == 0 || is.na(vb_code) || !nzchar(trimws(as.character(vb_code)))) {
     return(NULL)
   }
 
   code <- trimws(as.character(vb_code)[1])
-  copy_text <- paste0("vegbank.org/cite/", code)
+  copy_text <- if (!is.null(copy_url)) copy_url else paste0("https://vegbank.org/cite/", code)
   copy_icon <- load_svg_icon(
     "copy",
     style = "width:13px;height:13px;vertical-align:-0.1em;flex-shrink:0;"
@@ -457,16 +460,17 @@ create_permalink_button <- function(vb_code, label = "Copy permalink") {
 #'
 #' @param rows List of htmltools tag elements (for header rows)
 #' @param vb_code VegBank code used for the permalink /cite URL
+#' @param copy_url Optional URL string passed through to `create_permalink_button`
 #' @return A list of header row tags with the last row wrapped in
 #'   `div.vb-copy-inline-row` when a copy button can be created
 #' @noRd
-add_permalink_button_to_last_row <- function(rows, vb_code) {
+add_permalink_button_to_last_row <- function(rows, vb_code, copy_url = NULL) {
   rows <- Filter(Negate(is.null), rows)
   if (length(rows) == 0) {
     return(rows)
   }
 
-  copy_button <- create_permalink_button(vb_code)
+  copy_button <- create_permalink_button(vb_code, copy_url = copy_url)
   if (is.null(copy_button)) {
     return(rows)
   }

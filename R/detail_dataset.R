@@ -38,9 +38,11 @@ build_dataset_details_view <- function(result) {
         )
       )
 
+      permalink_url <- dataset_accession_url(as.character(ds$accession_code %|||% ""))
       header_rows <- add_permalink_button_to_last_row(
         header_rows,
-        ds$ds_code
+        ds$ds_code,
+        copy_url = permalink_url
       )
 
       htmltools::div(htmltools::tagList(header_rows))
@@ -151,7 +153,38 @@ parse_dataset_author_label <- function(owner_label) {
 }
 
 
-#' Build Dataset Citation Text (HTML)
+#' Extract Clean DOI from Accession Code
+#'
+#' Returns the bare DOI (without any "doi:" prefix) when `raw_accession`
+#' matches the DOI pattern, or NULL otherwise.
+#' @noRd
+extract_clean_doi <- function(raw_accession) {
+  if (grepl("^(doi:)?10\\.\\d{4,9}/", raw_accession)) {
+    sub("^doi:", "", raw_accession)
+  } else {
+    NULL
+  }
+}
+
+#' Resolve Dataset Accession Code to a Canonical URL
+#'
+#' Returns the best persistent URL for a dataset accession code:
+#' - DOI accession  -> `https://doi.org/<doi>`
+#' - VegBank legacy -> `https://identifiers.org/vegbank:<accession>`
+#' - Unrecognised   -> NULL (caller falls back to vegbank.org/cite)
+#' @noRd
+dataset_accession_url <- function(raw_accession) {
+  clean_doi <- extract_clean_doi(raw_accession)
+  if (!is.null(clean_doi)) {
+    return(paste0("https://doi.org/", clean_doi))
+  }
+  if (grepl("^VB\\.ds\\.\\d+\\.", raw_accession)) {
+    return(paste0("https://identifiers.org/vegbank:", raw_accession))
+  }
+  NULL
+}
+
+#' Build Dataset Citation HTML
 #'
 #' Returns the HTML-formatted citation string for a VegBank dataset.
 #' @noRd
@@ -160,18 +193,15 @@ build_dataset_citation_html <- function(ds, author_name, start_year) {
   safe_name_html   <- htmltools::htmlEscape(as.character(ds$name %|||% "Unnamed Dataset"))
   raw_accession <- as.character(ds$accession_code %|||% "Unspecified")
 
-  is_doi <- grepl("^(doi:)?10\\.\\d{4,9}/", raw_accession)
+  url        <- dataset_accession_url(raw_accession)
+  clean_doi  <- extract_clean_doi(raw_accession)
   is_vegbank <- grepl("^VB\\.ds\\.\\d+\\.", raw_accession)
-  if (is_doi) {
-    clean_doi <- sub("^doi:", "", raw_accession)
+  if (!is.null(clean_doi)) {
     display <- paste0("doi:", clean_doi)
-    url <- paste0("https://doi.org/", clean_doi)
   } else if (is_vegbank) {
     display <- paste0("vegbank:", raw_accession)
-    url <- paste0("https://identifiers.org/vegbank:", raw_accession)
   } else {
     display <- raw_accession
-    url <- NULL
   }
 
   if (!is.null(url)) {

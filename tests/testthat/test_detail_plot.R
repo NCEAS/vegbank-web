@@ -275,7 +275,7 @@ test_that("build_plot_obs_details_view header includes copy permalink button", {
 
   expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
   expect_true(grepl("Copy permalink", html, fixed = TRUE))
-  expect_true(grepl("vegbank.org/cite/ob.2948", html, fixed = TRUE))
+  expect_true(grepl("https://vegbank.org/cite/ob.2948", html, fixed = TRUE))
 })
 
 test_that("normalize_plot_obs_result only uses first row of multi-row input", {

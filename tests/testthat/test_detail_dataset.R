@@ -87,7 +87,7 @@ test_that("build_dataset_details_view header contains ds_code and name", {
   expect_true(grepl("unnamed dataset", html2, fixed = TRUE))
 })
 
-test_that("build_dataset_details_view header includes copy permalink button", {
+test_that("build_dataset_details_view header includes copy permalink button — VegBank accession uses identifiers.org", {
   mock_session <- shiny::MockShinySession$new()
 
   details <- build_dataset_details_view(mock_dataset_ds201120)
@@ -95,7 +95,30 @@ test_that("build_dataset_details_view header includes copy permalink button", {
 
   expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
   expect_true(grepl("Copy permalink", html, fixed = TRUE))
-  expect_true(grepl("vegbank.org/cite/ds.201120", html, fixed = TRUE))
+  expect_true(grepl("https://identifiers.org/vegbank:VB.ds.201120.DWLFOT", html, fixed = TRUE))
+  expect_false(grepl("vegbank.org/cite", html, fixed = TRUE))
+})
+
+test_that("build_dataset_details_view header uses identifiers.org permalink for unnamed VegBank dataset", {
+  mock_session <- shiny::MockShinySession$new()
+
+  details <- build_dataset_details_view(mock_dataset_ds201398)
+  html <- htmltools::renderTags(details$dataset_header(shinysession = mock_session))$html
+
+  expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
+  expect_true(grepl("https://identifiers.org/vegbank:VB.ds.201398.UNNAMEDDATASET", html, fixed = TRUE))
+  expect_false(grepl("vegbank.org/cite", html, fixed = TRUE))
+})
+
+test_that("build_dataset_details_view header uses doi.org permalink for DOI accession", {
+  mock_session <- shiny::MockShinySession$new()
+
+  details <- build_dataset_details_view(mock_dataset_ds201910)
+  html <- htmltools::renderTags(details$dataset_header(shinysession = mock_session))$html
+
+  expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
+  expect_true(grepl("https://doi.org/10.5072/FK26D61D4V", html, fixed = TRUE))
+  expect_false(grepl("vegbank.org/cite", html, fixed = TRUE))
 })
 
 test_that("build_dataset_details_view details card contains accession, author, plot count link", {

@@ -57,7 +57,7 @@ test_that("build_comm_concept_details_view header includes copy permalink button
 
   expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
   expect_true(grepl("Copy permalink", html, fixed = TRUE))
-  expect_true(grepl("vegbank.org/cite/cc.47882", html, fixed = TRUE))
+  expect_true(grepl("https://vegbank.org/cite/cc.47882", html, fixed = TRUE))
 })
 
 test_that("build_plant_concept_details_view handles valid data", {
