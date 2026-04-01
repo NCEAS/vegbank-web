@@ -171,7 +171,7 @@ extract_clean_doi <- function(raw_accession) {
 #' Returns the best persistent URL for a dataset accession code:
 #' - DOI accession  -> `https://doi.org/<doi>`
 #' - VegBank legacy -> `https://identifiers.org/vegbank:<accession>`
-#' - Unrecognised   -> NULL (caller falls back to vegbank.org/cite)
+#' - Unrecognised   -> NULL (caller falls back to https://vegbank.org/cite)
 #' @noRd
 dataset_accession_url <- function(raw_accession) {
   clean_doi <- extract_clean_doi(raw_accession)

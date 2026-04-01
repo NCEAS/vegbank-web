@@ -418,7 +418,7 @@ create_detail_link <- function(input_id, code_value, display_text) {
 
 #' Create Copy permalink Link Button
 #'
-#' Renders a minimal inline button that copies an URL to the clipboard.
+#' Renders a minimal inline button that copies a URL to the clipboard.
 #' By default the URL is `https://vegbank.org/cite/<vb_code>`; pass
 #' `copy_url` to override (e.g., a DOI URL for datasets with a DOI accession).
 #' The click behavior is implemented in `vegbank_app.js`.
