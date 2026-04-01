@@ -415,12 +415,13 @@ table.dataTable tbody tr.selected-entity:hover,
   position: fixed;
   top: var(--navbar-height);
   height: calc(100vh - var(--navbar-height));
+  height: calc(100dvh - var(--navbar-height));
   overflow-y: auto;
   background: #fff;
   border-left: 1px solid rgba(40, 70, 94, 0.15);
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12), -2px 0 8px rgba(0, 0, 0, 0.08);
   z-index: 1050;
-  padding: 0 20px 0;
+  padding: 0 20px env(safe-area-inset-bottom);
   transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
