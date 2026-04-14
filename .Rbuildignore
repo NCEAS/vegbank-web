@@ -2,6 +2,7 @@
 ^app\.R$
 ^config\.yml$
 ^\.github$
+^hosting($|/)
 ^LICENSE\.md$
 ^[.].*$
 ^.*/[.].*$
