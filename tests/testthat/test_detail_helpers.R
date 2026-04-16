@@ -276,7 +276,7 @@ test_that("create_permalink_button builds a copy control with cite URL", {
   expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
   expect_true(grepl("Copy permalink", html, fixed = TRUE))
   expect_false(grepl("Copy permalink link", html, fixed = TRUE))
-  expect_true(grepl("vegbank.org/cite/ob.2948", html, fixed = TRUE))
+  expect_true(grepl("https://vegbank.org/cite/ob.2948", html, fixed = TRUE))
 })
 
 test_that("create_permalink_button returns NULL for missing vb_code", {

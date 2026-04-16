@@ -19,10 +19,10 @@ test_that("parse_dataset_author_label handles NULL / NA / empty", {
   expect_equal(parse_dataset_author_label("   "),        "Unknown Author")
 })
 
-# ==== build_dataset_citation_text() ====
+# ==== build_dataset_citation_html() ====
 
-test_that("build_dataset_citation_text builds correct citation — start only", {
-  text <- build_dataset_citation_text(
+test_that("build_dataset_citation_html builds correct citation — start only", {
+  text <- build_dataset_citation_html(
     mock_dataset_ds201120,
     author_name = "Kyle Palmquist",
     start_year  = "2017"
@@ -35,10 +35,10 @@ test_that("build_dataset_citation_text builds correct citation — start only", 
   expect_true(grepl("VB.ds.201120.DWLFOT", text, fixed = TRUE))
 })
 
-test_that("build_dataset_citation_text sanitizes dataset name", {
+test_that("build_dataset_citation_html sanitizes dataset name", {
   ds_xss <- mock_dataset_ds201120
   ds_xss$name <- '<script>alert("xss")</script>'
-  text <- build_dataset_citation_text(
+  text <- build_dataset_citation_html(
     ds_xss,
     author_name = "Kyle Palmquist",
     start_year  = "2017"
@@ -87,7 +87,7 @@ test_that("build_dataset_details_view header contains ds_code and name", {
   expect_true(grepl("unnamed dataset", html2, fixed = TRUE))
 })
 
-test_that("build_dataset_details_view header includes copy permalink button", {
+test_that("build_dataset_details_view header includes copy permalink button — VegBank accession uses identifiers.org", {
   mock_session <- shiny::MockShinySession$new()
 
   details <- build_dataset_details_view(mock_dataset_ds201120)
@@ -95,7 +95,30 @@ test_that("build_dataset_details_view header includes copy permalink button", {
 
   expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
   expect_true(grepl("Copy permalink", html, fixed = TRUE))
-  expect_true(grepl("vegbank.org/cite/ds.201120", html, fixed = TRUE))
+  expect_true(grepl("https://identifiers.org/vegbank:VB.ds.201120.DWLFOT", html, fixed = TRUE))
+  expect_false(grepl("vegbank.org/cite", html, fixed = TRUE))
+})
+
+test_that("build_dataset_details_view header uses identifiers.org permalink for unnamed VegBank dataset", {
+  mock_session <- shiny::MockShinySession$new()
+
+  details <- build_dataset_details_view(mock_dataset_ds201398)
+  html <- htmltools::renderTags(details$dataset_header(shinysession = mock_session))$html
+
+  expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
+  expect_true(grepl("https://identifiers.org/vegbank:VB.ds.201398.UNNAMEDDATASET", html, fixed = TRUE))
+  expect_false(grepl("vegbank.org/cite", html, fixed = TRUE))
+})
+
+test_that("build_dataset_details_view header uses doi.org permalink for DOI accession", {
+  mock_session <- shiny::MockShinySession$new()
+
+  details <- build_dataset_details_view(mock_dataset_ds201910)
+  html <- htmltools::renderTags(details$dataset_header(shinysession = mock_session))$html
+
+  expect_true(grepl("vb-copy-permalink", html, fixed = TRUE))
+  expect_true(grepl("https://doi.org/10.5072/FK26D61D4V", html, fixed = TRUE))
+  expect_false(grepl("vegbank.org/cite", html, fixed = TRUE))
 })
 
 test_that("build_dataset_details_view details card contains accession, author, plot count link", {
@@ -168,10 +191,10 @@ test_that("build_dataset_details_view details plot count link has correct ds_cod
   expect_true(grepl("obs-count-link", html, fixed = TRUE))
 })
 
-# ==== build_dataset_citation_text() accession/DOI link rendering ====
+# ==== build_dataset_citation_html() accession/DOI link rendering ====
 
-test_that("build_dataset_citation_text renders VegBank accession as correct link and label", {
-  tag <- build_dataset_citation_text(
+test_that("build_dataset_citation_html renders VegBank accession as correct link and label", {
+  tag <- build_dataset_citation_html(
     mock_dataset_ds201120,
     author_name = "Kyle Palmquist",
     start_year  = "2017"
@@ -181,8 +204,8 @@ test_that("build_dataset_citation_text renders VegBank accession as correct link
   expect_true(grepl("href=\"https://identifiers.org/vegbank:VB.ds.201120.DWLFOT\"", html, fixed = TRUE))
 })
 
-test_that("build_dataset_citation_text renders DOI as correct link and label", {
-  tag <- build_dataset_citation_text(
+test_that("build_dataset_citation_html renders DOI as correct link and label", {
+  tag <- build_dataset_citation_html(
     mock_dataset_ds201910,
     author_name = "Rushirah Nenuji",
     start_year  = "2026"
@@ -190,4 +213,13 @@ test_that("build_dataset_citation_text renders DOI as correct link and label", {
   html <- as.character(tag)
   expect_true(grepl(">doi:10.5072/FK26D61D4V<", html, fixed = TRUE))
   expect_true(grepl("href=\"https://doi.org/10.5072/FK26D61D4V\"", html, fixed = TRUE))
+})
+
+test_that("build_dataset_citation_html renders doi:-prefixed accession as link", {
+  ds <- mock_dataset_ds201910
+  ds$accession_code <- "doi:10.82902/J17P4J"
+  tag <- build_dataset_citation_html(ds, author_name = "Matthew Jones", start_year = "2026")
+  html <- as.character(tag)
+  expect_true(grepl(">doi:10.82902/J17P4J<", html, fixed = TRUE))
+  expect_true(grepl("href=\"https://doi.org/10.82902/J17P4J\"", html, fixed = TRUE))
 })

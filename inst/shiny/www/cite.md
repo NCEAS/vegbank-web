@@ -12,13 +12,22 @@ Researchers can create a Vegbank Dataset (a specific named collection of plot ob
 
 To cite a dataset that is created in VegBank, it is best to use the DOI url for the dataset, which you can get from the 'Copy Citation' button in the web interface. That will produce a citation of the form:
 
-> Kyle Palmquist (2013): VegBank plot observations: Carolina Vegetation Survey Longleaf Analysis. VegBank. Dataset. [doi:10.82902/ZZZZZZZZ](https://doi.org/10.82902/ZZZZZZZZ).
+> Jones, Matthew. (2026). Vegbank plot observations: Santa Barbara, California plots as of 2026-03-31. Dataset. VegBank. [doi:10.82902/J17P4J](https://doi.org/10.82902/J17P4J)
 
 Once you know the DOI, You can resolve the dataset using any of the following URL patterns:
 
-- https://doi.org/doi:10.82902/ZZZZZZZZ
-- https://vegbank.org/cite/doi:10.82902/ZZZZZZZZ
-- https://identifiers.org/vegbank:doi:10.82902/ZZZZZZZZ
+- https://doi.org/doi:10.82902/J17P4J
+- https://vegbank.org/cite/doi:10.82902/J17P4J
+- https://vegbank.org/cite/ds.204435
+- https://identifiers.org/vegbank:ds.204435
+
+* * * 
+
+## Citing data generally in VegBank
+
+Best practice is to create a Dataset using the API `create_dataset()` API method so that an exact set of observations can be reproducibly retrieved with a custom DOI. When that is not possible and collections of data are downloaded from VegBank without first creating a Dataset for the collection, then the VegBank data system as a whole can be cited. It's helpful to provide an indication of when the data were downloaded. 
+
+> VegBank (2026): Plot observations from VegBank, the vegetation plot archive of the Ecological Society of America. Downloaded from https://vegbank.org on YYYY-MM-DD. Dataset. https://doi.org/10.82902/J1CC7T
 
 * * * 
 
