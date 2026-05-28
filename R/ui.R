@@ -7,6 +7,23 @@
 #'
 #' @noRd
 ui <- function(req) {
+  # Reject any path that isn't the app root or a /cite/ redirect.
+  # uiPattern = ".*" routes ALL unmatched HTTP requests here; unknown paths (e.g.
+  # /swagger/favicon.ico from bots) would otherwise trigger full UI construction
+  # AND cause the browser to re-request every relative asset (shared/shiny.js,
+  # assets/vegbank_styles.css, etc.) against the wrong base path, cascading into
+  # ~10 more ui() calls queued in single-threaded R (~7s load vs ~1s at root).
+  path_info <- req$PATH_INFO
+  if (!is.null(path_info) && nzchar(path_info) &&
+    !identical(path_info, "/") &&
+    !grepl("^/cite/", path_info, perl = TRUE)) {
+    return(shiny::httpResponse(
+      status = 404L,
+      content_type = "text/plain",
+      content = "Not Found"
+    ))
+  }
+
   # Handle /cite/IDENTIFIER paths: --> HTTP 302 redirect --> /?cite=IDENTIFIER
   # Old VegBank had citation URLs like http://vegbank.org/cite/VB.Ob.22743.INW32086
   # This redirect converts path-based citations to query parameter form for server processing.
@@ -68,9 +85,9 @@ ui <- function(req) {
     "window.DETAIL_TYPE_LABELS = {\n", detail_labels_js, "\n};\n",
     "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n",
     "window.VB_VALID_CONCEPT_STATUSES = ", jsonlite::toJSON(VALID_CONCEPT_STATUSES), ";\n",
-    "window.VB_VALID_PLOT_STATUSES = ",    jsonlite::toJSON(VALID_PLOT_STATUSES), ";\n",
+    "window.VB_VALID_PLOT_STATUSES = ", jsonlite::toJSON(VALID_PLOT_STATUSES), ";\n",
     "window.VB_DEFAULT_CONCEPT_STATUS = ", jsonlite::toJSON(DEFAULT_CONCEPT_STATUS, auto_unbox = TRUE), ";\n",
-    "window.VB_DEFAULT_PLOT_STATUS = ",    jsonlite::toJSON(DEFAULT_PLOT_STATUS,    auto_unbox = TRUE), ";\n"
+    "window.VB_DEFAULT_PLOT_STATUS = ", jsonlite::toJSON(DEFAULT_PLOT_STATUS, auto_unbox = TRUE), ";\n"
   )))
 
   # External JavaScript file with main application logic

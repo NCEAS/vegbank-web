@@ -38,8 +38,8 @@ test_that("RESOURCE_REGISTRY maps to valid app tabs", {
     tab <- RESOURCE_REGISTRY[[type]]$tab
     # The tab field is not set for comm classifications, references, cover-methods, stratum-methods
     # since they only appear in detail overlays
-    if (type == "references" || type == "cover-methods" || type == "stratum-methods"
-        || type == "community-classifications") {
+    if (type == "references" || type == "cover-methods" || type == "stratum-methods" ||
+      type == "community-classifications") {
       next
     }
     expect_true(tab %in% valid_tabs, info = paste("Invalid tab", tab, "for", type))
@@ -359,12 +359,29 @@ test_that("ui() does not redirect non-citation paths", {
   expect_true(length(result) > 1 || (length(result) == 1 && length(result[[1]]$children) > 1))
 })
 
-test_that("ui() does not redirect paths that start with /cite but aren't citation URLs", {
-  # Path like /citation-info should not trigger redirect
+test_that("ui() returns 404 for unknown paths that start with /cite but aren't citation URLs", {
+  # Path like /citation-info is not a valid app path and should 404, not redirect or render UI
   req <- list(PATH_INFO = "/citation-info")
 
   result <- ui(req)
 
-  # Should return full UI, not redirect
-  expect_true(length(result) > 1 || (length(result) == 1 && length(result[[1]]$children) > 1))
+  expect_s3_class(result, "httpResponse")
+  expect_equal(result$status, 404L)
+})
+
+test_that("ui() returns 404 for arbitrary bot/scanner paths", {
+  scanner_paths <- c(
+    "/swagger/favicon.ico",
+    "/wp-admin/",
+    "/.env",
+    "/api/v1/users",
+    "/phpmyadmin/",
+    "/bonita/login.jsp"
+  )
+
+  for (path in scanner_paths) {
+    req <- list(PATH_INFO = path)
+    result <- ui(req)
+    expect_equal(result$status, 404L, label = paste("status for", path))
+  }
 })
