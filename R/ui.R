@@ -57,7 +57,6 @@ ui <- function(req) {
   )
 
   navbar <- build_navbar(initial_tab)
-  overlay <- build_detail_overlay()
   map_loading_overlay <- build_map_loading_overlay(
     visible = identical(initial_tab, "Map")
   )
@@ -67,19 +66,15 @@ ui <- function(req) {
   citation_loading_overlay <- build_citation_loading_overlay(
     visible = has_cite_param
   )
-  download_loading_overlay <- build_download_loading_overlay()
-
-  # External JavaScript file with main application logic
-  app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
 
   htmltools::tagList(
     font_head,
     navbar,
-    overlay,
+    .overlay,
     map_loading_overlay,
     overview_loading_overlay,
     citation_loading_overlay,
-    download_loading_overlay,
+    .download_loading_overlay,
     .constants_script,
     app_script
   )
@@ -440,6 +435,15 @@ build_detail_overlay <- function() {
 }
 
 # ================= PACKAGE-LEVEL PRECOMPUTED CONSTANTS ===========================================
+# External JS tag — static reference, no per-request variation.
+app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
+
+# Detail overlay sidebar — static HTML structure whose uiOutput placeholders are
+# filled reactively by the server. Built once since it has no request-specific inputs.
+.overlay <- build_detail_overlay()
+
+# Download loading overlay — no request-specific inputs.
+.download_loading_overlay <- build_download_loading_overlay()
 
 # Inline <script> tag injecting R constants into the browser. Built once at package load time
 # since every value it depends on is a package-level constant.
