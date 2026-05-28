@@ -57,15 +57,9 @@ ui <- function(req) {
   )
 
   navbar <- build_navbar(initial_tab)
-  map_loading_overlay <- build_map_loading_overlay(
-    visible = identical(initial_tab, "Map")
-  )
-  overview_loading_overlay <- build_overview_loading_overlay(
-    visible = identical(initial_tab, "Overview") && !has_cite_param
-  )
-  citation_loading_overlay <- build_citation_loading_overlay(
-    visible = has_cite_param
-  )
+  map_loading_overlay <- .map_loading_overlays[[as.character(identical(initial_tab, "Map"))]]
+  overview_loading_overlay <- .overview_loading_overlays[[as.character(identical(initial_tab, "Overview") && !has_cite_param)]]
+  citation_loading_overlay <- .citation_loading_overlays[[as.character(has_cite_param)]]
 
   htmltools::tagList(
     font_head,
@@ -450,6 +444,21 @@ app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
 
 # Download loading overlay — no request-specific inputs.
 .download_loading_overlay <- build_download_loading_overlay()
+
+# Per-request loading overlays have only two possible states (visible = TRUE/FALSE).
+# Precompute both so ui() does a list lookup instead of constructing tag trees.
+.map_loading_overlays <- list(
+  "FALSE" = build_map_loading_overlay(visible = FALSE),
+  "TRUE"  = build_map_loading_overlay(visible = TRUE)
+)
+.overview_loading_overlays <- list(
+  "FALSE" = build_overview_loading_overlay(visible = FALSE),
+  "TRUE"  = build_overview_loading_overlay(visible = TRUE)
+)
+.citation_loading_overlays <- list(
+  "FALSE" = build_citation_loading_overlay(visible = FALSE),
+  "TRUE"  = build_citation_loading_overlay(visible = TRUE)
+)
 
 # Inline <script> tag injecting R constants into the browser. Built once at package load time
 # since every value it depends on is a package-level constant.
