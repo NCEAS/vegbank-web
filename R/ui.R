@@ -48,8 +48,6 @@ ui <- function(req) {
     }
   }
 
-  shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
-
   # Ensure Inter font loads from CDN before any CSS
   font_head <- htmltools::tags$head(
     htmltools::tags$link(rel = "icon", type = "image/svg+xml", href = "assets/logo_vegbank_leaves.svg"),
