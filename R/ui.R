@@ -225,28 +225,28 @@ build_navbar <- function(initial_tab = "Home") {
         title = "Getting Started",
         htmltools::tags$div(
           class = "vb-markdown-page",
-          shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
+          .md_getting_started
         )
       ),
       bslib::nav_panel(
         title = "FAQ",
         htmltools::tags$div(
           class = "vb-markdown-page",
-          shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
+          .md_faq
         )
       ),
       bslib::nav_panel(
         title = "Citing Data",
         htmltools::tags$div(
           class = "vb-markdown-page",
-          shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+          .md_cite
         )
       ),
       bslib::nav_panel(
         title = "Downloading Plots",
         htmltools::tags$div(
           class = "vb-markdown-page",
-          shiny::includeMarkdown(system.file("shiny", "www", "download.md", package = "vegbankweb"))
+          .md_download
         )
       ),
       bslib::nav_item(
@@ -437,6 +437,12 @@ build_detail_overlay <- function() {
 # ================= PACKAGE-LEVEL PRECOMPUTED CONSTANTS ===========================================
 # External JS tag — static reference, no per-request variation.
 app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
+
+# About submenu markdown pages — read from disk once at package load.
+.md_getting_started <- shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
+.md_faq <- shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
+.md_cite <- shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+.md_download <- shiny::includeMarkdown(system.file("shiny", "www", "download.md", package = "vegbankweb"))
 
 # Detail overlay sidebar — static HTML structure whose uiOutput placeholders are
 # filled reactively by the server. Built once since it has no request-specific inputs.
