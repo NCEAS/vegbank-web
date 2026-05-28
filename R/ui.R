@@ -69,25 +69,6 @@ ui <- function(req) {
   )
   download_loading_overlay <- build_download_loading_overlay()
 
-  # Inline script with application constants injected from R
-  detail_label_entries <- Filter(function(e) !is.null(e$detail_type), RESOURCE_REGISTRY)
-  detail_labels_js <- paste(
-    vapply(detail_label_entries, function(e) {
-      paste0("  '", e$detail_type, "': '", tools::toTitleCase(e$singular), "'")
-    }, character(1)),
-    collapse = ",\n"
-  )
-  constants_script <- htmltools::tags$script(htmltools::HTML(paste0(
-    "// Application constants - single source of truth from R\n",
-    "window.DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n",
-    "window.DETAIL_TYPE_LABELS = {\n", detail_labels_js, "\n};\n",
-    "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n",
-    "window.VB_VALID_CONCEPT_STATUSES = ", jsonlite::toJSON(VALID_CONCEPT_STATUSES), ";\n",
-    "window.VB_VALID_PLOT_STATUSES = ", jsonlite::toJSON(VALID_PLOT_STATUSES), ";\n",
-    "window.VB_DEFAULT_CONCEPT_STATUS = ", jsonlite::toJSON(DEFAULT_CONCEPT_STATUS, auto_unbox = TRUE), ";\n",
-    "window.VB_DEFAULT_PLOT_STATUS = ", jsonlite::toJSON(DEFAULT_PLOT_STATUS, auto_unbox = TRUE), ";\n"
-  )))
-
   # External JavaScript file with main application logic
   app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
 
@@ -99,7 +80,7 @@ ui <- function(req) {
     overview_loading_overlay,
     citation_loading_overlay,
     download_loading_overlay,
-    constants_script,
+    .constants_script,
     app_script
   )
 }
@@ -457,6 +438,30 @@ build_detail_overlay <- function() {
     )
   )
 }
+
+# ================= PACKAGE-LEVEL PRECOMPUTED CONSTANTS ===========================================
+
+# Inline <script> tag injecting R constants into the browser. Built once at package load time
+# since every value it depends on is a package-level constant.
+.constants_script <- local({
+  detail_label_entries <- Filter(function(e) !is.null(e$detail_type), RESOURCE_REGISTRY)
+  detail_labels_js <- paste(
+    vapply(detail_label_entries, function(e) {
+      paste0("  '", e$detail_type, "': '", tools::toTitleCase(e$singular), "'")
+    }, character(1)),
+    collapse = ",\n"
+  )
+  htmltools::tags$script(htmltools::HTML(paste0(
+    "// Application constants - single source of truth from R\n",
+    "window.DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n",
+    "window.DETAIL_TYPE_LABELS = {\n", detail_labels_js, "\n};\n",
+    "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n",
+    "window.VB_VALID_CONCEPT_STATUSES = ", jsonlite::toJSON(VALID_CONCEPT_STATUSES), ";\n",
+    "window.VB_VALID_PLOT_STATUSES = ", jsonlite::toJSON(VALID_PLOT_STATUSES), ";\n",
+    "window.VB_DEFAULT_CONCEPT_STATUS = ", jsonlite::toJSON(DEFAULT_CONCEPT_STATUS, auto_unbox = TRUE), ";\n",
+    "window.VB_DEFAULT_PLOT_STATUS = ", jsonlite::toJSON(DEFAULT_PLOT_STATUS, auto_unbox = TRUE), ";\n"
+  )))
+})
 
 # ================= CITATION REDIRECT HELPERS ======================================================
 
