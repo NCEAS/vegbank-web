@@ -7,12 +7,7 @@
 #'
 #' @noRd
 ui <- function(req) {
-  # Reject any path that isn't the app root or a /cite/ redirect.
-  # uiPattern = ".*" routes ALL unmatched HTTP requests here; unknown paths (e.g.
-  # /swagger/favicon.ico from bots) would otherwise trigger full UI construction
-  # AND cause the browser to re-request every relative asset (shared/shiny.js,
-  # assets/vegbank_styles.css, etc.) against the wrong base path, cascading into
-  # ~10 more ui() calls queued in single-threaded R (~7s load vs ~1s at root).
+  # Reject any path that isn't the app root or a /cite/ redirect with a 404 page.
   path_info <- req$PATH_INFO
   if (!is.null(path_info) && nzchar(path_info) &&
     !identical(path_info, "/") &&
@@ -87,13 +82,7 @@ custom_theme <- bslib::bs_theme(
   bg = "hsl(0, 0%, 100%)",
   fg = "hsl(156, 12%, 11%)",
   info = "hsl(160, 69%, 30%)",
-  # WCAG AA requires ≥ 4.5:1 contrast for normal text.
-  # hsl(160, 29%, 40%) only achieved ~4.07:1 against white.
-  # Dropping lightness to 35% raises that to ~4.97:1, keeping
-  # white-on-primary filled buttons at the same ratio (both pass).
   primary = "hsl(165, 41%, 34%)",
-  # secondary at 59% lightness (~3.3:1) also fails if used as text,
-  # darkened to 42% (~4.56:1) as a proactive fix.
   secondary = "hsl(160, 34%, 42%)",
   base_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
@@ -281,8 +270,6 @@ build_navbar <- function(initial_tab = "Home") {
 build_detail_overlay <- function() {
   htmltools::tags$div(
     id = "detail-overlay",
-    # Sticky gradient banner showing the detail type with icon — lets users keep
-    # context even after scrolling past the first card.
     htmltools::tags$div(
       id = "detail-type-banner",
       htmltools::tags$span(
@@ -429,20 +416,20 @@ build_detail_overlay <- function() {
 }
 
 # ================= PACKAGE-LEVEL PRECOMPUTED CONSTANTS ===========================================
-# External JS tag — static reference, no per-request variation.
+# External JS tag for the app script which won't change per request.
 app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
 
-# About submenu markdown pages — read from disk once at package load.
+# About submenu markdown pages. The pages areread from disk once at package load.
 .md_getting_started <- shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
 .md_faq <- shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
 .md_cite <- shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
 .md_download <- shiny::includeMarkdown(system.file("shiny", "www", "download.md", package = "vegbankweb"))
 
-# Detail overlay sidebar — static HTML structure whose uiOutput placeholders are
+# Detail overlay sidebar. A static HTML structure whose uiOutput placeholders are
 # filled reactively by the server. Built once since it has no request-specific inputs.
 .overlay <- build_detail_overlay()
 
-# Download loading overlay — no request-specific inputs.
+# Download loading overlay. Also no request-specific inputs.
 .download_loading_overlay <- build_download_loading_overlay()
 
 # Per-request loading overlays have only two possible states (visible = TRUE/FALSE).
@@ -482,7 +469,7 @@ app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
   )))
 })
 
-# 404 response page — built once; returned for any unrecognised path. Contains hard-coded
+# 404 response page. Built once; returned for any unrecognised path. Contains hard-coded
 # css values that may need updating to match any theme changes.
 .html_404 <- paste0(
   "<!DOCTYPE html>",
@@ -490,7 +477,7 @@ app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
   "<head>",
   "<meta charset='utf-8'>",
   "<meta name='viewport' content='width=device-width, initial-scale=1'>",
-  "<title>404 — Page Not Found</title>",
+  "<title>404: Page Not Found</title>",
   "<style>",
   "body{margin:0;font-family:system-ui,sans-serif;background:#f7faf9;color:#1a2e28;",
   "display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;}",
@@ -520,7 +507,7 @@ app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
 #' Extract Citation Identifier from /cite/ Path
 #'
 #' Checks if the request path is a /cite/IDENTIFIER URL and returns the identifier.
-#' Only checks path-based citations — query-based (?cite=) citations are handled
+#' Only checks path-based citations. Query-based (?cite=) citations are handled
 #' by the server after the app loads.
 #'
 #' @param req A Shiny request object
@@ -540,8 +527,8 @@ extract_citation_identifier <- function(req) {
 #' Build an HTTP 302 Redirect for Citation URLs
 #'
 #' Returns an HTTP 302 response that redirects /cite/IDENTIFIER to /?cite=IDENTIFIER.
-#' This is an immediate server-level redirect — no HTML is rendered and no resources
-#' are loaded — which avoids the problem of relative asset paths being misinterpreted
+#' This is an immediate server-level redirect (no HTML is rendered and no resources
+#' are loaded) which avoids the problem of relative asset paths being misinterpreted
 #' as citation identifiers when uiPattern = ".*" routes all requests through ui().
 #'
 #' @param identifier The citation identifier to redirect
