@@ -11,7 +11,7 @@ ui <- function(req) {
   path_info <- req$PATH_INFO
   if (!is.null(path_info) && nzchar(path_info) &&
     !identical(path_info, "/") &&
-    !grepl("^/cite/", path_info, perl = TRUE)) {
+    !grepl("^/cite/.+", path_info, perl = TRUE)) {
     return(shiny::httpResponse(
       status = 404L,
       content_type = "text/html; charset=utf-8",
@@ -419,7 +419,7 @@ build_detail_overlay <- function() {
 # External JS tag for the app script which won't change per request.
 app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
 
-# About submenu markdown pages. The pages areread from disk once at package load.
+# About submenu markdown pages. The pages are read from disk once at package load.
 .md_getting_started <- shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
 .md_faq <- shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
 .md_cite <- shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
