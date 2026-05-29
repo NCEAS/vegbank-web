@@ -19,8 +19,8 @@ ui <- function(req) {
     !grepl("^/cite/", path_info, perl = TRUE)) {
     return(shiny::httpResponse(
       status = 404L,
-      content_type = "text/plain",
-      content = "Not Found"
+      content_type = "text/html; charset=utf-8",
+      content = .html_404
     ))
   }
 
@@ -481,6 +481,39 @@ app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
     "window.VB_DEFAULT_PLOT_STATUS = ", jsonlite::toJSON(DEFAULT_PLOT_STATUS, auto_unbox = TRUE), ";\n"
   )))
 })
+
+# 404 response page — built once; returned for any unrecognised path. Contains hard-coded
+# css values that may need updating to match any theme changes.
+.html_404 <- paste0(
+  "<!DOCTYPE html>",
+  "<html lang='en'>",
+  "<head>",
+  "<meta charset='utf-8'>",
+  "<meta name='viewport' content='width=device-width, initial-scale=1'>",
+  "<title>404 — Page Not Found</title>",
+  "<style>",
+  "body{margin:0;font-family:system-ui,sans-serif;background:#f7faf9;color:#1a2e28;",
+  "display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;}",
+  ".box{max-width:420px;padding:2.5rem 2rem;}",
+  "h1{font-size:5rem;margin:0;color:#2a7a5c;line-height:1;}",
+  "h2{font-size:1.25rem;margin:.5rem 0 1.25rem;font-weight:600;}",
+  "p{margin:0 0 1.75rem;color:#4a6860;line-height:1.6;}",
+  "a{display:inline-block;padding:.55rem 1.4rem;background:#2a7a5c;color:#fff;",
+  "border-radius:.375rem;text-decoration:none;font-weight:500;}",
+  "a:hover{background:#1f5e46;}",
+  "</style>",
+  "</head>",
+  "<body>",
+  "<div class='box'>",
+  "<h1>404</h1>",
+  "<h2>Looks like this page has gone to seed.</h2>",
+  "<p>We couldn't find what you were looking for.<br>",
+  "It may have wilted away or never taken root.</p>",
+  "<a href='/'>Back to VegBank</a>",
+  "</div>",
+  "</body>",
+  "</html>"
+)
 
 # ================= CITATION REDIRECT HELPERS ======================================================
 
