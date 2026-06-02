@@ -17,6 +17,8 @@
 #' @return A **Shiny application** object.
 #' @export
 run_app <- function(options = list()) {
+  shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
+
   shiny::shinyApp(
     ui = ui,
     server = server,

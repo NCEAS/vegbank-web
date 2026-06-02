@@ -9,20 +9,11 @@
 #'
 #' @noRd
 build_home_panel <- function() {
-  hero_dir <- system.file("shiny", "www", "heros", package = "vegbankweb")
-  hero_files <- if (nzchar(hero_dir)) list.files(hero_dir, pattern = "^hero_", full.names = FALSE) else character(0)
-  hero_images <- lapply(hero_files, function(f) {
-    stem <- tools::file_path_sans_ext(f)
-    stem <- sub("^hero_", "", stem)
-    stem <- gsub("[_-]", " ", stem)
-    alt  <- paste0(toupper(substring(stem, 1, 1)), substring(stem, 2))
-    list(src = paste0("assets/heros/", f), alt = alt)
-  })
-  if (length(hero_images) == 0L) {
+  if (length(.hero_images) == 0L) {
     # Fallback: no hero images found, render without image
     hero <- NULL
   } else {
-    hero <- hero_images[[sample(length(hero_images), 1L)]]
+    hero <- .hero_images[[sample(length(.hero_images), 1L)]]
   }
 
   bslib::nav_panel(
@@ -33,11 +24,13 @@ build_home_panel <- function() {
       # Hero image with gradient overlay and text
       htmltools::tags$div(
         class = "vb-hero",
-        if (!is.null(hero)) htmltools::tags$img(
-          src = hero$src,
-          alt = hero$alt,
-          class = "vb-hero-img"
-        ),
+        if (!is.null(hero)) {
+          htmltools::tags$img(
+            src = hero$src,
+            alt = hero$alt,
+            class = "vb-hero-img"
+          )
+        },
         htmltools::tags$div(
           class = "vb-hero-overlay",
           htmltools::tags$div(
@@ -171,7 +164,6 @@ build_home_panel <- function() {
               "Get Started"
             )
           ),
-
           htmltools::tags$p(
             "Browse the",
             htmltools::tags$a(href = "?tab=FAQ", "FAQ page"),
@@ -222,3 +214,16 @@ build_home_panel <- function() {
     )
   )
 }
+
+# Hero image list — filesystem scan performed once at package load.
+.hero_images <- local({
+  hero_dir <- system.file("shiny", "www", "heros", package = "vegbankweb")
+  hero_files <- if (nzchar(hero_dir)) list.files(hero_dir, pattern = "^hero_", full.names = FALSE) else character(0)
+  lapply(hero_files, function(f) {
+    stem <- tools::file_path_sans_ext(f)
+    stem <- sub("^hero_", "", stem)
+    stem <- gsub("[_-]", " ", stem)
+    alt <- paste0(toupper(substring(stem, 1, 1)), substring(stem, 2))
+    list(src = paste0("assets/heros/", f), alt = alt)
+  })
+})
