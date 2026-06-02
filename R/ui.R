@@ -7,6 +7,18 @@
 #'
 #' @noRd
 ui <- function(req) {
+  # Reject any path that isn't the app root or a /cite/ redirect with a 404 page.
+  path_info <- req$PATH_INFO
+  if (!is.null(path_info) && nzchar(path_info) &&
+    !identical(path_info, "/") &&
+    !grepl("^/cite/.+", path_info, perl = TRUE)) {
+    return(shiny::httpResponse(
+      status = 404L,
+      content_type = "text/html; charset=utf-8",
+      content = .html_404
+    ))
+  }
+
   # Handle /cite/IDENTIFIER paths: --> HTTP 302 redirect --> /?cite=IDENTIFIER
   # Old VegBank had citation URLs like http://vegbank.org/cite/VB.Ob.22743.INW32086
   # This redirect converts path-based citations to query parameter form for server processing.
@@ -31,8 +43,6 @@ ui <- function(req) {
     }
   }
 
-  shiny::addResourcePath("assets", system.file("shiny/www", package = "vegbankweb"))
-
   # Ensure Inter font loads from CDN before any CSS
   font_head <- htmltools::tags$head(
     htmltools::tags$link(rel = "icon", type = "image/svg+xml", href = "assets/logo_vegbank_leaves.svg"),
@@ -42,49 +52,19 @@ ui <- function(req) {
   )
 
   navbar <- build_navbar(initial_tab)
-  overlay <- build_detail_overlay()
-  map_loading_overlay <- build_map_loading_overlay(
-    visible = identical(initial_tab, "Map")
-  )
-  overview_loading_overlay <- build_overview_loading_overlay(
-    visible = identical(initial_tab, "Overview") && !has_cite_param
-  )
-  citation_loading_overlay <- build_citation_loading_overlay(
-    visible = has_cite_param
-  )
-  download_loading_overlay <- build_download_loading_overlay()
-
-  # Inline script with application constants injected from R
-  detail_label_entries <- Filter(function(e) !is.null(e$detail_type), RESOURCE_REGISTRY)
-  detail_labels_js <- paste(
-    vapply(detail_label_entries, function(e) {
-      paste0("  '", e$detail_type, "': '", tools::toTitleCase(e$singular), "'")
-    }, character(1)),
-    collapse = ",\n"
-  )
-  constants_script <- htmltools::tags$script(htmltools::HTML(paste0(
-    "// Application constants - single source of truth from R\n",
-    "window.DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n",
-    "window.DETAIL_TYPE_LABELS = {\n", detail_labels_js, "\n};\n",
-    "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n",
-    "window.VB_VALID_CONCEPT_STATUSES = ", jsonlite::toJSON(VALID_CONCEPT_STATUSES), ";\n",
-    "window.VB_VALID_PLOT_STATUSES = ",    jsonlite::toJSON(VALID_PLOT_STATUSES), ";\n",
-    "window.VB_DEFAULT_CONCEPT_STATUS = ", jsonlite::toJSON(DEFAULT_CONCEPT_STATUS, auto_unbox = TRUE), ";\n",
-    "window.VB_DEFAULT_PLOT_STATUS = ",    jsonlite::toJSON(DEFAULT_PLOT_STATUS,    auto_unbox = TRUE), ";\n"
-  )))
-
-  # External JavaScript file with main application logic
-  app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
+  map_loading_overlay <- .map_loading_overlays[[as.character(identical(initial_tab, "Map"))]]
+  overview_loading_overlay <- .overview_loading_overlays[[as.character(identical(initial_tab, "Overview") && !has_cite_param)]]
+  citation_loading_overlay <- .citation_loading_overlays[[as.character(has_cite_param)]]
 
   htmltools::tagList(
     font_head,
     navbar,
-    overlay,
+    .overlay,
     map_loading_overlay,
     overview_loading_overlay,
     citation_loading_overlay,
-    download_loading_overlay,
-    constants_script,
+    .download_loading_overlay,
+    .constants_script,
     app_script
   )
 }
@@ -102,13 +82,7 @@ custom_theme <- bslib::bs_theme(
   bg = "hsl(0, 0%, 100%)",
   fg = "hsl(156, 12%, 11%)",
   info = "hsl(160, 69%, 30%)",
-  # WCAG AA requires ≥ 4.5:1 contrast for normal text.
-  # hsl(160, 29%, 40%) only achieved ~4.07:1 against white.
-  # Dropping lightness to 35% raises that to ~4.97:1, keeping
-  # white-on-primary filled buttons at the same ratio (both pass).
   primary = "hsl(165, 41%, 34%)",
-  # secondary at 59% lightness (~3.3:1) also fails if used as text,
-  # darkened to 42% (~4.56:1) as a proactive fix.
   secondary = "hsl(160, 34%, 42%)",
   base_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
   heading_font = bslib::font_collection("Inter", "InterVariable", "system-ui", "sans-serif"),
@@ -234,28 +208,28 @@ build_navbar <- function(initial_tab = "Home") {
         title = "Getting Started",
         htmltools::tags$div(
           class = "vb-markdown-page",
-          shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
+          .md_getting_started
         )
       ),
       bslib::nav_panel(
         title = "FAQ",
         htmltools::tags$div(
           class = "vb-markdown-page",
-          shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
+          .md_faq
         )
       ),
       bslib::nav_panel(
         title = "Citing Data",
         htmltools::tags$div(
           class = "vb-markdown-page",
-          shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+          .md_cite
         )
       ),
       bslib::nav_panel(
         title = "Downloading Plots",
         htmltools::tags$div(
           class = "vb-markdown-page",
-          shiny::includeMarkdown(system.file("shiny", "www", "download.md", package = "vegbankweb"))
+          .md_download
         )
       ),
       bslib::nav_item(
@@ -296,8 +270,6 @@ build_navbar <- function(initial_tab = "Home") {
 build_detail_overlay <- function() {
   htmltools::tags$div(
     id = "detail-overlay",
-    # Sticky gradient banner showing the detail type with icon — lets users keep
-    # context even after scrolling past the first card.
     htmltools::tags$div(
       id = "detail-type-banner",
       htmltools::tags$span(
@@ -443,12 +415,99 @@ build_detail_overlay <- function() {
   )
 }
 
+# ================= PACKAGE-LEVEL PRECOMPUTED CONSTANTS ===========================================
+# External JS tag for the app script which won't change per request.
+app_script <- htmltools::tags$script(src = "assets/vegbank_app.js")
+
+# About submenu markdown pages. The pages are read from disk once at package load.
+.md_getting_started <- shiny::includeMarkdown(system.file("shiny", "www", "getting_started.md", package = "vegbankweb"))
+.md_faq <- shiny::includeMarkdown(system.file("shiny", "www", "faq.md", package = "vegbankweb"))
+.md_cite <- shiny::includeMarkdown(system.file("shiny", "www", "cite.md", package = "vegbankweb"))
+.md_download <- shiny::includeMarkdown(system.file("shiny", "www", "download.md", package = "vegbankweb"))
+
+# Detail overlay sidebar. A static HTML structure whose uiOutput placeholders are
+# filled reactively by the server. Built once since it has no request-specific inputs.
+.overlay <- build_detail_overlay()
+
+# Download loading overlay. Also no request-specific inputs.
+.download_loading_overlay <- build_download_loading_overlay()
+
+# Per-request loading overlays have only two possible states (visible = TRUE/FALSE).
+# Precompute both so ui() does a list lookup instead of constructing tag trees.
+.map_loading_overlays <- list(
+  "FALSE" = build_map_loading_overlay(visible = FALSE),
+  "TRUE"  = build_map_loading_overlay(visible = TRUE)
+)
+.overview_loading_overlays <- list(
+  "FALSE" = build_overview_loading_overlay(visible = FALSE),
+  "TRUE"  = build_overview_loading_overlay(visible = TRUE)
+)
+.citation_loading_overlays <- list(
+  "FALSE" = build_citation_loading_overlay(visible = FALSE),
+  "TRUE"  = build_citation_loading_overlay(visible = TRUE)
+)
+
+# Inline <script> tag injecting R constants into the browser. Built once at package load time
+# since every value it depends on is a package-level constant.
+.constants_script <- local({
+  detail_label_entries <- Filter(function(e) !is.null(e$detail_type), RESOURCE_REGISTRY)
+  detail_labels_js <- paste(
+    vapply(detail_label_entries, function(e) {
+      paste0("  '", e$detail_type, "': '", tools::toTitleCase(e$singular), "'")
+    }, character(1)),
+    collapse = ",\n"
+  )
+  htmltools::tags$script(htmltools::HTML(paste0(
+    "// Application constants - single source of truth from R\n",
+    "window.DOWNLOAD_MAX_RECORDS = ", DOWNLOAD_MAX_RECORDS, ";\n",
+    "window.DETAIL_TYPE_LABELS = {\n", detail_labels_js, "\n};\n",
+    "window.DETAIL_ICONS = ", jsonlite::toJSON(DETAIL_ICONS, auto_unbox = TRUE), ";\n",
+    "window.VB_VALID_CONCEPT_STATUSES = ", jsonlite::toJSON(VALID_CONCEPT_STATUSES), ";\n",
+    "window.VB_VALID_PLOT_STATUSES = ", jsonlite::toJSON(VALID_PLOT_STATUSES), ";\n",
+    "window.VB_DEFAULT_CONCEPT_STATUS = ", jsonlite::toJSON(DEFAULT_CONCEPT_STATUS, auto_unbox = TRUE), ";\n",
+    "window.VB_DEFAULT_PLOT_STATUS = ", jsonlite::toJSON(DEFAULT_PLOT_STATUS, auto_unbox = TRUE), ";\n"
+  )))
+})
+
+# 404 response page. Built once; returned for any unrecognised path. Contains hard-coded
+# css values that may need updating to match any theme changes.
+.html_404 <- paste0(
+  "<!DOCTYPE html>",
+  "<html lang='en'>",
+  "<head>",
+  "<meta charset='utf-8'>",
+  "<meta name='viewport' content='width=device-width, initial-scale=1'>",
+  "<title>404: Page Not Found</title>",
+  "<style>",
+  "body{margin:0;font-family:system-ui,sans-serif;background:#f7faf9;color:#1a2e28;",
+  "display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;}",
+  ".box{max-width:420px;padding:2.5rem 2rem;}",
+  "h1{font-size:5rem;margin:0;color:#2a7a5c;line-height:1;}",
+  "h2{font-size:1.25rem;margin:.5rem 0 1.25rem;font-weight:600;}",
+  "p{margin:0 0 1.75rem;color:#4a6860;line-height:1.6;}",
+  "a{display:inline-block;padding:.55rem 1.4rem;background:#2a7a5c;color:#fff;",
+  "border-radius:.375rem;text-decoration:none;font-weight:500;}",
+  "a:hover{background:#1f5e46;}",
+  "</style>",
+  "</head>",
+  "<body>",
+  "<div class='box'>",
+  "<h1>404</h1>",
+  "<h2>Looks like this page has gone to seed.</h2>",
+  "<p>We couldn't find what you were looking for.<br>",
+  "It may have wilted away or never taken root.</p>",
+  "<a href='/'>Back to VegBank</a>",
+  "</div>",
+  "</body>",
+  "</html>"
+)
+
 # ================= CITATION REDIRECT HELPERS ======================================================
 
 #' Extract Citation Identifier from /cite/ Path
 #'
 #' Checks if the request path is a /cite/IDENTIFIER URL and returns the identifier.
-#' Only checks path-based citations — query-based (?cite=) citations are handled
+#' Only checks path-based citations. Query-based (?cite=) citations are handled
 #' by the server after the app loads.
 #'
 #' @param req A Shiny request object
@@ -468,8 +527,8 @@ extract_citation_identifier <- function(req) {
 #' Build an HTTP 302 Redirect for Citation URLs
 #'
 #' Returns an HTTP 302 response that redirects /cite/IDENTIFIER to /?cite=IDENTIFIER.
-#' This is an immediate server-level redirect — no HTML is rendered and no resources
-#' are loaded — which avoids the problem of relative asset paths being misinterpreted
+#' This is an immediate server-level redirect (no HTML is rendered and no resources
+#' are loaded) which avoids the problem of relative asset paths being misinterpreted
 #' as citation identifiers when uiPattern = ".*" routes all requests through ui().
 #'
 #' @param identifier The citation identifier to redirect
