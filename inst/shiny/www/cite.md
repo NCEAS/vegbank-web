@@ -8,11 +8,11 @@ One of VegBank's strengths is that its data are permanently archived. This means
 
 ## Citing a Dataset in VegBank with a DOI
 
-Researchers can create a Vegbank Dataset (a specific named collection of plot observations) using the [create_dataset()](https://nceas.r-universe.dev/vegbankr/doc/manual.html#vb_create_dataset) API function, which in turn mints a citation-friendly DOI for the dataset.
+Researchers can create a VegBank Dataset (a specific named collection of plot observations) using the [create_dataset()](https://nceas.r-universe.dev/vegbankr/doc/manual.html#vb_create_dataset) API function, which in turn mints a citation-friendly DOI for the dataset.
 
-To cite a dataset that is created in VegBank, it is best to use the DOI url for the dataset, which you can get from the 'Copy Citation' button in the web interface. That will produce a citation of the form:
+To cite a dataset that is created in VegBank, it is best to use the DOI URL for the dataset, which you can get from the 'Copy Citation' button in the web interface. That will produce a citation of the form:
 
-> Jones, Matthew. (2026). Vegbank plot observations: Santa Barbara, California plots as of 2026-03-31. Dataset. VegBank. [doi:10.82902/J17P4J](https://doi.org/10.82902/J17P4J)
+> Jones, Matthew. (2026). VegBank plot observations: Santa Barbara, California plots as of 2026-03-31. Dataset. VegBank. [doi:10.82902/J17P4J](https://doi.org/10.82902/J17P4J)
 
 Once you know the DOI, You can resolve the dataset using any of the following URL patterns:
 
