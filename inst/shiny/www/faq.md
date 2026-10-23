@@ -155,7 +155,7 @@ Please select from the following questions, or browse through this file:
 
 ##### How can I get help with VegBank? Is there a tutorial? {#tutorial}
 
-> You can get a basic overview of the application and some common interactions on the [Getting Started](tabl=Getting%20Started) page in the About menu. If you have further questions feel free to contact us at help@vegbank.org.
+> You can get a basic overview of the application and some common interactions on the [Getting Started](?tab=Getting%20Started) page in the About menu. If you have further questions feel free to contact us at help@vegbank.org.
 
 [back to top...](#topoffaq)
 
