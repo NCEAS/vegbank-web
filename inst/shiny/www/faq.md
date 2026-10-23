@@ -51,7 +51,7 @@ Please select from the following questions, or browse through this file:
 
 > In overly simple terms, a community is a set of plant taxa that live adjacent to one another within a set of physical conditions. This community of co-occurring plants may be seen to repeat itself in a predictable pattern. One may classify (or interpret) a plot as belonging to a certain community type.  
 >   
-> The [USNVC Guide to the Classification](https://usnvc.org/guidetoclassification/) provides more full definitions for the 8 levels of the Natural Vegetation Heirarchy from Biome down to Association.
+> The [USNVC Guide to the Classification](https://usnvc.org/guidetoclassification/) provides more full definitions for the 8 levels of the Natural Vegetation Hierarchy from Biome down to Association.
 >   
 > Communities are Concept-Based in VegBank, meaning they are defined by a combination of a name and a reference. See the [What is a Concept?](#whatconcept) FAQ Topic for more information on Concepts.
 
@@ -155,7 +155,7 @@ Please select from the following questions, or browse through this file:
 
 ##### How can I get help with VegBank? Is there a tutorial? {#tutorial}
 
-> You can get a baisc overview of the application and some common interactions on the [Getting Started](tabl=Getting%20Started) page in the About menu. If you have further questions feel free to contact us at help@vegbank.org.
+> You can get a basic overview of the application and some common interactions on the [Getting Started](?tab=Getting%20Started) page in the About menu. If you have further questions feel free to contact us at help@vegbank.org.
 
 [back to top...](#topoffaq)
 
@@ -163,7 +163,7 @@ Please select from the following questions, or browse through this file:
 
 ##### What if I find something not working in VegBank? {#bug}
 
-> You should tell us about what wasn't working. Just send an email to help@vegbank.org and explain what it is that isn't working. Please be as specific as possible, i.e. what the URL was when the error occurred, what the search criteria were if you were searching for something, the time and date the error occurred, etc. Users who report errors help us improve the VegBank experience for everyone. Thank you!
+> You should tell us about what wasn't working. Just email help@vegbank.org and explain what it is that isn't working. Please be as specific as possible, i.e. what the URL was when the error occurred, what the search criteria were if you were searching for something, the time and date the error occurred, etc. Users who report errors help us improve the VegBank experience for everyone. Thank you!
 
 [back to top...](#topoffaq)
 

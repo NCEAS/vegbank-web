@@ -47,3 +47,6 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# VS Code Extensions
+.vscode/ltex.dictionary.en-US.txt
